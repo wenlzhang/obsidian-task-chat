@@ -11,7 +11,6 @@ export class ChatView extends ItemView {
     private chatMessages: ChatMessage[] = [];
     private currentTasks: Task[] = [];
     private currentFilter: TaskFilter = {};
-    private containerEl: HTMLElement;
     private messagesEl: HTMLElement;
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
@@ -36,35 +35,34 @@ export class ChatView extends ItemView {
     }
 
     async onOpen(): Promise<void> {
-        this.containerEl = this.contentEl;
-        this.containerEl.empty();
-        this.containerEl.addClass("task-chat-container");
+        this.contentEl.empty();
+        this.contentEl.addClass("task-chat-container");
 
         this.renderView();
     }
 
     async onClose(): Promise<void> {
-        this.containerEl.empty();
+        this.contentEl.empty();
     }
 
     /**
      * Render the chat view
      */
     private renderView(): void {
-        this.containerEl.empty();
+        this.contentEl.empty();
 
         // Header
-        const headerEl = this.containerEl.createDiv("task-chat-header");
+        const headerEl = this.contentEl.createDiv("task-chat-header");
         headerEl.createEl("h4", { text: "Task Chat" });
 
         // Filter status
-        this.filterStatusEl = this.containerEl.createDiv(
+        this.filterStatusEl = this.contentEl.createDiv(
             "task-chat-filter-status",
         );
         this.updateFilterStatus();
 
         // Filter controls
-        const controlsEl = this.containerEl.createDiv("task-chat-controls");
+        const controlsEl = this.contentEl.createDiv("task-chat-controls");
 
         const refreshBtn = controlsEl.createEl("button", {
             text: "Refresh tasks",
@@ -80,11 +78,11 @@ export class ChatView extends ItemView {
         filterBtn.addEventListener("click", () => this.openFilterModal());
 
         // Messages container
-        this.messagesEl = this.containerEl.createDiv("task-chat-messages");
+        this.messagesEl = this.contentEl.createDiv("task-chat-messages");
         this.renderMessages();
 
         // Input area
-        const inputContainerEl = this.containerEl.createDiv(
+        const inputContainerEl = this.contentEl.createDiv(
             "task-chat-input-container",
         );
 
@@ -236,8 +234,15 @@ export class ChatView extends ItemView {
 
             const taskListEl = tasksEl.createEl("ul");
 
-            message.recommendedTasks.forEach((task) => {
+            message.recommendedTasks.forEach((task, index) => {
                 const taskItemEl = taskListEl.createEl("li");
+
+                // Show task number (1-based)
+                const taskNumber = taskItemEl.createEl("span", {
+                    text: `[${index + 1}] `,
+                    cls: "task-chat-task-number",
+                });
+
                 taskItemEl.createEl("span", {
                     text: task.text,
                     cls: "task-chat-task-text",

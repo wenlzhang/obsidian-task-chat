@@ -125,6 +125,12 @@
     gap: 8px;
 }
 
+.task-chat-task-number {
+    font-weight: 600;
+    color: var(--interactive-accent);
+    margin-right: 4px;
+}
+
 .task-chat-task-text {
     flex: 1;
 }

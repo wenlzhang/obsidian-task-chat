@@ -75,7 +75,8 @@ export class AIService {
         let context = `Found ${tasks.length} relevant task(s):\n\n`;
 
         tasks.forEach((task, index) => {
-            const taskId = `[TASK_${index}]`;
+            // Use 1-based indexing for better UX
+            const taskId = `[TASK_${index + 1}]`;
             const parts: string[] = [];
 
             // Add task ID and content
@@ -117,6 +118,25 @@ export class AIService {
         settings: PluginSettings,
         intent: any,
     ): any[] {
+        // Get language instruction based on settings
+        let languageInstruction = "";
+        switch (settings.responseLanguage) {
+            case "english":
+                languageInstruction = "Always respond in English.";
+                break;
+            case "chinese":
+                languageInstruction = "Always respond in Chinese (中文).";
+                break;
+            case "custom":
+                languageInstruction = settings.customLanguageInstruction;
+                break;
+            case "auto":
+            default:
+                languageInstruction =
+                    "Respond in the same language as the user's query. If the query mixes multiple languages, use the primary language detected.";
+                break;
+        }
+
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
@@ -124,9 +144,10 @@ IMPORTANT RULES:
 1. ONLY reference tasks from the provided task list
 2. DO NOT create new tasks or suggest tasks that don't exist
 3. DO NOT provide generic advice unless no relevant tasks are found
-4. When recommending tasks, use their [TASK_X] IDs
+4. When recommending tasks, ALWAYS use their [TASK_X] IDs (e.g., [TASK_1], [TASK_2])
 5. Focus on helping users prioritize and execute existing tasks
 6. Be concise and actionable
+7. ${languageInstruction}
 
 ${taskContext}`;
 
@@ -245,8 +266,10 @@ ${taskContext}`;
         const referencedIndices = new Set<number>();
         for (const match of matches) {
             const index = parseInt(match[1]);
-            if (index >= 0 && index < tasks.length) {
-                referencedIndices.add(index);
+            // Convert from 1-based to 0-based indexing
+            const taskIndex = index - 1;
+            if (taskIndex >= 0 && taskIndex < tasks.length) {
+                referencedIndices.add(taskIndex);
             }
         }
 

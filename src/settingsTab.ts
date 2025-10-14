@@ -125,8 +125,44 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Response language")
+            .setDesc("Choose the language for AI responses")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("auto", "Auto (match user input)")
+                    .addOption("english", "English")
+                    .addOption("chinese", "Chinese (中文)")
+                    .addOption("custom", "Custom instruction")
+                    .setValue(this.plugin.settings.responseLanguage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.responseLanguage = value as any;
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh to show/hide custom instruction
+                    }),
+            );
+
+        // Show custom language instruction if custom is selected
+        if (this.plugin.settings.responseLanguage === "custom") {
+            new Setting(containerEl)
+                .setName("Custom language instruction")
+                .setDesc("Specify how the AI should choose response language")
+                .addText((text) =>
+                    text
+                        .setPlaceholder("e.g., Always respond in Spanish")
+                        .setValue(
+                            this.plugin.settings.customLanguageInstruction,
+                        )
+                        .onChange(async (value) => {
+                            this.plugin.settings.customLanguageInstruction =
+                                value;
+                            await this.plugin.saveSettings();
+                        }),
+                );
+        }
+
+        new Setting(containerEl)
             .setName("System prompt")
-            .setDesc("System prompt for the AI assistant")
+            .setDesc("System prompt for the AI assistant (advanced)")
             .addTextArea((text) =>
                 text
                     .setPlaceholder("Enter system prompt")
