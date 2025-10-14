@@ -1,6 +1,7 @@
 import { Notice, requestUrl } from "obsidian";
 import { Task, ChatMessage } from "../models/task";
 import { PluginSettings } from "../settings";
+import { TaskSearchService } from "./taskSearchService";
 
 /**
  * Service for AI chat functionality
@@ -21,19 +22,36 @@ export class AIService {
             );
         }
 
-        const taskContext = this.buildTaskContext(tasks);
+        // Analyze query intent
+        const intent = TaskSearchService.analyzeQueryIntent(message);
+
+        // First, search for relevant tasks locally
+        const relevantTasks = TaskSearchService.searchTasks(
+            tasks,
+            message,
+            50, // Get top 50 relevant tasks
+        );
+
+        // Use relevant tasks if found, otherwise use all tasks
+        const tasksToAnalyze =
+            relevantTasks.length > 0 ? relevantTasks : tasks.slice(0, 50);
+
+        const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
         const messages = this.buildMessages(
             message,
             taskContext,
             chatHistory,
             settings,
+            intent,
         );
 
         try {
             const response = await this.callAI(messages, settings);
+
+            // Extract task IDs that AI referenced
             const recommendedTasks = this.extractRecommendedTasks(
                 response,
-                tasks,
+                tasksToAnalyze,
             );
 
             return {
@@ -47,32 +65,43 @@ export class AIService {
     }
 
     /**
-     * Build task context for AI
+     * Build task context for AI with task IDs
      */
-    private static buildTaskContext(tasks: Task[]): string {
+    private static buildTaskContext(tasks: Task[], intent: any): string {
         if (tasks.length === 0) {
-            return "No tasks match the current filter criteria.";
+            return "No tasks found matching your query.";
         }
 
-        let context = `Current tasks (${tasks.length} total):\n\n`;
+        let context = `Found ${tasks.length} relevant task(s):\n\n`;
 
         tasks.forEach((task, index) => {
+            const taskId = `[TASK_${index}]`;
             const parts: string[] = [];
-            parts.push(`${index + 1}. [${task.statusCategory}] ${task.text}`);
+
+            // Add task ID and content
+            parts.push(`${taskId} ${task.text}`);
+
+            // Add metadata
+            const metadata: string[] = [];
+            metadata.push(`Status: ${task.statusCategory}`);
 
             if (task.priority && task.priority !== "none") {
-                parts.push(`Priority: ${task.priority}`);
+                metadata.push(`Priority: ${task.priority}`);
             }
 
             if (task.dueDate) {
-                parts.push(`Due: ${task.dueDate}`);
+                metadata.push(`Due: ${task.dueDate}`);
             }
 
             if (task.folder) {
-                parts.push(`Folder: ${task.folder}`);
+                metadata.push(`Folder: ${task.folder}`);
             }
 
-            context += parts.join(" | ") + "\n";
+            if (task.tags && task.tags.length > 0) {
+                metadata.push(`Tags: ${task.tags.join(", ")}`);
+            }
+
+            context += `${parts.join("")}\n  ${metadata.join(" | ")}\n\n`;
         });
 
         return context;
@@ -86,16 +115,30 @@ export class AIService {
         taskContext: string,
         chatHistory: ChatMessage[],
         settings: PluginSettings,
+        intent: any,
     ): any[] {
+        // Build context-aware system prompt
+        let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
+
+IMPORTANT RULES:
+1. ONLY reference tasks from the provided task list
+2. DO NOT create new tasks or suggest tasks that don't exist
+3. DO NOT provide generic advice unless no relevant tasks are found
+4. When recommending tasks, use their [TASK_X] IDs
+5. Focus on helping users prioritize and execute existing tasks
+6. Be concise and actionable
+
+${taskContext}`;
+
         const messages: any[] = [
             {
                 role: "system",
-                content: settings.systemPrompt + "\n\n" + taskContext,
+                content: systemPrompt,
             },
         ];
 
-        // Add recent chat history (limit to last N messages)
-        const recentHistory = chatHistory.slice(-10);
+        // Add recent chat history (limit to last 6 messages to save tokens)
+        const recentHistory = chatHistory.slice(-6);
         recentHistory.forEach((msg) => {
             if (msg.role !== "system") {
                 messages.push({
@@ -187,28 +230,56 @@ export class AIService {
     }
 
     /**
-     * Extract recommended tasks from AI response
-     * Looks for task references in the response
+     * Extract recommended tasks from AI response using task IDs
      */
     private static extractRecommendedTasks(
         response: string,
         tasks: Task[],
     ): Task[] {
         const recommended: Task[] = [];
-        const responseLines = response.split("\n");
 
-        responseLines.forEach((line) => {
-            tasks.forEach((task) => {
-                // Check if task text appears in the response
-                if (
-                    line.includes(task.text.substring(0, 30)) &&
-                    !recommended.includes(task)
-                ) {
-                    recommended.push(task);
-                }
-            });
+        // Extract [TASK_X] references from response
+        const taskIdPattern = /\[TASK_(\d+)\]/g;
+        const matches = response.matchAll(taskIdPattern);
+
+        const referencedIndices = new Set<number>();
+        for (const match of matches) {
+            const index = parseInt(match[1]);
+            if (index >= 0 && index < tasks.length) {
+                referencedIndices.add(index);
+            }
+        }
+
+        // Add tasks in the order they appear in response
+        const sortedIndices = Array.from(referencedIndices).sort(
+            (a, b) => a - b,
+        );
+        sortedIndices.forEach((index) => {
+            recommended.push(tasks[index]);
         });
 
-        return recommended;
+        // If no task IDs were found, try fuzzy matching (fallback)
+        if (recommended.length === 0) {
+            tasks.forEach((task) => {
+                // Check if significant portion of task text appears in response
+                const taskWords = task.text
+                    .split(/\s+/)
+                    .filter((w) => w.length > 3);
+                const matchCount = taskWords.filter((word) =>
+                    response.toLowerCase().includes(word.toLowerCase()),
+                ).length;
+
+                if (
+                    matchCount >= Math.min(3, taskWords.length) &&
+                    matchCount / taskWords.length > 0.5
+                ) {
+                    if (!recommended.includes(task)) {
+                        recommended.push(task);
+                    }
+                }
+            });
+        }
+
+        return recommended.slice(0, 10); // Limit to top 10
     }
 }
