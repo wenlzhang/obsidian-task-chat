@@ -1,0 +1,207 @@
+/* Task Chat Container */
+.task-chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 10px;
+    gap: 10px;
+}
+
+/* Header */
+.task-chat-header {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Filter Status */
+.task-chat-filter-status {
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Controls */
+.task-chat-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.task-chat-controls button {
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Messages Container */
+.task-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Individual Message */
+.task-chat-message {
+    padding: 10px;
+    border-radius: 6px;
+    background: var(--background-primary-alt);
+}
+
+.task-chat-message-user {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    align-self: flex-end;
+    max-width: 80%;
+}
+
+.task-chat-message-assistant {
+    background: var(--background-secondary);
+    align-self: flex-start;
+    max-width: 90%;
+}
+
+.task-chat-message-system {
+    background: var(--background-secondary-alt);
+    font-style: italic;
+    text-align: center;
+    max-width: 100%;
+}
+
+/* Message Header */
+.task-chat-message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.task-chat-message-time {
+    opacity: 0.6;
+}
+
+/* Message Content */
+.task-chat-message-content {
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.task-chat-message-content code {
+    background: var(--code-background);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+}
+
+/* Recommended Tasks */
+.task-chat-recommended-tasks {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-recommended-tasks ul {
+    margin: 6px 0 0 0;
+    padding-left: 20px;
+}
+
+.task-chat-recommended-tasks li {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.task-chat-task-text {
+    flex: 1;
+}
+
+.task-chat-nav-button {
+    padding: 2px 8px;
+    font-size: 14px;
+    min-width: 30px;
+    cursor: pointer;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+}
+
+.task-chat-nav-button:hover {
+    opacity: 0.8;
+}
+
+/* Input Container */
+.task-chat-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-input-container textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    resize: vertical;
+    font-family: var(--font-interface);
+    font-size: 14px;
+}
+
+.task-chat-input-container button {
+    padding: 8px 16px;
+    cursor: pointer;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.task-chat-input-container button:hover {
+    opacity: 0.9;
+}
+
+.task-chat-input-container button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Filter Modal */
+.modal-button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.quick-date-filters {
+    margin: 10px 0;
+}
+
+.quick-date-filters .button-container {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.quick-date-filters button {
+    padding: 4px 12px;
+    font-size: 12px;
+}

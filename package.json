@@ -1,7 +1,7 @@
 {
-    "name": "plugin-template",
+    "name": "task-chat",
     "version": "0.0.1",
-    "description": "Plugin Template.",
+    "description": "Chat with an AI about your tasks. Filter, analyze, and get recommendations for your Obsidian tasks.",
     "main": "main.js",
     "scripts": {
     "dev": "node esbuild.config.mjs",
