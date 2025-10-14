@@ -258,6 +258,35 @@ export class ChatView extends ItemView {
                 });
             });
         }
+
+        // Token usage display
+        if (message.tokenUsage && this.plugin.settings.showTokenUsage) {
+            const usageEl = messageEl.createDiv("task-chat-token-usage");
+
+            const parts: string[] = [];
+
+            if (message.tokenUsage.totalTokens > 0) {
+                parts.push(
+                    `${message.tokenUsage.totalTokens.toLocaleString()} tokens`,
+                );
+                parts.push(
+                    `(${message.tokenUsage.promptTokens.toLocaleString()} in, ${message.tokenUsage.completionTokens.toLocaleString()} out)`,
+                );
+
+                if (message.tokenUsage.estimatedCost > 0) {
+                    const cost = message.tokenUsage.estimatedCost;
+                    if (cost < 0.01) {
+                        parts.push(`~$${cost.toFixed(4)}`);
+                    } else {
+                        parts.push(`~$${cost.toFixed(3)}`);
+                    }
+                }
+            } else {
+                parts.push("Direct search - no API cost");
+            }
+
+            usageEl.createEl("small", { text: parts.join(" • ") });
+        }
     }
 
     /**
@@ -286,7 +315,7 @@ export class ChatView extends ItemView {
         this.renderMessages();
 
         try {
-            // Get AI response
+            // Get AI response or direct results
             const result = await AIService.sendMessage(
                 message,
                 this.currentTasks,
@@ -294,16 +323,40 @@ export class ChatView extends ItemView {
                 this.plugin.settings,
             );
 
-            // Add AI response
-            const aiMessage: ChatMessage = {
-                role: "assistant",
-                content: result.response,
-                timestamp: Date.now(),
-                recommendedTasks: result.recommendedTasks,
-            };
+            // Update total usage in settings
+            if (result.tokenUsage) {
+                this.plugin.settings.totalTokensUsed +=
+                    result.tokenUsage.totalTokens;
+                this.plugin.settings.totalCost +=
+                    result.tokenUsage.estimatedCost;
+                await this.plugin.saveSettings();
+            }
 
-            this.chatMessages.push(aiMessage);
-            this.renderMessages();
+            // Handle direct results (no AI used)
+            if (result.directResults) {
+                const directMessage: ChatMessage = {
+                    role: "system",
+                    content: `Found ${result.directResults.length} matching task(s) (no AI processing needed):`,
+                    timestamp: Date.now(),
+                    recommendedTasks: result.directResults,
+                    tokenUsage: result.tokenUsage,
+                };
+
+                this.chatMessages.push(directMessage);
+                this.renderMessages();
+            } else {
+                // Add AI response
+                const aiMessage: ChatMessage = {
+                    role: "assistant",
+                    content: result.response,
+                    timestamp: Date.now(),
+                    recommendedTasks: result.recommendedTasks,
+                    tokenUsage: result.tokenUsage,
+                };
+
+                this.chatMessages.push(aiMessage);
+                this.renderMessages();
+            }
 
             // Trim chat history if needed
             if (

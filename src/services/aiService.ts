@@ -1,5 +1,5 @@
 import { Notice, requestUrl } from "obsidian";
-import { Task, ChatMessage } from "../models/task";
+import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 
@@ -15,7 +15,12 @@ export class AIService {
         tasks: Task[],
         chatHistory: ChatMessage[],
         settings: PluginSettings,
-    ): Promise<{ response: string; recommendedTasks?: Task[] }> {
+    ): Promise<{
+        response: string;
+        recommendedTasks?: Task[];
+        tokenUsage?: TokenUsage;
+        directResults?: Task[];
+    }> {
         if (!settings.apiKey || settings.apiKey.trim() === "") {
             throw new Error(
                 "API key is not configured. Please set it in the plugin settings.",
@@ -29,12 +34,39 @@ export class AIService {
         const relevantTasks = TaskSearchService.searchTasks(
             tasks,
             message,
-            50, // Get top 50 relevant tasks
+            20, // Get top 20 relevant tasks for initial search
         );
 
-        // Use relevant tasks if found, otherwise use all tasks
+        // If search found clear matches and it's a simple search query, return directly
+        if (
+            intent.isSearch &&
+            !intent.isPriority &&
+            relevantTasks.length > 0 &&
+            relevantTasks.length <= 10
+        ) {
+            // Return tasks directly without AI processing
+            return {
+                response: "", // No AI response needed
+                directResults: relevantTasks,
+                tokenUsage: {
+                    promptTokens: 0,
+                    completionTokens: 0,
+                    totalTokens: 0,
+                    estimatedCost: 0,
+                    model: settings.model,
+                },
+            };
+        }
+
+        // Use only top 5-10 most relevant tasks for AI analysis (reduce tokens)
+        const maxTasksForAI =
+            relevantTasks.length > 0
+                ? Math.min(10, relevantTasks.length)
+                : Math.min(10, tasks.length);
         const tasksToAnalyze =
-            relevantTasks.length > 0 ? relevantTasks : tasks.slice(0, 50);
+            relevantTasks.length > 0
+                ? relevantTasks.slice(0, maxTasksForAI)
+                : tasks.slice(0, maxTasksForAI);
 
         const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
         const messages = this.buildMessages(
@@ -46,7 +78,10 @@ export class AIService {
         );
 
         try {
-            const response = await this.callAI(messages, settings);
+            const { response, tokenUsage } = await this.callAI(
+                messages,
+                settings,
+            );
 
             // Extract task IDs that AI referenced
             const recommendedTasks = this.extractRecommendedTasks(
@@ -57,6 +92,7 @@ export class AIService {
             return {
                 response,
                 recommendedTasks,
+                tokenUsage,
             };
         } catch (error) {
             console.error("AI Service Error:", error);
@@ -179,12 +215,56 @@ ${taskContext}`;
     }
 
     /**
+     * Calculate estimated cost based on token usage and model
+     */
+    private static calculateCost(
+        promptTokens: number,
+        completionTokens: number,
+        model: string,
+    ): number {
+        // Pricing per 1M tokens (as of 2024)
+        const pricing: Record<string, { input: number; output: number }> = {
+            "gpt-4o": { input: 2.5, output: 10.0 },
+            "gpt-4o-mini": { input: 0.15, output: 0.6 },
+            "gpt-4-turbo": { input: 10.0, output: 30.0 },
+            "gpt-4": { input: 30.0, output: 60.0 },
+            "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
+            "claude-3-5-sonnet-20241022": { input: 3.0, output: 15.0 },
+            "claude-3-opus": { input: 15.0, output: 75.0 },
+            "claude-3-sonnet": { input: 3.0, output: 15.0 },
+            "claude-3-haiku": { input: 0.25, output: 1.25 },
+        };
+
+        // Find matching pricing (case insensitive)
+        const modelLower = model.toLowerCase();
+        let rates = null;
+
+        for (const [key, value] of Object.entries(pricing)) {
+            if (modelLower.includes(key.toLowerCase())) {
+                rates = value;
+                break;
+            }
+        }
+
+        // Default to gpt-4o-mini pricing if unknown
+        if (!rates) {
+            rates = pricing["gpt-4o-mini"];
+        }
+
+        // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
+        const inputCost = (promptTokens / 1000000) * rates.input;
+        const outputCost = (completionTokens / 1000000) * rates.output;
+
+        return inputCost + outputCost;
+    }
+
+    /**
      * Call AI API
      */
     private static async callAI(
         messages: any[],
         settings: PluginSettings,
-    ): Promise<string> {
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const endpoint = settings.apiEndpoint;
 
         if (settings.aiProvider === "ollama") {
@@ -214,7 +294,31 @@ ${taskContext}`;
         }
 
         const data = response.json;
-        return data.choices[0].message.content;
+        const content = data.choices[0].message.content;
+
+        // Extract token usage
+        const usage = data.usage || {};
+        const promptTokens = usage.prompt_tokens || 0;
+        const completionTokens = usage.completion_tokens || 0;
+        const totalTokens =
+            usage.total_tokens || promptTokens + completionTokens;
+
+        const tokenUsage: TokenUsage = {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            estimatedCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                settings.model,
+            ),
+            model: settings.model,
+        };
+
+        return {
+            response: content,
+            tokenUsage,
+        };
     }
 
     /**
@@ -223,7 +327,7 @@ ${taskContext}`;
     private static async callOllama(
         messages: any[],
         settings: PluginSettings,
-    ): Promise<string> {
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const endpoint =
             settings.apiEndpoint || "http://localhost:11434/api/chat";
 
@@ -247,7 +351,26 @@ ${taskContext}`;
         }
 
         const data = response.json;
-        return data.message.content;
+        const content = data.message.content;
+
+        // Ollama doesn't provide token counts, estimate
+        const estimatedPromptTokens = JSON.stringify(messages).length / 4;
+        const estimatedCompletionTokens = content.length / 4;
+
+        const tokenUsage: TokenUsage = {
+            promptTokens: Math.round(estimatedPromptTokens),
+            completionTokens: Math.round(estimatedCompletionTokens),
+            totalTokens: Math.round(
+                estimatedPromptTokens + estimatedCompletionTokens,
+            ),
+            estimatedCost: 0, // Ollama is local, no cost
+            model: settings.model,
+        };
+
+        return {
+            response: content,
+            tokenUsage,
+        };
     }
 
     /**

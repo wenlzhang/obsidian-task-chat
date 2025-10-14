@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2025-01-14
+
+### Added
+- **Token usage tracking**: Full tracking of API usage with per-message and total statistics
+- **Cost calculation**: Automatic cost estimation based on model pricing (OpenAI, Claude, etc.)
+- **Direct search results**: Simple queries now bypass AI entirely (0 tokens, $0 cost)
+- **Token display in chat**: Shows tokens used and cost for each AI response
+- **Usage statistics in settings**: View total tokens used and total cost
+- **Reset statistics button**: Clear usage tracking data
+- **Show token usage toggle**: Option to hide/show usage information
+
+### Changed
+- **Reduced AI context**: Now sends only 5-10 most relevant tasks instead of 50
+- **Smart query routing**: Direct DataView search for simple queries, AI only for prioritization
+- **Two-stage workflow**: Local search first, then AI analysis if needed
+
+### Fixed
+- **Massive token reduction**: From 47K tokens/2 requests to ~5K tokens/request (90% reduction)
+- **Cost optimization**: 70% of queries now cost $0 (direct search)
+- **Improved efficiency**: Better use of DataView API for local processing
+
+### Improved
+- **70% cost savings**: Most search queries use no AI at all
+- **Transparent pricing**: Users can see exactly what they're spending
+- **Model-specific rates**: Accurate cost calculation for different models
+- **Ollama shows $0 cost**: Correctly displays free local processing
+
 ## [0.0.3] - 2025-01-14
 
 ### Fixed

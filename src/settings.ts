@@ -34,6 +34,11 @@ export interface PluginSettings {
     systemPrompt: string;
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
+
+    // Usage Tracking
+    totalTokensUsed: number;
+    totalCost: number;
+    showTokenUsage: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -70,10 +75,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Priority Mapping
     dataviewPriorityMapping: {
-        high: ["high", "High", "HIGH", "⏫", "1"],
-        medium: ["medium", "Medium", "MEDIUM", "🔼", "2"],
-        low: ["low", "Low", "LOW", "🔽", "⏬", "3"],
-        none: ["none", "None", "NONE", ""],
+        high: ["high", "High", "HIGH", "1"],
+        medium: ["medium", "Medium", "MEDIUM", "2"],
+        low: ["low", "Low", "LOW", "3"],
+        none: ["none", "None", "NONE", "4"],
     },
 
     // Date Formats
@@ -91,4 +96,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs.  Be concise and actionable.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
+
+    // Usage Tracking
+    totalTokensUsed: 0,
+    totalCost: 0,
+    showTokenUsage: true,
 };

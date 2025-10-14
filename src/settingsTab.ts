@@ -125,6 +125,18 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Show token usage")
+            .setDesc("Display API usage and cost information in chat")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showTokenUsage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showTokenUsage = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
             .setName("Response language")
             .setDesc("Choose the language for AI responses")
             .addDropdown((dropdown) =>
@@ -235,6 +247,36 @@ export class SettingsTab extends PluginSettingTab {
                         this.plugin.settings.dataviewKeys.priority = value;
                         await this.plugin.saveSettings();
                     }),
+            );
+
+        // Usage Statistics
+        containerEl.createEl("h3", { text: "Usage statistics" });
+
+        const statsContainer = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+
+        const totalTokens =
+            this.plugin.settings.totalTokensUsed.toLocaleString();
+        const totalCost = this.plugin.settings.totalCost.toFixed(4);
+
+        statsContainer.createEl("p", {
+            text: `Total tokens used: ${totalTokens}`,
+        });
+        statsContainer.createEl("p", {
+            text: `Total cost: $${totalCost}`,
+        });
+
+        new Setting(containerEl)
+            .setName("Reset statistics")
+            .setDesc("Clear all usage statistics and cost tracking")
+            .addButton((button) =>
+                button.setButtonText("Reset").onClick(async () => {
+                    this.plugin.settings.totalTokensUsed = 0;
+                    this.plugin.settings.totalCost = 0;
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh to show updated stats
+                }),
             );
     }
 }

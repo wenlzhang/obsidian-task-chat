@@ -35,6 +35,15 @@ export interface ChatMessage {
     content: string;
     timestamp: number;
     recommendedTasks?: Task[];
+    tokenUsage?: TokenUsage;
+}
+
+export interface TokenUsage {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    estimatedCost: number;
+    model: string;
 }
 
 export interface ChatContext {
