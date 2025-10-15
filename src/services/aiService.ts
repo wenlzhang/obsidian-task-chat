@@ -1,8 +1,9 @@
-import { Notice, requestUrl } from "obsidian";
+import { App, Notice, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./queryParserService";
+import { TaskSortService } from "./taskSortService";
 
 /**
  * Service for AI chat functionality
@@ -135,15 +136,24 @@ export class AIService {
                 };
             }
 
-            // Simple query with small result set - return directly
+            // Sort tasks according to user preferences
+            const sortedTasks = TaskSortService.sortTasks(
+                filteredTasks,
+                settings,
+            );
+
+            // Simple query - return directly without AI if within limits
             if (
-                filteredTasks.length <= 10 &&
+                sortedTasks.length <= settings.maxDirectResults &&
                 !intent.hasMultipleFilters &&
                 intent.keywords.length === 0
             ) {
                 return {
                     response: "",
-                    directResults: filteredTasks,
+                    directResults: sortedTasks.slice(
+                        0,
+                        settings.maxDirectResults,
+                    ),
                     tokenUsage: {
                         promptTokens: 0,
                         completionTokens: 0,
@@ -155,8 +165,8 @@ export class AIService {
             }
 
             // Complex query or large result set - use AI for refinement
-            const maxTasksForAI = Math.min(15, filteredTasks.length);
-            const tasksToAnalyze = filteredTasks.slice(0, maxTasksForAI);
+            // Limit to maxTasksForAI for token efficiency
+            const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
 
             const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
             const messages = this.buildMessages(
@@ -175,6 +185,7 @@ export class AIService {
             const recommendedTasks = this.extractRecommendedTasks(
                 response,
                 tasksToAnalyze,
+                settings,
             );
 
             return {
@@ -212,15 +223,11 @@ export class AIService {
             };
         }
 
-        // Use only top 5-10 most relevant tasks for AI analysis (reduce tokens)
-        const maxTasksForAI =
-            relevantTasks.length > 0
-                ? Math.min(10, relevantTasks.length)
-                : Math.min(10, tasks.length);
-        const tasksToAnalyze =
-            relevantTasks.length > 0
-                ? relevantTasks.slice(0, maxTasksForAI)
-                : tasks.slice(0, maxTasksForAI);
+        // Sort and select top tasks for AI analysis
+        const tasksToSort = relevantTasks.length > 0 ? relevantTasks : tasks;
+        const sortedTasks = TaskSortService.sortTasks(tasksToSort, settings);
+
+        const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
 
         const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
         const messages = this.buildMessages(
@@ -241,6 +248,7 @@ export class AIService {
             const recommendedTasks = this.extractRecommendedTasks(
                 response,
                 tasksToAnalyze,
+                settings,
             );
 
             return {
@@ -349,17 +357,17 @@ export class AIService {
         const mapping = settings.dataviewPriorityMapping;
         const lines = [];
 
-        if (mapping.high && mapping.high.length > 0) {
-            lines.push(`- HIGH priority: ${mapping.high.join(", ")}`);
+        if (mapping[1] && mapping[1].length > 0) {
+            lines.push(`- HIGH priority (1): ${mapping[1].join(", ")}`);
         }
-        if (mapping.medium && mapping.medium.length > 0) {
-            lines.push(`- MEDIUM priority: ${mapping.medium.join(", ")}`);
+        if (mapping[2] && mapping[2].length > 0) {
+            lines.push(`- MEDIUM priority (2): ${mapping[2].join(", ")}`);
         }
-        if (mapping.low && mapping.low.length > 0) {
-            lines.push(`- LOW priority: ${mapping.low.join(", ")}`);
+        if (mapping[3] && mapping[3].length > 0) {
+            lines.push(`- LOW priority (3): ${mapping[3].join(", ")}`);
         }
-        if (mapping.none && mapping.none.length > 0) {
-            lines.push(`- NO priority: ${mapping.none.join(", ")}`);
+        if (mapping[4] && mapping[4].length > 0) {
+            lines.push(`- LOWEST priority (4): ${mapping[4].join(", ")}`);
         }
 
         if (lines.length === 0) {
@@ -650,6 +658,7 @@ ${taskContext}`;
     private static extractRecommendedTasks(
         response: string,
         tasks: Task[],
+        settings: PluginSettings,
     ): Task[] {
         const recommended: Task[] = [];
 
@@ -697,6 +706,7 @@ ${taskContext}`;
             });
         }
 
-        return recommended.slice(0, 10); // Limit to top 10
+        // Limit final recommendations to user preference
+        return recommended.slice(0, settings.maxRecommendations);
     }
 }

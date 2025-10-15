@@ -41,6 +41,18 @@ export interface PluginSettings {
     customLanguageInstruction: string;
     useAIQueryParsing: boolean; // Use AI to parse queries for better accuracy
 
+    // Task Display Settings
+    maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
+    maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
+    maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
+    taskSortBy:
+        | "relevance"
+        | "dueDate"
+        | "priority"
+        | "created"
+        | "alphabetical";
+    taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
+
     // Usage Tracking
     totalTokensUsed: number;
     totalCost: number;
@@ -110,6 +122,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
     useAIQueryParsing: false, // Disabled by default (uses fast regex parsing)
+
+    // Task Display Settings
+    maxDirectResults: 20, // Direct results have no token cost, can be higher
+    maxTasksForAI: 30, // More context helps AI give better recommendations
+    maxRecommendations: 20, // Keep final list manageable for user
+    taskSortBy: "dueDate", // Sort by due date
+    taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking
     totalTokensUsed: 0,

@@ -1,5 +1,4 @@
 # Changelog
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -8,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-10-15
 
 ### Added
+- **Task Display Settings**: Fine-grained control over task limits and sorting
+  - **Three separate limit settings** (sliders: 5-100, max: 100):
+    - **Max Direct Results** (default: 20): Tasks shown without AI (no token cost)
+      - Simple queries like "overdue tasks" show results directly
+      - Higher values have no cost impact since no AI is used
+    - **Max Tasks for AI Analysis** (default: 30): Tasks sent to AI for context
+      - More context helps AI give better recommendations
+      - Impacts token usage and cost
+    - **Max AI Recommendations** (default: 20): Final task list size
+      - Keeps recommendations manageable for user
+      - AI selects most relevant from analyzed tasks
+  - **Two-part sorting system** for maximum flexibility:
+    - **Sort By** (dropdown): Choose field to sort by
+      - AI Relevance, Due Date, Priority, Created Date, or Alphabetical
+    - **Sort Direction** (dropdown): Choose sort order
+      - **Low to High** (A→Z, 1→4, Early→Late): Good for overdue/urgent tasks
+      - **High to Low** (Z→A, 4→1, Late→Early): Good for recent/low priority tasks
+    - Defaults: Due Date + Low to High (shows overdue tasks first)
+  - Tasks are sorted before display and before AI analysis for consistent results
 - **AI-Powered Query Parsing** (Optional): Use AI to parse queries for maximum reliability
   - Toggle in settings: "AI-powered query parsing"
   - Understands complex natural language in any language

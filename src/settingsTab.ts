@@ -186,6 +186,94 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Task Display Settings Section
+        containerEl.createEl("h3", { text: "Task Display" });
+
+        new Setting(containerEl)
+            .setName("Max direct results")
+            .setDesc(
+                "Maximum tasks to show without using AI (no token cost). Default: 20. Simple queries like 'overdue tasks' show results directly.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(5, 100, 5)
+                    .setValue(this.plugin.settings.maxDirectResults)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxDirectResults = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Max tasks for AI analysis")
+            .setDesc(
+                "Maximum tasks to send to AI for analysis. Default: 30. More context helps AI give better recommendations but increases token usage.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(5, 100, 5)
+                    .setValue(this.plugin.settings.maxTasksForAI)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxTasksForAI = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Max AI recommendations")
+            .setDesc(
+                "Maximum tasks AI should recommend. Default: 20. Keeps the final task list manageable.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(5, 100, 5)
+                    .setValue(this.plugin.settings.maxRecommendations)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxRecommendations = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Sort tasks by")
+            .setDesc(
+                'Field to sort tasks by. "AI Relevance" keeps search-ranked order (useful for keyword searches).',
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("relevance", "AI Relevance")
+                    .addOption("dueDate", "Due Date")
+                    .addOption("priority", "Priority")
+                    .addOption("created", "Created Date")
+                    .addOption("alphabetical", "Alphabetical")
+                    .setValue(this.plugin.settings.taskSortBy)
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskSortBy = value as any;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Sort direction")
+            .setDesc(
+                'Sort order: "Ascending" shows earliest dates/highest priorities first (good for overdue/urgent tasks). "Descending" shows latest dates/lowest priorities first.',
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("asc", "Ascending (Early→Late, 1→4, A→Z)")
+                    .addOption("desc", "Descending (Late→Early, 4→1, Z→A)")
+                    .setValue(this.plugin.settings.taskSortDirection)
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskSortDirection = value as any;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        containerEl.createEl("h3", { text: "Advanced" });
+
         new Setting(containerEl)
             .setName("System prompt")
             .setDesc("System prompt for the AI assistant (advanced)")
