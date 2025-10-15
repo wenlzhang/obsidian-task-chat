@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.8] - 2025-01-15
+
+### Added
+- **Dynamic System Prompt**: AI prompt now built from user's actual priority settings
+- **Due Date Query Support**: Queries like "tasks due today", "overdue tasks" work natively
+- **Due Date Filtering**: Filter by today, tomorrow, this week, overdue
+- **Multilingual Due Dates**: English & Chinese date queries (今天, 过期, etc.)
+- **Direct Due Date Search**: 0 tokens for due date queries (like priority)
+
+### Changed
+- **System Prompt**: Now dynamically generated from settings (not hardcoded)
+- **Priority Mapping**: Simplified to DataView-only (removed Tasks plugin)
+- **Settings Sync**: AI always knows your current priority/date field names
+
+### Removed
+- **Tasks Plugin Support**: Focused exclusively on DataView format
+- **Hardcoded Mappings**: All priority/date info from user settings
+
+### Fixed
+- **Settings Mismatch**: AI prompt now matches actual user configuration
+- **Field Names**: AI uses correct field keys (e.g., [p::1] or [priority::1])
+
+### Improved
+- **Flexibility**: Change priority mappings, AI adapts automatically
+- **Performance**: Due date queries also bypass AI (0 tokens)
+- **Accuracy**: AI always uses current field names from settings
+
+## [0.0.7] - 2025-01-15
+
+### Added
+- **Inline Priority Field Parsing**: Full support for DataView inline fields like `[p::1]`
+- **Configurable Priority Mapping**: User-definable mappings in settings (like Todoist Context Bridge)
+- **Multilingual Priority Support**: Recognizes priority in English (1, high, p1) and Chinese (高, 优先级 1)
+- **Direct Priority Search**: Queries like "priority 1 tasks" return results without AI (0 tokens)
+- **Priority Extraction**: Automatic detection of priority in user queries
+
+### Changed
+- **Priority Detection**: Now checks inline fields, direct properties, and emojis
+- **System Prompt**: Updated with priority mapping documentation
+- **Default Mappings**: Expanded to include p1-p4, Chinese characters, and variations
+
+### Fixed
+- **Priority Recognition**: Tasks with `[p::1]` now correctly identified as high priority
+- **Query Understanding**: "Give me priority 1 tasks" now works in any language
+- **DataView Integration**: Properly parses all priority field formats
+
+### Improved
+- **Settings UI**: New priority mapping section with per-level configuration
+- **Search Accuracy**: Priority queries return exact matches
+- **Language Agnostic**: Works with any priority naming convention
+
 ## [0.0.6] - 2025-01-15
 
 ### Added

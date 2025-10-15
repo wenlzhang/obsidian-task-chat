@@ -152,6 +152,27 @@ export class DataviewService {
     }
 
     /**
+     * Extract inline priority from task text
+     * Supports formats like [p::1], [priority::high], etc.
+     */
+    private static extractInlinePriority(
+        text: string,
+        fieldKey: string,
+    ): string | undefined {
+        if (!text || typeof text !== "string") return undefined;
+
+        // Match inline field format: [key::value]
+        const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
+        const match = text.match(regex);
+
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+
+        return undefined;
+    }
+
+    /**
      * Check if a task is valid for processing
      */
     private static isValidTask(task: any): boolean {
@@ -192,12 +213,25 @@ export class DataviewService {
         let priority;
         const priorityKey = settings.dataviewKeys.priority;
 
+        // Try direct property first
         if (dvTask[priorityKey] !== undefined) {
             priority = this.mapPriority(dvTask[priorityKey], settings);
-        } else if (dvTask.fields && dvTask.fields[priorityKey] !== undefined) {
+        }
+        // Try fields object
+        else if (dvTask.fields && dvTask.fields[priorityKey] !== undefined) {
             priority = this.mapPriority(dvTask.fields[priorityKey], settings);
-        } else if (text) {
-            if (text.includes("⏫")) priority = "high";
+        }
+        // Try extracting from inline field [p::1]
+        else if (text) {
+            const inlinePriority = this.extractInlinePriority(
+                text,
+                priorityKey,
+            );
+            if (inlinePriority) {
+                priority = this.mapPriority(inlinePriority, settings);
+            }
+            // Fallback to emoji-based priority
+            else if (text.includes("⏫")) priority = "high";
             else if (text.includes("🔼")) priority = "medium";
             else if (text.includes("🔽") || text.includes("⏬"))
                 priority = "low";

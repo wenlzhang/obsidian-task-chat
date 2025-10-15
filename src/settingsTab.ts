@@ -241,11 +241,118 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("DataView field name for priority")
             .addText((text) =>
                 text
-                    .setPlaceholder("priority")
+                    .setPlaceholder("p")
                     .setValue(this.plugin.settings.dataviewKeys.priority)
                     .onChange(async (value) => {
                         this.plugin.settings.dataviewKeys.priority = value;
                         await this.plugin.saveSettings();
+                    }),
+            );
+
+        // Priority Mapping
+        containerEl.createEl("h3", { text: "Priority mapping" });
+
+        containerEl.createDiv({
+            text: "Define which DataView values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1].",
+            cls: "setting-item-description",
+        });
+
+        new Setting(containerEl)
+            .setName("High priority values")
+            .setDesc(
+                "Values that indicate high priority (e.g., 1, high, p1, 高)",
+            )
+            .addText((text) =>
+                text
+                    .setPlaceholder("high, High, HIGH, 1, p1, 高")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping.high.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping.high =
+                            value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.style.width = "100%";
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Medium priority values")
+            .setDesc(
+                "Values that indicate medium priority (e.g., 2, medium, p2, 中)",
+            )
+            .addText((text) =>
+                text
+                    .setPlaceholder("medium, Medium, MEDIUM, 2, p2, 中")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping.medium.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping.medium =
+                            value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.style.width = "100%";
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Low priority values")
+            .setDesc("Values that indicate low priority (e.g., 3, low, p3, 低)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("low, Low, LOW, 3, p3, 低")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping.low.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping.low = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.style.width = "100%";
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("None/Lowest priority values")
+            .setDesc("Values that indicate no priority (e.g., 4, none, p4, 无)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("none, None, NONE, 4, p4, 无")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping.none.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping.none =
+                            value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.style.width = "100%";
                     }),
             );
 

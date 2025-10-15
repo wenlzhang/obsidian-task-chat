@@ -78,12 +78,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         other: "Other",
     },
 
-    // Priority Mapping
+    // Priority Mapping (Todoist-style)
+    // Maps DataView values to priority levels
     dataviewPriorityMapping: {
-        high: ["high", "High", "HIGH", "1"],
-        medium: ["medium", "Medium", "MEDIUM", "2"],
-        low: ["low", "Low", "LOW", "3"],
-        none: ["none", "None", "NONE", "4"],
+        high: ["high", "1", "p1"],
+        medium: ["medium", "2", "p2"],
+        low: ["low", "3", "p3"],
+        none: ["none", "4", "p4"],
     },
 
     // Date Formats
@@ -98,7 +99,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     showTaskCount: true,
     autoOpenSidebar: false,
     systemPrompt:
-        "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs.  Be concise and actionable.",
+        "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs. Be concise and actionable.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
 

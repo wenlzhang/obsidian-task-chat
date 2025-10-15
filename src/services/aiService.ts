@@ -30,6 +30,121 @@ export class AIService {
         // Analyze query intent
         const intent = TaskSearchService.analyzeQueryIntent(message);
 
+        // If query includes due date filter, search by due date first
+        if (intent.extractedDueDateFilter) {
+            const dueDateTasks = TaskSearchService.filterByDueDate(
+                tasks,
+                intent.extractedDueDateFilter,
+            );
+
+            if (dueDateTasks.length > 0 && dueDateTasks.length <= 10) {
+                // Return due date tasks directly
+                return {
+                    response: "",
+                    directResults: dueDateTasks,
+                    tokenUsage: {
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        totalTokens: 0,
+                        estimatedCost: 0,
+                        model: settings.model,
+                    },
+                };
+            } else if (dueDateTasks.length > 10) {
+                // Too many results, use AI to prioritize
+                const maxTasksForAI = Math.min(10, dueDateTasks.length);
+                const tasksToAnalyze = dueDateTasks.slice(0, maxTasksForAI);
+
+                const taskContext = this.buildTaskContext(
+                    tasksToAnalyze,
+                    intent,
+                );
+                const messages = this.buildMessages(
+                    message,
+                    taskContext,
+                    chatHistory,
+                    settings,
+                    intent,
+                );
+
+                const { response, tokenUsage } = await this.callAI(
+                    messages,
+                    settings,
+                );
+
+                const recommendedTasks = this.extractRecommendedTasks(
+                    response,
+                    tasksToAnalyze,
+                );
+
+                return {
+                    response,
+                    recommendedTasks,
+                    tokenUsage,
+                };
+            }
+        }
+
+        // If query includes priority filter, search by priority first
+        if (intent.extractedPriority) {
+            const priorityTasks = TaskSearchService.searchByPriority(
+                tasks,
+                intent.extractedPriority,
+            );
+
+            if (priorityTasks.length > 0 && priorityTasks.length <= 10) {
+                // Return priority tasks directly
+                return {
+                    response: "",
+                    directResults: priorityTasks,
+                    tokenUsage: {
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        totalTokens: 0,
+                        estimatedCost: 0,
+                        model: settings.model,
+                    },
+                };
+            } else if (priorityTasks.length > 10) {
+                // Too many results, use AI to prioritize within this subset
+                const relevantTasks = TaskSearchService.searchTasks(
+                    priorityTasks,
+                    message,
+                    20,
+                );
+                const maxTasksForAI = Math.min(10, relevantTasks.length);
+                const tasksToAnalyze = relevantTasks.slice(0, maxTasksForAI);
+
+                const taskContext = this.buildTaskContext(
+                    tasksToAnalyze,
+                    intent,
+                );
+                const messages = this.buildMessages(
+                    message,
+                    taskContext,
+                    chatHistory,
+                    settings,
+                    intent,
+                );
+
+                const { response, tokenUsage } = await this.callAI(
+                    messages,
+                    settings,
+                );
+
+                const recommendedTasks = this.extractRecommendedTasks(
+                    response,
+                    tasksToAnalyze,
+                );
+
+                return {
+                    response,
+                    recommendedTasks,
+                    tokenUsage,
+                };
+            }
+        }
+
         // First, search for relevant tasks locally
         const relevantTasks = TaskSearchService.searchTasks(
             tasks,
@@ -145,6 +260,41 @@ export class AIService {
     }
 
     /**
+     * Build priority mapping documentation from user settings
+     */
+    private static buildPriorityMapping(settings: PluginSettings): string {
+        const mapping = settings.dataviewPriorityMapping;
+        const lines = [];
+
+        if (mapping.high && mapping.high.length > 0) {
+            lines.push(`- HIGH priority: ${mapping.high.join(", ")}`);
+        }
+        if (mapping.medium && mapping.medium.length > 0) {
+            lines.push(`- MEDIUM priority: ${mapping.medium.join(", ")}`);
+        }
+        if (mapping.low && mapping.low.length > 0) {
+            lines.push(`- LOW priority: ${mapping.low.join(", ")}`);
+        }
+        if (mapping.none && mapping.none.length > 0) {
+            lines.push(`- NO priority: ${mapping.none.join(", ")}`);
+        }
+
+        if (lines.length === 0) {
+            return "";
+        }
+
+        return `\nPRIORITY MAPPING (DataView format [${settings.dataviewKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
+    }
+
+    /**
+     * Build due date documentation from user settings
+     */
+    private static buildDueDateMapping(settings: PluginSettings): string {
+        const dueDateKey = settings.dataviewKeys.dueDate;
+        return `\nDUE DATE SUPPORT:\n- DataView format: [${dueDateKey}::YYYY-MM-DD]\n- Users may ask for tasks "due today", "due this week", "overdue", etc.\n- Parse natural date queries and filter tasks accordingly.`;
+    }
+
+    /**
      * Build messages array for AI API
      */
     private static buildMessages(
@@ -173,6 +323,10 @@ export class AIService {
                 break;
         }
 
+        // Build dynamic mappings from settings
+        const priorityMapping = this.buildPriorityMapping(settings);
+        const dueDateMapping = this.buildDueDateMapping(settings);
+
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
@@ -183,7 +337,7 @@ IMPORTANT RULES:
 4. When recommending tasks, ALWAYS use their [TASK_X] IDs (e.g., [TASK_1], [TASK_2])
 5. Focus on helping users prioritize and execute existing tasks
 6. Be concise and actionable
-7. ${languageInstruction}
+7. ${languageInstruction}${priorityMapping}${dueDateMapping}
 
 ${taskContext}`;
 

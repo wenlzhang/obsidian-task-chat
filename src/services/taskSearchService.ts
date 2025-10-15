@@ -220,17 +220,152 @@ export class TaskSearchService {
     }
 
     /**
+     * Extract priority level from query
+     * Returns priority level (high, medium, low, none) or null
+     */
+    static extractPriorityFromQuery(query: string): string | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Check for priority 1 / p1 / high / 高
+        if (/priority\s*1|p1|优先级\s*1|\bp1\b|high|highest|高/i.test(query)) {
+            return "high";
+        }
+
+        // Check for priority 2 / p2 / medium / 中
+        if (/priority\s*2|p2|优先级\s*2|\bp2\b|medium|med|中/i.test(query)) {
+            return "medium";
+        }
+
+        // Check for priority 3 / p3 / low / 低
+        if (/priority\s*3|p3|优先级\s*3|\bp3\b|low|低/i.test(query)) {
+            return "low";
+        }
+
+        // Check for priority 4 / p4 / none / 无
+        if (/priority\s*4|p4|优先级\s*4|\bp4\b|none|无/i.test(query)) {
+            return "none";
+        }
+
+        return null;
+    }
+
+    /**
+     * Search tasks by priority
+     */
+    static searchByPriority(tasks: Task[], priority: string): Task[] {
+        return tasks.filter((task) => task.priority === priority);
+    }
+
+    /**
+     * Check if query is asking about due dates
+     */
+    static isDueDateQuery(query: string): boolean {
+        const dueDateKeywords = [
+            "due",
+            "deadline",
+            "overdue",
+            "today",
+            "tomorrow",
+            "this week",
+            "next week",
+            "截止",
+            "到期",
+            "今天",
+            "明天",
+            "本周",
+            "下周",
+        ];
+
+        const lowerQuery = query.toLowerCase();
+        return dueDateKeywords.some((keyword) => lowerQuery.includes(keyword));
+    }
+
+    /**
+     * Extract due date filter from query
+     * Returns: 'today', 'overdue', 'week', or null
+     */
+    static extractDueDateFilter(query: string): string | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Check for overdue
+        if (/overdue|过期|逾期/.test(lowerQuery)) {
+            return "overdue";
+        }
+
+        // Check for today
+        if (/\btoday\b|今天/.test(lowerQuery)) {
+            return "today";
+        }
+
+        // Check for tomorrow
+        if (/\btomorrow\b|明天/.test(lowerQuery)) {
+            return "tomorrow";
+        }
+
+        // Check for this week
+        if (/this week|本周/.test(lowerQuery)) {
+            return "week";
+        }
+
+        return null;
+    }
+
+    /**
+     * Filter tasks by due date
+     */
+    static filterByDueDate(tasks: Task[], filter: string): Task[] {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return tasks.filter((task) => {
+            if (!task.dueDate) return false;
+
+            const dueDate = new Date(task.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+
+            switch (filter) {
+                case "overdue":
+                    return dueDate < today;
+
+                case "today":
+                    return dueDate.getTime() === today.getTime();
+
+                case "tomorrow": {
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return dueDate.getTime() === tomorrow.getTime();
+                }
+
+                case "week": {
+                    const weekEnd = new Date(today);
+                    weekEnd.setDate(weekEnd.getDate() + 7);
+                    return dueDate >= today && dueDate <= weekEnd;
+                }
+
+                default:
+                    return false;
+            }
+        });
+    }
+
+    /**
      * Analyze query intent
      */
     static analyzeQueryIntent(query: string): {
         isSearch: boolean;
         isPriority: boolean;
+        isDueDate: boolean;
         keywords: string[];
+        extractedPriority: string | null;
+        extractedDueDateFilter: string | null;
     } {
         return {
             isSearch: this.isSearchQuery(query),
             isPriority: this.isPriorityQuery(query),
+            isDueDate: this.isDueDateQuery(query),
             keywords: this.extractKeywords(query),
+            extractedPriority: this.extractPriorityFromQuery(query),
+            extractedDueDateFilter: this.extractDueDateFilter(query),
         };
     }
 }
