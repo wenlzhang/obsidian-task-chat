@@ -60,7 +60,9 @@ export class DataviewService {
         value: any,
         settings: PluginSettings,
     ): string | undefined {
-        if (value === undefined || value === null) return undefined;
+        if (value === undefined || value === null) {
+            return undefined;
+        }
 
         const strValue = String(value).toLowerCase().trim();
 
@@ -159,7 +161,9 @@ export class DataviewService {
         text: string,
         fieldKey: string,
     ): string | undefined {
-        if (!text || typeof text !== "string") return undefined;
+        if (!text || typeof text !== "string") {
+            return undefined;
+        }
 
         // Match inline field format: [key::value]
         const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");

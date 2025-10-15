@@ -227,22 +227,39 @@ export class TaskSearchService {
         const lowerQuery = query.toLowerCase();
 
         // Check for priority 1 / p1 / high / 高
-        if (/priority\s*1|p1|优先级\s*1|\bp1\b|high|highest|高/i.test(query)) {
+        // Supports formats: priority 1, p1, 优先级1, 优先级为1, 优先级是1, etc.
+        if (
+            /priority\s*(?:is\s*|=\s*)?1|p1|优先级\s*(?:为|是)?\s*1|\bp1\b|high|highest|高/i.test(
+                query,
+            )
+        ) {
             return "high";
         }
 
         // Check for priority 2 / p2 / medium / 中
-        if (/priority\s*2|p2|优先级\s*2|\bp2\b|medium|med|中/i.test(query)) {
+        if (
+            /priority\s*(?:is\s*|=\s*)?2|p2|优先级\s*(?:为|是)?\s*2|\bp2\b|medium|med|中/i.test(
+                query,
+            )
+        ) {
             return "medium";
         }
 
         // Check for priority 3 / p3 / low / 低
-        if (/priority\s*3|p3|优先级\s*3|\bp3\b|low|低/i.test(query)) {
+        if (
+            /priority\s*(?:is\s*|=\s*)?3|p3|优先级\s*(?:为|是)?\s*3|\bp3\b|low|低/i.test(
+                query,
+            )
+        ) {
             return "low";
         }
 
         // Check for priority 4 / p4 / none / 无
-        if (/priority\s*4|p4|优先级\s*4|\bp4\b|none|无/i.test(query)) {
+        if (
+            /priority\s*(?:is\s*|=\s*)?4|p4|优先级\s*(?:为|是)?\s*4|\bp4\b|none|无/i.test(
+                query,
+            )
+        ) {
             return "none";
         }
 
@@ -282,29 +299,48 @@ export class TaskSearchService {
 
     /**
      * Extract due date filter from query
-     * Returns: 'today', 'overdue', 'week', or null
+     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', or null
      */
     static extractDueDateFilter(query: string): string | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for overdue
-        if (/overdue|过期|逾期/.test(lowerQuery)) {
+        // Check for overdue (highest priority)
+        if (/\b(overdue|过期|逾期|已过期)\b/.test(lowerQuery)) {
             return "overdue";
         }
 
         // Check for today
-        if (/\btoday\b|今天/.test(lowerQuery)) {
+        if (/\b(today|今天)\b/.test(lowerQuery)) {
             return "today";
         }
 
         // Check for tomorrow
-        if (/\btomorrow\b|明天/.test(lowerQuery)) {
+        if (/\b(tomorrow|明天)\b/.test(lowerQuery)) {
             return "tomorrow";
         }
 
         // Check for this week
-        if (/this week|本周/.test(lowerQuery)) {
+        if (/\b(this\s+week|本周)\b/.test(lowerQuery)) {
             return "week";
+        }
+
+        // Check for next week
+        if (/\b(next\s+week|下周)\b/.test(lowerQuery)) {
+            return "next-week";
+        }
+
+        // Check for specific date patterns (YYYY-MM-DD, MM-DD, etc.)
+        const datePatterns = [
+            /\b(\d{4}-\d{2}-\d{2})\b/, // YYYY-MM-DD
+            /\b(\d{2}\/\d{2}\/\d{4})\b/, // MM/DD/YYYY
+            /\b(\d{4}\/\d{2}\/\d{2})\b/, // YYYY/MM/DD
+        ];
+
+        for (const pattern of datePatterns) {
+            const match = lowerQuery.match(pattern);
+            if (match) {
+                return match[1]; // Return the specific date
+            }
         }
 
         return null;
@@ -342,14 +378,183 @@ export class TaskSearchService {
                     return dueDate >= today && dueDate <= weekEnd;
                 }
 
+                case "next-week": {
+                    const nextWeekStart = new Date(today);
+                    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+                    const nextWeekEnd = new Date(today);
+                    nextWeekEnd.setDate(nextWeekEnd.getDate() + 14);
+                    return dueDate >= nextWeekStart && dueDate <= nextWeekEnd;
+                }
+
                 default:
+                    // Try to match specific date
+                    try {
+                        const targetDate = new Date(filter);
+                        targetDate.setHours(0, 0, 0, 0);
+                        if (!isNaN(targetDate.getTime())) {
+                            return dueDate.getTime() === targetDate.getTime();
+                        }
+                    } catch (e) {
+                        // Invalid date format
+                    }
                     return false;
             }
         });
     }
 
     /**
-     * Analyze query intent
+     * Extract status filter from query
+     */
+    static extractStatusFromQuery(query: string): string | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Check for completed/done tasks
+        if (/\b(completed|done|finished|完成|已完成)\b/i.test(query)) {
+            return "completed";
+        }
+
+        // Check for open/incomplete tasks
+        if (/\b(open|incomplete|pending|todo|未完成|待办)\b/i.test(query)) {
+            return "open";
+        }
+
+        // Check for in-progress tasks
+        if (/\b(in[\s-]?progress|ongoing|进行中|正在做)\b/i.test(query)) {
+            return "inProgress";
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract folder filter from query
+     */
+    static extractFolderFromQuery(query: string): string | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Match patterns like "in folder X", "from folder X", "folder X"
+        const folderPatterns = [
+            /(?:in|from|under)\s+(?:folder|directory)\s+["']?([^"'\s,]+)["']?/i,
+            /(?:folder|directory)[:\s]+["']?([^"'\s,]+)["']?/i,
+            /文件夹[：:"']?([^"'\s,]+)/i,
+        ];
+
+        for (const pattern of folderPatterns) {
+            const match = query.match(pattern);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract tags from query
+     */
+    static extractTagsFromQuery(query: string): string[] {
+        const tags: string[] = [];
+
+        // Match #tag patterns
+        const hashtagPattern = /#([\w-]+)/g;
+        let match;
+        while ((match = hashtagPattern.exec(query)) !== null) {
+            tags.push(match[1]);
+        }
+
+        // Match "with tag X" or "tagged X" patterns
+        const tagPatterns = [
+            /(?:with|having|tagged)\s+tag[s]?\s+["']?([^"'\s,]+)["']?/gi,
+            /标签[：:"']?([^"'\s,]+)/gi,
+        ];
+
+        for (const pattern of tagPatterns) {
+            let tagMatch;
+            while ((tagMatch = pattern.exec(query)) !== null) {
+                if (tagMatch[1]) {
+                    tags.push(tagMatch[1].trim());
+                }
+            }
+        }
+
+        return [...new Set(tags)]; // Remove duplicates
+    }
+
+    /**
+     * Apply compound filters to tasks
+     */
+    static applyCompoundFilters(
+        tasks: Task[],
+        filters: {
+            priority?: string | null;
+            dueDate?: string | null;
+            status?: string | null;
+            folder?: string | null;
+            tags?: string[];
+            keywords?: string[];
+        },
+    ): Task[] {
+        let filteredTasks = [...tasks];
+
+        // Apply priority filter
+        if (filters.priority) {
+            filteredTasks = filteredTasks.filter(
+                (task) => task.priority === filters.priority,
+            );
+        }
+
+        // Apply due date filter
+        if (filters.dueDate) {
+            filteredTasks = this.filterByDueDate(
+                filteredTasks,
+                filters.dueDate,
+            );
+        }
+
+        // Apply status filter
+        if (filters.status) {
+            filteredTasks = filteredTasks.filter(
+                (task) => task.statusCategory === filters.status,
+            );
+        }
+
+        // Apply folder filter
+        if (filters.folder) {
+            const folderLower = filters.folder.toLowerCase();
+            filteredTasks = filteredTasks.filter(
+                (task) =>
+                    task.folder &&
+                    task.folder.toLowerCase().includes(folderLower),
+            );
+        }
+
+        // Apply tag filters
+        if (filters.tags && filters.tags.length > 0) {
+            filteredTasks = filteredTasks.filter((task) => {
+                const taskTagsLower = task.tags.map((t) => t.toLowerCase());
+                return filters.tags!.some((filterTag) =>
+                    taskTagsLower.some((taskTag) =>
+                        taskTag.includes(filterTag.toLowerCase()),
+                    ),
+                );
+            });
+        }
+
+        // Apply keyword search
+        if (filters.keywords && filters.keywords.length > 0) {
+            filteredTasks = filteredTasks.filter((task) => {
+                const taskText = task.text.toLowerCase();
+                return filters.keywords!.some((keyword) =>
+                    taskText.includes(keyword.toLowerCase()),
+                );
+            });
+        }
+
+        return filteredTasks;
+    }
+
+    /**
+     * Analyze query intent with comprehensive filter extraction
      */
     static analyzeQueryIntent(query: string): {
         isSearch: boolean;
@@ -358,14 +563,38 @@ export class TaskSearchService {
         keywords: string[];
         extractedPriority: string | null;
         extractedDueDateFilter: string | null;
+        extractedStatus: string | null;
+        extractedFolder: string | null;
+        extractedTags: string[];
+        hasMultipleFilters: boolean;
     } {
+        const extractedPriority = this.extractPriorityFromQuery(query);
+        const extractedDueDateFilter = this.extractDueDateFilter(query);
+        const extractedStatus = this.extractStatusFromQuery(query);
+        const extractedFolder = this.extractFolderFromQuery(query);
+        const extractedTags = this.extractTagsFromQuery(query);
+        const keywords = this.extractKeywords(query);
+
+        // Count how many filters are present
+        const filterCount =
+            (extractedPriority ? 1 : 0) +
+            (extractedDueDateFilter ? 1 : 0) +
+            (extractedStatus ? 1 : 0) +
+            (extractedFolder ? 1 : 0) +
+            (extractedTags.length > 0 ? 1 : 0) +
+            (keywords.length > 0 ? 1 : 0);
+
         return {
             isSearch: this.isSearchQuery(query),
             isPriority: this.isPriorityQuery(query),
             isDueDate: this.isDueDateQuery(query),
-            keywords: this.extractKeywords(query),
-            extractedPriority: this.extractPriorityFromQuery(query),
-            extractedDueDateFilter: this.extractDueDateFilter(query),
+            keywords,
+            extractedPriority,
+            extractedDueDateFilter,
+            extractedStatus,
+            extractedFolder,
+            extractedTags,
+            hasMultipleFilters: filterCount > 1,
         };
     }
 }

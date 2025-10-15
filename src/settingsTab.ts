@@ -259,12 +259,10 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("High priority values")
-            .setDesc(
-                "Values that indicate high priority (e.g., 1, high, p1, 高)",
-            )
+            .setDesc("Values that indicate high priority (e.g., high, 1, p1)")
             .addText((text) =>
                 text
-                    .setPlaceholder("high, High, HIGH, 1, p1, 高")
+                    .setPlaceholder("high, 1, p1")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping.high.join(
                             ", ",
@@ -285,12 +283,10 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Medium priority values")
-            .setDesc(
-                "Values that indicate medium priority (e.g., 2, medium, p2, 中)",
-            )
+            .setDesc("Values that indicate medium priority (e.g., medium, 2, p2)")
             .addText((text) =>
                 text
-                    .setPlaceholder("medium, Medium, MEDIUM, 2, p2, 中")
+                    .setPlaceholder("medium, 2, p2")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping.medium.join(
                             ", ",
@@ -311,10 +307,10 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Low priority values")
-            .setDesc("Values that indicate low priority (e.g., 3, low, p3, 低)")
+            .setDesc("Values that indicate low priority (e.g., low, 3, p3)")
             .addText((text) =>
                 text
-                    .setPlaceholder("low, Low, LOW, 3, p3, 低")
+                    .setPlaceholder("low, 3, p3")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping.low.join(
                             ", ",
@@ -334,10 +330,10 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("None/Lowest priority values")
-            .setDesc("Values that indicate no priority (e.g., 4, none, p4, 无)")
+            .setDesc("Values that indicate no priority (e.g., none, 4, p4)")
             .addText((text) =>
                 text
-                    .setPlaceholder("none, None, NONE, 4, p4, 无")
+                    .setPlaceholder("none, 4, p4")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping.none.join(
                             ", ",

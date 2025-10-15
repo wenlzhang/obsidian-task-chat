@@ -27,21 +27,38 @@ export class AIService {
             );
         }
 
-        // Analyze query intent
+        // Analyze query intent with comprehensive filter extraction
         const intent = TaskSearchService.analyzeQueryIntent(message);
 
-        // If query includes due date filter, search by due date first
-        if (intent.extractedDueDateFilter) {
-            const dueDateTasks = TaskSearchService.filterByDueDate(
+        // Apply compound filters if any structured filters are detected
+        if (
+            intent.extractedPriority ||
+            intent.extractedDueDateFilter ||
+            intent.extractedStatus ||
+            intent.extractedFolder ||
+            intent.extractedTags.length > 0
+        ) {
+            const filteredTasks = TaskSearchService.applyCompoundFilters(
                 tasks,
-                intent.extractedDueDateFilter,
+                {
+                    priority: intent.extractedPriority,
+                    dueDate: intent.extractedDueDateFilter,
+                    status: intent.extractedStatus,
+                    folder: intent.extractedFolder,
+                    tags: intent.extractedTags,
+                    keywords:
+                        intent.keywords.length > 0
+                            ? intent.keywords
+                            : undefined,
+                },
             );
 
-            if (dueDateTasks.length > 0 && dueDateTasks.length <= 10) {
-                // Return due date tasks directly
+            // No tasks found matching the filters
+            if (filteredTasks.length === 0) {
+                const filterDesc = this.buildFilterDescription(intent);
                 return {
-                    response: "",
-                    directResults: dueDateTasks,
+                    response: `No tasks found matching ${filterDesc}.`,
+                    directResults: [],
                     tokenUsage: {
                         promptTokens: 0,
                         completionTokens: 0,
@@ -50,53 +67,17 @@ export class AIService {
                         model: settings.model,
                     },
                 };
-            } else if (dueDateTasks.length > 10) {
-                // Too many results, use AI to prioritize
-                const maxTasksForAI = Math.min(10, dueDateTasks.length);
-                const tasksToAnalyze = dueDateTasks.slice(0, maxTasksForAI);
-
-                const taskContext = this.buildTaskContext(
-                    tasksToAnalyze,
-                    intent,
-                );
-                const messages = this.buildMessages(
-                    message,
-                    taskContext,
-                    chatHistory,
-                    settings,
-                    intent,
-                );
-
-                const { response, tokenUsage } = await this.callAI(
-                    messages,
-                    settings,
-                );
-
-                const recommendedTasks = this.extractRecommendedTasks(
-                    response,
-                    tasksToAnalyze,
-                );
-
-                return {
-                    response,
-                    recommendedTasks,
-                    tokenUsage,
-                };
             }
-        }
 
-        // If query includes priority filter, search by priority first
-        if (intent.extractedPriority) {
-            const priorityTasks = TaskSearchService.searchByPriority(
-                tasks,
-                intent.extractedPriority,
-            );
-
-            if (priorityTasks.length > 0 && priorityTasks.length <= 10) {
-                // Return priority tasks directly
+            // Simple query with small result set - return directly
+            if (
+                filteredTasks.length <= 10 &&
+                !intent.hasMultipleFilters &&
+                intent.keywords.length === 0
+            ) {
                 return {
                     response: "",
-                    directResults: priorityTasks,
+                    directResults: filteredTasks,
                     tokenUsage: {
                         promptTokens: 0,
                         completionTokens: 0,
@@ -105,44 +86,36 @@ export class AIService {
                         model: settings.model,
                     },
                 };
-            } else if (priorityTasks.length > 10) {
-                // Too many results, use AI to prioritize within this subset
-                const relevantTasks = TaskSearchService.searchTasks(
-                    priorityTasks,
-                    message,
-                    20,
-                );
-                const maxTasksForAI = Math.min(10, relevantTasks.length);
-                const tasksToAnalyze = relevantTasks.slice(0, maxTasksForAI);
-
-                const taskContext = this.buildTaskContext(
-                    tasksToAnalyze,
-                    intent,
-                );
-                const messages = this.buildMessages(
-                    message,
-                    taskContext,
-                    chatHistory,
-                    settings,
-                    intent,
-                );
-
-                const { response, tokenUsage } = await this.callAI(
-                    messages,
-                    settings,
-                );
-
-                const recommendedTasks = this.extractRecommendedTasks(
-                    response,
-                    tasksToAnalyze,
-                );
-
-                return {
-                    response,
-                    recommendedTasks,
-                    tokenUsage,
-                };
             }
+
+            // Complex query or large result set - use AI for refinement
+            const maxTasksForAI = Math.min(15, filteredTasks.length);
+            const tasksToAnalyze = filteredTasks.slice(0, maxTasksForAI);
+
+            const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
+            const messages = this.buildMessages(
+                message,
+                taskContext,
+                chatHistory,
+                settings,
+                intent,
+            );
+
+            const { response, tokenUsage } = await this.callAI(
+                messages,
+                settings,
+            );
+
+            const recommendedTasks = this.extractRecommendedTasks(
+                response,
+                tasksToAnalyze,
+            );
+
+            return {
+                response,
+                recommendedTasks,
+                tokenUsage,
+            };
         }
 
         // First, search for relevant tasks locally
@@ -213,6 +186,39 @@ export class AIService {
             console.error("AI Service Error:", error);
             throw error;
         }
+    }
+
+    /**
+     * Build a human-readable description of applied filters
+     */
+    private static buildFilterDescription(intent: any): string {
+        const parts: string[] = [];
+
+        if (intent.extractedPriority) {
+            parts.push(`priority: ${intent.extractedPriority}`);
+        }
+
+        if (intent.extractedDueDateFilter) {
+            parts.push(`due date: ${intent.extractedDueDateFilter}`);
+        }
+
+        if (intent.extractedStatus) {
+            parts.push(`status: ${intent.extractedStatus}`);
+        }
+
+        if (intent.extractedFolder) {
+            parts.push(`folder: ${intent.extractedFolder}`);
+        }
+
+        if (intent.extractedTags && intent.extractedTags.length > 0) {
+            parts.push(`tags: ${intent.extractedTags.join(", ")}`);
+        }
+
+        if (intent.keywords && intent.keywords.length > 0) {
+            parts.push(`keywords: ${intent.keywords.join(", ")}`);
+        }
+
+        return parts.length > 0 ? parts.join("; ") : "your criteria";
     }
 
     /**
@@ -327,6 +333,35 @@ export class AIService {
         const priorityMapping = this.buildPriorityMapping(settings);
         const dueDateMapping = this.buildDueDateMapping(settings);
 
+        // Build filter context description
+        let filterContext = "";
+        if (
+            intent.hasMultipleFilters ||
+            intent.extractedPriority ||
+            intent.extractedDueDateFilter ||
+            intent.extractedStatus ||
+            intent.extractedFolder ||
+            intent.extractedTags?.length > 0
+        ) {
+            const appliedFilters: string[] = [];
+            if (intent.extractedPriority)
+                appliedFilters.push(`Priority: ${intent.extractedPriority}`);
+            if (intent.extractedDueDateFilter)
+                appliedFilters.push(
+                    `Due date: ${intent.extractedDueDateFilter}`,
+                );
+            if (intent.extractedStatus)
+                appliedFilters.push(`Status: ${intent.extractedStatus}`);
+            if (intent.extractedFolder)
+                appliedFilters.push(`Folder: ${intent.extractedFolder}`);
+            if (intent.extractedTags?.length > 0)
+                appliedFilters.push(`Tags: ${intent.extractedTags.join(", ")}`);
+
+            if (appliedFilters.length > 0) {
+                filterContext = `\n\nAPPLIED FILTERS: ${appliedFilters.join(" | ")}\nThe task list below has already been filtered based on these criteria.`;
+            }
+        }
+
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
@@ -338,6 +373,11 @@ IMPORTANT RULES:
 5. Focus on helping users prioritize and execute existing tasks
 6. Be concise and actionable
 7. ${languageInstruction}${priorityMapping}${dueDateMapping}
+
+QUERY UNDERSTANDING:
+- The system has already extracted and applied filters from the user's query
+- If multiple filters were detected, tasks have been pre-filtered to match ALL criteria
+- Your job is to provide helpful context and prioritization for the filtered results${filterContext}
 
 ${taskContext}`;
 

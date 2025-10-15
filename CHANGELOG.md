@@ -5,13 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-10-15
+
+### Added
+- **Advanced Compound Filtering**: Multi-filter query support with simultaneous application
+  - Priority + Due Date + Status + Folder + Tags + Keywords all work together
+  - Intelligent filter extraction from natural language queries
+  - Example: "open priority 1 tasks due today in folder projects with tag work"
+- **Enhanced Priority Parsing**: Support for natural language connectors
+  - English: "priority is 1", "priority = 1", "priority 1", "p1", "high"
+- **Status Filtering**: Filter by task completion status
+  - Open: `open`, `incomplete`, `pending`, `todo`
+  - Completed: `completed`, `done`, `finished`
+  - In Progress: `in progress`, `in-progress`, `ongoing`
+- **Folder Filtering**: Search tasks within specific folders
+  - Patterns: "in folder X", "from folder X", "folder: X"
+- **Tag Filtering**: Query by task tags
+  - Hashtags: `#work`, `#urgent`
+  - Natural language: "with tag work", "tagged urgent"
+- **Extended Date Support**: More natural date query options
+  - Next week: "next week", "下周"
+  - Specific dates: "2025-10-20", "10/20/2025"
+- **Comprehensive Documentation**: Added COMPLEX_QUERIES.md with examples and architecture
+
+### Changed
+- **Query Processing Flow**: Complete redesign for multi-filter support
+  - Intent analysis now extracts all filter types simultaneously
+  - Compound filters applied before AI processing
+  - AI used only for refinement of complex queries
+- **System Prompt Enhancement**: AI now informed about applied filters
+  - Shows which filters were extracted and applied
+  - Better context for prioritization and recommendations
+
+### Improved
+- **Query Accuracy**: Structured filter extraction prevents misinterpretation
+- **Performance**: Direct filtering reduces unnecessary AI calls
+  - Simple multi-filter queries (≤10 results) return instantly
+  - Complex queries pre-filtered before AI enhancement
+- **Cost Efficiency**: Reduced token usage by smart filter application
+- **Code Organization**: Modular filter extraction and application methods
+
+### Fixed
+- **Compound Query Handling**: Previously only supported single filter types
+- **Filter Conflicts**: Multiple filters now combine correctly (AND logic)
+
+## [0.0.9] - 2025-01-15
+
+### Added
+- **Compound Query Support**: Handle complex queries mixing filters + keywords
+  - Filters by priority/due date FIRST, then searches within results
+  - AI intelligently combines both aspects of the query
+
+### Fixed
+- **Console Noise**: Removed excessive debug logging for cleaner console output
+- **Priority Detection**: Cleaned up priority parsing logic for consistent performance
+- **Query Intent**: Improved detection of compound queries (filter + search)
+
+### Improved
+- **Query Flexibility**: Multi-intent queries now work reliably
+- **Code Quality**: Streamlined DataView service code without debug clutter
+- **Performance**: Reduced console output overhead during task processing
+- **Smart Filtering**: Combines filters with keyword search intelligently
+
 ## [0.0.8] - 2025-01-15
 
 ### Added
 - **Dynamic System Prompt**: AI prompt now built from user's actual priority settings
 - **Due Date Query Support**: Queries like "tasks due today", "overdue tasks" work natively
 - **Due Date Filtering**: Filter by today, tomorrow, this week, overdue
-- **Multilingual Due Dates**: English & Chinese date queries (今天, 过期, etc.)
 - **Direct Due Date Search**: 0 tokens for due date queries (like priority)
 
 ### Changed
@@ -37,14 +98,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Inline Priority Field Parsing**: Full support for DataView inline fields like `[p::1]`
 - **Configurable Priority Mapping**: User-definable mappings in settings (like Todoist Context Bridge)
-- **Multilingual Priority Support**: Recognizes priority in English (1, high, p1) and Chinese (高, 优先级 1)
 - **Direct Priority Search**: Queries like "priority 1 tasks" return results without AI (0 tokens)
 - **Priority Extraction**: Automatic detection of priority in user queries
 
 ### Changed
 - **Priority Detection**: Now checks inline fields, direct properties, and emojis
 - **System Prompt**: Updated with priority mapping documentation
-- **Default Mappings**: Expanded to include p1-p4, Chinese characters, and variations
+- **Default Mappings**: Expanded to include p1-p4, and variations
 
 ### Fixed
 - **Priority Recognition**: Tasks with `[p::1]` now correctly identified as high priority
