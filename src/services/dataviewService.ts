@@ -54,27 +54,36 @@ export class DataviewService {
     }
 
     /**
-     * Map a DataView priority value to internal priority
+     * Map a DataView priority value to internal numeric priority
+     * Returns: 1 (highest), 2 (high), 3 (medium), 4 (low), or undefined (none)
      */
     static mapPriority(
         value: any,
         settings: PluginSettings,
-    ): string | undefined {
+    ): number | undefined {
         if (value === undefined || value === null) {
             return undefined;
         }
 
         const strValue = String(value).toLowerCase().trim();
+        console.log(
+            `[Dataview] mapPriority: input="${value}" → strValue="${strValue}"`,
+        );
 
         for (const [priority, values] of Object.entries(
             settings.dataviewPriorityMapping,
         )) {
             if (values.some((v) => v.toLowerCase() === strValue)) {
-                return priority;
+                const result = parseInt(priority);
+                console.log(
+                    `[Dataview] mapPriority: matched priority=${priority} → result=${result}`,
+                );
+                return result; // Convert key to number
             }
         }
 
-        return "none";
+        console.log(`[Dataview] mapPriority: no match found for "${strValue}"`);
+        return undefined; // No priority = undefined (not 4)
     }
 
     /**
@@ -235,10 +244,11 @@ export class DataviewService {
                 priority = this.mapPriority(inlinePriority, settings);
             }
             // Fallback to emoji-based priority
-            else if (text.includes("⏫")) priority = "high";
-            else if (text.includes("🔼")) priority = "medium";
-            else if (text.includes("🔽") || text.includes("⏬"))
-                priority = "low";
+            else if (text.includes("⏫"))
+                priority = 1; // high
+            else if (text.includes("🔼"))
+                priority = 2; // medium
+            else if (text.includes("🔽") || text.includes("⏬")) priority = 3; // low
         }
 
         // Handle dates
@@ -304,7 +314,7 @@ export class DataviewService {
 
         const taskId = `dataview-${path}-${line}-${text.substring(0, 20)}-${index}`;
 
-        return {
+        const task = {
             id: taskId,
             text: text,
             status: status,
@@ -312,13 +322,22 @@ export class DataviewService {
             createdDate: createdDate,
             completedDate: completedDate,
             dueDate: dueDate,
-            priority: priority || "none",
+            priority: priority, // undefined = no priority
             tags: tags,
             sourcePath: path,
             lineNumber: line,
             originalText: text,
             folder: folder,
         };
+
+        // Debug: log tasks with text matching "Task Chat"
+        if (text.toLowerCase().includes("task chat")) {
+            console.log(
+                `[Dataview] Loaded task: "${text.substring(0, 50)}..." priority=${priority}`,
+            );
+        }
+
+        return task;
     }
 
     /**

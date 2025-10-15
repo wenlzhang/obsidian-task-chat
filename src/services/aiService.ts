@@ -2,6 +2,7 @@ import { Notice, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
+import { QueryParserService, ParsedQuery } from "./queryParserService";
 
 /**
  * Service for AI chat functionality
@@ -27,8 +28,60 @@ export class AIService {
             );
         }
 
-        // Analyze query intent with comprehensive filter extraction
-        const intent = TaskSearchService.analyzeQueryIntent(message);
+        // Parse query using AI if enabled, otherwise use regex
+        let intent: any;
+        let parsedQuery: ParsedQuery | null = null;
+
+        if (settings.useAIQueryParsing) {
+            console.log("[Task Chat] Using AI-powered query parsing...");
+            // Use AI to parse query for better accuracy
+            try {
+                parsedQuery = await QueryParserService.parseQuery(
+                    message,
+                    settings,
+                );
+                console.log("[Task Chat] AI parsed query:", parsedQuery);
+            } catch (error) {
+                console.error(
+                    "[Task Chat] AI parsing failed, falling back to regex:",
+                    error,
+                );
+                parsedQuery = null;
+            }
+
+            // Convert ParsedQuery to intent format for compatibility
+            if (parsedQuery) {
+                intent = {
+                    isSearch: !!(
+                        parsedQuery.keywords && parsedQuery.keywords.length > 0
+                    ),
+                    isPriority: !!parsedQuery.priority,
+                    isDueDate: !!parsedQuery.dueDate,
+                    keywords: parsedQuery.keywords || [],
+                    extractedPriority: parsedQuery.priority || null,
+                    extractedDueDateFilter: parsedQuery.dueDate || null,
+                    extractedStatus: parsedQuery.status || null,
+                    extractedFolder: parsedQuery.folder || null,
+                    extractedTags: parsedQuery.tags || [],
+                    hasMultipleFilters:
+                        [
+                            parsedQuery.priority,
+                            parsedQuery.dueDate,
+                            parsedQuery.status,
+                            parsedQuery.folder,
+                            parsedQuery.tags?.length,
+                            parsedQuery.keywords?.length,
+                        ].filter(Boolean).length > 1,
+                };
+            } else {
+                // AI parsing failed, fall back to regex
+                intent = TaskSearchService.analyzeQueryIntent(message);
+            }
+        } else {
+            // Use fast regex-based parsing (default)
+            console.log("[Task Chat] Using regex-based query parsing...");
+            intent = TaskSearchService.analyzeQueryIntent(message);
+        }
 
         // Apply compound filters if any structured filters are detected
         if (
@@ -38,6 +91,15 @@ export class AIService {
             intent.extractedFolder ||
             intent.extractedTags.length > 0
         ) {
+            console.log("[Task Chat] Extracted intent:", {
+                priority: intent.extractedPriority,
+                dueDate: intent.extractedDueDateFilter,
+                status: intent.extractedStatus,
+                folder: intent.extractedFolder,
+                tags: intent.extractedTags,
+                keywords: intent.keywords,
+            });
+
             const filteredTasks = TaskSearchService.applyCompoundFilters(
                 tasks,
                 {
@@ -51,6 +113,10 @@ export class AIService {
                             ? intent.keywords
                             : undefined,
                 },
+            );
+
+            console.log(
+                `[Task Chat] After filtering: ${filteredTasks.length} tasks found`,
             );
 
             // No tasks found matching the filters
@@ -243,8 +309,19 @@ export class AIService {
             const metadata: string[] = [];
             metadata.push(`Status: ${task.statusCategory}`);
 
-            if (task.priority && task.priority !== "none") {
-                metadata.push(`Priority: ${task.priority}`);
+            if (task.priority) {
+                // Display priority with semantic label
+                const priorityLabels = {
+                    1: "1 (highest)",
+                    2: "2 (high)",
+                    3: "3 (medium)",
+                    4: "4 (low)",
+                };
+                const label =
+                    priorityLabels[
+                        task.priority as keyof typeof priorityLabels
+                    ] || task.priority;
+                metadata.push(`Priority: ${label}`);
             }
 
             if (task.dueDate) {

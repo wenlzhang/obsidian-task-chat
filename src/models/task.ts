@@ -6,7 +6,7 @@ export interface Task {
     createdDate?: string;
     completedDate?: string;
     dueDate?: string;
-    priority?: string;
+    priority?: number; // 1=highest, 2=high, 3=medium, 4=low, 0=none
     tags: string[];
     sourcePath: string;
     lineNumber: number;

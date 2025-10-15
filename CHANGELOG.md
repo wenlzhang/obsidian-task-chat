@@ -8,12 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-10-15
 
 ### Added
+- **AI-Powered Query Parsing** (Optional): Use AI to parse queries for maximum reliability
+  - Toggle in settings: "AI-powered query parsing"
+  - Understands complex natural language in any language
+  - Automatically extracts: priority, due date, status, folder, tags, keywords
+  - Falls back to fast regex parsing when disabled (default)
 - **Advanced Compound Filtering**: Multi-filter query support with simultaneous application
   - Priority + Due Date + Status + Folder + Tags + Keywords all work together
   - Intelligent filter extraction from natural language queries
   - Example: "open priority 1 tasks due today in folder projects with tag work"
-- **Enhanced Priority Parsing**: Support for natural language connectors
-  - English: "priority is 1", "priority = 1", "priority 1", "p1", "high"
+- **Enhanced Priority Parsing**: Support for both numeric and semantic priority queries
+  - Works for all priority levels (1-4) in both formats
 - **Status Filtering**: Filter by task completion status
   - Open: `open`, `incomplete`, `pending`, `todo`
   - Completed: `completed`, `done`, `finished`
@@ -30,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comprehensive Documentation**: Added COMPLEX_QUERIES.md with examples and architecture
 
 ### Changed
+- **Priority System**: Migrated to numeric priorities (BREAKING CHANGE for settings)
+  - **Architecture**: Clear separation between user config and internal representation
+  - **User's role**: Define text values that map to each priority level (customizable)
+  - **System's role**: Always use numbers (1-4) internally (fixed)
+  - **Keys are FIXED**: Priority levels 1, 2, 3, 4 cannot be changed
+  - **Type safety**: `PriorityMapping = Record<1 | 2 | 3 | 4, string[]>` enforces numeric keys
+  - **Display format**: "Priority: 1 (highest)" for clarity
 - **Query Processing Flow**: Complete redesign for multi-filter support
   - Intent analysis now extracts all filter types simultaneously
   - Compound filters applied before AI processing
@@ -40,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - **Query Accuracy**: Structured filter extraction prevents misinterpretation
+- **Query Flexibility**: Multiple ways to express priority in queries
+  - Language-agnostic internal mapping ensures consistency
+- **Semantic Keyword Matching**: Keywords match semantically within filtered tasks
+  - Uses substring matching for flexible semantic search
 - **Performance**: Direct filtering reduces unnecessary AI calls
   - Simple multi-filter queries (≤10 results) return instantly
   - Complex queries pre-filtered before AI enhancement
@@ -47,6 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code Organization**: Modular filter extraction and application methods
 
 ### Fixed
+- **"Due Tasks" Query**: Added support for showing all tasks with due dates
+  - Query "due tasks" now shows all tasks that have a due date
+  - Returns "any" filter that matches tasks with non-empty due dates
 - **Future Task Queries**: Added support for future/upcoming task queries
 - **Compound Query Handling**: Previously only supported single filter types
 - **Filter Conflicts**: Multiple filters now combine correctly (AND logic)

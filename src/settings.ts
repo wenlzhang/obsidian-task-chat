@@ -1,8 +1,11 @@
 import { SessionData } from "./models/task";
 
+// Priority mapping type: Fixed numeric keys (1-4), customizable string values
+export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
+
 export interface PluginSettings {
     // AI Provider Settings
-    aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
+    aiProvider: "openai" | "ollama";
     apiKey: string;
     model: string;
     apiEndpoint: string;
@@ -19,8 +22,8 @@ export interface PluginSettings {
     taskStatusMapping: Record<string, string[]>;
     taskStatusDisplayNames: Record<string, string>;
 
-    // Priority Mapping
-    dataviewPriorityMapping: Record<string, string[]>;
+    // Priority Mapping (numeric keys 1-4, customizable string values)
+    dataviewPriorityMapping: PriorityMapping;
 
     // Date Formats
     dateFormats: {
@@ -36,6 +39,7 @@ export interface PluginSettings {
     systemPrompt: string;
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
+    useAIQueryParsing: boolean; // Use AI to parse queries for better accuracy
 
     // Usage Tracking
     totalTokensUsed: number;
@@ -79,12 +83,15 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     },
 
     // Priority Mapping (Todoist-style)
-    // Maps DataView values to priority levels
+    // Keys: FIXED numeric levels (1=highest, 2=high, 3=medium, 4=low)
+    // Values: CUSTOMIZABLE strings that map to each level
+    // Example: User can add "高" to level 1, then [p::高] will be treated as priority 1
+    // System always uses numbers (1-4) internally for comparisons and filtering
     dataviewPriorityMapping: {
-        high: ["high", "1", "p1"],
-        medium: ["medium", "2", "p2"],
-        low: ["low", "3", "p3"],
-        none: ["none", "4", "p4"],
+        1: ["1", "p1", "high", "highest"],
+        2: ["2", "p2", "medium", "med"],
+        3: ["3", "p3", "low"],
+        4: ["4", "p4", "none"],
     },
 
     // Date Formats
@@ -102,6 +109,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs. Be concise and actionable.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
+    useAIQueryParsing: false, // Disabled by default (uses fast regex parsing)
 
     // Usage Tracking
     totalTokensUsed: 0,

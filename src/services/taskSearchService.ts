@@ -55,10 +55,12 @@ export class TaskSearchService {
                 score += 2;
             }
 
-            // Boost high priority tasks
-            if (task.priority === "high") {
+            // Boost high priority tasks (1=highest, 2=high, 3=medium, 4=low)
+            if (task.priority === 1) {
                 score += 3;
-            } else if (task.priority === "medium") {
+            } else if (task.priority === 2) {
+                score += 2;
+            } else if (task.priority === 3) {
                 score += 1;
             }
 
@@ -82,7 +84,43 @@ export class TaskSearchService {
      * Extract keywords from user query
      */
     static extractKeywords(query: string): string[] {
-        // Remove common words
+        // First, remove filter-related phrases from the query
+        let cleanedQuery = query;
+
+        // Remove priority phrases
+        cleanedQuery = cleanedQuery.replace(
+            /priority\s*(?:is\s*|=\s*)?[1-4]|p[1-4]|优先级\s*(?:为|是)?\s*[1-4]/gi,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            /high(?:est)?\s*priority|medium\s*priority|low\s*priority/gi,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            /高优先级|最高优先级|中优先级|普通优先级|低优先级|无优先级/g,
+            "",
+        );
+
+        // Remove due date phrases
+        cleanedQuery = cleanedQuery.replace(
+            /due\s*(?:today|tomorrow|this\s*week|next\s*week)?|overdue|今天|明天|本周|下周|过期/gi,
+            "",
+        );
+
+        // Remove status phrases
+        cleanedQuery = cleanedQuery.replace(
+            /(?:open|completed|done|finished|in\s*progress|未完成|完成|已完成|进行中)/gi,
+            "",
+        );
+
+        // Remove tag indicators
+        cleanedQuery = cleanedQuery.replace(/#\w+/g, "");
+        cleanedQuery = cleanedQuery.replace(
+            /(?:with|tagged|having)\s*tags?/gi,
+            "",
+        );
+
+        // Remove common command words and task-related meta words
         const stopWords = new Set([
             "the",
             "a",
@@ -104,63 +142,35 @@ export class TaskSearchService {
             "was",
             "are",
             "were",
-            "be",
-            "been",
-            "being",
-            "have",
-            "has",
-            "had",
-            "do",
-            "does",
-            "did",
-            "will",
-            "would",
-            "should",
-            "could",
-            "can",
-            "may",
-            "might",
-            "must",
-            "shall",
-            "what",
-            "which",
-            "who",
-            "when",
-            "where",
-            "why",
-            "how",
-            "my",
-            "me",
-            "i",
-            "you",
-            "we",
-            "they",
-            "them",
-            "their",
-            "our",
             "show",
             "find",
             "get",
             "list",
             "tell",
             "give",
+            "me",
+            "my",
+            "all",
             "task",
-            "tasks",
-            "如何",
-            "怎么",
-            "什么",
-            "哪些",
-            "是否",
-            "可以",
-            "能否",
-            "需要",
+            "tasks", // Remove generic "task" word
+            "给我",
+            "给",
+            "我",
+            "的",
+            "了",
+            "吗",
+            "呢",
+            "啊",
+            "任务",
         ]);
 
-        const words = query
-            .toLowerCase()
+        const words = cleanedQuery
+            .trim()
             .replace(/[^\w\s\u4e00-\u9fff]/g, " ") // Keep alphanumeric and Chinese characters
             .split(/\s+/)
-            .filter((word) => word.length > 1 && !stopWords.has(word));
+            .filter(
+                (word) => word.length > 1 && !stopWords.has(word.toLowerCase()),
+            );
 
         return [...new Set(words)]; // Remove duplicates
     }
@@ -221,46 +231,65 @@ export class TaskSearchService {
 
     /**
      * Extract priority level from query
-     * Returns priority level (high, medium, low, none) or null
+     * Returns numeric priority (1=highest, 2=high, 3=medium, 4=low) or null
      */
-    static extractPriorityFromQuery(query: string): string | null {
+    static extractPriorityFromQuery(query: string): number | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for priority 1 / p1 / high / 高
-        // Supports formats: priority 1, p1, 优先级1, 优先级为1, 优先级是1, etc.
+        // Priority 1 (highest/high)
+        // Numeric: priority 1, p1, 优先级1, 优先级为1, 优先级是1
+        // Semantic: high priority, highest priority, 高优先级, 最高优先级
         if (
-            /priority\s*(?:is\s*|=\s*)?1|p1|优先级\s*(?:为|是)?\s*1|\bp1\b|high|highest|高/i.test(
+            /(priority\s*(?:is\s*|=\s*)?1|p1|优先级\s*(?:为|是)?\s*1|\bp1\b)/i.test(
                 query,
-            )
+            ) ||
+            /(high(?:est)?\s*priority|priority\s*(?:is\s*)?high(?:est)?)/i.test(
+                query,
+            ) ||
+            /(高优先级|最高优先级|高\s*优先级|最高\s*优先级)/i.test(query)
         ) {
-            return "high";
+            return 1;
         }
 
-        // Check for priority 2 / p2 / medium / 中
+        // Priority 2 (medium/normal)
+        // Numeric: priority 2, p2, 优先级2
+        // Semantic: medium priority, normal priority, 中优先级, 普通优先级
         if (
-            /priority\s*(?:is\s*|=\s*)?2|p2|优先级\s*(?:为|是)?\s*2|\bp2\b|medium|med|中/i.test(
+            /(priority\s*(?:is\s*|=\s*)?2|p2|优先级\s*(?:为|是)?\s*2|\bp2\b)/i.test(
                 query,
-            )
+            ) ||
+            /(medium|normal)\s*priority|priority\s*(?:is\s*)?(medium|normal)/i.test(
+                query,
+            ) ||
+            /(中优先级|普通优先级|中\s*优先级|普通\s*优先级)/i.test(query)
         ) {
-            return "medium";
+            return 2;
         }
 
-        // Check for priority 3 / p3 / low / 低
+        // Priority 3 (low)
+        // Numeric: priority 3, p3, 优先级3
+        // Semantic: low priority, 低优先级
         if (
-            /priority\s*(?:is\s*|=\s*)?3|p3|优先级\s*(?:为|是)?\s*3|\bp3\b|low|低/i.test(
+            /(priority\s*(?:is\s*|=\s*)?3|p3|优先级\s*(?:为|是)?\s*3|\bp3\b)/i.test(
                 query,
-            )
+            ) ||
+            /low\s*priority|priority\s*(?:is\s*)?low/i.test(query) ||
+            /(低优先级|低\s*优先级)/i.test(query)
         ) {
-            return "low";
+            return 3;
         }
 
-        // Check for priority 4 / p4 / none / 无
+        // Priority 4 (none/no priority)
+        // Numeric: priority 4, p4, 优先级4
+        // Semantic: no priority, 无优先级
         if (
-            /priority\s*(?:is\s*|=\s*)?4|p4|优先级\s*(?:为|是)?\s*4|\bp4\b|none|无/i.test(
+            /(priority\s*(?:is\s*|=\s*)?4|p4|优先级\s*(?:为|是)?\s*4|\bp4\b)/i.test(
                 query,
-            )
+            ) ||
+            /no\s*priority|priority\s*(?:is\s*)?none/i.test(query) ||
+            /(无优先级|无\s*优先级)/i.test(query)
         ) {
-            return "none";
+            return 4;
         }
 
         return null;
@@ -269,7 +298,7 @@ export class TaskSearchService {
     /**
      * Search tasks by priority
      */
-    static searchByPriority(tasks: Task[], priority: string): Task[] {
+    static searchByPriority(tasks: Task[], priority: number): Task[] {
         return tasks.filter((task) => task.priority === priority);
     }
 
@@ -304,7 +333,7 @@ export class TaskSearchService {
 
     /**
      * Extract due date filter from query
-     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', or null
+     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', 'any', or null
      */
     static extractDueDateFilter(query: string): string | null {
         const lowerQuery = query.toLowerCase();
@@ -353,6 +382,12 @@ export class TaskSearchService {
             }
         }
 
+        // Check for generic "due" or "tasks with due dates" (catch-all)
+        // Only match if no other date qualifier was found
+        if (/(^|\s)(due|has\s+due|with\s+due)(\s|$)/.test(lowerQuery)) {
+            return "any";
+        }
+
         return null;
     }
 
@@ -362,6 +397,16 @@ export class TaskSearchService {
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        // Special case: "any" means any task WITH a due date
+        if (filter === "any") {
+            return tasks.filter(
+                (task) =>
+                    task.dueDate !== undefined &&
+                    task.dueDate !== null &&
+                    task.dueDate !== "",
+            );
+        }
 
         return tasks.filter((task) => {
             if (!task.dueDate) return false;
@@ -499,7 +544,7 @@ export class TaskSearchService {
     static applyCompoundFilters(
         tasks: Task[],
         filters: {
-            priority?: string | null;
+            priority?: number | null;
             dueDate?: string | null;
             status?: string | null;
             folder?: string | null;
@@ -553,10 +598,11 @@ export class TaskSearchService {
             });
         }
 
-        // Apply keyword search
+        // Apply keyword search (semantic matching - ANY keyword matches)
         if (filters.keywords && filters.keywords.length > 0) {
             filteredTasks = filteredTasks.filter((task) => {
                 const taskText = task.text.toLowerCase();
+                // Match if ANY keyword appears in the task text (substring match)
                 return filters.keywords!.some((keyword) =>
                     taskText.includes(keyword.toLowerCase()),
                 );
@@ -574,7 +620,7 @@ export class TaskSearchService {
         isPriority: boolean;
         isDueDate: boolean;
         keywords: string[];
-        extractedPriority: string | null;
+        extractedPriority: number | null;
         extractedDueDateFilter: string | null;
         extractedStatus: string | null;
         extractedFolder: string | null;
