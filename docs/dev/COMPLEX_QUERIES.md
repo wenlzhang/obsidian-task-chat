@@ -46,8 +46,8 @@ The plugin now supports sophisticated compound queries that combine multiple fil
 ### 2. Due Date Filters
 
 **Supported Formats:**
-- Relative: `today`, `tomorrow`, `this week`, `next week`, `overdue`
-- Chinese: `今天`, `明天`, `本周`, `下周`, `过期`
+- Relative: `today`, `tomorrow`, `this week`, `next week`, `overdue`, `future`, `upcoming`
+- Chinese: `今天`, `明天`, `本周`, `下周`, `过期`, `未来`, `将来`
 - Specific dates: `2025-10-15`, `10/15/2025`, `2025/10/15`
 
 **Examples:**
@@ -55,6 +55,10 @@ The plugin now supports sophisticated compound queries that combine multiple fil
 "tasks due today"
 "今天到期的任务"
 "overdue priority 1 tasks"
+"给我过期的任务"
+"future tasks"
+"未来的任务"
+"upcoming tasks with priority 1"
 "tasks due 2025-10-20"
 "show me tasks due this week with high priority"
 ```
@@ -250,6 +254,38 @@ Response: "No tasks found matching priority: 5."
 - System gracefully ignores unrecognized filter values
 - Falls back to keyword search
 - AI helps interpret unclear queries
+
+## Recent Bug Fixes (2025-10-15)
+
+### Word Boundary Issue with Chinese Text
+**Problem:** Regex patterns using `\b` word boundaries failed to match Chinese characters properly.
+
+**Example:**
+- Query: "给我过期的任务" (Give me overdue tasks)
+- Pattern: `/\b(overdue|过期|逾期|已过期)\b/`
+- Result: ❌ Failed to match because `\b` doesn't recognize Chinese character boundaries
+
+**Solution:** Removed `\b` word boundaries from all patterns containing Chinese text:
+```typescript
+// Before (broken)
+if (/\b(overdue|过期|逾期|已过期)\b/.test(lowerQuery))
+
+// After (fixed)
+if (/(overdue|过期|逾期|已过期)/.test(lowerQuery))
+```
+
+**Impact:** Affects all Chinese query patterns including:
+- Overdue: `过期`, `逾期`, `已过期`
+- Status: `完成`, `未完成`, `进行中`, `待办`
+- Dates: `今天`, `明天`, `本周`, `下周`
+
+### Missing Future Tasks Filter
+**Problem:** No support for "future" or "upcoming" task queries.
+
+**Solution:** Added new "future" filter:
+- Keywords: `future`, `upcoming`, `未来`, `将来`
+- Filter logic: Returns all tasks with due date > today
+- Example: "未来的任务" now returns all tasks with future due dates
 
 ## Future Enhancements
 

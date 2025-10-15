@@ -281,12 +281,17 @@ export class TaskSearchService {
             "due",
             "deadline",
             "overdue",
+            "future",
+            "upcoming",
             "today",
             "tomorrow",
             "this week",
             "next week",
             "截止",
             "到期",
+            "过期",
+            "未来",
+            "将来",
             "今天",
             "明天",
             "本周",
@@ -299,33 +304,38 @@ export class TaskSearchService {
 
     /**
      * Extract due date filter from query
-     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', or null
+     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', or null
      */
     static extractDueDateFilter(query: string): string | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for overdue (highest priority)
-        if (/\b(overdue|过期|逾期|已过期)\b/.test(lowerQuery)) {
+        // Check for overdue (highest priority) - no word boundaries for Chinese
+        if (/(overdue|过期|逾期|已过期)/.test(lowerQuery)) {
             return "overdue";
         }
 
+        // Check for future tasks
+        if (/(future|upcoming|未来|将来)/.test(lowerQuery)) {
+            return "future";
+        }
+
         // Check for today
-        if (/\b(today|今天)\b/.test(lowerQuery)) {
+        if (/(today|今天)/.test(lowerQuery)) {
             return "today";
         }
 
         // Check for tomorrow
-        if (/\b(tomorrow|明天)\b/.test(lowerQuery)) {
+        if (/(tomorrow|明天)/.test(lowerQuery)) {
             return "tomorrow";
         }
 
         // Check for this week
-        if (/\b(this\s+week|本周)\b/.test(lowerQuery)) {
+        if (/(this\s+week|本周)/.test(lowerQuery)) {
             return "week";
         }
 
         // Check for next week
-        if (/\b(next\s+week|下周)\b/.test(lowerQuery)) {
+        if (/(next\s+week|下周)/.test(lowerQuery)) {
             return "next-week";
         }
 
@@ -362,6 +372,9 @@ export class TaskSearchService {
             switch (filter) {
                 case "overdue":
                     return dueDate < today;
+
+                case "future":
+                    return dueDate > today;
 
                 case "today":
                     return dueDate.getTime() === today.getTime();
@@ -408,18 +421,18 @@ export class TaskSearchService {
     static extractStatusFromQuery(query: string): string | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for completed/done tasks
-        if (/\b(completed|done|finished|完成|已完成)\b/i.test(query)) {
+        // Check for completed/done tasks - no word boundaries for Chinese
+        if (/(completed|done|finished|完成|已完成)/i.test(query)) {
             return "completed";
         }
 
         // Check for open/incomplete tasks
-        if (/\b(open|incomplete|pending|todo|未完成|待办)\b/i.test(query)) {
+        if (/(open|incomplete|pending|todo|未完成|待办)/i.test(query)) {
             return "open";
         }
 
         // Check for in-progress tasks
-        if (/\b(in[\s-]?progress|ongoing|进行中|正在做)\b/i.test(query)) {
+        if (/(in[\s-]?progress|ongoing|进行中|正在做)/i.test(query)) {
             return "inProgress";
         }
 

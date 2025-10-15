@@ -283,7 +283,9 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Medium priority values")
-            .setDesc("Values that indicate medium priority (e.g., medium, 2, p2)")
+            .setDesc(
+                "Values that indicate medium priority (e.g., medium, 2, p2)",
+            )
             .addText((text) =>
                 text
                     .setPlaceholder("medium, 2, p2")

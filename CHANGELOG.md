@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Hashtags: `#work`, `#urgent`
   - Natural language: "with tag work", "tagged urgent"
 - **Extended Date Support**: More natural date query options
-  - Next week: "next week", "下周"
+  - Future: "future tasks", "upcoming tasks"
+  - Next week: "next week"
   - Specific dates: "2025-10-20", "10/20/2025"
 - **Comprehensive Documentation**: Added COMPLEX_QUERIES.md with examples and architecture
 
@@ -46,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code Organization**: Modular filter extraction and application methods
 
 ### Fixed
+- **Future Task Queries**: Added support for future/upcoming task queries
 - **Compound Query Handling**: Previously only supported single filter types
 - **Filter Conflicts**: Multiple filters now combine correctly (AND logic)
 
