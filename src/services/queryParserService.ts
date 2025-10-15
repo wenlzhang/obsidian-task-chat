@@ -6,12 +6,12 @@ import { PluginSettings } from "../settings";
  */
 export interface ParsedQuery {
     priority?: number; // 1, 2, 3, 4
-    dueDate?: string; // "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
+    dueDate?: string; // "any" (has due date), "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
     status?: string; // "open", "completed", "inProgress"
     folder?: string;
     tags?: string[];
     keywords?: string[];
-    originalQuery: string;
+    originalQuery?: string;
 }
 
 /**
@@ -56,15 +56,51 @@ export class QueryParserService {
         }
 
         // Very simple due date queries
-        if (/^(today|due\s*today)$/i.test(lowerQuery)) {
+        if (
+            /^(due\s*tasks?|tasks?\s*due|has\s*due\s*date)$/i.test(lowerQuery)
+        ) {
+            return {
+                dueDate: "any",
+                originalQuery: query,
+            };
+        }
+        if (
+            /^(today|due\s*today|tasks?\s*due\s*today|today'?s?\s*tasks?)$/i.test(
+                lowerQuery,
+            )
+        ) {
             return {
                 dueDate: "today",
                 originalQuery: query,
             };
         }
-        if (/^(overdue|past\s*due)$/i.test(lowerQuery)) {
+        if (
+            /^(overdue|past\s*due|overdue\s*tasks?|tasks?\s*overdue)$/i.test(
+                lowerQuery,
+            )
+        ) {
             return {
                 dueDate: "overdue",
+                originalQuery: query,
+            };
+        }
+        if (
+            /^(tomorrow|due\s*tomorrow|tasks?\s*due\s*tomorrow)$/i.test(
+                lowerQuery,
+            )
+        ) {
+            return {
+                dueDate: "tomorrow",
+                originalQuery: query,
+            };
+        }
+        if (
+            /^(future|future\s*tasks?|upcoming|upcoming\s*tasks?)$/i.test(
+                lowerQuery,
+            )
+        ) {
+            return {
+                dueDate: "future",
                 originalQuery: query,
             };
         }
@@ -82,19 +118,25 @@ export class QueryParserService {
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
 
 PRIORITY MAPPING:
-- 1 = highest/high priority (高优先级, 最高优先级, high, highest)
-- 2 = medium priority (中优先级, 普通优先级, medium, normal)
-- 3 = low priority (低优先级, low)
-- 4 = none/no priority (无优先级, none)
+- 1 = highest/high priority (高优先级, 最高优先级, high, highest, p1, 1)
+- 2 = medium priority (中优先级, 普通优先级, medium, normal, p2, 2)
+- 3 = low priority (低优先级, low, p3, 3)
+- 4 = none/no priority (无优先级, none, p4, 4)
 
-DUE DATE MAPPING:
-- "today" = tasks due today (今天, today)
-- "tomorrow" = tasks due tomorrow (明天, tomorrow)
-- "overdue" = past due tasks (过期, 逾期, overdue)
-- "future" = future tasks (未来, 将来, future, upcoming)
-- "week" = this week (本周, this week)
-- "next-week" = next week (下周, next week)
+DUE DATE MAPPING (normalize different field names to these values):
+- "any" = tasks that HAVE a due date (有截止日期, due, due tasks, scheduled, has due date)
+- "today" = tasks due today ONLY (今天, today, due today, 今天到期)
+- "tomorrow" = tasks due tomorrow ONLY (明天, tomorrow, due tomorrow, 明天到期)
+- "overdue" = past due tasks (过期, 逾期, overdue, past due, 已过期)
+- "future" = future tasks (未来, 将来, future, upcoming, 将来的)
+- "week" = this week (本周, this week, 本周内)
+- "next-week" = next week (下周, next week, 下周内)
 - Specific dates in YYYY-MM-DD format
+
+IMPORTANT for dueDate:
+- "due" or "due tasks" alone means "any" (has a due date)
+- Be smart about implied meanings: "deadline tasks" = "any" (has deadline/due date)
+- Users may use different field names (due, deadline, dueDate) - ALWAYS map to the values above
 
 STATUS MAPPING:
 - "open" = incomplete tasks (未完成, 待办, open, incomplete, pending, todo)

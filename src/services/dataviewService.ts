@@ -66,24 +66,17 @@ export class DataviewService {
         }
 
         const strValue = String(value).toLowerCase().trim();
-        console.log(
-            `[Dataview] mapPriority: input="${value}" → strValue="${strValue}"`,
-        );
 
         for (const [priority, values] of Object.entries(
             settings.dataviewPriorityMapping,
         )) {
             if (values.some((v) => v.toLowerCase() === strValue)) {
                 const result = parseInt(priority);
-                console.log(
-                    `[Dataview] mapPriority: matched priority=${priority} → result=${result}`,
-                );
                 return result; // Convert key to number
             }
         }
 
-        console.log(`[Dataview] mapPriority: no match found for "${strValue}"`);
-        return undefined; // No priority = undefined (not 4)
+        return undefined; // No priority = undefined
     }
 
     /**
@@ -93,16 +86,39 @@ export class DataviewService {
         if (!date) return undefined;
 
         try {
+            // Handle native Date objects
             if (date instanceof Date) {
                 return format
                     ? moment(date).format(format)
                     : moment(date).format("YYYY-MM-DD");
             }
 
-            if (date && typeof date === "object" && date.format) {
+            // Handle objects with .format() method (moment/luxon objects)
+            if (
+                date &&
+                typeof date === "object" &&
+                typeof date.format === "function"
+            ) {
                 return format ? date.format(format) : date.format("YYYY-MM-DD");
             }
 
+            // Handle Dataview date objects (which have toString() but not .format())
+            // These need to be converted to string first, then parsed by moment
+            if (
+                date &&
+                typeof date === "object" &&
+                typeof date.toString === "function"
+            ) {
+                const dateStr = date.toString();
+                const momentDate = moment(dateStr);
+                if (momentDate.isValid()) {
+                    return format
+                        ? momentDate.format(format)
+                        : momentDate.format("YYYY-MM-DD");
+                }
+            }
+
+            // Handle string dates
             if (typeof date === "string") {
                 const dateStr = date.trim();
                 const parsedDate = moment(dateStr);
@@ -111,6 +127,7 @@ export class DataviewService {
                 }
             }
 
+            // Fallback: try moment() directly
             const momentDate = moment(date);
             if (momentDate.isValid()) {
                 return format
@@ -330,14 +347,44 @@ export class DataviewService {
             folder: folder,
         };
 
-        // Debug: log tasks with text matching "Task Chat"
-        if (text.toLowerCase().includes("task chat")) {
-            console.log(
-                `[Dataview] Loaded task: "${text.substring(0, 50)}..." priority=${priority}`,
-            );
+        return task;
+    }
+
+    /**
+     * Check if task matches date range filter
+     */
+    private static matchesDateRange(
+        task: Task,
+        dateRange: { start?: string; end?: string } | null,
+    ): boolean {
+        if (!dateRange) return true; // No filter = include all
+
+        // "any" filter - task must have a due date
+        if (
+            Object.keys(dateRange).length === 0 &&
+            dateRange.constructor === Object
+        ) {
+            return !!task.dueDate;
         }
 
-        return task;
+        if (!task.dueDate) return false; // No due date = exclude
+
+        const taskDate = moment(task.dueDate).startOf("day");
+        if (!taskDate.isValid()) return false;
+
+        // Check start range
+        if (dateRange.start) {
+            const startDate = moment(dateRange.start).startOf("day");
+            if (taskDate.isBefore(startDate)) return false;
+        }
+
+        // Check end range
+        if (dateRange.end) {
+            const endDate = moment(dateRange.end).startOf("day");
+            if (taskDate.isAfter(endDate)) return false;
+        }
+
+        return true;
     }
 
     /**
@@ -349,6 +396,7 @@ export class DataviewService {
         tasks: Task[],
         path: string,
         taskIndex: number,
+        dateRange?: { start?: string; end?: string } | null,
     ): number {
         const task = this.processDataviewTask(
             dvTask,
@@ -356,7 +404,9 @@ export class DataviewService {
             taskIndex++,
             path,
         );
-        if (task) {
+
+        // Apply date range filtering at load time
+        if (task && this.matchesDateRange(task, dateRange || null)) {
             tasks.push(task);
         }
 
@@ -372,6 +422,7 @@ export class DataviewService {
                     tasks,
                     path,
                     taskIndex,
+                    dateRange,
                 );
             }
         }
@@ -380,11 +431,91 @@ export class DataviewService {
     }
 
     /**
-     * Parse all tasks from Dataview
+     * Convert date filter to Dataview date range query
+     */
+    static convertDateFilterToRange(dateFilter: string): {
+        start?: string;
+        end?: string;
+    } | null {
+        const today = moment().startOf("day");
+
+        switch (dateFilter) {
+            case "any":
+                // Has a due date (non-null)
+                return {}; // Will check for existence, not range
+
+            case "today":
+                return {
+                    start: today.format("YYYY-MM-DD"),
+                    end: today.format("YYYY-MM-DD"),
+                };
+
+            case "tomorrow": {
+                const tomorrow = moment().add(1, "day").startOf("day");
+                return {
+                    start: tomorrow.format("YYYY-MM-DD"),
+                    end: tomorrow.format("YYYY-MM-DD"),
+                };
+            }
+
+            case "overdue":
+                return {
+                    end: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
+                };
+
+            case "future":
+                return {
+                    start: today.clone().add(1, "day").format("YYYY-MM-DD"),
+                };
+
+            case "week": {
+                const weekEnd = today.clone().add(7, "days").endOf("day");
+                return {
+                    start: today.format("YYYY-MM-DD"),
+                    end: weekEnd.format("YYYY-MM-DD"),
+                };
+            }
+
+            case "next-week": {
+                const nextWeekStart = today
+                    .clone()
+                    .add(7, "days")
+                    .startOf("day");
+                const nextWeekEnd = today.clone().add(14, "days").endOf("day");
+                return {
+                    start: nextWeekStart.format("YYYY-MM-DD"),
+                    end: nextWeekEnd.format("YYYY-MM-DD"),
+                };
+            }
+
+            default:
+                // Try to parse as specific date (YYYY-MM-DD)
+                const parsedDate = moment(dateFilter, "YYYY-MM-DD", true);
+                if (parsedDate.isValid()) {
+                    return {
+                        start: parsedDate.format("YYYY-MM-DD"),
+                        end: parsedDate.format("YYYY-MM-DD"),
+                    };
+                }
+                return null;
+        }
+    }
+
+    /**
+     * Parse all tasks from Dataview with optional date filtering
+     *
+     * @param app - Obsidian app instance
+     * @param settings - Plugin settings
+     * @param dateFilter - Optional date filter: "any", "today", "overdue", "future", "week", "next-week", "tomorrow", or specific date (YYYY-MM-DD)
+     *
+     * When dateFilter is provided, tasks are filtered AT LOAD TIME (before adding to array),
+     * which is more efficient than loading all tasks and filtering afterward.
+     * This converts the user's date query to Dataview date ranges before querying.
      */
     static async parseTasksFromDataview(
         app: App,
         settings: PluginSettings,
+        dateFilter?: string,
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
@@ -394,6 +525,21 @@ export class DataviewService {
 
         const tasks: Task[] = [];
         let foundTasks = false;
+
+        // Convert date filter to range if provided
+        const dateRange = dateFilter
+            ? this.convertDateFilterToRange(dateFilter)
+            : null;
+
+        if (dateFilter) {
+            console.log(
+                `[Dataview] Query with date filter: "${dateFilter}" → range:`,
+                dateRange,
+            );
+            console.log(
+                `[Dataview] Filtering tasks at load time (before adding to array)`,
+            );
+        }
 
         // Try using pages method
         if (
@@ -421,6 +567,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
+                                        dateRange,
                                     );
                                 }
                             } else if (
@@ -434,6 +581,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
+                                        dateRange,
                                     );
                                 }
                             }
@@ -451,6 +599,12 @@ export class DataviewService {
             } catch (e) {
                 console.error("Error using DataView pages API:", e);
             }
+        }
+
+        if (dateFilter) {
+            console.log(
+                `[Dataview] Date filtering complete: ${tasks.length} tasks match filter "${dateFilter}"`,
+            );
         }
 
         return tasks;

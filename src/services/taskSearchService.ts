@@ -333,38 +333,42 @@ export class TaskSearchService {
 
     /**
      * Extract due date filter from query
-     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', 'any', or null
+     * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', 'any', or specific date
      */
     static extractDueDateFilter(query: string): string | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for overdue (highest priority) - no word boundaries for Chinese
-        if (/(overdue|过期|逾期|已过期)/.test(lowerQuery)) {
+        // Check for overdue (highest priority) - comprehensive patterns
+        if (
+            /(overdue|过期|逾期|已过期|past\s+due|late|延期)/.test(lowerQuery)
+        ) {
             return "overdue";
         }
 
         // Check for future tasks
-        if (/(future|upcoming|未来|将来)/.test(lowerQuery)) {
+        if (/(future|upcoming|未来|将来|以后)/.test(lowerQuery)) {
             return "future";
         }
 
-        // Check for today
-        if (/(today|今天)/.test(lowerQuery)) {
+        // Check for today - comprehensive patterns
+        if (
+            /(today|今天|今日|due\s+today|today'?s?\s+tasks?)/.test(lowerQuery)
+        ) {
             return "today";
         }
 
         // Check for tomorrow
-        if (/(tomorrow|明天)/.test(lowerQuery)) {
+        if (/(tomorrow|明天|due\s+tomorrow)/.test(lowerQuery)) {
             return "tomorrow";
         }
 
         // Check for this week
-        if (/(this\s+week|本周)/.test(lowerQuery)) {
+        if (/(this\s+week|本周|本周内)/.test(lowerQuery)) {
             return "week";
         }
 
         // Check for next week
-        if (/(next\s+week|下周)/.test(lowerQuery)) {
+        if (/(next\s+week|下周|下周内)/.test(lowerQuery)) {
             return "next-week";
         }
 
@@ -382,9 +386,13 @@ export class TaskSearchService {
             }
         }
 
-        // Check for generic "due" or "tasks with due dates" (catch-all)
-        // Only match if no other date qualifier was found
-        if (/(^|\s)(due|has\s+due|with\s+due)(\s|$)/.test(lowerQuery)) {
+        // Check for generic "due" or "has due date" (tasks WITH a due date)
+        // Match various forms: "due tasks", "tasks due", "with deadline", etc.
+        if (
+            /(^due$|^due\s+tasks?$|^tasks?\s+due$|^scheduled\s+tasks?$|^tasks?\s+with\s+due|^tasks?\s+with\s+deadline|^deadline\s+tasks?|^has\s+due|^有截止日期|^有期限|^带截止日期)/i.test(
+                lowerQuery,
+            )
+        ) {
             return "any";
         }
 
@@ -411,7 +419,21 @@ export class TaskSearchService {
         return tasks.filter((task) => {
             if (!task.dueDate) return false;
 
-            const dueDate = new Date(task.dueDate);
+            // Parse date in local timezone by adding explicit time
+            // If the date is just "2025-10-10", treat it as local date not UTC
+            let dueDate: Date;
+            if (task.dueDate.includes("T") || task.dueDate.includes(" ")) {
+                // Has time component, parse as-is
+                dueDate = new Date(task.dueDate);
+            } else {
+                // Date only (e.g., "2025-10-10"), parse as local date
+                const parts = task.dueDate.split("-");
+                dueDate = new Date(
+                    parseInt(parts[0]),
+                    parseInt(parts[1]) - 1,
+                    parseInt(parts[2]),
+                );
+            }
             dueDate.setHours(0, 0, 0, 0);
 
             switch (filter) {

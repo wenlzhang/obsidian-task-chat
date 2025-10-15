@@ -42,6 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Keys are FIXED**: Priority levels 1, 2, 3, 4 cannot be changed
   - **Type safety**: `PriorityMapping = Record<1 | 2 | 3 | 4, string[]>` enforces numeric keys
   - **Display format**: "Priority: 1 (highest)" for clarity
+- **Due Date Query System**: Improved normalization and parsing
+  - **Architecture**: Users can use any field name (due, deadline, dueDate), system always normalizes to standard values
+  - **Normalized values**: "any", "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
+  - **Comprehensive patterns**: Matches "due tasks", "overdue tasks", "tasks due", "deadline tasks", etc.
+  - **Language support**: English and Chinese patterns (今天, 过期, 未来, etc.)
+  - **Load-time filtering**: Date queries converted to Dataview date ranges BEFORE loading tasks
+  - **Efficiency**: Filter at source (Dataview API) instead of loading all tasks then filtering in memory
 - **Query Processing Flow**: Complete redesign for multi-filter support
   - Intent analysis now extracts all filter types simultaneously
   - Compound filters applied before AI processing
@@ -63,6 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Code Organization**: Modular filter extraction and application methods
 
 ### Fixed
+- **Dataview Date Parsing Bug**: Fixed critical timezone issue causing incorrect due date comparisons
+  - Dataview date objects were being misparsed by moment.js
+  - Added proper handling via `.toString()` conversion before moment parsing
+  - Local timezone dates now parse correctly (e.g., `[due::2025-10-10]` stays as Oct 10, not Oct 9)
+  - Overdue task queries now work correctly
+- **Date Comparison Timezone Fix**: Fixed UTC vs local timezone issues
+  - Date-only strings (e.g., "2025-10-10") now parse as local dates, not UTC
+  - Prevents off-by-one day errors in timezones ahead of UTC
 - **"Due Tasks" Query**: Added support for showing all tasks with due dates
   - Query "due tasks" now shows all tasks that have a due date
   - Returns "any" filter that matches tasks with non-empty due dates
