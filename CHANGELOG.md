@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2025-01-15
+
+### Added
+- **Session Modal**: Professional modal popup for session list (instead of inline expansion)
+- **Smart Empty Session Detection**: Won't create new session if current is empty
+- **Button Grouping**: Visually grouped related buttons for better UX
+- **Better Date Formatting**: "Today", "Yesterday", "X days ago" format in modal
+- **User Message Count**: Shows only actual messages (excludes system messages)
+
+### Changed
+- **Session List Display**: Modal popup replaces inline expansion
+- **Button Order**: "+ New | Sessions" → "Filter | Refresh | Clear"
+- **Session Detection**: Only saves sessions with actual conversations
+- **Modal Layout**: Cleaner, more spacious session list design
+
+### Fixed
+- **Empty Session Spam**: No longer creates multiple empty sessions
+- **UI Clutter**: Session list no longer expands inline pushing content down
+- **Message Count**: Accurate count excluding system messages
+
+### Improved
+- **UX Flow**: Modal-based session switching is more intuitive
+- **Visual Grouping**: Button groups show functional relationships
+- **Session Info**: Better metadata display with relative dates
+
 ## [0.0.5] - 2025-01-14
 
 ### Added

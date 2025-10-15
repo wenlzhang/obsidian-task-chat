@@ -31,13 +31,23 @@
 /* Controls */
 .task-chat-controls {
     display: flex;
-    gap: 6px;
+    gap: 12px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 
+/* Button groups */
+.task-chat-button-group {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+}
+
 .task-chat-controls button {
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 13px;
     cursor: pointer;
 }
 
@@ -232,14 +242,26 @@
     font-weight: 600;
 }
 
-.task-chat-session-list {
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    margin: 10px 0;
-    padding: 10px;
-    max-height: 300px;
+/* Session Modal */
+.task-chat-session-modal {
+    padding: 20px;
+}
+
+.task-chat-session-modal h2 {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.task-chat-session-count {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.task-chat-session-list-container {
+    max-height: 400px;
     overflow-y: auto;
+    margin-top: 12px;
 }
 
 .task-chat-session-items {
@@ -252,11 +274,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
-    margin: 4px 0;
-    border-radius: 4px;
+    padding: 12px;
+    margin: 6px 0;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 
 .task-chat-session-item:hover {
@@ -268,13 +291,23 @@
     border-left: 3px solid var(--interactive-accent);
 }
 
-.task-chat-session-name {
+.task-chat-session-content {
     flex: 1;
-    font-weight: 500;
+    cursor: pointer;
 }
 
-.task-chat-session-info {
-    margin: 0 10px;
+.task-chat-session-info-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.task-chat-session-name {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.task-chat-session-meta {
     color: var(--text-muted);
     font-size: 12px;
 }

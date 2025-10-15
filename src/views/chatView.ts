@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
+import { SessionModal } from "./sessionModal";
 import TaskChatPlugin from "../main";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
@@ -14,7 +15,6 @@ export class ChatView extends ItemView {
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
-    private sessionListEl: HTMLElement;
     private isProcessing: boolean = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
@@ -65,36 +65,38 @@ export class ChatView extends ItemView {
         );
         this.updateFilterStatus();
 
-        // Session list (hidden by default)
-        this.sessionListEl = this.contentEl.createDiv("task-chat-session-list");
-        this.sessionListEl.style.display = "none";
-
-        // Filter controls
+        // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
 
-        const newSessionBtn = controlsEl.createEl("button", {
+        // Session group
+        const sessionGroup = controlsEl.createDiv("task-chat-button-group");
+
+        const newSessionBtn = sessionGroup.createEl("button", {
             text: "+ New",
             cls: "task-chat-new-session-btn",
         });
         newSessionBtn.addEventListener("click", () => this.createNewSession());
 
-        const refreshBtn = controlsEl.createEl("button", {
-            text: "Refresh tasks",
+        const sessionsBtn = sessionGroup.createEl("button", {
+            text: "Sessions",
         });
-        refreshBtn.addEventListener("click", () => this.refreshTasks());
+        sessionsBtn.addEventListener("click", () => this.openSessionModal());
 
-        const clearBtn = controlsEl.createEl("button", { text: "Clear chat" });
-        clearBtn.addEventListener("click", () => this.clearChat());
+        // Task management group
+        const taskGroup = controlsEl.createDiv("task-chat-button-group");
 
-        const filterBtn = controlsEl.createEl("button", {
+        const filterBtn = taskGroup.createEl("button", {
             text: "Filter tasks",
         });
         filterBtn.addEventListener("click", () => this.openFilterModal());
 
-        const sessionsBtn = controlsEl.createEl("button", {
-            text: "Sessions",
+        const refreshBtn = taskGroup.createEl("button", {
+            text: "Refresh tasks",
         });
-        sessionsBtn.addEventListener("click", () => this.toggleSessionList());
+        refreshBtn.addEventListener("click", () => this.refreshTasks());
+
+        const clearBtn = taskGroup.createEl("button", { text: "Clear chat" });
+        clearBtn.addEventListener("click", () => this.clearChat());
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
@@ -471,9 +473,21 @@ export class ChatView extends ItemView {
      * Create a new session
      */
     private createNewSession(): void {
+        // Check if current session is empty (only has welcome message)
+        const currentMessages = this.plugin.sessionManager.getCurrentMessages();
+        const isEmptySession =
+            currentMessages.length <= 1 &&
+            currentMessages.every((msg) => msg.role === "system");
+
+        if (isEmptySession) {
+            // Reuse current session instead of creating new one
+            new Notice("Current session is empty, continuing in this session");
+            return;
+        }
+
+        // Create new session only if current has actual conversation
         const newSession = this.plugin.sessionManager.createSession();
         this.renderMessages();
-        this.renderSessionList();
         this.addSystemMessage(
             `New session created: ${newSession.name}. How can I help you?`,
         );
@@ -481,83 +495,18 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Toggle session list visibility
+     * Open session list modal
      */
-    private toggleSessionList(): void {
-        if (this.sessionListEl.style.display === "none") {
-            this.sessionListEl.style.display = "block";
-            this.renderSessionList();
-        } else {
-            this.sessionListEl.style.display = "none";
-        }
-    }
-
-    /**
-     * Render the session list
-     */
-    private renderSessionList(): void {
-        this.sessionListEl.empty();
-
-        const sessions = this.plugin.sessionManager.getAllSessions();
-        const currentSession = this.plugin.sessionManager.getCurrentSession();
-
-        if (sessions.length === 0) {
-            this.sessionListEl.createEl("p", {
-                text: "No sessions yet",
-                cls: "task-chat-empty-sessions",
-            });
-            return;
-        }
-
-        const listEl = this.sessionListEl.createEl("ul", {
-            cls: "task-chat-session-items",
-        });
-
-        sessions.forEach((session) => {
-            const itemEl = listEl.createEl("li", {
-                cls: "task-chat-session-item",
-            });
-
-            if (currentSession && session.id === currentSession.id) {
-                itemEl.addClass("task-chat-session-active");
-            }
-
-            const nameEl = itemEl.createEl("span", {
-                text: session.name,
-                cls: "task-chat-session-name",
-            });
-
-            nameEl.addEventListener("click", () => {
-                this.plugin.sessionManager.switchSession(session.id);
+    private openSessionModal(): void {
+        const modal = new SessionModal(
+            this.app,
+            this.plugin,
+            (sessionId: string) => {
+                this.plugin.sessionManager.switchSession(sessionId);
                 this.renderMessages();
-                this.renderSessionList();
-                this.sessionListEl.style.display = "none";
                 this.plugin.saveSettings();
-            });
-
-            const infoEl = itemEl.createEl("span", {
-                cls: "task-chat-session-info",
-            });
-
-            const date = new Date(session.updatedAt);
-            infoEl.createEl("small", {
-                text: `${session.messages.length} messages • ${date.toLocaleDateString()}`,
-            });
-
-            const deleteBtn = itemEl.createEl("button", {
-                text: "×",
-                cls: "task-chat-session-delete",
-            });
-
-            deleteBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                if (confirm(`Delete session "${session.name}"?`)) {
-                    this.plugin.sessionManager.deleteSession(session.id);
-                    this.renderMessages();
-                    this.renderSessionList();
-                    this.plugin.saveSettings();
-                }
-            });
-        });
+            },
+        );
+        modal.open();
     }
 }
