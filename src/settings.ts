@@ -1,3 +1,5 @@
+import { SessionData } from "./models/task";
+
 export interface PluginSettings {
     // AI Provider Settings
     aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
@@ -39,6 +41,9 @@ export interface PluginSettings {
     totalTokensUsed: number;
     totalCost: number;
     showTokenUsage: boolean;
+
+    // Session Data
+    sessionData: SessionData;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -101,4 +106,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     totalTokensUsed: 0,
     totalCost: 0,
     showTokenUsage: true,
+
+    // Session Data
+    sessionData: {
+        sessions: [],
+        currentSessionId: null,
+        lastSessionId: null,
+    },
 };

@@ -6,16 +6,22 @@ import { DataviewService } from "./services/dataviewService";
 import { TaskFilterService } from "./services/taskFilterService";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/chatView";
 import { FilterModal } from "./views/filterModal";
+import { SessionManager } from "./services/sessionManager";
 
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
     private allTasks: Task[] = [];
     private chatView: ChatView | null = null;
+    sessionManager: SessionManager;
 
     async onload(): Promise<void> {
         console.log("Loading Task Chat plugin");
 
         await this.loadSettings();
+
+        // Initialize session manager
+        this.sessionManager = new SessionManager();
+        this.sessionManager.loadFromData(this.settings.sessionData);
 
         // Check if DataView is available
         if (!DataviewService.isDataviewEnabled(this.app)) {
@@ -104,6 +110,10 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     async saveSettings(): Promise<void> {
+        // Save session data before persisting
+        if (this.sessionManager) {
+            this.settings.sessionData = this.sessionManager.exportData();
+        }
         await this.saveData(this.settings);
     }
 

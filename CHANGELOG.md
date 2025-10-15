@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2025-01-14
+
+### Added
+- **Session Management**: Full chat session support with create, switch, and delete
+- **'+ New' Button**: Quick button to start new chat sessions
+- **Session List**: View and switch between all saved sessions
+- **Auto-load Last Session**: Automatically loads your last chat when reopening Obsidian
+- **Session Persistence**: All chat history saved to data.json and survives restarts
+- **Session Metadata**: Each session has name, message count, and last updated date
+- **Session Naming**: Auto-generated names based on creation time (e.g., "Chat Jan 14, 22:30")
+- **Session Deletion**: Delete old sessions with confirmation
+
+### Changed
+- **Chat History**: Now stored per-session instead of globally
+- **Clear Chat**: Clears current session but preserves it in history
+- **Button Layout**: Reorganized with '+ New' button prominent
+
+### Fixed
+- **Chat Persistence**: Chat history no longer lost on Obsidian restart
+- **Session Isolation**: Each chat session is independent
+
+### Improved
+- **UX**: Similar to Copilot and Smart Connections plugins
+- **Data Management**: All sessions saved automatically
+- **Navigation**: Easy switching between different chat contexts
+
 ## [0.0.4] - 2025-01-14
 
 ### Added

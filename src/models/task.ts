@@ -51,3 +51,18 @@ export interface ChatContext {
     filteredTasks: Task[];
     currentFilter: TaskFilter;
 }
+
+export interface ChatSession {
+    id: string;
+    name: string;
+    messages: ChatMessage[];
+    createdAt: number;
+    updatedAt: number;
+    filter?: TaskFilter;
+}
+
+export interface SessionData {
+    sessions: ChatSession[];
+    currentSessionId: string | null;
+    lastSessionId: string | null;
+}

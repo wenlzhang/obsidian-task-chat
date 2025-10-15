@@ -8,13 +8,13 @@ export const CHAT_VIEW_TYPE = "task-chat-view";
 
 export class ChatView extends ItemView {
     private plugin: TaskChatPlugin;
-    private chatMessages: ChatMessage[] = [];
     private currentTasks: Task[] = [];
     private currentFilter: TaskFilter = {};
     private messagesEl: HTMLElement;
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
+    private sessionListEl: HTMLElement;
     private isProcessing: boolean = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
@@ -38,7 +38,11 @@ export class ChatView extends ItemView {
         this.contentEl.empty();
         this.contentEl.addClass("task-chat-container");
 
+        // Load last session or create new
+        const session = this.plugin.sessionManager.getOrCreateCurrentSession();
+
         this.renderView();
+        this.renderMessages();
     }
 
     async onClose(): Promise<void> {
@@ -61,8 +65,18 @@ export class ChatView extends ItemView {
         );
         this.updateFilterStatus();
 
+        // Session list (hidden by default)
+        this.sessionListEl = this.contentEl.createDiv("task-chat-session-list");
+        this.sessionListEl.style.display = "none";
+
         // Filter controls
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
+
+        const newSessionBtn = controlsEl.createEl("button", {
+            text: "+ New",
+            cls: "task-chat-new-session-btn",
+        });
+        newSessionBtn.addEventListener("click", () => this.createNewSession());
 
         const refreshBtn = controlsEl.createEl("button", {
             text: "Refresh tasks",
@@ -76,6 +90,11 @@ export class ChatView extends ItemView {
             text: "Filter tasks",
         });
         filterBtn.addEventListener("click", () => this.openFilterModal());
+
+        const sessionsBtn = controlsEl.createEl("button", {
+            text: "Sessions",
+        });
+        sessionsBtn.addEventListener("click", () => this.toggleSessionList());
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
@@ -107,7 +126,8 @@ export class ChatView extends ItemView {
         this.sendButtonEl.addEventListener("click", () => this.sendMessage());
 
         // Initial welcome message
-        if (this.chatMessages.length === 0) {
+        const messages = this.plugin.sessionManager.getCurrentMessages();
+        if (messages.length === 0) {
             this.addSystemMessage(
                 "Welcome to Task Chat! I can help you manage and analyze your tasks. Ask me anything about your tasks, and I'll provide recommendations.",
             );
@@ -179,18 +199,17 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render all messages
+     * Render all chat messages
      */
     private renderMessages(): void {
-        if (!this.messagesEl) return;
-
         this.messagesEl.empty();
 
-        this.chatMessages.forEach((message) => {
+        const messages = this.plugin.sessionManager.getCurrentMessages();
+        messages.forEach((message: ChatMessage) => {
             this.renderMessage(message);
         });
 
-        // Scroll to bottom
+        // Auto-scroll to bottom
         this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     }
 
@@ -311,15 +330,16 @@ export class ChatView extends ItemView {
             timestamp: Date.now(),
         };
 
-        this.chatMessages.push(userMessage);
+        this.plugin.sessionManager.addMessage(userMessage);
         this.renderMessages();
+        await this.plugin.saveSettings();
 
         try {
             // Get AI response or direct results
             const result = await AIService.sendMessage(
                 message,
                 this.currentTasks,
-                this.chatMessages,
+                this.plugin.sessionManager.getCurrentMessages(),
                 this.plugin.settings,
             );
 
@@ -342,8 +362,9 @@ export class ChatView extends ItemView {
                     tokenUsage: result.tokenUsage,
                 };
 
-                this.chatMessages.push(directMessage);
+                this.plugin.sessionManager.addMessage(directMessage);
                 this.renderMessages();
+                await this.plugin.saveSettings();
             } else {
                 // Add AI response
                 const aiMessage: ChatMessage = {
@@ -354,17 +375,9 @@ export class ChatView extends ItemView {
                     tokenUsage: result.tokenUsage,
                 };
 
-                this.chatMessages.push(aiMessage);
+                this.plugin.sessionManager.addMessage(aiMessage);
                 this.renderMessages();
-            }
-
-            // Trim chat history if needed
-            if (
-                this.chatMessages.length > this.plugin.settings.maxChatHistory
-            ) {
-                this.chatMessages = this.chatMessages.slice(
-                    -this.plugin.settings.maxChatHistory,
-                );
+                await this.plugin.saveSettings();
             }
         } catch (error) {
             console.error("Error sending message:", error);
@@ -376,8 +389,9 @@ export class ChatView extends ItemView {
                 timestamp: Date.now(),
             };
 
-            this.chatMessages.push(errorMessage);
+            this.plugin.sessionManager.addMessage(errorMessage);
             this.renderMessages();
+            await this.plugin.saveSettings();
         } finally {
             this.isProcessing = false;
             this.inputEl.disabled = false;
@@ -389,26 +403,28 @@ export class ChatView extends ItemView {
     /**
      * Add a system message
      */
-    private addSystemMessage(content: string): void {
+    addSystemMessage(content: string): void {
         const message: ChatMessage = {
             role: "system",
             content: content,
             timestamp: Date.now(),
         };
 
-        this.chatMessages.push(message);
+        this.plugin.sessionManager.addMessage(message);
         this.renderMessages();
+        this.plugin.saveSettings();
     }
 
     /**
      * Clear chat history
      */
     private clearChat(): void {
-        this.chatMessages = [];
+        this.plugin.sessionManager.clearCurrentSession();
         this.renderMessages();
         this.addSystemMessage(
             "Chat cleared. How can I help you with your tasks?",
         );
+        this.plugin.saveSettings();
     }
 
     /**
@@ -449,5 +465,99 @@ export class ChatView extends ItemView {
         this.addSystemMessage(
             `Filter applied. Now showing ${filteredTasks.length} task(s).`,
         );
+    }
+
+    /**
+     * Create a new session
+     */
+    private createNewSession(): void {
+        const newSession = this.plugin.sessionManager.createSession();
+        this.renderMessages();
+        this.renderSessionList();
+        this.addSystemMessage(
+            `New session created: ${newSession.name}. How can I help you?`,
+        );
+        this.plugin.saveSettings();
+    }
+
+    /**
+     * Toggle session list visibility
+     */
+    private toggleSessionList(): void {
+        if (this.sessionListEl.style.display === "none") {
+            this.sessionListEl.style.display = "block";
+            this.renderSessionList();
+        } else {
+            this.sessionListEl.style.display = "none";
+        }
+    }
+
+    /**
+     * Render the session list
+     */
+    private renderSessionList(): void {
+        this.sessionListEl.empty();
+
+        const sessions = this.plugin.sessionManager.getAllSessions();
+        const currentSession = this.plugin.sessionManager.getCurrentSession();
+
+        if (sessions.length === 0) {
+            this.sessionListEl.createEl("p", {
+                text: "No sessions yet",
+                cls: "task-chat-empty-sessions",
+            });
+            return;
+        }
+
+        const listEl = this.sessionListEl.createEl("ul", {
+            cls: "task-chat-session-items",
+        });
+
+        sessions.forEach((session) => {
+            const itemEl = listEl.createEl("li", {
+                cls: "task-chat-session-item",
+            });
+
+            if (currentSession && session.id === currentSession.id) {
+                itemEl.addClass("task-chat-session-active");
+            }
+
+            const nameEl = itemEl.createEl("span", {
+                text: session.name,
+                cls: "task-chat-session-name",
+            });
+
+            nameEl.addEventListener("click", () => {
+                this.plugin.sessionManager.switchSession(session.id);
+                this.renderMessages();
+                this.renderSessionList();
+                this.sessionListEl.style.display = "none";
+                this.plugin.saveSettings();
+            });
+
+            const infoEl = itemEl.createEl("span", {
+                cls: "task-chat-session-info",
+            });
+
+            const date = new Date(session.updatedAt);
+            infoEl.createEl("small", {
+                text: `${session.messages.length} messages • ${date.toLocaleDateString()}`,
+            });
+
+            const deleteBtn = itemEl.createEl("button", {
+                text: "×",
+                cls: "task-chat-session-delete",
+            });
+
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete session "${session.name}"?`)) {
+                    this.plugin.sessionManager.deleteSession(session.id);
+                    this.renderMessages();
+                    this.renderSessionList();
+                    this.plugin.saveSettings();
+                }
+            });
+        });
     }
 }
