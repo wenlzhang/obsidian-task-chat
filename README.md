@@ -4,19 +4,178 @@ An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter t
 
 ## Features
 
-- **AI Chat Interface**: Chat with an AI assistant about your tasks
-- **Advanced Filtering**: Filter tasks by:
-  - Text content
-  - Folders
-  - Priority levels
-  - Due date ranges
-  - Completion status
-  - Task status categories
-- **Task Navigation**: Click on recommended tasks to jump directly to their location in your notes
-- **DataView Integration**: Leverages the DataView plugin to access task properties
-- **Multiple AI Providers**: Supports OpenAI, Anthropic, OpenRouter, and Ollama (local)
-- **Real-time Updates**: Automatically refreshes tasks when your notes change
-- **Intelligent Search System**: Automatic cost optimization with three-tier search strategy
+### 🤖 AI-Powered Task Analysis
+- **Intelligent Chat Interface**: Natural language conversations about your tasks
+- **Multiple AI Providers**: Choose from OpenAI, Anthropic, OpenRouter, or Ollama (local)
+- **Smart Response Generation**: Context-aware recommendations based on your actual tasks
+- **Temperature Control**: Adjust AI creativity/consistency (0.0-2.0)
+- **Custom System Prompts**: Tailor AI assistant behavior to your needs
+
+### 🔍 Advanced Query System
+- **AI Query Parsing** (Optional): Intelligent natural language understanding
+  - Multilingual support (English, Chinese, and more)
+  - Semantic keyword extraction and expansion
+  - Cross-language task matching
+- **Regex-Based Parsing** (Default): Fast pattern-based query processing
+- **Intelligent Search System**: Three-tier automatic cost optimization
+  - Direct search for simple queries (no cost)
+  - AI analysis for complex queries (optimized)
+  - Automatic decision based on query complexity
+
+### 📊 Comprehensive Task Filtering
+- **Text Search**: Semantic keyword matching across task content
+- **Priority Filtering**: Filter by priority levels (1-4)
+  - Customizable priority mapping (Todoist-style)
+  - Support for emoji indicators (⏫ 🔼 🔽) and text values
+- **Due Date Filtering**: 
+  - Relative dates: today, tomorrow, overdue, future
+  - Date ranges: this week, next week, this month
+  - Specific dates: YYYY-MM-DD format
+  - "Any due date" filter for tasks with deadlines
+- **Status Filtering**: 
+  - Open/incomplete tasks
+  - Completed tasks
+  - In-progress tasks
+  - Cancelled tasks
+- **Folder Filtering**: Path-based filtering with partial matches
+- **Tag Filtering**: Hashtag-based filtering (#work, #personal)
+- **Compound Filtering**: Combine multiple filters simultaneously
+  - Example: "high priority overdue tasks in project folder with #urgent tag"
+
+### 🎯 Task Display & Sorting
+- **Flexible Sorting Options**:
+  - AI Relevance, Due Date, Priority, Created Date, Alphabetical
+  - Ascending or Descending order
+  - Pre-configured defaults optimized for task management
+- **Configurable Result Limits**:
+  - Max Direct Results (default: 20): No-cost instant results
+  - Max Tasks for AI (default: 30): Context for AI analysis
+  - Max Recommendations (default: 20): Final curated list
+- **Task Navigation**: One-click navigation to task location in notes
+  - Preserves line numbers
+  - Opens source file automatically
+  - Works across all vault folders
+
+### 💬 Session Management
+- **Multiple Chat Sessions**: Create and switch between different conversations
+- **Session History**: All messages preserved with timestamps
+- **Session Switching**: Quick access to previous conversations
+- **Session Deletion**: Clean up old conversations
+- **Auto-save**: Sessions saved automatically
+
+### 🌍 Multilingual Support
+- **Query Languages**: Configure supported languages for semantic search
+- **Response Language**: Control AI response language
+  - Auto: Match user's query language
+  - Fixed: Always use English or Chinese
+  - Custom: Define your own language instruction
+- **Cross-language Matching**: Find tasks in any configured language
+  - Query in English, find Chinese tasks
+  - Query in Chinese, find English tasks
+
+### 💰 Cost Tracking & Optimization
+- **Real-time Token Usage**: See token count for every AI interaction
+- **Cost Estimation**: Accurate cost calculation per query
+  - Different pricing for input vs output tokens
+  - Provider-specific rates (OpenAI, Anthropic, OpenRouter)
+  - Automatic pricing updates from OpenRouter API
+- **Cumulative Tracking**: Total tokens and costs across all sessions
+- **Transparent Display**: See exactly when and why AI is used
+  - Direct search indicators (no cost)
+  - AI analysis indicators (with cost breakdown)
+  - Explanation of why each method was chosen
+
+### 🔄 Real-time Integration
+- **Auto-refresh**: Tasks update automatically when notes change
+- **Debounced Updates**: Intelligent update batching to prevent performance issues
+- **DataView Integration**: Seamless integration with DataView plugin
+  - Supports inline fields: `[due::2025-01-20]`
+  - Supports emoji indicators: `📅 2025-01-20`
+  - Customizable field mapping
+
+### ⚙️ Extensive Configuration
+- **Provider-specific API Keys**: Separate keys for each AI service
+- **Model Selection**: Choose from available models per provider
+  - Auto-loads available models on startup
+  - Caches model list for quick access
+- **Custom API Endpoints**: Use custom endpoints or proxies
+- **Task Status Mapping**: Customize how task statuses are recognized
+  - Default: Tasks plugin compatible
+  - Fully customizable status symbols
+- **Priority Mapping**: Define your own priority value mappings
+  - Map any text value to priority levels 1-4
+  - Support for multilingual priority values
+- **Date Format Configuration**: Customize date display formats
+
+### 🎨 User Interface
+- **Modern Chat UI**: Clean, intuitive chat interface
+- **Copy to Clipboard**: Copy any message with one click
+- **Typing Indicators**: Visual feedback during AI processing
+- **Filter Status Display**: See active filters at a glance
+- **Token Usage Display**: Optional cost information below responses
+- **Theme Support**: Integrates with Obsidian themes
+- **Responsive Design**: Works in sidebars and main panes
+
+## Quick Start Guide
+
+### Opening Task Chat
+
+**Three ways to open:**
+1. **Ribbon Icon**: Click the chat icon (💬) in the left sidebar
+2. **Command Palette**: Open command palette and search "Task Chat: Open Task Chat"
+3. **Auto-open**: Enable "Auto-open sidebar" in settings to open on startup
+
+### Basic Usage
+
+**1. Start a Conversation**
+```
+You: "Show me high priority tasks"
+AI: Analyzes and recommends relevant tasks
+```
+
+**2. Filter Your Tasks**
+- Click "Filter tasks" button to open advanced filter modal
+- Select folders, priorities, due dates, completion status
+- Use quick filters: Today, This week, This month
+- Click Apply to filter tasks
+
+**3. Navigate to Tasks**
+- Click the → arrow next to any recommended task
+- Plugin automatically opens the file and jumps to the task line
+- Works even in nested folders
+
+**4. Manage Sessions**
+- Click "+ New" to start a fresh conversation
+- Click "Sessions" to view and switch between chat histories
+- Each session preserves its own conversation context
+
+### Commands
+
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| **Send Message** | `Cmd/Ctrl + Enter` | Send your query to AI |
+| **Task Chat: Open Task Chat** | - | Open the chat interface |
+| **Task Chat: Refresh tasks** | - | Manually refresh task list |
+
+### Example Queries
+
+**Simple Queries** (Direct Search - No Cost)
+- `"priority 1"` → Shows all high priority tasks
+- `"due today"` → Shows tasks due today
+- `"overdue"` → Shows past-due tasks
+- `"#work"` → Shows tasks with #work tag
+
+**Complex Queries** (AI Analysis)
+- `"What should I focus on today?"` → AI recommends based on priority and deadlines
+- `"high priority overdue tasks in project folder"` → Multi-filter with AI prioritization
+- `"如何开发 Task Chat"` → Multilingual semantic search
+- `"Which tasks are blocking my progress?"` → Contextual analysis
+
+**Advanced Filtering**
+- `"priority 1 due this week #urgent"` → Compound filters
+- `"completed tasks in folder projects"` → Status + folder filtering
+- `"tasks with no due date"` → Find unscheduled tasks
+- `"in progress tasks tagged work"` → Status + tag filtering
 
 ## How the Intelligent Search System Works
 
@@ -211,63 +370,80 @@ Total Cost: $0.002 - $0.0021
 
 ## Setup
 
-1. Install and enable the **DataView** plugin
-2. Open Task Chat settings (Settings → Task Chat)
-3. Configure your AI provider:
+### Prerequisites
+1. **Install DataView Plugin** (Required)
+   - Go to Settings → Community Plugins
+   - Search for "DataView"
+   - Install and enable it
+
+### Initial Configuration
+1. Open Task Chat settings (Settings → Task Chat)
+2. **Configure AI Provider**:
    - Select your provider (OpenAI, Anthropic, OpenRouter, or Ollama)
    - Enter your API key (not needed for Ollama)
    - Choose your preferred model
-4. Optionally customize DataView field mappings to match your task setup
+3. **Optional: Customize Settings**
+   - DataView field mappings (match your task format)
+   - Query languages (for multilingual support)
+   - Response language preference
+   - Max result limits (optimize cost vs. completeness)
 
-## Usage
+### Getting an API Key
 
-### Opening Task Chat
+**OpenAI**
+- Visit: https://platform.openai.com/api-keys
+- Create new secret key
+- Recommended model: `gpt-4o-mini` (cheap, fast)
 
-- Click the chat icon in the left ribbon, or
-- Use the command palette: "Task Chat: Open Task Chat"
+**Anthropic**
+- Visit: https://console.anthropic.com/account/keys
+- Create new API key
+- Recommended model: `claude-3-5-sonnet-20241022`
 
-### Chatting with Tasks
+**OpenRouter**
+- Visit: https://openrouter.ai/keys
+- Create new API key
+- Access to multiple models with single key
+- Recommended: Various models available
 
-1. Click "Filter tasks" to select which tasks to focus on
-2. Type your question or request in the chat input
-3. Press Cmd/Ctrl+Enter to send
-4. Click the → button next to recommended tasks to navigate to them
-
-### Example Conversations
-
-- "What are my highest priority tasks?"
-- "Which tasks are overdue?"
-- "Show me tasks due this week"
-- "What should I work on next?"
-- "Are there any tasks in the project folder?"
-
-### Filtering Tasks
-
-Click "Filter tasks" to open the filter modal where you can:
-
-- Search by text content
-- Select specific folders
-- Filter by priority levels
-- Set due date ranges
-- Filter by completion or task status
-- Use quick filters (Today, This week, This month)
+**Ollama (Free, Local)**
+- Install Ollama: https://ollama.com
+- Run: `ollama serve`
+- No API key needed, runs locally
+- Recommended model: `llama3.2`
 
 ## Configuration
 
 ### AI Provider Settings
 
 - **AI Provider**: Choose between OpenAI, Anthropic, OpenRouter, or Ollama
-- **API Key**: Your provider's API key
-- **Model**: Model name (e.g., gpt-4o-mini, claude-3-5-sonnet-20241022, llama3.2)
-- **API Endpoint**: Custom API endpoint URL
+- **API Key**: Your provider's API key (provider-specific)
+  - OpenAI Key, Anthropic Key, OpenRouter Key stored separately
+  - Ollama: No key required (local)
+- **Model**: Model name (auto-populated dropdown)
+  - OpenAI: `gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`
+  - Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-opus`
+  - OpenRouter: Various models from multiple providers
+  - Ollama: Local models (llama3.2, etc.)
+- **API Endpoint**: Custom API endpoint URL (auto-filled, customizable)
+- **Temperature**: AI creativity (0.0-2.0, default: 0.1)
+  - Lower = more consistent, deterministic
+  - Higher = more creative, varied
 
 ### Chat Settings
 
 - **Max Chat History**: Number of messages to keep (default: 50)
-- **Show Task Count**: Display task count in filter status
+  - Controls memory usage
+  - Only recent messages sent to AI for context
+- **Show Task Count**: Display task count in filter status banner
 - **Show Token Usage**: Display cost and token information below responses
+  - Shows prompt/completion tokens
+  - Estimated cost per query
+  - Cumulative usage tracking
 - **Auto-open Sidebar**: Open Task Chat automatically on startup
 - **System Prompt**: Customize the AI assistant's behavior
+  - Default: Focus on existing tasks, be concise
+  - Customize for your workflow
 
 ### Query & Search Settings
 
@@ -292,6 +468,7 @@ Click "Filter tasks" to open the filter modal where you can:
 - **Query Languages**: Languages for semantic search (default: English, 中文)
   - Used by AI Query Parsing for keyword extraction
   - Enables cross-language task matching
+  - Add your languages for better search results
 
 - **Response Language**: AI response language preference
   - Auto: Match query language
@@ -299,14 +476,71 @@ Click "Filter tasks" to open the filter modal where you can:
   - Chinese: Always respond in Chinese (中文)
   - Custom: Use custom language instruction
 
+### Task Display Settings
+
+**Sorting Options**
+- **Task Sort By**: Field to sort tasks by
+  - Relevance: AI-determined relevance score
+  - Due Date: Sort by deadline (default)
+  - Priority: Sort by priority level (1-4)
+  - Created Date: Sort by creation time
+  - Alphabetical: Sort by task text
+- **Sort Direction**: Sort order
+  - Low to High (ascending): 1→4, A→Z, Early→Late
+  - High to Low (descending): 4→1, Z→A, Late→Early
+
+**Result Limits** (controls cost and performance)
+- **Max Direct Results** (default: 20, range: 5-100)
+  - Tasks shown directly without AI analysis
+  - No cost, instant results
+  - Higher = more results before AI triggers
+- **Max Tasks for AI** (default: 30, range: 5-100)
+  - Tasks sent to AI for context
+  - Affects token usage and cost
+  - Higher = better AI understanding, higher cost
+- **Max Recommendations** (default: 20, range: 5-100)
+  - Final curated task list size
+  - AI selects most relevant from analyzed tasks
+  - Keep manageable for user
+
 ### DataView Integration
 
-Configure field names to match your task metadata:
+**Field Mapping**
+Configure field names to match your task metadata format:
 
 - **Due Date Field**: Default is `due`
+  - Supports: `[due::2025-01-20]` or `📅 2025-01-20`
 - **Created Date Field**: Default is `created`
 - **Completed Date Field**: Default is `completed`
 - **Priority Field**: Default is `priority`
+
+**Priority Mapping** (Customizable, Todoist-style)
+Map text values to numeric priority levels (1-4):
+- **Level 1 (Highest)**: Default: `1, p1, high, highest`
+  - Add your own: `高, urgent, critical`
+- **Level 2 (High)**: Default: `2, p2, medium, med`
+  - Add your own: `中, normal`
+- **Level 3 (Medium/Low)**: Default: `3, p3, low`
+  - Add your own: `低`
+- **Level 4 (None)**: Default: `4, p4, none`
+
+System uses 1-4 internally for consistent filtering.
+
+**Task Status Mapping** (Customizable)
+Define which symbols represent each status:
+- **Open**: Default: ` ` (space), empty
+  - Standard: `- [ ] Task`
+- **Completed**: Default: `x, X`
+  - Standard: `- [x] Task`
+- **In Progress**: Default: `/,  ~`
+  - Standard: `- [/] Task`
+- **Cancelled**: Default: `-`
+  - Standard: `- [-] Task`
+
+**Date Formats** (optional, for display)
+- Due Date Format: `YYYY-MM-DD` (ISO standard)
+- Created Date Format: `YYYY-MM-DD`
+- Completed Date Format: `YYYY-MM-DD`
 
 ## Task Format
 
@@ -318,11 +552,83 @@ Task Chat works with standard Markdown tasks that include DataView metadata:
 - [/] Review pull requests [due::2025-01-18] [priority::medium]
 ```
 
-Supported task properties:
-- Due dates: `📅 YYYY-MM-DD` or `[due::YYYY-MM-DD]`
-- Priority: `⏫` (high), `🔼` (medium), `🔽` (low) or `[priority::high]`
-- Status: `[ ]` (open), `[x]` (completed), `[/]` (in progress), `[-]` (cancelled)
-- Tags: Standard Obsidian tags
+**Supported Task Properties:**
+- **Due Dates**: 
+  - Emoji format: `📅 YYYY-MM-DD`
+  - DataView format: `[due::YYYY-MM-DD]`
+  - Example: `- [ ] Task 📅 2025-01-20` or `- [ ] Task [due::2025-01-20]`
+  
+- **Priority**: 
+  - Emoji format: `⏫` (high), `🔼` (medium), `🔽` (low)
+  - DataView format: `[priority::high]`, `[priority::1]`, `[priority::p1]`
+  - Custom values: Add in settings (e.g., `[priority::urgent]`)
+  
+- **Status Indicators**: 
+  - Open: `- [ ] Task`
+  - Completed: `- [x] Task`
+  - In Progress: `- [/] Task`
+  - Cancelled: `- [-] Task`
+  
+- **Tags**: 
+  - Standard Obsidian tags: `#work`, `#personal`, `#urgent`
+  - Inline or at end of line
+  
+- **Folder Context**: Automatically detected from file path
+
+**Complete Example:**
+```markdown
+## Projects
+
+- [ ] Design new feature [due::2025-01-25] [priority::high] #design #urgent
+- [/] Write documentation 📅 2025-01-20 ⏫ #docs
+- [x] Fix login bug [due::2025-01-15] [priority::1] [completed::2025-01-14] #bugfix
+- [ ] Review PR #123 [priority::medium] #code-review
+- [-] Old task [priority::low]
+```
+
+## Advanced Usage Tips
+
+### Power User Workflows
+
+**1. Multi-Criteria Filtering**
+```
+"Show me high priority in-progress tasks in the projects folder due this week with #urgent tag"
+```
+→ Combines 5 filters: priority + status + folder + due date + tag
+
+**2. Cross-Language Task Management**
+```
+Query in English: "development tasks"
+Finds: "开发任务", "Task development", "Develop feature"
+```
+→ Semantic matching across languages
+
+**3. Cost-Optimized Queries**
+- Use simple, direct queries for routine checks
+- Enable AI Query Parsing only when needed
+- Adjust maxDirectResults to control AI trigger point
+
+**4. Session Organization**
+- Create separate sessions for different projects
+- Use descriptive session names (auto-generated from first query)
+- Switch sessions to maintain context
+
+### Keyboard Shortcuts
+
+| Action | Shortcut |
+|--------|----------|
+| Send message | `Cmd/Ctrl + Enter` |
+| Focus input | Click in textarea |
+| Copy message | Click copy button |
+
+### Integration with Other Plugins
+
+**Works well with:**
+- **Tasks Plugin**: Compatible status formats
+- **Calendar Plugin**: Due date integration
+- **Kanban Plugin**: Status-based workflows
+- **Templater**: Auto-generate tasks with metadata
+- **DataView**: Full integration for queries
 
 ## Development
 
