@@ -635,6 +635,12 @@ export class AIService {
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
+⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST ⚠️
+- DO NOT provide generic advice or general knowledge (e.g., "research the market")
+- DO NOT suggest actions that aren't in the task list
+- Your response must be ENTIRELY based on the specific tasks provided
+- If there are no relevant tasks, say so directly
+
 CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 - Tasks you reference will automatically appear in a "Recommended tasks" section below your response
 - Your response text should ONLY contain advice, insights, and recommendations
