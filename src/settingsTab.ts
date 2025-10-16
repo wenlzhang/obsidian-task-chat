@@ -67,6 +67,22 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Temperature")
+            .setDesc(
+                "Controls AI response randomness (0.0-2.0). Lower values (e.g., 0.1) produce consistent, focused responses. Higher values (e.g., 1.0) produce more creative, varied responses. Default: 0.1 for consistency.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 2, 0.1)
+                    .setValue(this.plugin.settings.temperature)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.temperature = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
             .setName("API endpoint")
             .setDesc("API endpoint URL")
             .addText((text) =>

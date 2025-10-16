@@ -661,7 +661,7 @@ CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
   → User sees: "Task 1 is the most relevant/due soonest/highest priority, then Task 2, then Task 3"
 - The tasks appear in the recommended list in the same order you mentioned them
 
-TWO WAYS TO REFERENCE TASKS:
+METHODS TO REFERENCE TASKS:
 
 Use [TASK_X] IDs (will be auto-converted to task numbers):
 ✅ "Focus on [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5]."
@@ -776,7 +776,7 @@ ${taskContext}`;
             body: JSON.stringify({
                 model: settings.model,
                 messages: messages,
-                temperature: 0.7,
+                temperature: settings.temperature,
                 max_tokens: 1000,
             }),
         });
@@ -835,6 +835,9 @@ ${taskContext}`;
                 model: settings.model,
                 messages: messages,
                 stream: false,
+                options: {
+                    temperature: settings.temperature,
+                },
             }),
         });
 
@@ -923,36 +926,25 @@ ${taskContext}`;
             recommended.push(tasks[index]);
         });
 
-        // If no task IDs were found, try fuzzy matching (fallback)
+        // If no task IDs were found, use fallback: return top relevant tasks
         if (recommended.length === 0) {
-            console.log(
-                "[Task Chat] No [TASK_X] references found, attempting fuzzy matching fallback...",
+            console.warn(
+                "⚠️ [Task Chat] WARNING: No [TASK_X] references found in AI response!",
             );
-            tasks.forEach((task) => {
-                // Check if significant portion of task text appears in response
-                const taskWords = task.text
-                    .split(/\s+/)
-                    .filter((w) => w.length > 3);
-                const matchCount = taskWords.filter((word) =>
-                    response.toLowerCase().includes(word.toLowerCase()),
-                ).length;
+            console.warn(
+                "[Task Chat] AI response did not follow [TASK_X] format. Using top tasks as fallback.",
+            );
 
-                const matchRatio = matchCount / taskWords.length;
-                if (
-                    matchCount >= Math.min(3, taskWords.length) &&
-                    matchRatio > 0.5
-                ) {
-                    console.log(
-                        `[Task Chat] Fuzzy match: "${task.text}" (${matchCount}/${taskWords.length} words = ${(matchRatio * 100).toFixed(0)}%)`,
-                    );
-                    if (!recommended.includes(task)) {
-                        recommended.push(task);
-                    }
-                }
-            });
+            // Use relevance scoring as fallback - return top 3-5 most relevant tasks
+            const scoredTasks = this.scoreTasksByRelevance(tasks, keywords);
+            const topTasks = scoredTasks
+                .slice(0, Math.min(5, settings.maxRecommendations))
+                .map((st) => st.task);
+
             console.log(
-                `[Task Chat] Fuzzy matching found ${recommended.length} tasks`,
+                `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance`,
             );
+            return topTasks;
         }
 
         // Trust AI's recommendations - only show tasks that AI explicitly mentioned

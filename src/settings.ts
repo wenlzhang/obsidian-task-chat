@@ -9,6 +9,7 @@ export interface PluginSettings {
     apiKey: string;
     model: string;
     apiEndpoint: string;
+    temperature: number; // AI temperature (0.0-2.0, lower = more consistent)
 
     // DataView Settings
     dataviewKeys: {
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     apiKey: "",
     model: "gpt-4o-mini",
     apiEndpoint: "https://api.openai.com/v1/chat/completions",
+    temperature: 0.1, // Low temperature for consistent, deterministic responses
 
     // DataView Settings
     dataviewKeys: {
