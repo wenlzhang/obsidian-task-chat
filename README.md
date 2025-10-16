@@ -447,22 +447,65 @@ Total Cost: $0.002 - $0.0021
 
 ### Query & Search Settings
 
-**Query Parsing**
-- **Use AI Query Parsing**: Enable AI-powered query understanding (optional)
+**🔑 Understanding the Two AI Features**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ FEATURE 1: AI Query Understanding (Optional Toggle) │
+├─────────────────────────────────────────────────────┤
+│ • Parses your query to extract filters              │
+│ • Cost: ~$0.0001 per query                          │
+│ • YOU CONTROL: Toggle ON/OFF in settings            │
+│ • Alternative: Free regex-based parsing             │
+└─────────────────────────────────────────────────────┘
+                         ↓
+                 Filters Extracted
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│ FEATURE 2: AI Task Analysis (Always Available)      │
+├─────────────────────────────────────────────────────┤
+│ • Analyzes tasks and provides recommendations       │
+│ • Cost: ~$0.002 per analysis                        │
+│ • AUTOMATIC: Triggers based on complexity           │
+│ • YOU CONTROL: Adjust when it triggers via settings │
+└─────────────────────────────────────────────────────┘
+```
+
+**Key Point**: These are TWO SEPARATE features. Disabling Feature 1 does NOT disable Feature 2!
+
+---
+
+**Query Understanding** (Query Parsing Only)
+- **AI Query Understanding**: Enable AI to understand your queries (optional)
+  - What it does: AI parses your query to extract filters and keywords
   - When ON: Better semantic understanding, multilingual support (~$0.0001/query)
   - When OFF: Fast regex-based parsing ($0)
-  - Recommended: ON for complex queries, OFF for cost savings
+  - Recommended: ON for complex multilingual queries, OFF for cost savings
+  - **Important**: This does NOT control AI task analysis - that's always available and automatic!
+
+**AI Task Analysis** (Always Available, Automatic)
+- AI task analysis is **ALWAYS ENABLED** and works automatically
+- You cannot disable it - it's a core feature
+- Triggers automatically when:
+  - Query has 2+ filter types (complex query), OR
+  - Results exceed maxDirectResults (needs prioritization)
+- Costs: ~$0.002 per analysis (~1000-2000 tokens)
+- **Control when it triggers**:
+  - Adjust "Max Direct Results" (higher = less frequent AI analysis)
+  - Use simple queries when possible (1 filter type)
 
 **Search Optimization**
-- **Max Direct Results**: Maximum results for direct search without AI analysis (default: 10)
-  - Lower values: More aggressive cost saving, fewer results shown directly
-  - Higher values: More results shown directly, less frequent AI analysis
-  - Recommended: 5-15 based on your typical query complexity
+- **Max Direct Results**: Maximum results for direct search without AI analysis (default: 20)
+  - Lower values (5-10): More aggressive cost saving, AI triggers earlier
+  - Higher values (20-50): More results shown directly, less frequent AI
+  - Recommended: 10-20 based on your typical query complexity
+  - This is the main way to control AI task analysis frequency
 
-- **Max Tasks for AI**: Maximum tasks sent to AI for analysis (default: 20)
+- **Max Tasks for AI**: Maximum tasks sent to AI for analysis (default: 30)
   - Controls token usage when AI analysis is needed
   - Higher values: More comprehensive analysis, higher token cost
   - Lower values: Faster responses, lower cost
+  - Does not affect when AI is triggered
 
 **Language Settings**
 - **Query Languages**: Languages for semantic search (default: English, 中文)

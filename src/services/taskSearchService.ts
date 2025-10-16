@@ -124,21 +124,56 @@ export class TaskSearchService {
         );
 
         // Remove folder indicators
-        cleanedQuery = cleanedQuery.replace(
-            /(?:in|from)\s+folder/gi,
-            "",
-        );
+        cleanedQuery = cleanedQuery.replace(/(?:in|from)\s+folder/gi, "");
 
         // Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
         // Remove common stop words
         const stopWords = new Set([
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
-            "for", "of", "with", "by", "from", "as", "is", "was", "are", "were",
-            "show", "find", "get", "list", "tell", "give", "me", "my", "all",
-            "task", "tasks", "给我", "给", "我", "的", "了", "吗", "呢", "啊",
-            "如何", "怎么", "怎样", "任务",
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "is",
+            "was",
+            "are",
+            "were",
+            "show",
+            "find",
+            "get",
+            "list",
+            "tell",
+            "give",
+            "me",
+            "my",
+            "all",
+            "task",
+            "tasks",
+            "给我",
+            "给",
+            "我",
+            "的",
+            "了",
+            "吗",
+            "呢",
+            "啊",
+            "如何",
+            "怎么",
+            "怎样",
+            "任务",
         ]);
 
         // Filter out stop words and short words

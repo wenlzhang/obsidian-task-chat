@@ -271,9 +271,9 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName("AI-powered query parsing")
+            .setName("AI query understanding (query parsing only)")
             .setDesc(
-                "Use AI to parse queries for better accuracy. May be slower but handles complex queries and multiple languages more reliably. Disable for faster regex-based parsing.",
+                "Use AI to understand your queries (~$0.0001/query). Improves semantic understanding and multilingual support. When disabled, uses free regex-based parsing. Note: AI task analysis is always available and automatic regardless of this setting - it triggers based on query complexity and result count.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -284,10 +284,39 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Info section about AI Task Analysis
+        containerEl.createDiv("task-chat-info-box", (el) => {
+            el.createEl("div", {
+                text: "ℹ️ About AI Task Analysis",
+                cls: "task-chat-info-box-title",
+            });
+
+            el.createEl("div", {
+                text: "AI task analysis is ALWAYS AVAILABLE and works automatically regardless of the query parsing setting above. It intelligently decides when to use AI based on:",
+                cls: "task-chat-info-box-description",
+            });
+
+            const list = el.createEl("ul");
+            list.createEl("li", {
+                text: "Query complexity (2+ filter types = AI analysis)",
+            });
+            list.createEl("li", {
+                text: `Result count (>${this.plugin.settings.maxDirectResults} results = AI analysis)`,
+            });
+            list.createEl("li", {
+                text: "Simple queries with few results use direct search (no cost)",
+            });
+
+            el.createEl("div", {
+                text: "Cost: ~$0.002 per AI analysis. You can control when it triggers by adjusting 'Max direct results' below.",
+                cls: "task-chat-info-box-cost",
+            });
+        });
+
         new Setting(containerEl)
             .setName("Query languages for semantic search")
             .setDesc(
-                "Languages to use for semantic keyword expansion and AI response. Requires 'AI-powered query parsing' to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
+                "Languages to use for semantic keyword expansion and AI response. Requires 'AI query understanding' to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text

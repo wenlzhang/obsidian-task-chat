@@ -489,6 +489,32 @@
 
 /* Settings Tab Styles */
 
+/* Info box for AI Task Analysis explanation */
+.task-chat-info-box {
+    border-left: 3px solid var(--interactive-accent);
+    background-color: var(--background-secondary);
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 18px;
+}
+
+.task-chat-info-box-title {
+    font-weight: 600;
+}
+
+.task-chat-info-box-description {
+    margin-top: 4px;
+}
+
+.task-chat-info-box ul {
+    margin-left: 20px;
+    margin-top: 8px;
+}
+
+.task-chat-info-box-cost {
+    margin-top: 8px;
+}
+
 /* Model info display */
 .model-info-display {
     margin-top: -8px;

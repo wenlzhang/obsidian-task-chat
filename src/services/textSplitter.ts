@@ -84,10 +84,7 @@ export class TextSplitter {
             } else if (char.match(/[a-zA-Z]/)) {
                 // Extract complete English word within CJK text
                 let word = "";
-                while (
-                    i < text.length &&
-                    text[i].match(/[a-zA-Z0-9_]/)
-                ) {
+                while (i < text.length && text[i].match(/[a-zA-Z0-9_]/)) {
                     word += text[i];
                     i++;
                 }
