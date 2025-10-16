@@ -63,6 +63,7 @@ export class AIService {
         // Parse query using AI if enabled, otherwise use regex
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
+        let usingAIParsing = false; // Track if AI parsing was actually used
 
         if (settings.useAIQueryParsing) {
             console.log("[Task Chat] Using AI-powered query parsing...");
@@ -73,12 +74,14 @@ export class AIService {
                     settings,
                 );
                 console.log("[Task Chat] AI parsed query:", parsedQuery);
+                usingAIParsing = true; // AI parsing succeeded
             } catch (error) {
                 console.error(
                     "[Task Chat] AI parsing failed, falling back to regex:",
                     error,
                 );
                 parsedQuery = null;
+                usingAIParsing = false;
             }
 
             // Convert ParsedQuery to intent format for compatibility
@@ -177,6 +180,12 @@ export class AIService {
             // No tasks found matching the filters
             if (filteredTasks.length === 0) {
                 const filterDesc = this.buildFilterDescription(intent);
+                const reason = this.buildDirectSearchReason(
+                    0,
+                    settings.maxDirectResults,
+                    false,
+                    usingAIParsing,
+                );
                 return {
                     response: `No tasks found matching ${filterDesc}.`,
                     directResults: [],
@@ -188,8 +197,7 @@ export class AIService {
                         model: "none",
                         provider: settings.aiProvider,
                         isEstimated: true,
-                        directSearchReason:
-                            "No tasks found matching your criteria",
+                        directSearchReason: reason,
                     },
                 };
             }
@@ -232,6 +240,12 @@ export class AIService {
                 sortedTasks.length <= settings.maxDirectResults &&
                 isSimpleQuery
             ) {
+                const reason = this.buildDirectSearchReason(
+                    sortedTasks.length,
+                    settings.maxDirectResults,
+                    isSimpleQuery,
+                    usingAIParsing,
+                );
                 return {
                     response: "",
                     directResults: sortedTasks.slice(
@@ -246,7 +260,7 @@ export class AIService {
                         model: "none",
                         provider: settings.aiProvider,
                         isEstimated: true,
-                        directSearchReason: "simple_query", // Simple query with few results
+                        directSearchReason: reason,
                     },
                 };
             }
@@ -312,6 +326,12 @@ export class AIService {
         // No tasks found matching the filters
         if (filteredTasks.length === 0) {
             const filterDesc = this.buildFilterDescription(intent);
+            const reason = this.buildDirectSearchReason(
+                0,
+                settings.maxDirectResults,
+                false,
+                usingAIParsing,
+            );
             return {
                 response: `No tasks found matching ${filterDesc}.`,
                 directResults: [],
@@ -323,7 +343,7 @@ export class AIService {
                     model: "none",
                     provider: settings.aiProvider,
                     isEstimated: true,
-                    directSearchReason: "No tasks found matching your criteria",
+                    directSearchReason: reason,
                 },
             };
         }
@@ -361,6 +381,7 @@ export class AIService {
                 sortedTasks.length,
                 settings.maxDirectResults,
                 isSimpleQuery,
+                usingAIParsing,
             );
 
             return {
@@ -460,30 +481,33 @@ export class AIService {
     }
 
     /**
-     * Explain why direct search was used instead of AI
+     * Explain why direct search was used instead of AI task analysis
      */
     private static buildDirectSearchReason(
         resultCount: number,
         maxDirectResults: number,
         isSimpleQuery: boolean,
+        usingAIParsing: boolean,
     ): string {
-        const reasons: string[] = [];
-
         if (resultCount === 0) {
-            return "No tasks found matching your criteria";
+            return usingAIParsing
+                ? "No tasks found matching your criteria"
+                : "No tasks found (direct search, AI query parsing disabled)";
         }
 
+        if (!usingAIParsing) {
+            // AI parsing is disabled or failed - using direct search with regex parsing
+            return `Direct search with ${resultCount} result(s) (AI query parsing disabled)`;
+        }
+
+        // AI parsing was used for query understanding, but direct search for results
         if (isSimpleQuery && resultCount <= maxDirectResults) {
-            reasons.push("simple query with few results");
-            reasons.push("AI processing unnecessary");
+            return `Simple query, ${resultCount} result(s) found (no AI task analysis needed)`;
         } else if (resultCount <= maxDirectResults) {
-            reasons.push(`only ${resultCount} task(s) found`);
-            reasons.push("within direct result limit");
+            return `${resultCount} result(s) found, within direct limit (${maxDirectResults})`;
         }
 
-        return reasons.length > 0
-            ? `Direct search (${reasons.join(", ")})`
-            : "Direct search used";
+        return "Direct search used";
     }
 
     /**

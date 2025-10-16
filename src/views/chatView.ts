@@ -509,11 +509,11 @@ export class ChatView extends ItemView {
             // Hide typing indicator
             this.hideTypingIndicator();
 
-            // Handle direct results (no AI used)
+            // Handle direct results (no AI task analysis used)
             if (result.directResults) {
                 const directMessage: ChatMessage = {
                     role: "system",
-                    content: `Found ${result.directResults.length} matching task(s) (no AI processing used):`,
+                    content: `Found ${result.directResults.length} matching task(s):`,
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,
