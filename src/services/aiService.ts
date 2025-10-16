@@ -745,15 +745,19 @@ ${taskContext}`;
             return 0;
         }
 
-        // Get pricing from cache or embedded rates
-        const rates = PricingService.getPricing(model, cachedPricing);
+        // Get pricing from cache or embedded rates using provider-prefixed lookup
+        const rates = PricingService.getPricing(model, provider, cachedPricing);
 
         // Default to gpt-4o-mini pricing if unknown
         if (!rates) {
             console.warn(
                 `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
             );
-            const fallback = PricingService.getPricing("gpt-4o-mini", {});
+            const fallback = PricingService.getPricing(
+                "gpt-4o-mini",
+                "openai",
+                {},
+            );
             if (!fallback) {
                 return 0; // Should never happen
             }

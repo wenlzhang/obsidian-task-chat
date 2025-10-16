@@ -109,38 +109,117 @@ export class PricingService {
 
     /**
      * Get pricing for a specific model, checking cache first, then embedded rates
+     * Uses provider-prefixed format for accurate OpenRouter lookup
      */
     static getPricing(
         model: string,
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
         cachedPricing: Record<string, { input: number; output: number }>,
     ): { input: number; output: number } | null {
-        // Try exact match in cache first
+        // Ollama is always free
+        if (provider === "ollama") {
+            return { input: 0, output: 0 };
+        }
+
+        // Construct OpenRouter format: "provider/model"
+        // This gives us the most accurate pricing from OpenRouter's database
+        const openRouterFormat = this.constructOpenRouterModelId(
+            provider,
+            model,
+        );
+
+        // Try OpenRouter format first (most accurate)
+        if (cachedPricing[openRouterFormat]) {
+            console.log(
+                `[Pricing] Found exact match in cache: ${openRouterFormat}`,
+            );
+            return cachedPricing[openRouterFormat];
+        }
+
+        // Try exact model name match in cache
         if (cachedPricing[model]) {
+            console.log(`[Pricing] Found model in cache: ${model}`);
             return cachedPricing[model];
         }
 
-        // Try embedded pricing
+        // Try embedded pricing with OpenRouter format
         const embedded = this.getEmbeddedPricing();
+        if (embedded[openRouterFormat]) {
+            console.log(
+                `[Pricing] Using embedded rate for: ${openRouterFormat}`,
+            );
+            return embedded[openRouterFormat];
+        }
+
+        // Try exact model name in embedded pricing
         if (embedded[model]) {
+            console.log(`[Pricing] Using embedded rate for: ${model}`);
             return embedded[model];
         }
 
-        // Try partial match in cache (case insensitive)
+        // Fallback: Try partial match in cache (case insensitive)
         const modelLower = model.toLowerCase();
         for (const [key, value] of Object.entries(cachedPricing)) {
-            if (modelLower.includes(key.toLowerCase())) {
+            if (
+                key.toLowerCase().includes(modelLower) ||
+                modelLower.includes(key.toLowerCase())
+            ) {
+                console.log(
+                    `[Pricing] Found partial match in cache: ${key} for ${model}`,
+                );
                 return value;
             }
         }
 
-        // Try partial match in embedded pricing
+        // Last resort: Try partial match in embedded pricing
         for (const [key, value] of Object.entries(embedded)) {
-            if (modelLower.includes(key.toLowerCase())) {
+            if (
+                key.toLowerCase().includes(modelLower) ||
+                modelLower.includes(key.toLowerCase())
+            ) {
+                console.log(
+                    `[Pricing] Found partial match in embedded: ${key} for ${model}`,
+                );
                 return value;
             }
         }
 
+        console.warn(
+            `[Pricing] No pricing found for: ${model} (provider: ${provider}, tried: ${openRouterFormat})`,
+        );
         return null;
+    }
+
+    /**
+     * Construct OpenRouter model ID from provider and model name
+     * Examples:
+     *   openai + "gpt-4o-mini" → "openai/gpt-4o-mini"
+     *   anthropic + "claude-3.5-sonnet-20241022" → "anthropic/claude-3.5-sonnet-20241022"
+     *   openrouter + "openai/gpt-4o" → "openai/gpt-4o" (already has prefix)
+     */
+    private static constructOpenRouterModelId(
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+        model: string,
+    ): string {
+        // If model already has a slash, it's likely already in OpenRouter format
+        if (model.includes("/")) {
+            return model;
+        }
+
+        // Map provider to OpenRouter prefix
+        const providerPrefix: Record<string, string> = {
+            openai: "openai",
+            anthropic: "anthropic",
+            openrouter: "", // OpenRouter models already have provider prefix
+            ollama: "", // Ollama is local
+        };
+
+        const prefix = providerPrefix[provider];
+        if (!prefix) {
+            return model; // Return as-is if no prefix
+        }
+
+        return `${prefix}/${model}`;
     }
 
     /**
