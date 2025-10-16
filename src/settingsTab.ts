@@ -1,5 +1,6 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import TaskChatPlugin from "./main";
+import { ModelProviderService } from "./services/modelProviderService";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -20,7 +21,9 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("AI provider")
-            .setDesc("Select your AI provider")
+            .setDesc(
+                "Select your AI provider. Each provider has different requirements and capabilities.",
+            )
             .addDropdown((dropdown) =>
                 dropdown
                     .addOption("openai", "OpenAI")
@@ -30,41 +33,81 @@ export class SettingsTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.aiProvider)
                     .onChange(async (value) => {
                         this.plugin.settings.aiProvider = value as any;
+                        // Auto-configure provider defaults
+                        this.configureProviderDefaults(value);
                         await this.plugin.saveSettings();
-                        this.display(); // Refresh to update endpoint
+                        this.display(); // Refresh to show provider-specific settings
                     }),
             );
 
-        new Setting(containerEl)
-            .setName("API key")
-            .setDesc("Your AI provider API key (not needed for Ollama)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("sk-...")
-                    .setValue(this.plugin.settings.apiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.apiKey = value;
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.type = "password";
-                    }),
-            );
+        // Show API key only for cloud providers
+        if (this.plugin.settings.aiProvider !== "ollama") {
+            const currentApiKey = this.getCurrentApiKey();
 
-        new Setting(containerEl)
+            new Setting(containerEl)
+                .setName("API key")
+                .setDesc(this.getApiKeyDescription())
+                .addText((text) =>
+                    text
+                        .setPlaceholder(this.getApiKeyPlaceholder())
+                        .setValue(currentApiKey)
+                        .onChange(async (value) => {
+                            this.setCurrentApiKey(value);
+                            await this.plugin.saveSettings();
+                        })
+                        .then((text) => {
+                            text.inputEl.type = "password";
+                        }),
+                );
+        }
+
+        const modelSetting = new Setting(containerEl)
             .setName("Model")
-            .setDesc(
-                "AI model to use (e.g., gpt-4o-mini, claude-3-5-sonnet-20241022, llama3.2)",
-            )
-            .addText((text) =>
-                text
-                    .setPlaceholder("gpt-4o-mini")
-                    .setValue(this.plugin.settings.model)
-                    .onChange(async (value) => {
-                        this.plugin.settings.model = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+            .setDesc(this.getModelDescription());
+
+        // Add dropdown for model selection
+        modelSetting.addDropdown((dropdown) => {
+            const availableModels = this.getAvailableModels();
+
+            if (availableModels.length === 0) {
+                dropdown.addOption("", "Loading models...");
+            } else {
+                availableModels.forEach((model) => {
+                    dropdown.addOption(model, model);
+                });
+            }
+
+            dropdown
+                .setValue(this.plugin.settings.model)
+                .onChange(async (value) => {
+                    this.plugin.settings.model = value;
+                    await this.plugin.saveSettings();
+                });
+        });
+
+        // Add refresh button to reload models
+        modelSetting.addButton((button) =>
+            button
+                .setButtonText("Refresh")
+                .setTooltip("Fetch latest available models")
+                .onClick(async () => {
+                    button.setButtonText("Loading...");
+                    button.setDisabled(true);
+                    await this.refreshModels();
+                    button.setButtonText("Refresh");
+                    button.setDisabled(false);
+                    this.display(); // Refresh UI to show new models
+                }),
+        );
+
+        // Add model info based on provider
+        const modelInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        modelInfo.style.marginTop = "-8px";
+        modelInfo.style.marginBottom = "18px";
+        modelInfo.style.paddingLeft = "0";
+        modelInfo.innerHTML = this.getModelInfo();
 
         new Setting(containerEl)
             .setName("Temperature")
@@ -84,18 +127,37 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("API endpoint")
-            .setDesc("API endpoint URL")
+            .setDesc(this.getEndpointDescription())
             .addText((text) =>
                 text
-                    .setPlaceholder(
-                        "https://api.openai.com/v1/chat/completions",
-                    )
+                    .setPlaceholder(this.getEndpointPlaceholder())
                     .setValue(this.plugin.settings.apiEndpoint)
                     .onChange(async (value) => {
                         this.plugin.settings.apiEndpoint = value;
                         await this.plugin.saveSettings();
                     }),
             );
+
+        // Add provider-specific setup instructions
+        if (this.plugin.settings.aiProvider === "ollama") {
+            const ollamaInfo = containerEl.createDiv({
+                cls: "setting-item-description",
+            });
+            ollamaInfo.style.marginTop = "12px";
+            ollamaInfo.style.padding = "12px";
+            ollamaInfo.style.backgroundColor = "var(--background-secondary)";
+            ollamaInfo.style.borderRadius = "6px";
+            ollamaInfo.innerHTML = `
+                <strong>Ollama setup:</strong><br>
+                1. Install Ollama from <a href="https://ollama.com" target="_blank">ollama.com</a><br>
+                2. Pull a model: <code>ollama pull llama3.2</code> (or mistral, phi3, etc.)<br>
+                3. Start server with CORS: <code>OLLAMA_ORIGINS="app://obsidian.md*" ollama serve</code><br>
+                4. On macOS app: <code>launchctl setenv OLLAMA_ORIGINS "app://obsidian.md*"</code> then restart Ollama<br>
+                5. On Windows: <code>$env:OLLAMA_ORIGINS="app://obsidian.md*"; ollama serve</code><br>
+                <br>
+                <strong>Available models:</strong> llama3.2, llama3.1, mistral, phi3, gemma2, qwen2.5, and more at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>
+            `;
+        }
 
         // Chat Settings
         containerEl.createEl("h3", { text: "Chat" });
@@ -519,5 +581,381 @@ export class SettingsTab extends PluginSettingTab {
                     this.display(); // Refresh to show updated stats
                 }),
             );
+    }
+
+    /**
+     * Configure provider-specific defaults
+     */
+    private configureProviderDefaults(provider: string): void {
+        switch (provider) {
+            case "openai":
+                if (
+                    !this.plugin.settings.apiEndpoint ||
+                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
+                    this.plugin.settings.apiEndpoint.includes("openrouter") ||
+                    this.plugin.settings.apiEndpoint.includes("localhost") ||
+                    this.plugin.settings.apiEndpoint.includes("11434")
+                ) {
+                    this.plugin.settings.apiEndpoint =
+                        "https://api.openai.com/v1/chat/completions";
+                }
+                if (
+                    this.plugin.settings.model.includes("claude") ||
+                    this.plugin.settings.model.includes("llama") ||
+                    this.plugin.settings.model.includes("mistral")
+                ) {
+                    this.plugin.settings.model = "gpt-4o-mini";
+                }
+                break;
+            case "anthropic":
+                if (
+                    !this.plugin.settings.apiEndpoint ||
+                    this.plugin.settings.apiEndpoint.includes("openai") ||
+                    this.plugin.settings.apiEndpoint.includes("openrouter") ||
+                    this.plugin.settings.apiEndpoint.includes("localhost") ||
+                    this.plugin.settings.apiEndpoint.includes("11434")
+                ) {
+                    this.plugin.settings.apiEndpoint =
+                        "https://api.anthropic.com/v1/messages";
+                }
+                if (
+                    this.plugin.settings.model.includes("gpt") ||
+                    this.plugin.settings.model.includes("llama") ||
+                    this.plugin.settings.model.includes("mistral")
+                ) {
+                    this.plugin.settings.model = "claude-3-5-sonnet-20241022";
+                }
+                break;
+            case "openrouter":
+                if (
+                    !this.plugin.settings.apiEndpoint ||
+                    this.plugin.settings.apiEndpoint.includes("openai") ||
+                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
+                    this.plugin.settings.apiEndpoint.includes("localhost") ||
+                    this.plugin.settings.apiEndpoint.includes("11434")
+                ) {
+                    this.plugin.settings.apiEndpoint =
+                        "https://openrouter.ai/api/v1/chat/completions";
+                }
+                break;
+            case "ollama":
+                if (
+                    !this.plugin.settings.apiEndpoint ||
+                    this.plugin.settings.apiEndpoint.includes("openai") ||
+                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
+                    this.plugin.settings.apiEndpoint.includes("openrouter")
+                ) {
+                    this.plugin.settings.apiEndpoint =
+                        "http://localhost:11434/api/chat";
+                }
+                if (
+                    this.plugin.settings.model.includes("gpt") ||
+                    this.plugin.settings.model.includes("claude")
+                ) {
+                    this.plugin.settings.model = "llama3.2";
+                }
+                break;
+        }
+    }
+
+    /**
+     * Get API key description based on provider
+     */
+    private getApiKeyDescription(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "Get your API key from platform.openai.com/api-keys";
+            case "anthropic":
+                return "Get your API key from console.anthropic.com/settings/keys";
+            case "openrouter":
+                return "Get your API key from openrouter.ai/keys";
+            default:
+                return "Your AI provider API key";
+        }
+    }
+
+    /**
+     * Get API key placeholder based on provider
+     */
+    private getApiKeyPlaceholder(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "sk-...";
+            case "anthropic":
+                return "sk-ant-...";
+            case "openrouter":
+                return "sk-or-...";
+            default:
+                return "Enter your API key";
+        }
+    }
+
+    /**
+     * Get model description based on provider
+     */
+    private getModelDescription(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "OpenAI model to use. GPT-4o-mini is cost-effective and fast.";
+            case "anthropic":
+                return "Claude model to use. Claude 3.5 Sonnet offers excellent performance.";
+            case "openrouter":
+                return "Any model available on OpenRouter. Check openrouter.ai/models for the full list.";
+            case "ollama":
+                return "Local model name. Must be pulled first with 'ollama pull <model>'.";
+            default:
+                return "AI model to use";
+        }
+    }
+
+    /**
+     * Get model placeholder based on provider
+     */
+    private getModelPlaceholder(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "gpt-4o-mini";
+            case "anthropic":
+                return "claude-3-5-sonnet-20241022";
+            case "openrouter":
+                return "openai/gpt-4o-mini";
+            case "ollama":
+                return "llama3.2";
+            default:
+                return "Enter model name";
+        }
+    }
+
+    /**
+     * Get model suggestions based on provider
+     */
+    private getModelSuggestions(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return `<strong>Popular models:</strong>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><code>gpt-4o-mini</code> - Fast, affordable, great for most tasks</li>
+                        <li><code>gpt-4o</code> - More capable, better reasoning</li>
+                        <li><code>gpt-4-turbo</code> - Previous generation, still powerful</li>
+                    </ul>`;
+            case "anthropic":
+                return `<strong>Popular models:</strong>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><code>claude-3-5-sonnet-20241022</code> - Latest, most capable</li>
+                        <li><code>claude-3-haiku-20240307</code> - Fast and affordable</li>
+                        <li><code>claude-3-opus-20240229</code> - Most powerful (expensive)</li>
+                    </ul>`;
+            case "openrouter":
+                return `<strong>Access models from multiple providers:</strong>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><code>openai/gpt-4o-mini</code> - OpenAI's affordable model</li>
+                        <li><code>anthropic/claude-3.5-sonnet</code> - Claude's latest</li>
+                        <li><code>meta-llama/llama-3.1-70b-instruct</code> - Open source</li>
+                    </ul>
+                    Visit <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a> for the complete list.`;
+            case "ollama":
+                return `<strong>Popular local models (pull with <code>ollama pull &lt;model&gt;</code>):</strong>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><code>llama3.2</code> - Meta's latest (3B or 1B, very fast)</li>
+                        <li><code>llama3.1</code> - More capable (8B, 70B, 405B)</li>
+                        <li><code>mistral</code> - Excellent performance (7B)</li>
+                        <li><code>phi3</code> - Microsoft's efficient model</li>
+                        <li><code>qwen2.5</code> - Strong multilingual support</li>
+                    </ul>
+                    Browse all models at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>`;
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * Get endpoint description based on provider
+     */
+    private getEndpointDescription(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "OpenAI API endpoint. Use default unless using a proxy or custom deployment.";
+            case "anthropic":
+                return "Anthropic API endpoint. Use default unless using a proxy.";
+            case "openrouter":
+                return "OpenRouter API endpoint. Use default value.";
+            case "ollama":
+                return "Ollama server endpoint. Default is http://localhost:11434/api/chat";
+            default:
+                return "API endpoint URL";
+        }
+    }
+
+    /**
+     * Get endpoint placeholder based on provider
+     */
+    private getEndpointPlaceholder(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return "https://api.openai.com/v1/chat/completions";
+            case "anthropic":
+                return "https://api.anthropic.com/v1/messages";
+            case "openrouter":
+                return "https://openrouter.ai/api/v1/chat/completions";
+            case "ollama":
+                return "http://localhost:11434/api/chat";
+            default:
+                return "Enter API endpoint";
+        }
+    }
+
+    /**
+     * Get current API key for selected provider
+     */
+    private getCurrentApiKey(): string {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return (
+                    this.plugin.settings.openaiApiKey ||
+                    this.plugin.settings.apiKey ||
+                    ""
+                );
+            case "anthropic":
+                return (
+                    this.plugin.settings.anthropicApiKey ||
+                    this.plugin.settings.apiKey ||
+                    ""
+                );
+            case "openrouter":
+                return (
+                    this.plugin.settings.openrouterApiKey ||
+                    this.plugin.settings.apiKey ||
+                    ""
+                );
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * Set current API key for selected provider
+     */
+    private setCurrentApiKey(value: string): void {
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                this.plugin.settings.openaiApiKey = value;
+                break;
+            case "anthropic":
+                this.plugin.settings.anthropicApiKey = value;
+                break;
+            case "openrouter":
+                this.plugin.settings.openrouterApiKey = value;
+                break;
+        }
+        // Also update legacy field for backward compatibility
+        this.plugin.settings.apiKey = value;
+    }
+
+    /**
+     * Get available models for current provider
+     */
+    private getAvailableModels(): string[] {
+        const provider = this.plugin.settings.aiProvider;
+        const cached = this.plugin.settings.availableModels[provider];
+
+        // Return cached models if available
+        if (cached && cached.length > 0) {
+            return cached;
+        }
+
+        // Return default models as fallback
+        switch (provider) {
+            case "openai":
+                return ModelProviderService.getDefaultOpenAIModels();
+            case "anthropic":
+                return ModelProviderService.getDefaultAnthropicModels();
+            case "openrouter":
+                return ModelProviderService.getDefaultOpenRouterModels();
+            case "ollama":
+                return ModelProviderService.getDefaultOllamaModels();
+            default:
+                return [];
+        }
+    }
+
+    /**
+     * Refresh models from provider API
+     */
+    private async refreshModels(): Promise<void> {
+        const provider = this.plugin.settings.aiProvider;
+        const apiKey = this.getCurrentApiKey();
+
+        try {
+            let models: string[] = [];
+
+            switch (provider) {
+                case "openai":
+                    if (!apiKey) {
+                        new Notice("Please set OpenAI API key first");
+                        return;
+                    }
+                    new Notice("Fetching OpenAI models...");
+                    models =
+                        await ModelProviderService.fetchOpenAIModels(apiKey);
+                    break;
+
+                case "anthropic":
+                    new Notice("Loading Anthropic models...");
+                    models =
+                        await ModelProviderService.fetchAnthropicModels(apiKey);
+                    break;
+
+                case "openrouter":
+                    if (!apiKey) {
+                        new Notice("Please set OpenRouter API key first");
+                        return;
+                    }
+                    new Notice("Fetching OpenRouter models...");
+                    models =
+                        await ModelProviderService.fetchOpenRouterModels(
+                            apiKey,
+                        );
+                    break;
+
+                case "ollama":
+                    new Notice("Fetching local Ollama models...");
+                    models = await ModelProviderService.fetchOllamaModels(
+                        this.plugin.settings.apiEndpoint,
+                    );
+                    break;
+            }
+
+            if (models.length > 0) {
+                this.plugin.settings.availableModels[provider] = models;
+                await this.plugin.saveSettings();
+                new Notice(`Loaded ${models.length} models`);
+            } else {
+                new Notice("No models found. Using defaults.");
+            }
+        } catch (error) {
+            console.error("Error refreshing models:", error);
+            new Notice("Failed to fetch models. Using defaults.");
+        }
+    }
+
+    /**
+     * Get model info text (replaces getModelSuggestions)
+     */
+    private getModelInfo(): string {
+        const models = this.getAvailableModels();
+        const count = models.length;
+
+        switch (this.plugin.settings.aiProvider) {
+            case "openai":
+                return `<strong>${count} OpenAI models available</strong> - Click "Refresh" to fetch latest from API`;
+            case "anthropic":
+                return `<strong>${count} Claude models available</strong> - Latest models from Anthropic`;
+            case "openrouter":
+                return `<strong>${count} models available</strong> - Click "Refresh" to fetch from OpenRouter. Visit <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a> for details.`;
+            case "ollama":
+                return `<strong>${count} models found</strong> - Click "Refresh" to detect installed local models. Install more at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>`;
+            default:
+                return "";
+        }
     }
 }

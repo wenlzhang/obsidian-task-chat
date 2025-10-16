@@ -49,10 +49,14 @@ export class AIService {
         tokenUsage?: TokenUsage;
         directResults?: Task[];
     }> {
-        if (!settings.apiKey || settings.apiKey.trim() === "") {
-            throw new Error(
-                "API key is not configured. Please set it in the plugin settings.",
-            );
+        // API key not required for local Ollama
+        if (settings.aiProvider !== "ollama") {
+            const apiKey = this.getApiKeyForProvider(settings);
+            if (!apiKey || apiKey.trim() === "") {
+                throw new Error(
+                    `API key for ${settings.aiProvider} is not configured. Please set it in the plugin settings.`,
+                );
+            }
         }
 
         // Parse query using AI if enabled, otherwise use regex
@@ -771,13 +775,18 @@ ${taskContext}`;
             return this.callOllama(messages, settings);
         }
 
-        // OpenAI-compatible API call
+        if (settings.aiProvider === "anthropic") {
+            return this.callAnthropic(messages, settings);
+        }
+
+        // OpenAI-compatible API call (OpenAI and OpenRouter)
+        const apiKey = this.getApiKeyForProvider(settings);
         const response = await requestUrl({
             url: endpoint,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${settings.apiKey}`,
+                Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
                 model: settings.model,
@@ -802,6 +811,73 @@ ${taskContext}`;
         const completionTokens = usage.completion_tokens || 0;
         const totalTokens =
             usage.total_tokens || promptTokens + completionTokens;
+
+        const tokenUsage: TokenUsage = {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            estimatedCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                settings.model,
+            ),
+            model: settings.model,
+        };
+
+        return {
+            response: content,
+            tokenUsage,
+        };
+    }
+
+    /**
+     * Call Anthropic API (different format than OpenAI)
+     */
+    private static async callAnthropic(
+        messages: any[],
+        settings: PluginSettings,
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
+        const endpoint =
+            settings.apiEndpoint || "https://api.anthropic.com/v1/messages";
+
+        // Separate system message from conversation messages
+        const systemMessage = messages.find((m: any) => m.role === "system");
+        const conversationMessages = messages.filter(
+            (m: any) => m.role !== "system",
+        );
+
+        const apiKey = this.getApiKeyForProvider(settings);
+        const response = await requestUrl({
+            url: endpoint,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+                model: settings.model,
+                messages: conversationMessages,
+                system: systemMessage?.content || "",
+                temperature: settings.temperature,
+                max_tokens: 1000,
+            }),
+        });
+
+        if (response.status !== 200) {
+            throw new Error(
+                `Anthropic API error: ${response.status} ${response.text}`,
+            );
+        }
+
+        const data = response.json;
+        const content = data.content[0].text;
+
+        // Extract token usage
+        const usage = data.usage || {};
+        const promptTokens = usage.input_tokens || 0;
+        const completionTokens = usage.output_tokens || 0;
+        const totalTokens = promptTokens + completionTokens;
 
         const tokenUsage: TokenUsage = {
             promptTokens,
@@ -1145,5 +1221,23 @@ ${taskContext}`;
         });
 
         return sorted.map((item) => item.task);
+    }
+
+    /**
+     * Get API key for the current provider
+     */
+    private static getApiKeyForProvider(settings: PluginSettings): string {
+        switch (settings.aiProvider) {
+            case "openai":
+                return settings.openaiApiKey || settings.apiKey || "";
+            case "anthropic":
+                return settings.anthropicApiKey || settings.apiKey || "";
+            case "openrouter":
+                return settings.openrouterApiKey || settings.apiKey || "";
+            case "ollama":
+                return ""; // No API key needed
+            default:
+                return settings.apiKey || "";
+        }
     }
 }

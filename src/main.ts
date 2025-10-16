@@ -7,6 +7,7 @@ import { TaskFilterService } from "./services/taskFilterService";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/chatView";
 import { FilterModal } from "./views/filterModal";
 import { SessionManager } from "./services/sessionManager";
+import { ModelProviderService } from "./services/modelProviderService";
 
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
@@ -103,6 +104,97 @@ export default class TaskChatPlugin extends Plugin {
             DEFAULT_SETTINGS,
             await this.loadData(),
         );
+
+        // Migrate legacy apiKey to provider-specific keys
+        if (
+            this.settings.apiKey &&
+            !this.settings.openaiApiKey &&
+            !this.settings.anthropicApiKey &&
+            !this.settings.openrouterApiKey
+        ) {
+            console.log(
+                "Migrating legacy API key to provider-specific storage",
+            );
+            switch (this.settings.aiProvider) {
+                case "openai":
+                    this.settings.openaiApiKey = this.settings.apiKey;
+                    break;
+                case "anthropic":
+                    this.settings.anthropicApiKey = this.settings.apiKey;
+                    break;
+                case "openrouter":
+                    this.settings.openrouterApiKey = this.settings.apiKey;
+                    break;
+            }
+            await this.saveSettings();
+        }
+
+        // Auto-load models if not already cached
+        this.loadModelsInBackground();
+    }
+
+    /**
+     * Load models in background without blocking startup
+     */
+    private async loadModelsInBackground(): Promise<void> {
+        // Wait a bit for the plugin to fully initialize
+        setTimeout(async () => {
+            const provider = this.settings.aiProvider;
+            const cached = this.settings.availableModels[provider];
+
+            // Only load if cache is empty
+            if (!cached || cached.length === 0) {
+                console.log(`Loading ${provider} models in background...`);
+                try {
+                    let models: string[] = [];
+
+                    switch (provider) {
+                        case "openai":
+                            if (this.settings.openaiApiKey) {
+                                models =
+                                    await ModelProviderService.fetchOpenAIModels(
+                                        this.settings.openaiApiKey,
+                                    );
+                            } else {
+                                models =
+                                    ModelProviderService.getDefaultOpenAIModels();
+                            }
+                            break;
+                        case "anthropic":
+                            models =
+                                ModelProviderService.getDefaultAnthropicModels();
+                            break;
+                        case "openrouter":
+                            if (this.settings.openrouterApiKey) {
+                                models =
+                                    await ModelProviderService.fetchOpenRouterModels(
+                                        this.settings.openrouterApiKey,
+                                    );
+                            } else {
+                                models =
+                                    ModelProviderService.getDefaultOpenRouterModels();
+                            }
+                            break;
+                        case "ollama":
+                            models =
+                                await ModelProviderService.fetchOllamaModels(
+                                    this.settings.apiEndpoint,
+                                );
+                            break;
+                    }
+
+                    if (models.length > 0) {
+                        this.settings.availableModels[provider] = models;
+                        await this.saveSettings();
+                        console.log(
+                            `Loaded ${models.length} ${provider} models`,
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error loading models in background:", error);
+                }
+            }
+        }, 2000); // Wait 2 seconds after startup
     }
 
     async saveSettings(): Promise<void> {

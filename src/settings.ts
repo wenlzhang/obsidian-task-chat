@@ -5,11 +5,23 @@ export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
 
 export interface PluginSettings {
     // AI Provider Settings
-    aiProvider: "openai" | "ollama";
+    aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
+    // Separate API keys for each provider
+    openaiApiKey: string;
+    anthropicApiKey: string;
+    openrouterApiKey: string;
+    // Legacy API key (for backward compatibility)
     apiKey: string;
     model: string;
     apiEndpoint: string;
     temperature: number; // AI temperature (0.0-2.0, lower = more consistent)
+    // Cached available models per provider
+    availableModels: {
+        openai: string[];
+        anthropic: string[];
+        openrouter: string[];
+        ollama: string[];
+    };
 
     // DataView Settings
     dataviewKeys: {
@@ -67,10 +79,19 @@ export interface PluginSettings {
 export const DEFAULT_SETTINGS: PluginSettings = {
     // AI Provider Settings
     aiProvider: "openai",
-    apiKey: "",
+    openaiApiKey: "",
+    anthropicApiKey: "",
+    openrouterApiKey: "",
+    apiKey: "", // Legacy field for backward compatibility
     model: "gpt-4o-mini",
     apiEndpoint: "https://api.openai.com/v1/chat/completions",
     temperature: 0.1, // Low temperature for consistent, deterministic responses
+    availableModels: {
+        openai: [],
+        anthropic: [],
+        openrouter: [],
+        ollama: [],
+    },
 
     // DataView Settings
     dataviewKeys: {
