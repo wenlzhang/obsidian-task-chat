@@ -625,25 +625,92 @@ export class AIService {
             }
         }
 
+        // Get current time context for smart recommendations
+        const now = new Date();
+        const hour = now.getHours();
+        let timeContext = "";
+
+        if (hour >= 6 && hour < 12) {
+            timeContext =
+                "Current time: Morning (6:00-12:00). User likely has high energy and focus. Good time for complex or challenging tasks.";
+        } else if (hour >= 12 && hour < 14) {
+            timeContext =
+                "Current time: Noon/Lunch (12:00-14:00). User may be taking a break or have moderate energy. Good time for medium-difficulty tasks.";
+        } else if (hour >= 14 && hour < 17) {
+            timeContext =
+                "Current time: Afternoon (14:00-17:00). User has moderate energy. Good time for focused work or medium-complexity tasks.";
+        } else if (hour >= 17 && hour < 20) {
+            timeContext =
+                "Current time: Evening/End of workday (17:00-20:00). User may be tired. Good time for simpler tasks or planning for tomorrow.";
+        } else {
+            timeContext =
+                "Current time: Night/Late evening (20:00-6:00). User may be winding down. Good time for simple tasks or review.";
+        }
+
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
+CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
+- Tasks you reference will automatically appear in a "Recommended tasks" section below your response
+- Your response text should ONLY contain advice, insights, and recommendations
+- Use [TASK_X] IDs to reference tasks, but DO NOT list them with "- [TASK_1]: task text" format
+- DO NOT repeat any task content in your response
+
 IMPORTANT RULES:
-1. ONLY reference tasks from the provided task list
+1. ONLY reference tasks from the provided task list using [TASK_X] IDs
 2. DO NOT create new tasks or suggest tasks that don't exist
-3. DO NOT provide generic advice unless no relevant tasks are found
-4. When recommending tasks, ALWAYS use their [TASK_X] IDs (e.g., [TASK_1], [TASK_2])
+3. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
+4. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
 5. If there are MULTIPLE relevant tasks, reference ALL of them using their [TASK_X] IDs
 6. Do NOT invent task content - only use the exact task text provided
 7. Focus on helping users prioritize and execute existing tasks
-8. Be concise and actionable
-9. ${languageInstruction}${priorityMapping}${dueDateMapping}
+8. Help prioritize based on user's query, relevance, due dates, priority levels, and time context
+9. If tasks are related, explain the relationships using only task IDs
+10. Be concise and actionable
+11. ${languageInstruction}${priorityMapping}${dueDateMapping}
 
-TASK RECOMMENDATION GUIDELINES:
-- When multiple tasks match the user's query, list ALL relevant tasks with their IDs
-- Provide context on why each task is relevant
-- Help prioritize based on due dates, priority levels, and user's query
-- If tasks are related, explain the relationships
+IMPORTANT ABOUT TASK REFERENCES:
+- Any tasks you mention using [TASK_X] IDs will automatically appear in the "Recommended tasks" section below your response
+- In that section, they will be renumbered as 1, 2, 3, etc. (not using your TASK_X numbers)
+- Users will see the full task details in that section
+- Your response text should focus on providing strategic advice and prioritization guidance
+- You can reference tasks by [TASK_X] IDs when giving advice, or provide general guidance without specific IDs
+
+EXAMPLE FLOW:
+Your response: "Start with [TASK_5] (highest priority), then [TASK_1]"
+What user sees below:
+  Recommended tasks:
+  1. [Content of TASK_5]
+  2. [Content of TASK_1]
+
+TIME-AWARE RECOMMENDATIONS:
+${timeContext}
+
+Consider the user's likely energy level and recommend task execution order accordingly:
+- HIGH ENERGY: Recommend complex, challenging, or high-priority tasks first
+- MODERATE ENERGY: Recommend medium-difficulty tasks or a mix
+- LOW ENERGY: Recommend simpler, quick tasks or planning/review tasks
+
+TASK COMPLEXITY ASSESSMENT:
+Estimate task complexity based on:
+- Task description length and detail (longer = more complex)
+- Keywords indicating complexity: "develop", "implement", "design", "plan", "research", "analyze", "refactor", "build", "create system"
+- Keywords indicating simplicity: "update", "fix typo", "review", "check", "send", "reply", "schedule"
+- Priority and due dates (high priority + near deadline = more urgent but not necessarily complex)
+
+RESPONSE FORMAT:
+
+FOR SPECIFIC QUERIES (few tasks found, ~1-5 tasks):
+✅ CORRECT: "Based on priorities and due dates, start with [TASK_3], then [TASK_1]. Both are due soon."
+❌ WRONG: "Here are the tasks: - [TASK_1]: 如何开发 Task Chat - Status: open..."
+
+Keep it concise (1-2 sentences), reference only by IDs, provide essential context.
+
+FOR BROAD QUERIES (many tasks found, 6+ tasks):
+✅ CORRECT: "It's morning and you have high energy. I recommend starting with [TASK_3] and [TASK_7] which are complex tasks requiring deep focus, then moving to simpler tasks like [TASK_1] and [TASK_4] later."
+❌ WRONG: "Here are the tasks related to 'develop': - [TASK_1]: 如何开发 Task Chat..."
+
+Assess complexity, recommend execution order, use only IDs with brief reasoning, help user decide which task to start with.
 
 QUERY UNDERSTANDING:
 - The system has already extracted and applied filters from the user's query
@@ -857,21 +924,27 @@ ${taskContext}`;
             tasks.map((t, i) => `[${i}]: ${t.text}`),
         );
 
-        // Extract [TASK_X] references from response
+        // Extract [TASK_X] references from response, preserving order
         const taskIdPattern = /\[TASK_(\d+)\]/g;
         const matches = response.matchAll(taskIdPattern);
 
-        const referencedIndices = new Set<number>();
+        const referencedIndices: number[] = []; // Array to preserve order
+        const seenIndices = new Set<number>(); // Set to track uniqueness
+
         for (const match of matches) {
             const index = parseInt(match[1]);
-            console.log(`[Task Chat] Found reference: [TASK_${index}]`);
             // Convert from 1-based to 0-based indexing
             const taskIndex = index - 1;
+
             if (taskIndex >= 0 && taskIndex < tasks.length) {
-                console.log(
-                    `[Task Chat] Mapping [TASK_${index}] to array index ${taskIndex}: "${tasks[taskIndex].text}"`,
-                );
-                referencedIndices.add(taskIndex);
+                // Only add if not already seen (avoid duplicates)
+                if (!seenIndices.has(taskIndex)) {
+                    console.log(
+                        `[Task Chat] Found reference: [TASK_${index}] -> array index ${taskIndex}: "${tasks[taskIndex].text}"`,
+                    );
+                    referencedIndices.push(taskIndex);
+                    seenIndices.add(taskIndex);
+                }
             } else {
                 console.warn(
                     `[Task Chat] Invalid task reference [TASK_${index}] - out of bounds (have ${tasks.length} tasks)`,
@@ -880,14 +953,11 @@ ${taskContext}`;
         }
 
         console.log(
-            `[Task Chat] Found ${referencedIndices.size} unique task references`,
+            `[Task Chat] Found ${referencedIndices.length} unique task references in order`,
         );
 
-        // Add tasks in the order they appear in response
-        const sortedIndices = Array.from(referencedIndices).sort(
-            (a, b) => a - b,
-        );
-        sortedIndices.forEach((index) => {
+        // Add tasks in the exact order they were mentioned in the AI response
+        referencedIndices.forEach((index) => {
             recommended.push(tasks[index]);
         });
 
