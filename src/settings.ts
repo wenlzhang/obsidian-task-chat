@@ -66,7 +66,7 @@ export interface PluginSettings {
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
-    
+
     // Separate sort settings for AI-enabled and AI-disabled modes
     taskSortBy:
         | "auto"

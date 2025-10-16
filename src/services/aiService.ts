@@ -211,61 +211,129 @@ export class AIService {
                 };
             }
 
-            // Apply relevance filtering if user enabled it and we have keywords
-            // This ensures consistent behavior between direct search and AI analysis
-            const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
-            let preFilteredTasks = filteredTasks;
-            if (
-                effectiveTaskSortBy === "relevance" &&
-                intent.keywords &&
-                intent.keywords.length > 0 &&
-                settings.relevanceThreshold > 0
-            ) {
+            // PHASE 1: Quality filtering (always for keyword searches)
+            // Apply relevance filtering to remove low-quality matches
+            // This ensures consistent quality regardless of sort/display preference
+            let qualityFilteredTasks = filteredTasks;
+            if (intent.keywords && intent.keywords.length > 0) {
                 const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                     filteredTasks,
                     intent.keywords,
                 );
-                preFilteredTasks = scoredTasks
-                    .filter((st) => st.score >= settings.relevanceThreshold)
-                    .map((st) => st.task);
+
+                // Determine adaptive relevance threshold
+                // User's setting is the BASE, then we apply intelligent adjustments
+                let baseThreshold: number;
+                if (settings.relevanceThreshold === 0) {
+                    // Use system defaults as base
+                    if (intent.keywords.length >= 4) {
+                        baseThreshold = 20;
+                    } else if (intent.keywords.length >= 2) {
+                        baseThreshold = 30;
+                    } else {
+                        baseThreshold = 40;
+                    }
+                    console.log(
+                        `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
+                    );
+                } else {
+                    // User has set a custom base - respect it
+                    baseThreshold = settings.relevanceThreshold;
+                    console.log(
+                        `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
+                    );
+                }
+
+                // Apply adaptive adjustments relative to base
+                // This preserves intelligence while respecting user preference
+                let finalThreshold: number;
+                if (intent.keywords.length >= 4) {
+                    // Many keywords - reduce threshold by 10 from base
+                    finalThreshold = Math.max(5, baseThreshold - 10);
+                } else if (intent.keywords.length >= 2) {
+                    // Moderate keywords - use base as-is
+                    finalThreshold = baseThreshold;
+                } else {
+                    // Single keyword - increase threshold by 10 from base
+                    finalThreshold = Math.min(100, baseThreshold + 10);
+                }
+
                 console.log(
-                    `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
+                    `[Task Chat] Quality filter threshold: ${finalThreshold} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
                 );
+
+                // Apply quality filter
+                qualityFilteredTasks = scoredTasks
+                    .filter((st) => st.score >= finalThreshold)
+                    .map((st) => st.task);
+
+                console.log(
+                    `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold})`,
+                );
+
+                // Safety: If threshold filtered out too many, keep a minimum
+                // This prevents overly strict filtering from returning no results
+                if (
+                    qualityFilteredTasks.length <
+                    Math.min(5, filteredTasks.length)
+                ) {
+                    console.log(
+                        `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top scored tasks`,
+                    );
+                    qualityFilteredTasks = scoredTasks
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, Math.min(20, filteredTasks.length))
+                        .map((st) => st.task);
+                }
             }
 
-            // Respect user's sort preference
-            // "auto" mode: Use due date for direct search (safe default)
-            // Other modes: Use user's explicit preference
+            // PHASE 2: Sorting for Direct Search (user's display preference)
+            // For direct results: Sort by user preference for display
+            const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
             let sortedTasks: Task[];
-            const effectiveSortBy =
-                effectiveTaskSortBy === "auto"
-                    ? "dueDate"
-                    : effectiveTaskSortBy;
 
-            if (
-                effectiveSortBy === "relevance" &&
+            if (effectiveTaskSortBy === "auto") {
+                // Auto mode: Use relevance for keyword searches, dueDate otherwise
+                if (intent.keywords && intent.keywords.length > 0) {
+                    console.log(
+                        "[Task Chat] Direct search: Sorting by relevance (auto mode, keyword search)",
+                    );
+                    sortedTasks = TaskSearchService.sortByKeywordRelevance(
+                        qualityFilteredTasks,
+                        intent.keywords,
+                    );
+                } else {
+                    console.log(
+                        "[Task Chat] Direct search: Sorting by due date (auto mode, no keywords)",
+                    );
+                    sortedTasks = TaskSortService.sortTasks(
+                        qualityFilteredTasks,
+                        {
+                            ...settings,
+                            taskSortBy: "dueDate" as any,
+                        },
+                    );
+                }
+            } else if (
+                effectiveTaskSortBy === "relevance" &&
                 intent.keywords &&
                 intent.keywords.length > 0
             ) {
                 console.log(
-                    "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
+                    "[Task Chat] Direct search: Sorting by relevance (user preference)",
                 );
-                // Sort by keyword match relevance
                 sortedTasks = TaskSearchService.sortByKeywordRelevance(
-                    preFilteredTasks,
+                    qualityFilteredTasks,
                     intent.keywords,
                 );
             } else {
                 console.log(
-                    "[Task Chat] Using sort order:",
-                    effectiveSortBy,
-                    effectiveTaskSortBy === "auto"
-                        ? "(auto → due date for direct search)"
-                        : "",
+                    "[Task Chat] Direct search: Sorting by user preference:",
+                    effectiveTaskSortBy,
                 );
-                sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
+                sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
                     ...settings,
-                    taskSortBy: effectiveSortBy as any,
+                    taskSortBy: effectiveTaskSortBy as any,
                 });
             }
 
@@ -392,75 +460,107 @@ export class AIService {
             };
         }
 
-        // Apply relevance filtering if user enabled it and we have keywords
-        // This ensures consistent behavior between direct search and AI analysis
-        const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
-        let preFilteredTasks = filteredTasks;
-        if (
-            effectiveTaskSortBy === "relevance" &&
-            intent.keywords &&
-            intent.keywords.length > 0 &&
-            settings.relevanceThreshold > 0
-        ) {
+        // PHASE 1: Quality filtering (always for keyword searches)
+        // Apply relevance filtering to remove low-quality matches
+        // This ensures consistent quality regardless of sort/display preference
+        let qualityFilteredTasks = filteredTasks;
+        if (intent.keywords && intent.keywords.length > 0) {
             const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                 filteredTasks,
                 intent.keywords,
             );
-            preFilteredTasks = scoredTasks
-                .filter(
-                    (st: { score: number; task: Task }) =>
-                        st.score >= settings.relevanceThreshold,
-                )
-                .map((st: { score: number; task: Task }) => st.task);
-            console.log(
-                `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
-            );
-        }
 
-        // Respect user's sort preference for AI input
-        // "auto" mode: Sort by relevance if keywords exist (best for AI context), otherwise due date
-        // Other modes: Use user's explicit preference
-        let sortedTasks: Task[];
-
-        if (effectiveTaskSortBy === "auto") {
-            // Auto mode: intelligent sorting based on query type
-            if (intent.keywords && intent.keywords.length > 0) {
+            // Determine adaptive relevance threshold
+            // User's setting is the BASE, then we apply intelligent adjustments
+            let baseThreshold: number;
+            if (settings.relevanceThreshold === 0) {
+                // Use system defaults as base
+                if (intent.keywords.length >= 4) {
+                    baseThreshold = 20;
+                } else if (intent.keywords.length >= 2) {
+                    baseThreshold = 30;
+                } else {
+                    baseThreshold = 40;
+                }
                 console.log(
-                    "[Task Chat] Auto mode: Using relevance sorting for AI (keyword search detected)",
-                );
-                sortedTasks = TaskSearchService.sortByKeywordRelevance(
-                    preFilteredTasks,
-                    intent.keywords,
+                    `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
                 );
             } else {
+                // User has set a custom base - respect it
+                baseThreshold = settings.relevanceThreshold;
                 console.log(
-                    "[Task Chat] Auto mode: Using due date sorting for AI (no keywords)",
+                    `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
                 );
-                sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
-                    ...settings,
-                    taskSortBy: "dueDate" as any,
-                });
             }
-        } else if (
-            effectiveTaskSortBy === "relevance" &&
-            intent.keywords &&
-            intent.keywords.length > 0
-        ) {
+
+            // Apply adaptive adjustments relative to base
+            // This preserves intelligence while respecting user preference
+            let finalThreshold: number;
+            if (intent.keywords.length >= 4) {
+                // Many keywords - reduce threshold by 10 from base
+                finalThreshold = Math.max(5, baseThreshold - 10);
+            } else if (intent.keywords.length >= 2) {
+                // Moderate keywords - use base as-is
+                finalThreshold = baseThreshold;
+            } else {
+                // Single keyword - increase threshold by 10 from base
+                finalThreshold = Math.min(100, baseThreshold + 10);
+            }
+
             console.log(
-                "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
+                `[Task Chat] Quality filter threshold: ${finalThreshold} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
+            );
+
+            // Apply quality filter
+            qualityFilteredTasks = scoredTasks
+                .filter(
+                    (st: { score: number; task: Task }) =>
+                        st.score >= finalThreshold,
+                )
+                .map((st: { score: number; task: Task }) => st.task);
+
+            console.log(
+                `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold})`,
+            );
+
+            // Safety: If threshold filtered out too many, keep a minimum
+            // This prevents overly strict filtering from returning no results
+            if (
+                qualityFilteredTasks.length < Math.min(5, filteredTasks.length)
+            ) {
+                console.log(
+                    `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top scored tasks`,
+                );
+                qualityFilteredTasks = scoredTasks
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, Math.min(20, filteredTasks.length))
+                    .map((st) => st.task);
+            }
+        }
+
+        // PHASE 2: Sorting for AI Input
+        // For AI analysis: Prioritize relevance to give AI the best context
+        // (AI will analyze and recommend, order matters for context quality)
+        let sortedTasks: Task[];
+
+        if (intent.keywords && intent.keywords.length > 0) {
+            // For keyword searches: Always sort by relevance for AI
+            // This gives AI the most relevant tasks first (best context)
+            console.log(
+                "[Task Chat] AI input: Sorting by relevance (keyword search, best AI context)",
             );
             sortedTasks = TaskSearchService.sortByKeywordRelevance(
-                preFilteredTasks,
+                qualityFilteredTasks,
                 intent.keywords,
             );
         } else {
+            // For non-keyword searches: Use due date (temporal context)
             console.log(
-                "[Task Chat] Using configured sort order:",
-                effectiveTaskSortBy,
+                "[Task Chat] AI input: Sorting by due date (no keywords, temporal context)",
             );
-            sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
+            sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
                 ...settings,
-                taskSortBy: effectiveTaskSortBy as any,
+                taskSortBy: "dueDate" as any,
             });
         }
 
@@ -498,88 +598,15 @@ export class AIService {
             };
         }
 
-        // Apply relevance filtering for keyword searches
-        // Only send high-quality matches to AI to save tokens and improve results
-        let tasksToAnalyze: Task[];
-        if (intent.keywords && intent.keywords.length > 0) {
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                sortedTasks,
-                intent.keywords,
-            );
+        // Select top tasks for AI analysis (already quality-filtered)
+        // Tasks have been filtered by relevance in Phase 1, now just limit count
+        const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
 
-            // Determine relevance threshold with adaptive behavior
-            // User can set base threshold (0 = use defaults, 1-100 = custom base)
-            let RELEVANCE_THRESHOLD: number;
-
-            // Determine base threshold
-            let baseThreshold: number;
-            if (settings.relevanceThreshold === 0) {
-                // Use system defaults as base
-                if (intent.keywords.length >= 4) {
-                    baseThreshold = 20;
-                } else if (intent.keywords.length >= 2) {
-                    baseThreshold = 30;
-                } else {
-                    baseThreshold = 40;
-                }
-                console.log(
-                    `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
-                );
-            } else {
-                // User has set a custom base - use it
-                baseThreshold = settings.relevanceThreshold;
-                console.log(
-                    `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
-                );
-            }
-
-            // Apply adaptive adjustments relative to base
-            // This preserves intelligence while respecting user preference
-            if (intent.keywords.length >= 4) {
-                // Many keywords - reduce threshold by 10 from base
-                RELEVANCE_THRESHOLD = Math.max(5, baseThreshold - 10);
-            } else if (intent.keywords.length >= 2) {
-                // Moderate keywords - use base as-is
-                RELEVANCE_THRESHOLD = baseThreshold;
-            } else {
-                // Single keyword - increase threshold by 10 from base
-                RELEVANCE_THRESHOLD = Math.min(100, baseThreshold + 10);
-            }
-
-            console.log(
-                `[Task Chat] Final adaptive threshold: ${RELEVANCE_THRESHOLD} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
-            );
-
-            // Filter by adaptive threshold
-            const relevantTasks = scoredTasks
-                .filter(
-                    (st: { score: number; task: Task }) =>
-                        st.score >= RELEVANCE_THRESHOLD,
-                )
-                .map((st: { score: number; task: Task }) => st.task);
-
-            console.log(
-                `[Task Chat] Filtered to ${relevantTasks.length} relevant tasks (score >= ${RELEVANCE_THRESHOLD}, ${intent.keywords.length} keywords) before sending to AI`,
-            );
-
-            // If threshold filtered out too many, include top results anyway
-            if (relevantTasks.length < Math.min(5, sortedTasks.length)) {
-                console.log(
-                    `[Task Chat] Threshold too strict, including top ${Math.min(settings.maxTasksForAI, sortedTasks.length)} tasks`,
-                );
-                tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
-            } else {
-                tasksToAnalyze = relevantTasks.slice(0, settings.maxTasksForAI);
-            }
-        } else {
-            tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
-        }
-
-        // If no relevant tasks to analyze, return early
+        // Safety: Early return if no tasks remain after filtering
         if (tasksToAnalyze.length === 0) {
             return {
                 response:
-                    "Found tasks matching your query, but they don't appear to be highly relevant. Please try refining your search.",
+                    "Found tasks matching your filters, but they don't appear to be highly relevant to your keywords. Try lowering the relevance threshold in settings or refining your search.",
                 directResults: [],
                 tokenUsage: {
                     promptTokens: 0,
@@ -589,11 +616,14 @@ export class AIService {
                     model: "none",
                     provider: settings.aiProvider,
                     isEstimated: true,
-                    directSearchReason:
-                        "Results below relevance threshold (score < 40)",
+                    directSearchReason: "No tasks passed quality filter",
                 },
             };
         }
+
+        console.log(
+            `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
+        );
 
         const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
         const messages = this.buildMessages(

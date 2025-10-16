@@ -395,9 +395,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Relevance threshold (advanced)")
+            .setName("Relevance threshold (quality filter)")
             .setDesc(
-                "Base relevance score (0-100) for keyword matching. Applies to BOTH direct search and AI analysis when 'Relevance' sorting is selected. Default: 0 (use system defaults - recommended). The system intelligently adapts around your base: 4+ keywords → base-10, 2-3 keywords → base, 1 keyword → base+10. Examples: Setting 0 uses defaults (20/30/40), Setting 15 gives you (5/15/25), Setting 30 gives you (20/30/40). Lower base = more lenient results, Higher base = stricter filtering. Note: Only active when 'Sort tasks by' is set to 'Relevance' and query has keywords.",
+                "Quality filter for keyword searches (0-100). ALWAYS applied for keyword searches to remove low-quality matches, regardless of sort preference. Default: 0 (adaptive thresholds - recommended). Adaptive behavior: 4+ keywords=20, 2-3 keywords=30, 1 keyword=40. Custom values (1-100) override the adaptive base. Lower = more lenient (more results), Higher = stricter (fewer, higher-quality results). This ensures that even 'Sort by Due Date' only shows relevant tasks.",
             )
             .addSlider((slider) =>
                 slider
@@ -1193,16 +1193,13 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Sort tasks by")
             .setDesc(
                 aiParsingEnabled
-                    ? 'Field to sort tasks by. "Auto" (recommended) = AI context-aware sorting, uses Relevance for keyword searches and Due Date otherwise. "Relevance" sorts by keyword match quality. Other options work for all queries.'
-                    : 'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode (AI context-aware sorting).',
+                    ? 'Display order for results (applied AFTER quality filtering). "Auto" = Relevance for keyword searches, Due Date otherwise. "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
+                    : 'Display order for results (applied AFTER quality filtering). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode. For keyword searches, low-quality tasks are filtered out before sorting.',
             )
             .addDropdown((dropdown) => {
                 // Conditionally add Auto option only if AI query parsing is enabled
                 if (aiParsingEnabled) {
-                    dropdown.addOption(
-                        "auto",
-                        "Auto (AI context-aware)",
-                    );
+                    dropdown.addOption("auto", "Auto (AI context-aware)");
                 }
                 dropdown
                     .addOption("relevance", "Relevance")
