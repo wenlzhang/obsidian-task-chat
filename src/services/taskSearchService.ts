@@ -1,4 +1,6 @@
 import { Task } from "../models/task";
+import { TaskFilterService } from "./taskFilterService";
+import { TextSplitter } from "./textSplitter";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -81,7 +83,8 @@ export class TaskSearchService {
     }
 
     /**
-     * Extract keywords from user query
+     * Extract keywords from user query with improved multilingual word segmentation
+     * Uses TextSplitter for better handling of mixed-language text
      */
     static extractKeywords(query: string): string[] {
         // First, remove filter-related phrases from the query
@@ -120,59 +123,29 @@ export class TaskSearchService {
             "",
         );
 
-        // Remove common command words and task-related meta words
+        // Remove folder indicators
+        cleanedQuery = cleanedQuery.replace(
+            /(?:in|from)\s+folder/gi,
+            "",
+        );
+
+        // Use TextSplitter for multilingual word segmentation
+        const words = TextSplitter.splitIntoWords(cleanedQuery);
+
+        // Remove common stop words
         const stopWords = new Set([
-            "the",
-            "a",
-            "an",
-            "and",
-            "or",
-            "but",
-            "in",
-            "on",
-            "at",
-            "to",
-            "for",
-            "of",
-            "with",
-            "by",
-            "from",
-            "as",
-            "is",
-            "was",
-            "are",
-            "were",
-            "show",
-            "find",
-            "get",
-            "list",
-            "tell",
-            "give",
-            "me",
-            "my",
-            "all",
-            "task",
-            "tasks", // Remove generic "task" word
-            "给我",
-            "给",
-            "我",
-            "的",
-            "了",
-            "吗",
-            "呢",
-            "啊",
-            "任务",
+            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
+            "for", "of", "with", "by", "from", "as", "is", "was", "are", "were",
+            "show", "find", "get", "list", "tell", "give", "me", "my", "all",
+            "task", "tasks", "给我", "给", "我", "的", "了", "吗", "呢", "啊",
+            "如何", "怎么", "怎样", "任务",
         ]);
 
-        const words = cleanedQuery
-            .trim()
-            .replace(/[^\w\s\u4e00-\u9fff]/g, " ") // Keep alphanumeric and Chinese characters
-            .split(/\s+/)
-            .filter(
-                (word) => word.length > 1 && !stopWords.has(word.toLowerCase()),
-            );
-
-        return [...new Set(words)]; // Remove duplicates
+        // Filter out stop words and short words
+        return words.filter((word) => {
+            const lowerWord = word.toLowerCase();
+            return word.length > 1 && !stopWords.has(lowerWord);
+        });
     }
 
     /**

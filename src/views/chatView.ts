@@ -419,7 +419,13 @@ export class ChatView extends ItemView {
                     }
                 }
             } else if (message.tokenUsage.model === "none") {
-                parts.push("Direct search (no AI used)");
+                // Direct search was used - show the reason and cost info
+                if (message.tokenUsage.directSearchReason) {
+                    parts.push(message.tokenUsage.directSearchReason);
+                } else {
+                    parts.push("Direct search (no AI used)");
+                }
+                parts.push("No cost");
             }
 
             usageEl.createEl("small", {
@@ -507,7 +513,7 @@ export class ChatView extends ItemView {
             if (result.directResults) {
                 const directMessage: ChatMessage = {
                     role: "system",
-                    content: `Found ${result.directResults.length} matching task(s) (no AI processing needed):`,
+                    content: `Found ${result.directResults.length} matching task(s) (no AI processing used):`,
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,

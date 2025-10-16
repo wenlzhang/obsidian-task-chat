@@ -46,6 +46,7 @@ export interface TokenUsage {
     model: string;
     provider: "openai" | "anthropic" | "openrouter" | "ollama";
     isEstimated: boolean; // true for Ollama (no real token counts), false for API providers
+    directSearchReason?: string; // Explanation why direct search was used (when model === "none")
 }
 
 export interface ChatContext {

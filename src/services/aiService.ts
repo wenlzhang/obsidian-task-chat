@@ -187,7 +187,9 @@ export class AIService {
                         estimatedCost: 0,
                         model: "none",
                         provider: settings.aiProvider,
-                        isEstimated: true, // Direct search, no AI used
+                        isEstimated: true,
+                        directSearchReason:
+                            "No tasks found matching your criteria",
                     },
                 };
             }
@@ -243,7 +245,8 @@ export class AIService {
                         estimatedCost: 0,
                         model: "none",
                         provider: settings.aiProvider,
-                        isEstimated: true, // Direct search, no AI used
+                        isEstimated: true,
+                        directSearchReason: "simple_query", // Simple query with few results
                     },
                 };
             }
@@ -319,7 +322,8 @@ export class AIService {
                     estimatedCost: 0,
                     model: "none",
                     provider: settings.aiProvider,
-                    isEstimated: true, // Direct search, no AI used
+                    isEstimated: true,
+                    directSearchReason: "No tasks found matching your criteria",
                 },
             };
         }
@@ -353,6 +357,12 @@ export class AIService {
                 intent.extractedTags.length === 0);
 
         if (sortedTasks.length <= settings.maxDirectResults && isSimpleQuery) {
+            const reason = this.buildDirectSearchReason(
+                sortedTasks.length,
+                settings.maxDirectResults,
+                isSimpleQuery,
+            );
+
             return {
                 response: "",
                 directResults: sortedTasks.slice(0, settings.maxDirectResults),
@@ -363,7 +373,8 @@ export class AIService {
                     estimatedCost: 0,
                     model: "none",
                     provider: settings.aiProvider,
-                    isEstimated: true, // Direct search, no AI used
+                    isEstimated: true,
+                    directSearchReason: reason,
                 },
             };
         }
@@ -405,7 +416,9 @@ export class AIService {
                     estimatedCost: 0,
                     model: "none",
                     provider: settings.aiProvider,
-                    isEstimated: true, // Direct search, no AI used
+                    isEstimated: true,
+                    directSearchReason:
+                        "Results below relevance threshold (score < 40)",
                 },
             };
         }
@@ -444,6 +457,33 @@ export class AIService {
             console.error("AI Service Error:", error);
             throw error;
         }
+    }
+
+    /**
+     * Explain why direct search was used instead of AI
+     */
+    private static buildDirectSearchReason(
+        resultCount: number,
+        maxDirectResults: number,
+        isSimpleQuery: boolean,
+    ): string {
+        const reasons: string[] = [];
+
+        if (resultCount === 0) {
+            return "No tasks found matching your criteria";
+        }
+
+        if (isSimpleQuery && resultCount <= maxDirectResults) {
+            reasons.push("simple query with few results");
+            reasons.push("AI processing unnecessary");
+        } else if (resultCount <= maxDirectResults) {
+            reasons.push(`only ${resultCount} task(s) found`);
+            reasons.push("within direct result limit");
+        }
+
+        return reasons.length > 0
+            ? `Direct search (${reasons.join(", ")})`
+            : "Direct search used";
     }
 
     /**

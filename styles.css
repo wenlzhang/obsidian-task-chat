@@ -115,7 +115,6 @@
 
 .task-chat-message-system {
     background: var(--background-secondary-alt);
-    font-style: italic;
     text-align: center;
     max-width: 100%;
 }
@@ -168,8 +167,9 @@
     border-color: var(--background-modifier-border);
 }
 
-/* Copy button positioning for AI messages - bottom right */
-.task-chat-message-assistant .task-chat-copy-button {
+/* Copy button positioning - consistent bottom right for assistant and system messages */
+.task-chat-message-assistant .task-chat-copy-button,
+.task-chat-message-system .task-chat-copy-button {
     position: absolute;
     bottom: 8px;
     right: 8px;
