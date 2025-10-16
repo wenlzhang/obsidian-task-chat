@@ -405,11 +405,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sort tasks by")
             .setDesc(
-                'Field to sort tasks by. "AI Relevance" keeps search-ranked order (useful for keyword searches).',
+                'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries.',
             )
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("relevance", "AI Relevance")
+                    .addOption("relevance", "Relevance")
                     .addOption("dueDate", "Due Date")
                     .addOption("priority", "Priority")
                     .addOption("created", "Created Date")

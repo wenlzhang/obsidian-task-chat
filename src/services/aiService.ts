@@ -202,12 +202,17 @@ export class AIService {
                 };
             }
 
-            // For keyword searches, use relevance-based sorting to ensure relevant tasks reach AI
-            // Otherwise use user's configured sort order
+            // Respect user's sort preference
+            // If user selected "relevance" and we have keywords, use keyword relevance
+            // Otherwise always use user's configured sort order
             let sortedTasks: Task[];
-            if (intent.keywords && intent.keywords.length > 0) {
+            if (
+                settings.taskSortBy === "relevance" &&
+                intent.keywords &&
+                intent.keywords.length > 0
+            ) {
                 console.log(
-                    "[Task Chat] Using relevance-based sorting for keyword search",
+                    "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
                 );
                 // Sort by keyword match relevance
                 sortedTasks = this.sortByKeywordRelevance(
@@ -348,11 +353,17 @@ export class AIService {
             };
         }
 
-        // Sort by relevance if keywords exist, otherwise use configured sort
+        // Respect user's sort preference
+        // If user selected "relevance" and we have keywords, use keyword relevance
+        // Otherwise always use user's configured sort order
         let sortedTasks: Task[];
-        if (intent.keywords && intent.keywords.length > 0) {
+        if (
+            settings.taskSortBy === "relevance" &&
+            intent.keywords &&
+            intent.keywords.length > 0
+        ) {
             console.log(
-                "[Task Chat] Using relevance-based sorting for keyword search",
+                "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
             );
             sortedTasks = this.sortByKeywordRelevance(
                 filteredTasks,

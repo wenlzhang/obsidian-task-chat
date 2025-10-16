@@ -44,8 +44,9 @@ An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter t
 
 ### 🎯 Task Display & Sorting
 - **Flexible Sorting Options**:
-  - AI Relevance, Due Date, Priority, Created Date, Alphabetical
+  - Relevance (keyword match quality), Due Date, Priority, Created Date, Alphabetical
   - Ascending or Descending order
+  - Applies to both direct search and AI analysis
   - Pre-configured defaults optimized for task management
 - **Configurable Result Limits**:
   - Max Direct Results (default: 20): No-cost instant results
@@ -522,15 +523,23 @@ Total Cost: $0.002 - $0.0021
 ### Task Display Settings
 
 **Sorting Options**
-- **Task Sort By**: Field to sort tasks by
-  - Relevance: AI-determined relevance score
-  - Due Date: Sort by deadline (default)
-  - Priority: Sort by priority level (1-4)
-  - Created Date: Sort by creation time
-  - Alphabetical: Sort by task text
+- **Task Sort By**: Field to sort tasks by (applies to both direct search and AI results)
+  - **Relevance**: Keyword match quality score (only works when query has keywords)
+    - Scores tasks based on how well they match your search keywords
+    - Best for finding most relevant tasks in keyword searches
+  - **Due Date**: Sort by deadline (default)
+    - Best for time-sensitive task management
+  - **Priority**: Sort by priority level (1-4)
+    - Best for importance-based workflows
+  - **Created Date**: Sort by creation time
+    - Best for chronological task tracking
+  - **Alphabetical**: Sort by task text
+    - Best for organized browsing
 - **Sort Direction**: Sort order
   - Low to High (ascending): 1→4, A→Z, Early→Late
   - High to Low (descending): 4→1, Z→A, Late→Early
+- **Note**: For direct search (no AI), your sort preference is always respected
+- **Note**: Relevance sorting requires keywords in your query to work
 
 **Result Limits** (controls cost and performance)
 - **Max Direct Results** (default: 20, range: 5-100)
