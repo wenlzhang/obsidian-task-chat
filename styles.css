@@ -28,6 +28,36 @@
     color: var(--text-muted);
 }
 
+/* DataView Warning Banner */
+.task-chat-dataview-warning {
+    padding: 12px;
+    background: var(--background-modifier-error);
+    border: 1px solid var(--text-error);
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 8px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.task-chat-warning-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.task-chat-warning-text {
+    flex: 1;
+    color: var(--text-normal);
+}
+
+.task-chat-warning-text strong {
+    color: var(--text-error);
+    font-weight: 600;
+}
+
 /* Controls */
 .task-chat-controls {
     display: flex;

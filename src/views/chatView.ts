@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
+import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
 import TaskChatPlugin from "../main";
 
@@ -15,6 +16,7 @@ export class ChatView extends ItemView {
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
+    private dataviewWarningEl: HTMLElement | null = null;
     private isProcessing: boolean = false;
     private typingIndicator: HTMLElement | null = null;
 
@@ -65,6 +67,9 @@ export class ChatView extends ItemView {
             "task-chat-filter-status",
         );
         this.updateFilterStatus();
+
+        // DataView warning banner (persistent)
+        this.renderDataviewWarning();
 
         // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
@@ -200,6 +205,47 @@ export class ChatView extends ItemView {
                 text: `Showing all tasks (${this.currentTasks.length})`,
             });
         }
+    }
+
+    /**
+     * Render DataView warning banner if plugin is not enabled
+     */
+    private renderDataviewWarning(): void {
+        // Check if DataView is enabled
+        if (DataviewService.isDataviewEnabled(this.app)) {
+            // DataView is enabled, remove warning if it exists
+            if (this.dataviewWarningEl) {
+                this.dataviewWarningEl.remove();
+                this.dataviewWarningEl = null;
+            }
+            return;
+        }
+
+        // DataView is not enabled, show persistent warning
+        if (!this.dataviewWarningEl) {
+            this.dataviewWarningEl = this.contentEl.createDiv(
+                "task-chat-dataview-warning",
+            );
+        } else {
+            this.dataviewWarningEl.empty();
+        }
+
+        const warningIcon = this.dataviewWarningEl.createSpan({
+            cls: "task-chat-warning-icon",
+            text: "⚠️ ",
+        });
+
+        const warningText = this.dataviewWarningEl.createSpan({
+            cls: "task-chat-warning-text",
+        });
+
+        const strongEl = warningText.createEl("strong", {
+            text: "DataView plugin required: ",
+        });
+
+        warningText.appendText(
+            "This plugin requires the DataView plugin to function. Please install and enable it from the Community Plugins settings. After that, click on the Refresh tasks button.",
+        );
     }
 
     /**
@@ -537,6 +583,7 @@ export class ChatView extends ItemView {
         this.currentTasks = tasks;
         this.currentFilter = filter;
         this.updateFilterStatus();
+        this.renderDataviewWarning(); // Update warning banner status
     }
 
     /**

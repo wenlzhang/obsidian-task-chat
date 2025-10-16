@@ -26,10 +26,6 @@ export default class TaskChatPlugin extends Plugin {
         // Check if DataView is available
         if (!DataviewService.isDataviewEnabled(this.app)) {
             console.warn("DataView plugin is not enabled");
-            new Notice(
-                "Task Chat requires the DataView plugin. Please install and enable it.",
-                10000,
-            );
         }
 
         // Register the chat view
@@ -151,6 +147,12 @@ export default class TaskChatPlugin extends Plugin {
      */
     async refreshTasks(): Promise<void> {
         try {
+            // Check if DataView is enabled
+            if (!DataviewService.isDataviewEnabled(this.app)) {
+                console.warn("DataView plugin is not enabled");
+                return;
+            }
+
             this.allTasks = await DataviewService.parseTasksFromDataview(
                 this.app,
                 this.settings,
