@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
@@ -253,21 +253,24 @@ export class ChatView extends ItemView {
             const tasksEl = messageEl.createDiv("task-chat-recommended-tasks");
             tasksEl.createEl("strong", { text: "Recommended tasks:" });
 
-            const taskListEl = tasksEl.createEl("ul");
+            const taskListEl = tasksEl.createEl("ol");
 
             message.recommendedTasks.forEach((task, index) => {
                 const taskItemEl = taskListEl.createEl("li");
 
-                // Show task number (1-based)
-                const taskNumber = taskItemEl.createEl("span", {
-                    text: `[${index + 1}] `,
-                    cls: "task-chat-task-number",
-                });
+                // Create a container for the task markdown
+                const taskContentEl = taskItemEl.createDiv(
+                    "task-chat-task-content",
+                );
 
-                taskItemEl.createEl("span", {
-                    text: task.text,
-                    cls: "task-chat-task-text",
-                });
+                // Render task with markdown task syntax for theme support
+                const taskMarkdown = `- [${task.status}] ${task.text}`;
+                MarkdownRenderer.renderMarkdown(
+                    taskMarkdown,
+                    taskContentEl,
+                    "",
+                    this,
+                );
 
                 const navBtn = taskItemEl.createEl("button", {
                     text: "→",

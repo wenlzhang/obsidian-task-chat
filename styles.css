@@ -122,9 +122,9 @@
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.task-chat-recommended-tasks ul {
+.task-chat-recommended-tasks ol {
     margin: 6px 0 0 0;
-    padding-left: 20px;
+    padding-left: 24px;
 }
 
 .task-chat-recommended-tasks li {
@@ -135,14 +135,21 @@
     gap: 8px;
 }
 
-.task-chat-task-number {
-    font-weight: 600;
-    color: var(--interactive-accent);
-    margin-right: 4px;
+.task-chat-task-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
 }
 
-.task-chat-task-text {
-    flex: 1;
+.task-chat-task-content ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.task-chat-task-content li {
+    margin: 0;
+    padding: 0;
 }
 
 .task-chat-nav-button {
