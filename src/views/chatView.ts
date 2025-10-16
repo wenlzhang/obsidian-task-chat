@@ -253,14 +253,14 @@ export class ChatView extends ItemView {
             // Both options available when AI parsing is enabled
             const smartOption = this.searchModeSelect.createEl("option", {
                 value: "smart",
-                text: "Smart Search",
+                text: "Smart search",
             });
             const directOption = this.searchModeSelect.createEl("option", {
                 value: "direct",
                 text: "Direct search",
             });
 
-            // Default to Smart Search when AI parsing is enabled
+            // Default to smart search when AI parsing is enabled
             this.searchModeSelect.value = "smart";
             this.useAIQueryParsingOverride = true;
         } else {
@@ -389,8 +389,8 @@ export class ChatView extends ItemView {
             message.role === "user"
                 ? "You"
                 : message.role === "assistant"
-                  ? "AI"
-                  : "Task Chat";
+                  ? "Assistant"
+                  : "System";
         headerEl.createEl("strong", { text: roleName });
         headerEl.createEl("span", {
             text: new Date(message.timestamp).toLocaleTimeString(),
@@ -454,54 +454,71 @@ export class ChatView extends ItemView {
 
             const parts: string[] = [];
 
-            // Show provider info
-            const providerName =
-                message.tokenUsage.provider === "openai"
-                    ? "OpenAI"
-                    : message.tokenUsage.provider === "anthropic"
-                      ? "Anthropic"
-                      : message.tokenUsage.provider === "openrouter"
-                        ? "OpenRouter"
-                        : "Ollama";
+            // Determine query parsing method and result delivery method
+            const isDirectSearch = message.tokenUsage.model === "none";
+            const hasAIAnalysis = message.tokenUsage.totalTokens > 0;
 
-            if (message.tokenUsage.totalTokens > 0) {
-                // Show token count with estimation indicator
+            // Phase 1: Query parsing method
+            if (isDirectSearch) {
+                parts.push("Query: Regex-parsed");
+            } else {
+                parts.push("Query: AI-parsed");
+            }
+
+            // Phase 2: Result delivery method
+            if (isDirectSearch) {
+                // Direct search mode or direct results
+                if (message.tokenUsage.directSearchReason) {
+                    parts.push(`Results: ${message.tokenUsage.directSearchReason}`);
+                } else {
+                    parts.push("Results: Direct");
+                }
+            } else if (message.role === "system") {
+                // Smart search with direct results
+                parts.push("Results: Direct (simple query)");
+            } else {
+                // AI analysis was used
+                parts.push("Results: AI-analyzed");
+            }
+
+            // Show model and token details when AI was used (parsing or analysis)
+            if (hasAIAnalysis) {
+                // Show provider and model for non-Ollama services
+                if (message.tokenUsage.provider !== "ollama") {
+                    const providerName =
+                        message.tokenUsage.provider === "openai"
+                            ? "OpenAI"
+                            : message.tokenUsage.provider === "anthropic"
+                              ? "Anthropic"
+                              : "OpenRouter";
+                    parts.push(`${providerName} ${message.tokenUsage.model}`);
+                } else {
+                    parts.push(`Model: ${message.tokenUsage.model}`);
+                }
+
+                // Token count with details
                 const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
                 parts.push(
-                    `${tokenStr}${message.tokenUsage.totalTokens.toLocaleString()} tokens`,
+                    `${tokenStr}${message.tokenUsage.totalTokens.toLocaleString()} tokens (${message.tokenUsage.promptTokens.toLocaleString()} in, ${message.tokenUsage.completionTokens.toLocaleString()} out)`,
                 );
-                parts.push(
-                    `(${message.tokenUsage.promptTokens.toLocaleString()} in, ${message.tokenUsage.completionTokens.toLocaleString()} out)`,
-                );
+            }
 
-                // Show cost information
-                if (message.tokenUsage.provider === "ollama") {
-                    parts.push(`${providerName} (free)`);
-                } else if (message.tokenUsage.model === "none") {
-                    parts.push("Direct search (no cost)");
+            // Cost information
+            if (message.tokenUsage.provider === "ollama") {
+                parts.push("Free (local)");
+            } else if (isDirectSearch) {
+                parts.push("$0");
+            } else if (message.tokenUsage.estimatedCost > 0) {
+                const cost = message.tokenUsage.estimatedCost;
+                if (cost < 0.01) {
+                    parts.push(`~$${cost.toFixed(4)}`);
                 } else {
-                    parts.push(`${providerName} ${message.tokenUsage.model}`);
-                    if (message.tokenUsage.estimatedCost > 0) {
-                        const cost = message.tokenUsage.estimatedCost;
-                        if (cost < 0.01) {
-                            parts.push(`~$${cost.toFixed(4)}`);
-                        } else {
-                            parts.push(`~$${cost.toFixed(2)}`);
-                        }
-                    }
+                    parts.push(`~$${cost.toFixed(2)}`);
                 }
-            } else if (message.tokenUsage.model === "none") {
-                // Direct search was used - show the reason and cost info
-                if (message.tokenUsage.directSearchReason) {
-                    parts.push(message.tokenUsage.directSearchReason);
-                } else {
-                    parts.push("Direct search (no AI used)");
-                }
-                parts.push("No cost");
             }
 
             usageEl.createEl("small", {
-                text: parts.join(" • "),
+                text: "📊 " + parts.join(" • "),
             });
         }
 
@@ -567,7 +584,7 @@ export class ChatView extends ItemView {
                 effectiveSettings.useAIQueryParsing =
                     this.useAIQueryParsingOverride;
                 console.log(
-                    `[Task Chat] Using overridden search mode: ${this.useAIQueryParsingOverride ? "Smart Search" : "Direct Search"}`,
+                    `[Task Chat] Using overridden search mode: ${this.useAIQueryParsingOverride ? "Smart search" : "Direct search"}`,
                 );
             }
 

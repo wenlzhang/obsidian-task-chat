@@ -273,9 +273,9 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName("AI query understanding (query parsing only)")
+            .setName("Enable smart search mode")
             .setDesc(
-                "Use AI to understand your queries (~$0.0001/query). Improves semantic understanding and multilingual support. When disabled, uses free regex-based parsing. Benefits: (1) Better keyword extraction for multilingual queries, (2) Unlocks 'Auto' sorting mode below (AI context-aware). Note: AI task analysis is always available regardless of this setting.",
+                "Enables AI-powered query understanding in smart search mode. When enabled, you can choose between two modes in the chat interface: (1) Smart search: AI-powered parsing with automatic analysis for complex queries (~$0.0001-$0.0021/query), (2) Direct search: Regex-based parsing with direct results (always free). When disabled, only direct search mode is available.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -292,39 +292,59 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Info section about AI Task Analysis
+        // Mode comparison section
         containerEl.createDiv("task-chat-info-box", (el) => {
             el.createEl("div", {
-                text: "ℹ️ About AI Task Analysis",
+                text: "ℹ️ Search mode comparison",
                 cls: "task-chat-info-box-title",
             });
 
+            // Smart search mode
             el.createEl("div", {
-                text: "AI task analysis is ALWAYS AVAILABLE and works automatically regardless of the query parsing setting above. It intelligently decides when to use AI based on:",
-                cls: "task-chat-info-box-description",
+                text: "Smart search mode:",
+                cls: "task-chat-info-box-subtitle",
+            });
+            const smartList = el.createEl("ul");
+            smartList.createEl("li", {
+                text: "Query parsing: AI-powered (~$0.0001)",
+            });
+            smartList.createEl("li", {
+                text: "Result delivery: Automatic (intelligent decision)",
+            });
+            smartList.createEl("li", {
+                text: `Simple queries + ≤${this.plugin.settings.maxDirectResults} results → Direct results`,
+            });
+            smartList.createEl("li", {
+                text: "Complex queries or many results → AI analysis (~$0.002)",
+            });
+            smartList.createEl("li", {
+                text: "Best for: Natural language, multilingual queries, AI insights",
             });
 
-            const list = el.createEl("ul");
-            list.createEl("li", {
-                text: "Query complexity (2+ filter types = AI analysis)",
-            });
-            list.createEl("li", {
-                text: `Result count (>${this.plugin.settings.maxDirectResults} results = AI analysis)`,
-            });
-            list.createEl("li", {
-                text: "Simple queries with few results use direct search (no cost)",
-            });
-
+            // Direct search mode
             el.createEl("div", {
-                text: "Cost: ~$0.002 per AI analysis. You can control when it triggers by adjusting 'Max direct results' below.",
-                cls: "task-chat-info-box-cost",
+                text: "Direct search mode:",
+                cls: "task-chat-info-box-subtitle",
+            });
+            const directList = el.createEl("ul");
+            directList.createEl("li", {
+                text: "Query parsing: Regex-based (free)",
+            });
+            directList.createEl("li", {
+                text: "Result delivery: Always direct (no AI analysis)",
+            });
+            directList.createEl("li", {
+                text: "Cost: Always $0 (completely free)",
+            });
+            directList.createEl("li", {
+                text: "Best for: Simple filters, quick searches, cost-free operation",
             });
         });
 
         new Setting(containerEl)
             .setName("Query languages for semantic search")
             .setDesc(
-                "Languages to use for semantic keyword expansion and AI response. Requires 'AI query understanding' to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
+                "Languages to use for semantic keyword expansion and AI response. Requires smart search mode to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text

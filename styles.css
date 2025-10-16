@@ -529,6 +529,12 @@
     font-weight: 600;
 }
 
+.task-chat-info-box-subtitle {
+    font-weight: 600;
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
 .task-chat-info-box-description {
     margin-top: 4px;
 }

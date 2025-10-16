@@ -75,7 +75,7 @@ export class AIService {
         let usingAIParsing = false; // Track if AI parsing was actually used
 
         if (settings.useAIQueryParsing) {
-            console.log("[Task Chat] Using AI-powered query parsing...");
+            console.log("[Task Chat] Query parsing: AI-powered (smart search mode)");
             // Use AI to parse query for better accuracy
             try {
                 parsedQuery = await QueryParserService.parseQuery(
@@ -139,7 +139,7 @@ export class AIService {
             }
         } else {
             // Use fast regex-based parsing (default)
-            console.log("[Task Chat] Using regex-based query parsing...");
+            console.log("[Task Chat] Query parsing: Regex-based (direct search mode)");
             intent = TaskSearchService.analyzeQueryIntent(message);
         }
 
@@ -304,7 +304,7 @@ export class AIService {
                 // Auto mode: Use relevance for keyword searches, dueDate otherwise
                 if (intent.keywords && intent.keywords.length > 0) {
                     console.log(
-                        "[Task Chat] Direct search: Sorting by relevance (auto mode, keyword search)",
+                        "[Task Chat] Sorting: By relevance (auto mode, keyword search)",
                     );
                     sortedTasks = TaskSearchService.sortByKeywordRelevance(
                         qualityFilteredTasks,
@@ -312,7 +312,7 @@ export class AIService {
                     );
                 } else {
                     console.log(
-                        "[Task Chat] Direct search: Sorting by due date (auto mode, no keywords)",
+                        "[Task Chat] Sorting: By due date (auto mode, no keywords)",
                     );
                     sortedTasks = TaskSortService.sortTasks(
                         qualityFilteredTasks,
@@ -328,7 +328,7 @@ export class AIService {
                 intent.keywords.length > 0
             ) {
                 console.log(
-                    "[Task Chat] Direct search: Sorting by relevance (user preference)",
+                    "[Task Chat] Sorting: By relevance (user preference)",
                 );
                 sortedTasks = TaskSearchService.sortByKeywordRelevance(
                     qualityFilteredTasks,
@@ -336,8 +336,7 @@ export class AIService {
                 );
             } else {
                 console.log(
-                    "[Task Chat] Direct search: Sorting by user preference:",
-                    effectiveTaskSortBy,
+                    `[Task Chat] Sorting: By ${effectiveTaskSortBy} (user preference)`,
                 );
                 sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
                     ...settings,
@@ -385,7 +384,7 @@ export class AIService {
 
                 if (forceDirectResults) {
                     console.log(
-                        `[Task Chat] Direct search mode: Returning ${sortedTasks.length} results without AI analysis`,
+                        `[Task Chat] Result delivery: Direct (${sortedTasks.length} results, direct search mode)`,
                     );
                 } else if (hasSmallHighQualityResults) {
                     console.log(
@@ -590,7 +589,7 @@ export class AIService {
             // For keyword searches: Always sort by relevance for AI
             // This gives AI the most relevant tasks first (best context)
             console.log(
-                "[Task Chat] AI input: Sorting by relevance (keyword search, best AI context)",
+                "[Task Chat] Sorting: By relevance (keyword search, AI input optimization)",
             );
             sortedTasks = TaskSearchService.sortByKeywordRelevance(
                 qualityFilteredTasks,
@@ -599,7 +598,7 @@ export class AIService {
         } else {
             // For non-keyword searches: Use due date (temporal context)
             console.log(
-                "[Task Chat] AI input: Sorting by due date (no keywords, temporal context)",
+                "[Task Chat] Sorting: By due date (no keywords, temporal context)",
             );
             sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
                 ...settings,
