@@ -116,11 +116,10 @@ export class ChatView extends ItemView {
         });
 
         this.inputEl.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                if (e.metaKey || e.ctrlKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
+            // Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux) sends message
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                this.sendMessage();
             }
         });
 
