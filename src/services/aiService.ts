@@ -815,7 +815,10 @@ ${taskContext}`;
         }
 
         const data = response.json;
-        const content = data.choices[0].message.content;
+        const rawContent = data.choices[0].message.content;
+
+        // Clean up reasoning tags from models like DeepSeek
+        const content = this.stripReasoningTags(rawContent);
 
         // Extract token usage
         const usage = data.usage || {};
@@ -887,7 +890,10 @@ ${taskContext}`;
         }
 
         const data = response.json;
-        const content = data.content[0].text;
+        const rawContent = data.content[0].text;
+
+        // Clean up reasoning tags
+        const content = this.stripReasoningTags(rawContent);
 
         // Extract token usage
         const usage = data.usage || {};
@@ -950,9 +956,12 @@ ${taskContext}`;
         }
 
         const data = response.json;
-        const content = data.message.content;
+        const rawContent = data.message.content;
 
-        // Ollama doesn't provide token counts, estimate
+        // Clean up reasoning tags (important for DeepSeek via Ollama)
+        const content = this.stripReasoningTags(rawContent);
+
+        // Ollama doesn't provide token counts, estimate based on cleaned content
         const estimatedPromptTokens = JSON.stringify(messages).length / 4;
         const estimatedCompletionTokens = content.length / 4;
 
@@ -1243,6 +1252,18 @@ ${taskContext}`;
         });
 
         return sorted.map((item) => item.task);
+    }
+
+    /**
+     * Strip reasoning tags from AI response (DeepSeek's <think>, etc.)
+     * These tags contain the model's internal reasoning process and should not be shown to users
+     */
+    private static stripReasoningTags(content: string): string {
+        return content
+            .replace(/<think>[\s\S]*?<\/think>/gi, "")
+            .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+            .replace(/<thought>[\s\S]*?<\/thought>/gi, "")
+            .trim();
     }
 
     /**

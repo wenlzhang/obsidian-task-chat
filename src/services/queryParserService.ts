@@ -36,6 +36,102 @@ export class QueryParserService {
     }
 
     /**
+     * Extract JSON from AI response, handling various wrappers and formats
+     * Supports: DeepSeek <think> tags, markdown code blocks, reasoning tags, explanatory text
+     */
+    private static extractJSON(response: string): string {
+        // Step 1: Remove various reasoning/thinking blocks from different models
+        let cleaned = response
+            // DeepSeek's <think> tags
+            .replace(/<think>[\s\S]*?<\/think>/gi, "")
+            // Generic <reasoning> tags
+            .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+            // Generic <thought> tags
+            .replace(/<thought>[\s\S]*?<\/thought>/gi, "")
+            .trim();
+
+        // Step 2: Try to extract from markdown code blocks first (common format)
+        // Pattern: ```json {...} ``` or ```{...}```
+        const markdownMatch = cleaned.match(
+            /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
+        );
+        if (markdownMatch && markdownMatch[1]) {
+            try {
+                // Verify it's valid JSON before returning
+                JSON.parse(markdownMatch[1]);
+                return markdownMatch[1];
+            } catch (e) {
+                // Continue to other extraction methods
+            }
+        }
+
+        // Step 3: Find all potential JSON objects (using a more sophisticated approach)
+        // Look for balanced braces that could be JSON objects
+        const jsonCandidates: string[] = [];
+        let braceCount = 0;
+        let startIndex = -1;
+
+        for (let i = 0; i < cleaned.length; i++) {
+            if (cleaned[i] === "{") {
+                if (braceCount === 0) {
+                    startIndex = i;
+                }
+                braceCount++;
+            } else if (cleaned[i] === "}") {
+                braceCount--;
+                if (braceCount === 0 && startIndex !== -1) {
+                    // Found a complete JSON object
+                    jsonCandidates.push(cleaned.substring(startIndex, i + 1));
+                }
+            }
+        }
+
+        // Step 4: Try to parse each candidate and return the first valid one
+        // Prioritize candidates with expected fields (priority, keywords, etc.)
+        for (const candidate of jsonCandidates) {
+            try {
+                const parsed = JSON.parse(candidate);
+                // Check if it has expected query parser fields
+                if (
+                    typeof parsed === "object" &&
+                    (parsed.hasOwnProperty("keywords") ||
+                        parsed.hasOwnProperty("priority") ||
+                        parsed.hasOwnProperty("dueDate") ||
+                        parsed.hasOwnProperty("status") ||
+                        parsed.hasOwnProperty("folder") ||
+                        parsed.hasOwnProperty("tags"))
+                ) {
+                    return candidate; // This looks like our target JSON
+                }
+            } catch (e) {
+                // Not valid JSON, try next candidate
+                continue;
+            }
+        }
+
+        // Step 5: If no valid query parser JSON found, return the first valid JSON object
+        for (const candidate of jsonCandidates) {
+            try {
+                JSON.parse(candidate);
+                return candidate; // At least it's valid JSON
+            } catch (e) {
+                continue;
+            }
+        }
+
+        // Step 6: Fallback - use simple first/last brace extraction
+        const firstBrace = cleaned.indexOf("{");
+        const lastBrace = cleaned.lastIndexOf("}");
+
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            return cleaned.substring(firstBrace, lastBrace + 1);
+        }
+
+        // Step 7: If all else fails, return cleaned response and let JSON.parse throw error
+        return cleaned;
+    }
+
+    /**
      * Try to parse simple queries without AI (fast path)
      */
     private static trySimpleParse(query: string): ParsedQuery | null {
@@ -154,33 +250,51 @@ STATUS MAPPING:
 - "completed" = done tasks (完成, 已完成, completed, done, finished)
 - "inProgress" = in progress (进行中, 正在做, in progress, ongoing)
 
-Extract ALL filters from the query and return ONLY a JSON object with this structure:
+Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "priority": <number or null>,
   "dueDate": <string or null>,
   "status": <string or null>,
   "folder": <string or null>,
-  "tags": [<string array or empty>],
-  "keywords": [<string array or empty>]
+  "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "keywords": [<array of search terms>]
 }
 
-IMPORTANT: 
-- Return ONLY valid JSON, no other text
-- Use null for missing filters
-- For keywords: extract INDIVIDUAL WORDS and SHORT TERMS (not long phrases) in ALL configured languages (${languageList})
+⚠️ CRITICAL FIELD USAGE RULES:
+1. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"], #personal → ["personal"])
+   - ONLY extract tags that are explicitly marked with # in the query
+   - Remove the # symbol when adding to the array
+   - If no hashtags in query, leave empty []
+   
+2. "keywords" field: Extract semantic search terms for matching task content
+   - These are the main search terms (nouns, verbs, concepts)
+   - Provide translations in ALL configured languages
+   - Do NOT include hashtags in keywords
+   
+3. Return ONLY valid JSON, no reasoning text, no <think> tags, just pure JSON
+
+KEYWORD EXTRACTION RULES:
+- Extract INDIVIDUAL WORDS and SHORT TERMS (not long phrases) in ALL configured languages (${languageList})
 - Examples for semantic keyword expansion:
   * Query: "如何开发 Task Chat" → Extract: ["开发", "develop", "Task", "Chat", "如何", "how"]
   * Query: "How to develop Obsidian AI plugin" → Extract: ["develop", "开发", "Obsidian", "AI", "plugin", "插件", "how"]
   * Query: "如何开发 Obsidian AI 插件" → Extract: ["开发", "develop", "Obsidian", "AI", "插件", "plugin", "如何", "how"]
   * Query: "Fix bug" → Extract: ["fix", "修复", "bug", "错误", "问题"]
-- CRITICAL rules for keyword extraction:
-  * Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
-  * Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
-  * For each meaningful keyword, provide translations in ALL configured languages
-  * Keywords should be 1-2 words maximum, prefer single words for better substring matching
-  * This enables queries in ANY language to match tasks in ANY other configured language
+- Examples with tags and keywords:
+  * Query: "如何开发 Task Chat" → {"keywords": ["开发", "develop", "Task", "Chat", "如何", "how"], "tags": []}
+  * Query: "tasks with #work priority 1" → {"keywords": ["tasks"], "tags": ["work"], "priority": 1}
+  * Query: "#personal high priority tasks" → {"keywords": ["tasks"], "tags": ["personal"], "priority": 1}
+  * Query: "Fix bug #urgent #backend" → {"keywords": ["fix", "修复", "bug", "错误"], "tags": ["urgent", "backend"]}
+  * Query: "开发任务 #项目A" → {"keywords": ["开发", "develop", "任务", "task"], "tags": ["项目A"]}
+
+CRITICAL RULES:
+- Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
+- Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
+- For each meaningful keyword, provide translations in ALL configured languages
+- Keywords should be 1-2 words maximum, prefer single words for better substring matching
+- This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
-- Keywords should be comprehensive but SHORT to maximize matching success`;
+- Tags and keywords serve DIFFERENT purposes - don't mix them!`;
 
         const messages = [
             {
@@ -197,7 +311,9 @@ IMPORTANT:
             const response = await this.callAI(messages, settings);
             console.log("[Task Chat] AI query parser raw response:", response);
 
-            const parsed = JSON.parse(response);
+            // Extract JSON from response (handles DeepSeek's <think> tags and other wrappers)
+            const jsonString = this.extractJSON(response);
+            const parsed = JSON.parse(jsonString);
             console.log("[Task Chat] AI query parser parsed:", parsed);
 
             // If AI didn't extract any keywords but also didn't extract any filters,
