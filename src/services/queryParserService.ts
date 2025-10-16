@@ -254,13 +254,25 @@ IMPORTANT:
             return this.callOllama(messages, settings);
         }
 
-        // OpenAI-compatible API
+        if (settings.aiProvider === "anthropic") {
+            return this.callAnthropic(messages, settings);
+        }
+
+        // Get provider-specific API key
+        const apiKey = this.getApiKeyForProvider(settings);
+        if (!apiKey) {
+            throw new Error(
+                `API key for ${settings.aiProvider} is not configured`,
+            );
+        }
+
+        // OpenAI-compatible API (OpenAI and OpenRouter)
         const response = await requestUrl({
             url: settings.apiEndpoint,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${settings.apiKey}`,
+                Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
                 model: settings.model,
@@ -275,6 +287,69 @@ IMPORTANT:
         }
 
         return response.json.choices[0].message.content.trim();
+    }
+
+    /**
+     * Call Anthropic API (different format than OpenAI)
+     */
+    private static async callAnthropic(
+        messages: any[],
+        settings: PluginSettings,
+    ): Promise<string> {
+        const apiKey = this.getApiKeyForProvider(settings);
+        if (!apiKey) {
+            throw new Error("Anthropic API key is not configured");
+        }
+
+        const endpoint =
+            settings.apiEndpoint || "https://api.anthropic.com/v1/messages";
+
+        // Separate system message from conversation messages
+        const systemMessage = messages.find((m: any) => m.role === "system");
+        const conversationMessages = messages.filter(
+            (m: any) => m.role !== "system",
+        );
+
+        const response = await requestUrl({
+            url: endpoint,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+                model: settings.model,
+                messages: conversationMessages,
+                system: systemMessage ? systemMessage.content : undefined,
+                temperature: 0.1,
+                max_tokens: 200,
+            }),
+        });
+
+        if (response.status !== 200) {
+            throw new Error(`Anthropic API error: ${response.status}`);
+        }
+
+        return response.json.content[0].text.trim();
+    }
+
+    /**
+     * Get API key for the current provider
+     */
+    private static getApiKeyForProvider(settings: PluginSettings): string {
+        switch (settings.aiProvider) {
+            case "openai":
+                return settings.openaiApiKey || settings.apiKey || "";
+            case "anthropic":
+                return settings.anthropicApiKey || settings.apiKey || "";
+            case "openrouter":
+                return settings.openrouterApiKey || settings.apiKey || "";
+            case "ollama":
+                return ""; // No API key needed
+            default:
+                return settings.apiKey || "";
+        }
     }
 
     /**
