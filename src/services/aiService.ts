@@ -245,17 +245,25 @@ export class AIService {
                 }
 
                 // Apply adaptive adjustments relative to base
-                // This preserves intelligence while respecting user preference
+                // IMPORTANT: More keywords from semantic expansion = HIGHER threshold needed
+                // to filter out the noise from broad matching
                 let finalThreshold: number;
-                if (intent.keywords.length >= 4) {
-                    // Many keywords - reduce threshold by 10 from base
-                    finalThreshold = Math.max(5, baseThreshold - 10);
+                if (intent.keywords.length >= 6) {
+                    // Many keywords (semantic expansion) - INCREASE threshold significantly
+                    // This filters out noise from overly broad matching
+                    finalThreshold = Math.min(100, baseThreshold + 20);
+                    console.log(
+                        `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), increasing threshold to combat noise`,
+                    );
+                } else if (intent.keywords.length >= 4) {
+                    // Several keywords - increase threshold moderately
+                    finalThreshold = Math.min(100, baseThreshold + 10);
                 } else if (intent.keywords.length >= 2) {
                     // Moderate keywords - use base as-is
                     finalThreshold = baseThreshold;
                 } else {
-                    // Single keyword - increase threshold by 10 from base
-                    finalThreshold = Math.min(100, baseThreshold + 10);
+                    // Single keyword - slight increase for precision
+                    finalThreshold = Math.min(100, baseThreshold + 5);
                 }
 
                 console.log(
@@ -348,16 +356,34 @@ export class AIService {
                     !intent.extractedFolder &&
                     intent.extractedTags.length === 0);
 
+            // Check if we should return direct results
+            // Condition 1: Small result set with simple query
+            // Condition 2: High-quality small result set (even with semantic expansion)
+            const hasSmallHighQualityResults =
+                sortedTasks.length <= 15 &&
+                intent.keywords.length >= 6 &&
+                qualityFilteredTasks.length < filteredTasks.length * 0.5;
+
             if (
-                sortedTasks.length <= settings.maxDirectResults &&
-                isSimpleQuery
+                (sortedTasks.length <= settings.maxDirectResults &&
+                    isSimpleQuery) ||
+                hasSmallHighQualityResults
             ) {
-                const reason = this.buildDirectSearchReason(
-                    sortedTasks.length,
-                    settings.maxDirectResults,
-                    isSimpleQuery,
-                    usingAIParsing,
-                );
+                const reason = hasSmallHighQualityResults
+                    ? `High-quality results (${sortedTasks.length} tasks passed strict filtering from ${filteredTasks.length})`
+                    : this.buildDirectSearchReason(
+                          sortedTasks.length,
+                          settings.maxDirectResults,
+                          isSimpleQuery,
+                          usingAIParsing,
+                      );
+
+                if (hasSmallHighQualityResults) {
+                    console.log(
+                        `[Task Chat] Returning direct results: ${sortedTasks.length} high-quality tasks (strict threshold filtered ${filteredTasks.length} → ${qualityFilteredTasks.length})`,
+                    );
+                }
+
                 return {
                     response: "",
                     directResults: sortedTasks.slice(
@@ -494,17 +520,25 @@ export class AIService {
             }
 
             // Apply adaptive adjustments relative to base
-            // This preserves intelligence while respecting user preference
+            // IMPORTANT: More keywords from semantic expansion = HIGHER threshold needed
+            // to filter out the noise from broad matching
             let finalThreshold: number;
-            if (intent.keywords.length >= 4) {
-                // Many keywords - reduce threshold by 10 from base
-                finalThreshold = Math.max(5, baseThreshold - 10);
+            if (intent.keywords.length >= 6) {
+                // Many keywords (semantic expansion) - INCREASE threshold significantly
+                // This filters out noise from overly broad matching
+                finalThreshold = Math.min(100, baseThreshold + 20);
+                console.log(
+                    `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), increasing threshold to combat noise`,
+                );
+            } else if (intent.keywords.length >= 4) {
+                // Several keywords - increase threshold moderately
+                finalThreshold = Math.min(100, baseThreshold + 10);
             } else if (intent.keywords.length >= 2) {
                 // Moderate keywords - use base as-is
                 finalThreshold = baseThreshold;
             } else {
-                // Single keyword - increase threshold by 10 from base
-                finalThreshold = Math.min(100, baseThreshold + 10);
+                // Single keyword - slight increase for precision
+                finalThreshold = Math.min(100, baseThreshold + 5);
             }
 
             console.log(
