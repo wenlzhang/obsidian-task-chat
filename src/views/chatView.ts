@@ -293,10 +293,15 @@ export class ChatView extends ItemView {
             const tasksEl = messageEl.createDiv("task-chat-recommended-tasks");
             tasksEl.createEl("strong", { text: "Recommended tasks:" });
 
-            const taskListEl = tasksEl.createEl("ol");
+            const taskListEl = tasksEl.createDiv("task-chat-task-list");
 
             message.recommendedTasks.forEach((task, index) => {
-                const taskItemEl = taskListEl.createEl("li");
+                const taskItemEl = taskListEl.createDiv("task-chat-task-item");
+
+                // Add task number as separate element
+                const taskNumber = index + 1;
+                const numberEl = taskItemEl.createSpan("task-chat-task-number");
+                numberEl.textContent = `${taskNumber}.`;
 
                 // Create a container for the task markdown
                 const taskContentEl = taskItemEl.createDiv(

@@ -122,17 +122,24 @@
     border-top: 1px solid var(--background-modifier-border);
 }
 
-.task-chat-recommended-tasks ol {
+.task-chat-task-list {
     margin: 6px 0 0 0;
-    padding-left: 24px;
+    padding: 0;
 }
 
-.task-chat-recommended-tasks li {
+.task-chat-task-item {
     margin: 4px 0;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 0;
+}
+
+.task-chat-task-number {
+    min-width: 24px;
+    flex-shrink: 0;
+    line-height: 1.5;
+    margin-right: 15px;
+    margin-top: -2px;
 }
 
 .task-chat-task-content {
