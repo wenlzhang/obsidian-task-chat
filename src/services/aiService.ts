@@ -632,28 +632,6 @@ export class AIService {
             }
         }
 
-        // Get current time context for smart recommendations
-        const now = new Date();
-        const hour = now.getHours();
-        let timeContext = "";
-
-        if (hour >= 6 && hour < 12) {
-            timeContext =
-                "Current time: Morning (6:00-12:00). User likely has high energy and focus. Good time for complex or challenging tasks.";
-        } else if (hour >= 12 && hour < 14) {
-            timeContext =
-                "Current time: Noon/Lunch (12:00-14:00). User may be taking a break or have moderate energy. Good time for medium-difficulty tasks.";
-        } else if (hour >= 14 && hour < 17) {
-            timeContext =
-                "Current time: Afternoon (14:00-17:00). User has moderate energy. Good time for focused work or medium-complexity tasks.";
-        } else if (hour >= 17 && hour < 20) {
-            timeContext =
-                "Current time: Evening/End of workday (17:00-20:00). User may be tired. Good time for simpler tasks or planning for tomorrow.";
-        } else {
-            timeContext =
-                "Current time: Night/Late evening (20:00-6:00). User may be winding down. Good time for simple tasks or review.";
-        }
-
         // Build context-aware system prompt
         let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
 
@@ -678,61 +656,23 @@ IMPORTANT RULES:
 
 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
 - Use [TASK_X] IDs to reference specific tasks you're recommending
-- The system will AUTOMATICALLY replace [TASK_X] with "task N" based on the order you mention them
+- The system will AUTOMATICALLY replace [TASK_X] with "Task N" based on the order you mention them
 - Example: You write "[TASK_5] is highest priority, then [TASK_1], then [TASK_4]"
-  → User sees: "task 1 is highest priority, then task 2, then task 3"
+  → User sees: "Task 1 is the most relevant/due soonest/highest priority, then Task 2, then Task 3"
 - The tasks appear in the recommended list in the same order you mentioned them
 
 TWO WAYS TO REFERENCE TASKS:
 
-OPTION 1 - Use [TASK_X] IDs (will be auto-converted to task numbers):
-✅ "Focus on [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5] (highest priority)."
-  → Becomes: "Focus on task 1, task 2, and task 3. Start with task 1 (highest priority)."
-
-OPTION 2 - Don't use specific references:
-✅ "Start with the highest priority task, then move to the next one."
-  → Tasks still appear in the recommended list below
+Use [TASK_X] IDs (will be auto-converted to task numbers):
+✅ "Focus on [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5]."
+  → Becomes: "Focus on Task 1, Task 2, and Task 3. Start with Task 1."
 
 WHAT USER SEES:
-Your response text appears first (with [TASK_X] auto-converted to task numbers), then below it:
-  Recommended tasks:
-  1. [First task you mentioned]
-  2. [Second task you mentioned]  
-  3. [Third task you mentioned]
-
-TIME-AWARE RECOMMENDATIONS (REQUIRED):
-${timeContext}
-
-YOU MUST consider the user's likely energy level based on current time and recommend accordingly:
-- MORNING (HIGH ENERGY): Recommend complex, challenging tasks first. Mention this in your response: "It's morning and you have high energy - good time for complex tasks"
-- AFTERNOON (MODERATE ENERGY): Recommend medium-difficulty tasks or balanced mix. Mention: "It's afternoon - good time for focused work"
-- EVENING (LOW ENERGY): Recommend simpler tasks or planning. Mention: "It's evening and you may be tired - consider starting with simpler tasks"
-- NIGHT (LOW ENERGY): Recommend quick tasks or review. Mention: "It's late evening - good time for simple tasks or planning tomorrow"
-
-TASK COMPLEXITY ASSESSMENT (REQUIRED):
-YOU MUST analyze task complexity in your response:
-- COMPLEX: "develop", "implement", "design", "plan", "research", "analyze", "refactor", "build", "create system", "开发", "实现", "设计", "研究", "分析"
-- SIMPLE: "update", "fix", "review", "check", "send", "reply", "schedule", "更新", "检查", "回复"
-- Long descriptions = more complex
-- Mention complexity in your recommendations: "[TASK_X] is complex and requires focus" or "[TASK_Y] is a quick task"
+Your response text appears (with [TASK_X] auto-converted to task numbers).
 
 RESPONSE FORMAT:
 
-FOR SPECIFIC QUERIES (few tasks found, ~1-5 tasks):
-✅ CORRECT: "It's afternoon - you have moderate energy. I found [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5] (highest priority), then [TASK_1], then [TASK_4]."
-  (User sees: "...I found task 1, task 2, and task 3. Start with task 1 (highest priority), then task 2, then task 3.")
-✅ CORRECT: "It's evening and you may be tired. These tasks are relevant: [TASK_3], [TASK_7]. [TASK_3] is complex (needs focus), but [TASK_7] is simpler if you're low on energy."
-  (User sees: "...task 1 is complex (needs focus), but task 2 is simpler if you're low on energy.")
-❌ WRONG: "Here are the tasks: - [TASK_1]: 如何开发 Task Chat - Status: open..."
-
-MUST: (1) Mention time/energy, (2) Reference tasks using [TASK_X] IDs, (3) Brief reasoning
-
-FOR BROAD QUERIES (many tasks found, 6+ tasks):
-✅ CORRECT: "It's morning - high energy time! Found [TASK_3], [TASK_7], [TASK_1], [TASK_4]. Start with [TASK_3] and [TASK_7] (complex work needing focus). Save [TASK_1] and [TASK_4] (simpler) for afternoon."
-  (User sees: "...Start with task 1 and task 2 (complex work needing focus). Save task 3 and task 4 (simpler) for afternoon.")
-❌ WRONG: "Here are the tasks related to 'develop': - [TASK_1]: 如何开发 Task Chat..."
-
-MUST: (1) Mention time/energy, (2) Reference tasks using [TASK_X] IDs, (3) Explain strategy
+MUST: (1) Reference tasks using [TASK_X] IDs, (2) Explain strategy
 
 QUERY UNDERSTANDING:
 - The system has already extracted and applied filters from the user's query
