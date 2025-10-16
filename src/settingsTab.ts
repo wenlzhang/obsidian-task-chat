@@ -186,6 +186,28 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        new Setting(containerEl)
+            .setName("Query languages for semantic search")
+            .setDesc(
+                "Languages to use for semantic keyword expansion when searching tasks. Requires 'AI-powered query parsing' to be enabled. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, 中文, 日本語, Español, Français, Deutsch. Separate with commas.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("English, 中文, 日本語")
+                    .setValue(this.plugin.settings.queryLanguages.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.queryLanguages = value
+                            .split(",")
+                            .map((lang) => lang.trim())
+                            .filter((lang) => lang.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
         // Task Display Settings Section
         containerEl.createEl("h3", { text: "Task Display" });
 

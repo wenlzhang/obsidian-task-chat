@@ -622,13 +622,28 @@ export class TaskSearchService {
 
         // Apply keyword search (semantic matching - ANY keyword matches)
         if (filters.keywords && filters.keywords.length > 0) {
-            filteredTasks = filteredTasks.filter((task) => {
+            console.log(
+                `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
+            );
+
+            const matchedTasks: Task[] = [];
+            filteredTasks.forEach((task) => {
                 const taskText = task.text.toLowerCase();
                 // Match if ANY keyword appears in the task text (substring match)
-                return filters.keywords!.some((keyword) =>
-                    taskText.includes(keyword.toLowerCase()),
-                );
+                const matched = filters.keywords!.some((keyword) => {
+                    const keywordLower = keyword.toLowerCase();
+                    return taskText.includes(keywordLower);
+                });
+                if (matched) {
+                    matchedTasks.push(task);
+                }
             });
+
+            filteredTasks = matchedTasks;
+
+            console.log(
+                `[Task Chat] After keyword filtering: ${filteredTasks.length} tasks remain`,
+            );
         }
 
         return filteredTasks;

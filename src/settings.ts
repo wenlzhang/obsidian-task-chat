@@ -40,6 +40,7 @@ export interface PluginSettings {
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
     useAIQueryParsing: boolean; // Use AI to parse queries for better accuracy
+    queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
     // Task Display Settings
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
@@ -122,6 +123,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
     useAIQueryParsing: false, // Disabled by default (uses fast regex parsing)
+    queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher

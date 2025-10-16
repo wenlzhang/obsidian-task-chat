@@ -115,7 +115,18 @@ export class QueryParserService {
         query: string,
         settings: PluginSettings,
     ): Promise<ParsedQuery> {
+        // Get configured languages for semantic search
+        const queryLanguages =
+            settings.queryLanguages && settings.queryLanguages.length > 0
+                ? settings.queryLanguages
+                : ["English", "中文"];
+        const languageList = queryLanguages.join(", ");
+
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
+
+SEMANTIC KEYWORD EXPANSION:
+The user has configured the following languages for semantic search: ${languageList}
+When extracting keywords, provide translations and semantic variations in ALL configured languages to enable cross-language matching.
 
 PRIORITY MAPPING:
 - 1 = highest/high priority (高优先级, 最高优先级, high, highest, p1, 1)
@@ -156,11 +167,20 @@ Extract ALL filters from the query and return ONLY a JSON object with this struc
 IMPORTANT: 
 - Return ONLY valid JSON, no other text
 - Use null for missing filters
-- For keywords: extract the SEMANTIC meaning, not just literal words
-- Example: "如何开发 Task Chat" should extract meaningful phrases like ["开发", "Task Chat", "如何"]
+- For keywords: extract INDIVIDUAL WORDS and SHORT TERMS (not long phrases) in ALL configured languages (${languageList})
+- Examples for semantic keyword expansion:
+  * Query: "如何开发 Task Chat" → Extract: ["开发", "develop", "Task", "Chat", "如何", "how"]
+  * Query: "How to develop Obsidian AI plugin" → Extract: ["develop", "开发", "Obsidian", "AI", "plugin", "插件", "how"]
+  * Query: "如何开发 Obsidian AI 插件" → Extract: ["开发", "develop", "Obsidian", "AI", "插件", "plugin", "如何", "how"]
+  * Query: "Fix bug" → Extract: ["fix", "修复", "bug", "错误", "问题"]
+- CRITICAL rules for keyword extraction:
+  * Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
+  * Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
+  * For each meaningful keyword, provide translations in ALL configured languages
+  * Keywords should be 1-2 words maximum, prefer single words for better substring matching
+  * This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
-- Be smart about language - understand both English and Chinese
-- Keywords should help match semantically similar task text`;
+- Keywords should be comprehensive but SHORT to maximize matching success`;
 
         const messages = [
             {
@@ -175,20 +195,47 @@ IMPORTANT:
 
         try {
             const response = await this.callAI(messages, settings);
-            const parsed = JSON.parse(response);
+            console.log("[Task Chat] AI query parser raw response:", response);
 
-            return {
+            const parsed = JSON.parse(response);
+            console.log("[Task Chat] AI query parser parsed:", parsed);
+
+            // If AI didn't extract any keywords but also didn't extract any filters,
+            // split the query into words as fallback
+            let keywords = parsed.keywords || [];
+            if (
+                keywords.length === 0 &&
+                !parsed.priority &&
+                !parsed.dueDate &&
+                !parsed.status &&
+                !parsed.folder &&
+                (!parsed.tags || parsed.tags.length === 0)
+            ) {
+                console.log(
+                    "[Task Chat] AI returned no filters or keywords, splitting query into words",
+                );
+                // Split by whitespace and filter out empty strings
+                keywords = query.split(/\s+/).filter((word) => word.length > 0);
+            }
+
+            const result = {
                 priority: parsed.priority || undefined,
                 dueDate: parsed.dueDate || undefined,
                 status: parsed.status || undefined,
                 folder: parsed.folder || undefined,
                 tags: parsed.tags || [],
-                keywords: parsed.keywords || [],
+                keywords: keywords,
                 originalQuery: query,
             };
+
+            console.log("[Task Chat] Query parser returning:", result);
+            return result;
         } catch (error) {
             console.error("Query parsing error:", error);
             // Fallback: return query as keywords
+            console.log(
+                `[Task Chat] Query parser fallback: using entire query as keyword: "${query}"`,
+            );
             return {
                 keywords: [query],
                 originalQuery: query,
