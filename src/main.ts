@@ -265,6 +265,15 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
+     * Refresh chat view search mode dropdown when AI query parsing setting changes
+     */
+    refreshChatViewSearchMode(): void {
+        if (this.chatView) {
+            this.chatView.updateSearchModeOptions();
+        }
+    }
+
+    /**
      * Refresh all tasks from DataView
      */
     async refreshTasks(): Promise<void> {

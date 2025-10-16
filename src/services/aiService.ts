@@ -227,8 +227,11 @@ export class AIService {
             // "auto" mode: Use due date for direct search (safe default)
             // Other modes: Use user's explicit preference
             let sortedTasks: Task[];
-            const effectiveSortBy = settings.taskSortBy === "auto" ? "dueDate" : settings.taskSortBy;
-            
+            const effectiveSortBy =
+                settings.taskSortBy === "auto"
+                    ? "dueDate"
+                    : settings.taskSortBy;
+
             if (
                 effectiveSortBy === "relevance" &&
                 intent.keywords &&
@@ -246,12 +249,14 @@ export class AIService {
                 console.log(
                     "[Task Chat] Using sort order:",
                     effectiveSortBy,
-                    settings.taskSortBy === "auto" ? "(auto → due date for direct search)" : "",
+                    settings.taskSortBy === "auto"
+                        ? "(auto → due date for direct search)"
+                        : "",
                 );
-                sortedTasks = TaskSortService.sortTasks(
-                    preFilteredTasks,
-                    { ...settings, taskSortBy: effectiveSortBy },
-                );
+                sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
+                    ...settings,
+                    taskSortBy: effectiveSortBy,
+                });
             }
 
             // Simple query - return directly without AI if within limits
@@ -391,7 +396,10 @@ export class AIService {
                 intent.keywords,
             );
             preFilteredTasks = scoredTasks
-                .filter((st: { score: number; task: Task }) => st.score >= settings.relevanceThreshold)
+                .filter(
+                    (st: { score: number; task: Task }) =>
+                        st.score >= settings.relevanceThreshold,
+                )
                 .map((st: { score: number; task: Task }) => st.task);
             console.log(
                 `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
@@ -402,7 +410,7 @@ export class AIService {
         // "auto" mode: Sort by relevance if keywords exist (best for AI context), otherwise due date
         // Other modes: Use user's explicit preference
         let sortedTasks: Task[];
-        
+
         if (settings.taskSortBy === "auto") {
             // Auto mode: intelligent sorting based on query type
             if (intent.keywords && intent.keywords.length > 0) {
@@ -417,10 +425,10 @@ export class AIService {
                 console.log(
                     "[Task Chat] Auto mode: Using due date sorting for AI (no keywords)",
                 );
-                sortedTasks = TaskSortService.sortTasks(
-                    preFilteredTasks,
-                    { ...settings, taskSortBy: "dueDate" },
-                );
+                sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
+                    ...settings,
+                    taskSortBy: "dueDate",
+                });
             }
         } else if (
             settings.taskSortBy === "relevance" &&
@@ -530,7 +538,10 @@ export class AIService {
 
             // Filter by adaptive threshold
             const relevantTasks = scoredTasks
-                .filter((st: { score: number; task: Task }) => st.score >= RELEVANCE_THRESHOLD)
+                .filter(
+                    (st: { score: number; task: Task }) =>
+                        st.score >= RELEVANCE_THRESHOLD,
+                )
                 .map((st: { score: number; task: Task }) => st.task);
 
             console.log(
@@ -1239,7 +1250,10 @@ ${taskContext}`;
             );
 
             // Use relevance scoring as fallback - return top 3-5 most relevant tasks
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(tasks, keywords);
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                tasks,
+                keywords,
+            );
             const topTasks = scoredTasks
                 .slice(0, Math.min(5, settings.maxRecommendations))
                 .map((st: { score: number; task: Task }) => st.task);
@@ -1259,7 +1273,10 @@ ${taskContext}`;
         // Skip automatic task addition
         if (false) {
             // This code path is disabled - we trust AI's judgment
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(tasks, keywords);
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                tasks,
+                keywords,
+            );
 
             // Define quality threshold: only add tasks with decent relevance
             // Score >= 40 means at least 4 keyword matches or good positioning

@@ -19,6 +19,8 @@ export class ChatView extends ItemView {
     private dataviewWarningEl: HTMLElement | null = null;
     private isProcessing: boolean = false;
     private typingIndicator: HTMLElement | null = null;
+    private searchModeSelect: HTMLSelectElement | null = null;
+    private useAIQueryParsingOverride: boolean | null = null; // null = use setting, true/false = override
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -88,6 +90,33 @@ export class ChatView extends ItemView {
         });
         sessionsBtn.addEventListener("click", () => this.openSessionModal());
 
+        // Search mode group
+        const searchModeGroup = controlsEl.createDiv("task-chat-button-group");
+        const searchModeContainer = searchModeGroup.createDiv(
+            "task-chat-search-mode",
+        );
+        searchModeContainer.createSpan({
+            text: "Search mode:",
+            cls: "task-chat-search-mode-label",
+        });
+
+        this.searchModeSelect = searchModeContainer.createEl("select", {
+            cls: "task-chat-search-mode-select",
+        });
+
+        // Populate options based on AI query parsing setting
+        this.updateSearchModeOptions();
+
+        this.searchModeSelect.addEventListener("change", () => {
+            const value = this.searchModeSelect?.value;
+            if (value === "smart") {
+                this.useAIQueryParsingOverride = true;
+            } else if (value === "direct") {
+                this.useAIQueryParsingOverride = false;
+            }
+            console.log(`[Task Chat] Search mode changed to: ${value}`);
+        });
+
         // Task management group
         const taskGroup = controlsEl.createDiv("task-chat-button-group");
 
@@ -101,7 +130,9 @@ export class ChatView extends ItemView {
         });
         refreshBtn.addEventListener("click", () => this.refreshTasks());
 
-        const clearBtn = taskGroup.createEl("button", { text: "Clear chat" });
+        // Clear chat group (separate)
+        const clearGroup = controlsEl.createDiv("task-chat-button-group");
+        const clearBtn = clearGroup.createEl("button", { text: "Clear chat" });
         clearBtn.addEventListener("click", () => this.clearChat());
 
         // Messages container
@@ -205,6 +236,47 @@ export class ChatView extends ItemView {
                 text: `Showing all tasks (${this.currentTasks.length})`,
             });
         }
+    }
+
+    /**
+     * Update search mode dropdown options based on AI query parsing setting
+     * Public method so it can be called when settings change
+     */
+    public updateSearchModeOptions(): void {
+        if (!this.searchModeSelect) return;
+
+        this.searchModeSelect.empty();
+
+        const aiParsingEnabled = this.plugin.settings.useAIQueryParsing;
+
+        if (aiParsingEnabled) {
+            // Both options available when AI parsing is enabled
+            const smartOption = this.searchModeSelect.createEl("option", {
+                value: "smart",
+                text: "Smart Search (AI)",
+            });
+            const directOption = this.searchModeSelect.createEl("option", {
+                value: "direct",
+                text: "Direct Search",
+            });
+
+            // Default to Smart Search when AI parsing is enabled
+            this.searchModeSelect.value = "smart";
+            this.useAIQueryParsingOverride = true;
+        } else {
+            // Only Direct Search available when AI parsing is disabled
+            const directOption = this.searchModeSelect.createEl("option", {
+                value: "direct",
+                text: "Direct Search",
+            });
+
+            this.searchModeSelect.value = "direct";
+            this.useAIQueryParsingOverride = false;
+        }
+
+        console.log(
+            `[Task Chat] Search mode updated: AI parsing ${aiParsingEnabled ? "enabled" : "disabled"}`,
+        );
     }
 
     /**
@@ -489,12 +561,22 @@ export class ChatView extends ItemView {
         this.showTypingIndicator();
 
         try {
+            // Apply search mode override if user selected different mode
+            const effectiveSettings = { ...this.plugin.settings };
+            if (this.useAIQueryParsingOverride !== null) {
+                effectiveSettings.useAIQueryParsing =
+                    this.useAIQueryParsingOverride;
+                console.log(
+                    `[Task Chat] Using overridden search mode: ${this.useAIQueryParsingOverride ? "Smart Search" : "Direct Search"}`,
+                );
+            }
+
             // Get AI response or direct results
             const result = await AIService.sendMessage(
                 message,
                 this.currentTasks,
                 this.plugin.sessionManager.getCurrentMessages(),
-                this.plugin.settings,
+                effectiveSettings,
             );
 
             // Update total usage in settings

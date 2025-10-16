@@ -124,29 +124,46 @@ An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter t
 
 ### Opening Task Chat
 
-**Three ways to open:**
-1. **Ribbon Icon**: Click the chat icon (💬) in the left sidebar
-2. **Command Palette**: Open command palette and search "Task Chat: Open Task Chat"
-3. **Auto-open**: Enable "Auto-open sidebar" in settings to open on startup
+- Click the chat icon in the left ribbon, or
+- Use the command palette: "Task Chat: Open Task Chat"
+
+### Chat Interface Controls
+
+The chat interface has controls grouped into sections:
+
+**Group 1: Session Management**
+- **+ New**: Create a new chat session
+- **Sessions**: View and switch between sessions
+
+**Group 2: Search Mode** (conditional)
+- **Search mode dropdown**: Choose between Smart Search (AI) and Direct Search
+  - Only visible when "AI query understanding" is enabled in settings
+  - Allows per-query override of global setting
+  - Smart Search: AI-powered query understanding (~$0.0001/query)
+  - Direct Search: Fast regex-based parsing (free)
+
+**Group 3: Task Management**
+- **Filter tasks**: Open filter modal to narrow down tasks
+- **Refresh tasks**: Reload tasks from vault
+
+**Group 4: Cleanup**
+- **Clear chat**: Clear current session's messages
 
 ### Basic Usage
 
 **1. Start a Conversation**
 ```
-You: "Show me high priority tasks"
-AI: Analyzes and recommends relevant tasks
-```
 
-**2. Filter Your Tasks**
-- Click "Filter tasks" button to open advanced filter modal
-- Select folders, priorities, due dates, completion status
-- Use quick filters: Today, This week, This month
-- Click Apply to filter tasks
-
-**3. Navigate to Tasks**
-- Click the → arrow next to any recommended task
-- Plugin automatically opens the file and jumps to the task line
-- Works even in nested folders
+1. **Choose search mode** (optional):
+   - **Smart Search (AI)**: Uses AI to understand your query (requires "AI query understanding" enabled in settings)
+   - **Direct Search**: Fast regex-based search (always available)
+   - Dropdown appears in the controls bar
+2. Click "Filter tasks" to select which tasks to focus on (optional)
+3. Type your question or request in the chat input
+4. Press Cmd/Ctrl+Enter to send
+5. Click the → button next to recommended tasks to navigate to them
+   - Opens the file and jumps to the task line
+   - Works even in nested folders
 
 **4. Manage Sessions**
 - Click "+ New" to start a fresh conversation

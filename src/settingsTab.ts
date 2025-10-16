@@ -281,6 +281,9 @@ export class SettingsTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.useAIQueryParsing = value;
                         await this.plugin.saveSettings();
+
+                        // Update chat view search mode dropdown
+                        this.plugin.refreshChatViewSearchMode();
                     }),
             );
 
@@ -412,7 +415,10 @@ export class SettingsTab extends PluginSettingTab {
             .addDropdown((dropdown) => {
                 // Conditionally add Auto option only if AI query parsing is enabled
                 if (this.plugin.settings.useAIQueryParsing) {
-                    dropdown.addOption("auto", "Auto (AI Context-Aware) - Recommended");
+                    dropdown.addOption(
+                        "auto",
+                        "Auto (AI Context-Aware) - Recommended",
+                    );
                 }
                 dropdown
                     .addOption("relevance", "Relevance")
@@ -420,22 +426,25 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("priority", "Priority")
                     .addOption("created", "Created Date")
                     .addOption("alphabetical", "Alphabetical");
-                
+
                 // If Auto is selected but AI parsing is disabled, fall back to Due Date
                 const currentValue = this.plugin.settings.taskSortBy;
-                if (currentValue === "auto" && !this.plugin.settings.useAIQueryParsing) {
+                if (
+                    currentValue === "auto" &&
+                    !this.plugin.settings.useAIQueryParsing
+                ) {
                     dropdown.setValue("dueDate");
                     this.plugin.settings.taskSortBy = "dueDate";
                     this.plugin.saveSettings();
                 } else {
                     dropdown.setValue(currentValue);
                 }
-                
+
                 dropdown.onChange(async (value) => {
                     this.plugin.settings.taskSortBy = value as any;
                     await this.plugin.saveSettings();
                 });
-                
+
                 return dropdown;
             });
 
