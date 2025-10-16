@@ -74,7 +74,7 @@
     color: var(--text-on-accent);
     align-self: flex-end;
     max-width: 80%;
-    padding-bottom: 40px;
+    margin-bottom: 32px;
 }
 
 .task-chat-message-assistant {
@@ -106,7 +106,7 @@
 
 /* Copy Button - Square Icon */
 .task-chat-copy-button {
-    padding: 4px;
+    padding: 0;
     width: 24px;
     height: 24px;
     cursor: pointer;
@@ -121,16 +121,21 @@
     margin-top: 4px;
 }
 
+.task-chat-copy-button::before {
+    content: "";
+    display: block;
+    width: 14px;
+    height: 14px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 .task-chat-copy-button:hover {
     opacity: 1;
     background: var(--background-modifier-hover);
     border-color: var(--background-modifier-border);
-}
-
-.task-chat-copy-button svg {
-    width: 14px;
-    height: 14px;
-    display: block;
 }
 
 /* Copy button positioning for AI messages - bottom right */
@@ -140,19 +145,25 @@
     right: 8px;
 }
 
-/* Copy button positioning for user messages - centered at bottom of box */
+/* Copy button positioning for user messages - centered below box */
 .task-chat-message-user .task-chat-copy-button {
     position: absolute;
-    bottom: 8px;
+    bottom: -28px;
     left: 50%;
     transform: translateX(-50%);
-    color: var(--text-on-accent);
-    background: rgba(255, 255, 255, 0.1);
+}
+
+.task-chat-message-user .task-chat-copy-button::before {
+    filter: invert(0.5);
 }
 
 .task-chat-message-user .task-chat-copy-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+.task-chat-message-user .task-chat-copy-button:hover::before {
+    filter: invert(0.7);
 }
 
 /* Message Content */
