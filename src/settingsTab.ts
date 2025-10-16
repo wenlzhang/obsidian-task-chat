@@ -411,7 +411,10 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Store the container for this setting so we can refresh it
-        this.sortByContainerEl = containerEl;
+        // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
+        this.sortByContainerEl = containerEl.createDiv(
+            "task-chat-sort-container",
+        );
         this.renderSortBySetting();
 
         new Setting(containerEl)
@@ -1232,12 +1235,10 @@ export class SettingsTab extends PluginSettingTab {
      * Refresh the sort tasks by setting when AI parsing toggle changes
      */
     refreshSortBySetting(): void {
-        if (!this.sortByContainerEl || !this.sortBySetting) return;
+        if (!this.sortByContainerEl) return;
 
-        // Remove the old setting
-        this.sortBySetting.settingEl.remove();
-
-        // Re-render with updated options and description
+        // Clear the container and re-render (keeps position in settings list)
+        this.sortByContainerEl.empty();
         this.renderSortBySetting();
 
         console.log(
