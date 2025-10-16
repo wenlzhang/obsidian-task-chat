@@ -482,8 +482,10 @@ Total Cost: $0.002 - $0.0021
 **Query Understanding** (Query Parsing Only)
 - **AI Query Understanding**: Enable AI to understand your queries (optional)
   - What it does: AI parses your query to extract filters and keywords
-  - When ON: Better semantic understanding, multilingual support (~$0.0001/query)
-  - When OFF: Fast regex-based parsing ($0)
+  - When ON: 
+    - Better semantic understanding, multilingual support (~$0.0001/query)
+    - Unlocks "Auto (AI Context-Aware)" sorting mode (smart sorting)
+  - When OFF: Fast regex-based parsing ($0), "Auto" sorting unavailable
   - Recommended: ON for complex multilingual queries, OFF for cost savings
   - **Important**: This does NOT control AI task analysis - that's always available and automatic!
 
@@ -527,12 +529,13 @@ Total Cost: $0.002 - $0.0021
 
 **Sorting Options**
 - **Task Sort By**: Field to sort tasks by
-  - **Auto (AI Context-Aware)** - ⭐ Recommended (new default)
+  - **Auto (AI Context-Aware)** - ⭐ Recommended (requires AI query understanding enabled)
+    - **Availability**: Only shown when "AI query understanding" is enabled in Query & Search Settings
     - **Direct search**: Uses Due Date (safe, predictable)
     - **AI analysis**: Intelligently chooses based on query type
       - Keyword searches → Relevance sorting (best AI context)
       - Other queries → Due Date sorting
-    - Best for: Most users who want smart behavior
+    - Best for: Users who want smart behavior and use AI query parsing
   - **Relevance**: Keyword match quality score (only works when query has keywords)
     - Scores tasks based on how well they match your search keywords
     - Applies to both direct search and AI analysis

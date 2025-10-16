@@ -273,7 +273,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("AI query understanding (query parsing only)")
             .setDesc(
-                "Use AI to understand your queries (~$0.0001/query). Improves semantic understanding and multilingual support. When disabled, uses free regex-based parsing. Note: AI task analysis is always available and automatic regardless of this setting - it triggers based on query complexity and result count.",
+                "Use AI to understand your queries (~$0.0001/query). Improves semantic understanding and multilingual support. When disabled, uses free regex-based parsing. Benefits: (1) Better keyword extraction for multilingual queries, (2) Unlocks 'Auto' sorting mode below (AI context-aware). Note: AI task analysis is always available regardless of this setting.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -405,22 +405,39 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sort tasks by")
             .setDesc(
-                'Field to sort tasks by. "Auto" (recommended) = AI decides based on query context for AI analysis, uses Due Date for direct search. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries.',
+                this.plugin.settings.useAIQueryParsing
+                    ? 'Field to sort tasks by. "Auto" (recommended) = AI context-aware sorting, uses Relevance for keyword searches (pairs well with AI query parsing) and Due Date otherwise. "Relevance" sorts by keyword match quality. Other options work for all queries.'
+                    : 'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode (AI context-aware sorting).',
             )
-            .addDropdown((dropdown) =>
+            .addDropdown((dropdown) => {
+                // Conditionally add Auto option only if AI query parsing is enabled
+                if (this.plugin.settings.useAIQueryParsing) {
+                    dropdown.addOption("auto", "Auto (AI Context-Aware) - Recommended");
+                }
                 dropdown
-                    .addOption("auto", "Auto (AI Context-Aware) - Recommended")
                     .addOption("relevance", "Relevance")
                     .addOption("dueDate", "Due Date")
                     .addOption("priority", "Priority")
                     .addOption("created", "Created Date")
-                    .addOption("alphabetical", "Alphabetical")
-                    .setValue(this.plugin.settings.taskSortBy)
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskSortBy = value as any;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+                    .addOption("alphabetical", "Alphabetical");
+                
+                // If Auto is selected but AI parsing is disabled, fall back to Due Date
+                const currentValue = this.plugin.settings.taskSortBy;
+                if (currentValue === "auto" && !this.plugin.settings.useAIQueryParsing) {
+                    dropdown.setValue("dueDate");
+                    this.plugin.settings.taskSortBy = "dueDate";
+                    this.plugin.saveSettings();
+                } else {
+                    dropdown.setValue(currentValue);
+                }
+                
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.taskSortBy = value as any;
+                    await this.plugin.saveSettings();
+                });
+                
+                return dropdown;
+            });
 
         new Setting(containerEl)
             .setName("Sort direction")

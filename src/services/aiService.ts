@@ -211,7 +211,7 @@ export class AIService {
                 intent.keywords.length > 0 &&
                 settings.relevanceThreshold > 0
             ) {
-                const scoredTasks = this.scoreTasksByRelevance(
+                const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                     filteredTasks,
                     intent.keywords,
                 );
@@ -238,7 +238,7 @@ export class AIService {
                     "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
                 );
                 // Sort by keyword match relevance
-                sortedTasks = this.sortByKeywordRelevance(
+                sortedTasks = TaskSearchService.sortByKeywordRelevance(
                     preFilteredTasks,
                     intent.keywords,
                 );
@@ -386,13 +386,13 @@ export class AIService {
             intent.keywords.length > 0 &&
             settings.relevanceThreshold > 0
         ) {
-            const scoredTasks = this.scoreTasksByRelevance(
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                 filteredTasks,
                 intent.keywords,
             );
             preFilteredTasks = scoredTasks
-                .filter((st) => st.score >= settings.relevanceThreshold)
-                .map((st) => st.task);
+                .filter((st: { score: number; task: Task }) => st.score >= settings.relevanceThreshold)
+                .map((st: { score: number; task: Task }) => st.task);
             console.log(
                 `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
             );
@@ -409,7 +409,7 @@ export class AIService {
                 console.log(
                     "[Task Chat] Auto mode: Using relevance sorting for AI (keyword search detected)",
                 );
-                sortedTasks = this.sortByKeywordRelevance(
+                sortedTasks = TaskSearchService.sortByKeywordRelevance(
                     preFilteredTasks,
                     intent.keywords,
                 );
@@ -430,7 +430,7 @@ export class AIService {
             console.log(
                 "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
             );
-            sortedTasks = this.sortByKeywordRelevance(
+            sortedTasks = TaskSearchService.sortByKeywordRelevance(
                 preFilteredTasks,
                 intent.keywords,
             );
@@ -480,7 +480,7 @@ export class AIService {
         // Only send high-quality matches to AI to save tokens and improve results
         let tasksToAnalyze: Task[];
         if (intent.keywords && intent.keywords.length > 0) {
-            const scoredTasks = this.scoreTasksByRelevance(
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                 sortedTasks,
                 intent.keywords,
             );
@@ -530,8 +530,8 @@ export class AIService {
 
             // Filter by adaptive threshold
             const relevantTasks = scoredTasks
-                .filter((st) => st.score >= RELEVANCE_THRESHOLD)
-                .map((st) => st.task);
+                .filter((st: { score: number; task: Task }) => st.score >= RELEVANCE_THRESHOLD)
+                .map((st: { score: number; task: Task }) => st.task);
 
             console.log(
                 `[Task Chat] Filtered to ${relevantTasks.length} relevant tasks (score >= ${RELEVANCE_THRESHOLD}, ${intent.keywords.length} keywords) before sending to AI`,
@@ -1239,10 +1239,10 @@ ${taskContext}`;
             );
 
             // Use relevance scoring as fallback - return top 3-5 most relevant tasks
-            const scoredTasks = this.scoreTasksByRelevance(tasks, keywords);
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(tasks, keywords);
             const topTasks = scoredTasks
                 .slice(0, Math.min(5, settings.maxRecommendations))
-                .map((st) => st.task);
+                .map((st: { score: number; task: Task }) => st.task);
 
             console.log(
                 `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance`,
@@ -1259,7 +1259,7 @@ ${taskContext}`;
         // Skip automatic task addition
         if (false) {
             // This code path is disabled - we trust AI's judgment
-            const scoredTasks = this.scoreTasksByRelevance(tasks, keywords);
+            const scoredTasks = TaskSearchService.scoreTasksByRelevance(tasks, keywords);
 
             // Define quality threshold: only add tasks with decent relevance
             // Score >= 40 means at least 4 keyword matches or good positioning
@@ -1369,79 +1369,6 @@ ${taskContext}`;
 
         console.log(`[Task Chat] Processed response:`, processedResponse);
         return processedResponse;
-    }
-
-    /**
-     * Score tasks by relevance to keywords
-     * Returns array of {task, score} sorted by score (highest first)
-     */
-    private static scoreTasksByRelevance(
-        tasks: Task[],
-        keywords: string[],
-    ): Array<{ task: Task; score: number }> {
-        const scored = tasks.map((task) => {
-            const taskText = task.text.toLowerCase();
-            let score = 0;
-
-            // Penalize very short generic tasks (likely test/placeholder tasks)
-            if (task.text.trim().length < 10) {
-                score -= 50;
-            }
-
-            keywords.forEach((keyword) => {
-                const keywordLower = keyword.toLowerCase();
-
-                // Exact match gets highest score
-                if (taskText === keywordLower) {
-                    score += 100;
-                }
-                // Task contains the exact keyword
-                else if (taskText.includes(keywordLower)) {
-                    // Higher bonus for keyword at start of task
-                    if (taskText.startsWith(keywordLower)) {
-                        score += 20; // Increased from 15
-                    } else {
-                        score += 15; // Increased from 10
-                    }
-                }
-            });
-
-            // More generous bonus for matching multiple keywords
-            const matchingKeywords = keywords.filter((kw) =>
-                taskText.includes(kw.toLowerCase()),
-            ).length;
-            score += matchingKeywords * 8; // Increased from 5
-
-            // Slight bonus for medium-length tasks (more descriptive, not too verbose)
-            if (task.text.length >= 20 && task.text.length < 100) {
-                score += 5;
-            }
-
-            return { task, score };
-        });
-
-        // Sort by score (highest first)
-        return scored.sort((a, b) => b.score - a.score);
-    }
-
-    /**
-     * Sort tasks by keyword relevance
-     * Tasks that match more keywords and have better matches rank higher
-     */
-    private static sortByKeywordRelevance(
-        tasks: Task[],
-        keywords: string[],
-    ): Task[] {
-        const sorted = this.scoreTasksByRelevance(tasks, keywords);
-
-        console.log("[Task Chat] Top 10 tasks by relevance:");
-        sorted.slice(0, 10).forEach((item, i) => {
-            console.log(
-                `[Task Chat]   [${i + 1}] Score ${item.score}: ${item.task.text}`,
-            );
-        });
-
-        return sorted.map((item) => item.task);
     }
 
     /**

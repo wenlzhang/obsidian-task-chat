@@ -165,7 +165,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
-    taskSortBy: "auto", // Auto = AI context-aware (recommended)
+    taskSortBy: "dueDate", // Default: due date (Auto unlocked when AI query parsing enabled)
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking

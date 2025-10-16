@@ -701,4 +701,67 @@ export class TaskSearchService {
             hasMultipleFilters: filterCount > 1,
         };
     }
+
+    /**
+     * Score tasks by relevance to keywords
+     * Returns array of {task, score} sorted by score (highest first)
+     * Used for both direct search and AI analysis
+     */
+    static scoreTasksByRelevance(
+        tasks: Task[],
+        keywords: string[],
+    ): Array<{ task: Task; score: number }> {
+        const scored = tasks.map((task) => {
+            const taskText = task.text.toLowerCase();
+            let score = 0;
+
+            // Penalize very short generic tasks (likely test/placeholder tasks)
+            if (task.text.trim().length < 10) {
+                score -= 50;
+            }
+
+            keywords.forEach((keyword) => {
+                const keywordLower = keyword.toLowerCase();
+
+                // Exact match gets highest score
+                if (taskText === keywordLower) {
+                    score += 100;
+                }
+                // Task contains the exact keyword
+                else if (taskText.includes(keywordLower)) {
+                    // Higher bonus for keyword at start of task
+                    if (taskText.startsWith(keywordLower)) {
+                        score += 20;
+                    } else {
+                        score += 15;
+                    }
+                }
+            });
+
+            // More generous bonus for matching multiple keywords
+            const matchingKeywords = keywords.filter((kw) =>
+                taskText.includes(kw.toLowerCase()),
+            ).length;
+            score += matchingKeywords * 8;
+
+            // Slight bonus for medium-length tasks (more descriptive, not too verbose)
+            if (task.text.length >= 20 && task.text.length < 100) {
+                score += 5;
+            }
+
+            return { task, score };
+        });
+
+        // Sort by score (highest first)
+        return scored.sort((a, b) => b.score - a.score);
+    }
+
+    /**
+     * Sort tasks by keyword relevance
+     * Used when user explicitly selects "Relevance" sorting
+     */
+    static sortByKeywordRelevance(tasks: Task[], keywords: string[]): Task[] {
+        const sorted = this.scoreTasksByRelevance(tasks, keywords);
+        return sorted.map((item) => item.task);
+    }
 }
