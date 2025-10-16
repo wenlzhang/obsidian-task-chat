@@ -65,6 +65,7 @@ export interface PluginSettings {
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
+    relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
     taskSortBy:
         | "relevance"
         | "dueDate"
@@ -162,6 +163,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxDirectResults: 20, // Direct results have no token cost, can be higher
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
+    relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
     taskSortBy: "dueDate", // Sort by due date
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 

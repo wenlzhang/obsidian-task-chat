@@ -404,22 +404,72 @@ export class AIService {
         // Only send high-quality matches to AI to save tokens and improve results
         let tasksToAnalyze: Task[];
         if (intent.keywords && intent.keywords.length > 0) {
-            const RELEVANCE_THRESHOLD = 40;
             const scoredTasks = this.scoreTasksByRelevance(
                 sortedTasks,
                 intent.keywords,
             );
 
-            // Filter by relevance threshold
+            // Determine relevance threshold with adaptive behavior
+            // User can set base threshold (0 = use defaults, 1-100 = custom base)
+            let RELEVANCE_THRESHOLD: number;
+
+            // Determine base threshold
+            let baseThreshold: number;
+            if (settings.relevanceThreshold === 0) {
+                // Use system defaults as base
+                if (intent.keywords.length >= 4) {
+                    baseThreshold = 20;
+                } else if (intent.keywords.length >= 2) {
+                    baseThreshold = 30;
+                } else {
+                    baseThreshold = 40;
+                }
+                console.log(
+                    `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
+                );
+            } else {
+                // User has set a custom base - use it
+                baseThreshold = settings.relevanceThreshold;
+                console.log(
+                    `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
+                );
+            }
+
+            // Apply adaptive adjustments relative to base
+            // This preserves intelligence while respecting user preference
+            if (intent.keywords.length >= 4) {
+                // Many keywords - reduce threshold by 10 from base
+                RELEVANCE_THRESHOLD = Math.max(5, baseThreshold - 10);
+            } else if (intent.keywords.length >= 2) {
+                // Moderate keywords - use base as-is
+                RELEVANCE_THRESHOLD = baseThreshold;
+            } else {
+                // Single keyword - increase threshold by 10 from base
+                RELEVANCE_THRESHOLD = Math.min(100, baseThreshold + 10);
+            }
+
+            console.log(
+                `[Task Chat] Final adaptive threshold: ${RELEVANCE_THRESHOLD} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
+            );
+
+            // Filter by adaptive threshold
             const relevantTasks = scoredTasks
                 .filter((st) => st.score >= RELEVANCE_THRESHOLD)
                 .map((st) => st.task);
 
             console.log(
-                `[Task Chat] Filtered to ${relevantTasks.length} relevant tasks (score >= ${RELEVANCE_THRESHOLD}) before sending to AI`,
+                `[Task Chat] Filtered to ${relevantTasks.length} relevant tasks (score >= ${RELEVANCE_THRESHOLD}, ${intent.keywords.length} keywords) before sending to AI`,
             );
 
-            tasksToAnalyze = relevantTasks.slice(0, settings.maxTasksForAI);
+            // If threshold filtered out too many, include top results anyway
+            if (relevantTasks.length < Math.min(5, sortedTasks.length)) {
+                console.log(
+                    `[Task Chat] Threshold too strict, including top ${Math.min(settings.maxTasksForAI, sortedTasks.length)} tasks`,
+                );
+                tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
+            } else {
+                tasksToAnalyze = relevantTasks.slice(0, settings.maxTasksForAI);
+            }
         } else {
             tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
         }
@@ -1271,20 +1321,20 @@ ${taskContext}`;
                 }
                 // Task contains the exact keyword
                 else if (taskText.includes(keywordLower)) {
-                    // Bonus for keyword at start of task
+                    // Higher bonus for keyword at start of task
                     if (taskText.startsWith(keywordLower)) {
-                        score += 15;
+                        score += 20; // Increased from 15
                     } else {
-                        score += 10;
+                        score += 15; // Increased from 10
                     }
                 }
             });
 
-            // Bonus for matching more keywords
+            // More generous bonus for matching multiple keywords
             const matchingKeywords = keywords.filter((kw) =>
                 taskText.includes(kw.toLowerCase()),
             ).length;
-            score += matchingKeywords * 5;
+            score += matchingKeywords * 8; // Increased from 5
 
             // Slight bonus for medium-length tasks (more descriptive, not too verbose)
             if (task.text.length >= 20 && task.text.length < 100) {

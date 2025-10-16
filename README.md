@@ -546,6 +546,36 @@ Total Cost: $0.002 - $0.0021
   - AI selects most relevant from analyzed tasks
   - Keep manageable for user
 
+**Relevance Threshold** (Advanced - Tune for your needs)
+- **Range**: 0-100 (default: 0 = system defaults)
+- **What it does**: Sets base threshold for keyword matching, then adapts based on query complexity
+- **How it works**: System applies intelligent adjustments around your base value:
+  - 4+ keywords → **base - 10** (more lenient for complex queries)
+  - 2-3 keywords → **base** (use your setting)
+  - 1 keyword → **base + 10** (more strict for simple queries)
+
+**Examples:**
+| Your Setting | 4+ Keywords | 2-3 Keywords | 1 Keyword |
+|--------------|-------------|--------------|-----------|
+| 0 (default) | 20 | 30 | 40 |
+| 15 (lenient) | 5 | 15 | 25 |
+| 25 (moderate) | 15 | 25 | 35 |
+| 35 (strict) | 25 | 35 | 45 |
+| 50 (very strict) | 40 | 50 | 60 |
+
+**When to adjust**:
+- **Getting too few results?** Lower the base (try 15-20)
+  - Example: Setting 15 gives you (5/15/25) - more lenient across all queries
+- **Getting too many irrelevant results?** Raise the base (try 40-50)
+  - Example: Setting 40 gives you (30/40/50) - stricter across all queries
+- **Different languages**: Multilingual queries often need lower base (15-25)
+- **Keep 0 for smart defaults** - works well for most users!
+
+**How scoring works**: Each keyword match = 15-20 points, multiple matches get bonuses
+- Task matching 2 keywords = ~30-45 points
+- Task matching 3 keywords = ~55-70 points
+- Task matching 4+ keywords = ~70-90+ points
+
 ### DataView Integration
 
 **Field Mapping**
@@ -754,6 +784,35 @@ This plugin leverages code patterns from:
 - Adjust `maxDirectResults` (default: 10) to control when AI analysis triggers
 - Lower value = more direct search, less AI cost
 - Higher value = fewer AI calls, but may miss complex prioritization
+
+**Getting too few results with AI query parsing?**
+- The relevance base threshold may be too strict for your language/vocabulary
+- Go to Settings → Task Display → Relevance threshold
+- **Quick fix**: Try setting to 15 (gives you 5/15/25 thresholds)
+- **Understanding**: System will still adapt, but around a lower base
+- **Tip**: Multilingual queries often need base of 15-20
+
+**Getting too many irrelevant results?**
+- The relevance base threshold may be too lenient
+- Try raising base to 40-45 for more selective results across all queries
+- Check console (Ctrl/Cmd+Shift+I) to see actual scores
+- **Tip**: Look for log showing "Final adaptive threshold"
+
+**Fine-tuning relevance threshold for your language:**
+1. Start with default (0) and test typical queries
+2. Open console (Ctrl/Cmd+Shift+I) and look for:
+   ```
+   "Using default adaptive base: 20 (4 keywords)"
+   "Final adaptive threshold: 20 (base: 20, keywords: 4)"
+   "Filtered to 6 relevant tasks"
+   ```
+3. Evaluate results:
+   - **Too few results?** Lower base by 10-15
+     - If default gives 20, try base 15 (→ thresholds become 5/15/25)
+   - **Too many irrelevant?** Raise base by 10-15
+     - If default gives 20, try base 30 (→ thresholds become 20/30/40)
+4. Test with different query types (1 keyword, 2-3 keywords, 4+ keywords)
+5. **Remember**: System always adapts around your base - you're shifting the whole curve!
 
 ## Contributing
 
