@@ -37,7 +37,16 @@ import { TaskSortService } from "./taskSortService";
  */
 export class AIService {
     /**
-     * Send a chat message and get AI response
+     * Get the effective task sort setting based on AI parsing state
+     */
+    private static getEffectiveTaskSortBy(settings: PluginSettings): string {
+        return settings.useAIQueryParsing
+            ? settings.taskSortByAIEnabled
+            : settings.taskSortByAIDisabled;
+    }
+
+    /**
+     * Send a message to AI and get a response with recommended tasks
      */
     static async sendMessage(
         message: string,
@@ -204,9 +213,10 @@ export class AIService {
 
             // Apply relevance filtering if user enabled it and we have keywords
             // This ensures consistent behavior between direct search and AI analysis
+            const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
             let preFilteredTasks = filteredTasks;
             if (
-                settings.taskSortBy === "relevance" &&
+                effectiveTaskSortBy === "relevance" &&
                 intent.keywords &&
                 intent.keywords.length > 0 &&
                 settings.relevanceThreshold > 0
@@ -228,9 +238,9 @@ export class AIService {
             // Other modes: Use user's explicit preference
             let sortedTasks: Task[];
             const effectiveSortBy =
-                settings.taskSortBy === "auto"
+                effectiveTaskSortBy === "auto"
                     ? "dueDate"
-                    : settings.taskSortBy;
+                    : effectiveTaskSortBy;
 
             if (
                 effectiveSortBy === "relevance" &&
@@ -249,13 +259,13 @@ export class AIService {
                 console.log(
                     "[Task Chat] Using sort order:",
                     effectiveSortBy,
-                    settings.taskSortBy === "auto"
+                    effectiveTaskSortBy === "auto"
                         ? "(auto → due date for direct search)"
                         : "",
                 );
                 sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
                     ...settings,
-                    taskSortBy: effectiveSortBy,
+                    taskSortBy: effectiveSortBy as any,
                 });
             }
 
@@ -384,9 +394,10 @@ export class AIService {
 
         // Apply relevance filtering if user enabled it and we have keywords
         // This ensures consistent behavior between direct search and AI analysis
+        const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
         let preFilteredTasks = filteredTasks;
         if (
-            settings.taskSortBy === "relevance" &&
+            effectiveTaskSortBy === "relevance" &&
             intent.keywords &&
             intent.keywords.length > 0 &&
             settings.relevanceThreshold > 0
@@ -411,7 +422,7 @@ export class AIService {
         // Other modes: Use user's explicit preference
         let sortedTasks: Task[];
 
-        if (settings.taskSortBy === "auto") {
+        if (effectiveTaskSortBy === "auto") {
             // Auto mode: intelligent sorting based on query type
             if (intent.keywords && intent.keywords.length > 0) {
                 console.log(
@@ -427,11 +438,11 @@ export class AIService {
                 );
                 sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
                     ...settings,
-                    taskSortBy: "dueDate",
+                    taskSortBy: "dueDate" as any,
                 });
             }
         } else if (
-            settings.taskSortBy === "relevance" &&
+            effectiveTaskSortBy === "relevance" &&
             intent.keywords &&
             intent.keywords.length > 0
         ) {
@@ -445,9 +456,12 @@ export class AIService {
         } else {
             console.log(
                 "[Task Chat] Using configured sort order:",
-                settings.taskSortBy,
+                effectiveTaskSortBy,
             );
-            sortedTasks = TaskSortService.sortTasks(preFilteredTasks, settings);
+            sortedTasks = TaskSortService.sortTasks(preFilteredTasks, {
+                ...settings,
+                taskSortBy: effectiveTaskSortBy as any,
+            });
         }
 
         // If simple query with few results, return directly without AI

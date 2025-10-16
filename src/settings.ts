@@ -66,13 +66,28 @@ export interface PluginSettings {
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
+    
+    // Separate sort settings for AI-enabled and AI-disabled modes
     taskSortBy:
         | "auto"
         | "relevance"
         | "dueDate"
         | "priority"
         | "created"
-        | "alphabetical";
+        | "alphabetical"; // Legacy field - kept for compatibility
+    taskSortByAIEnabled:
+        | "auto"
+        | "relevance"
+        | "dueDate"
+        | "priority"
+        | "created"
+        | "alphabetical"; // Sorting when AI parsing is enabled
+    taskSortByAIDisabled:
+        | "relevance"
+        | "dueDate"
+        | "priority"
+        | "created"
+        | "alphabetical"; // Sorting when AI parsing is disabled (no auto option)
     taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
 
     // Usage Tracking
@@ -165,7 +180,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
-    taskSortBy: "dueDate", // Default: due date (Auto unlocked when AI query parsing enabled)
+    taskSortBy: "dueDate", // Legacy field for backward compatibility
+    taskSortByAIEnabled: "auto", // Smart default when AI parsing is enabled
+    taskSortByAIDisabled: "relevance", // Smart default when AI parsing is disabled
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking

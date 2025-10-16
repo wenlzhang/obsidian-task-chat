@@ -5,6 +5,8 @@ import { PricingService } from "./services/pricingService";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
+    private sortBySetting: Setting | null = null;
+    private sortByContainerEl: HTMLElement | null = null;
 
     constructor(app: App, plugin: TaskChatPlugin) {
         super(app, plugin);
@@ -282,6 +284,9 @@ export class SettingsTab extends PluginSettingTab {
                         this.plugin.settings.useAIQueryParsing = value;
                         await this.plugin.saveSettings();
 
+                        // Update settings tab sort dropdown and description
+                        this.refreshSortBySetting();
+
                         // Update chat view search mode dropdown
                         this.plugin.refreshChatViewSearchMode();
                     }),
@@ -405,48 +410,9 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl)
-            .setName("Sort tasks by")
-            .setDesc(
-                this.plugin.settings.useAIQueryParsing
-                    ? 'Field to sort tasks by. "Auto" (recommended) = AI context-aware sorting, uses Relevance for keyword searches (pairs well with AI query parsing) and Due Date otherwise. "Relevance" sorts by keyword match quality. Other options work for all queries.'
-                    : 'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode (AI context-aware sorting).',
-            )
-            .addDropdown((dropdown) => {
-                // Conditionally add Auto option only if AI query parsing is enabled
-                if (this.plugin.settings.useAIQueryParsing) {
-                    dropdown.addOption(
-                        "auto",
-                        "Auto (AI Context-Aware) - Recommended",
-                    );
-                }
-                dropdown
-                    .addOption("relevance", "Relevance")
-                    .addOption("dueDate", "Due Date")
-                    .addOption("priority", "Priority")
-                    .addOption("created", "Created Date")
-                    .addOption("alphabetical", "Alphabetical");
-
-                // If Auto is selected but AI parsing is disabled, fall back to Due Date
-                const currentValue = this.plugin.settings.taskSortBy;
-                if (
-                    currentValue === "auto" &&
-                    !this.plugin.settings.useAIQueryParsing
-                ) {
-                    dropdown.setValue("dueDate");
-                    this.plugin.settings.taskSortBy = "dueDate";
-                    this.plugin.saveSettings();
-                } else {
-                    dropdown.setValue(currentValue);
-                }
-
-                dropdown.onChange(async (value) => {
-                    this.plugin.settings.taskSortBy = value as any;
-                    await this.plugin.saveSettings();
-                });
-
-                return dropdown;
-            });
+        // Store the container for this setting so we can refresh it
+        this.sortByContainerEl = containerEl;
+        this.renderSortBySetting();
 
         new Setting(containerEl)
             .setName("Sort direction")
@@ -1207,5 +1173,78 @@ export class SettingsTab extends PluginSettingTab {
 
         // Also show a notice
         new Notice(result.message, 5000);
+    }
+
+    /**
+     * Render the "Sort tasks by" setting with appropriate options based on AI parsing state
+     */
+    private renderSortBySetting(): void {
+        if (!this.sortByContainerEl) return;
+
+        const aiParsingEnabled = this.plugin.settings.useAIQueryParsing;
+
+        // Get the appropriate current value based on mode
+        const currentValue = aiParsingEnabled
+            ? this.plugin.settings.taskSortByAIEnabled
+            : this.plugin.settings.taskSortByAIDisabled;
+
+        // Create the setting
+        this.sortBySetting = new Setting(this.sortByContainerEl)
+            .setName("Sort tasks by")
+            .setDesc(
+                aiParsingEnabled
+                    ? 'Field to sort tasks by. "Auto" (recommended) = AI context-aware sorting, uses Relevance for keyword searches and Due Date otherwise. "Relevance" sorts by keyword match quality. Other options work for all queries.'
+                    : 'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode (AI context-aware sorting).',
+            )
+            .addDropdown((dropdown) => {
+                // Conditionally add Auto option only if AI query parsing is enabled
+                if (aiParsingEnabled) {
+                    dropdown.addOption(
+                        "auto",
+                        "Auto (AI context-aware)",
+                    );
+                }
+                dropdown
+                    .addOption("relevance", "Relevance")
+                    .addOption("dueDate", "Due date")
+                    .addOption("priority", "Priority")
+                    .addOption("created", "Created date")
+                    .addOption("alphabetical", "Alphabetical");
+
+                // Set current value
+                dropdown.setValue(currentValue);
+
+                dropdown.onChange(async (value: any) => {
+                    // Save to the appropriate field based on current mode
+                    if (aiParsingEnabled) {
+                        this.plugin.settings.taskSortByAIEnabled = value;
+                    } else {
+                        this.plugin.settings.taskSortByAIDisabled = value;
+                    }
+                    await this.plugin.saveSettings();
+                    console.log(
+                        `[Task Chat] Sort preference saved for ${aiParsingEnabled ? "AI-enabled" : "AI-disabled"} mode: ${value}`,
+                    );
+                });
+
+                return dropdown;
+            });
+    }
+
+    /**
+     * Refresh the sort tasks by setting when AI parsing toggle changes
+     */
+    refreshSortBySetting(): void {
+        if (!this.sortByContainerEl || !this.sortBySetting) return;
+
+        // Remove the old setting
+        this.sortBySetting.settingEl.remove();
+
+        // Re-render with updated options and description
+        this.renderSortBySetting();
+
+        console.log(
+            `[Task Chat] Sort settings refreshed: AI parsing ${this.plugin.settings.useAIQueryParsing ? "enabled" : "disabled"}`,
+        );
     }
 }
