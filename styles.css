@@ -486,3 +486,49 @@
         opacity: 1;
     }
 }
+
+/* Settings Tab Styles */
+
+/* Model info display */
+.model-info-display {
+    margin-top: -8px;
+    margin-bottom: 18px;
+    padding-left: 0;
+}
+
+/* Ollama setup instructions */
+.ollama-setup-info {
+    margin-top: 12px;
+    padding: 12px;
+    background-color: var(--background-secondary);
+    border-radius: 6px;
+}
+
+/* Priority mapping text inputs - full width */
+.priority-mapping-input {
+    width: 100%;
+}
+
+/* Connection test result container */
+.connection-test-result {
+    margin-top: 12px;
+    margin-bottom: 18px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Success state */
+.connection-test-result.success {
+    background-color: var(--background-modifier-success);
+    color: var(--text-success);
+    border: 1px solid var(--text-success);
+}
+
+/* Error state */
+.connection-test-result.error {
+    background-color: var(--background-modifier-error);
+    color: var(--text-error);
+    border: 1px solid var(--text-error);
+}

@@ -205,4 +205,242 @@ export class ModelProviderService {
                 return ""; // No API key needed
         }
     }
+
+    /**
+     * Test OpenAI connection and model availability
+     */
+    static async testOpenAIConnection(
+        apiKey: string,
+        model: string,
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            // First verify API key is valid by fetching models
+            const response = await requestUrl({
+                url: "https://api.openai.com/v1/models",
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                return {
+                    success: false,
+                    message: `Invalid API key or connection failed (${response.status})`,
+                };
+            }
+
+            // Check if the selected model exists
+            const data = response.json;
+            const modelExists = data.data.some((m: any) => m.id === model);
+
+            if (!modelExists) {
+                return {
+                    success: true,
+                    message: `API key valid, but model "${model}" not found. You may need to update the model selection.`,
+                };
+            }
+
+            return {
+                success: true,
+                message: `✓ Connection successful! Model "${model}" is available.`,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: `Connection failed: ${error.message || "Unknown error"}`,
+            };
+        }
+    }
+
+    /**
+     * Test Anthropic connection
+     */
+    static async testAnthropicConnection(
+        apiKey: string,
+        model: string,
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            // Make a minimal test request to Anthropic API
+            const response = await requestUrl({
+                url: "https://api.anthropic.com/v1/messages",
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": apiKey,
+                    "anthropic-version": "2023-06-01",
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: "user", content: "test" }],
+                    max_tokens: 10,
+                }),
+            });
+
+            if (response.status === 200) {
+                return {
+                    success: true,
+                    message: `✓ Connection successful! Model "${model}" is working.`,
+                };
+            } else {
+                return {
+                    success: false,
+                    message: `API returned status ${response.status}`,
+                };
+            }
+        } catch (error) {
+            // Parse error message
+            const errorMsg = error.message || String(error);
+            if (errorMsg.includes("401")) {
+                return {
+                    success: false,
+                    message:
+                        "Invalid API key. Please check your Anthropic API key.",
+                };
+            } else if (errorMsg.includes("model")) {
+                return {
+                    success: false,
+                    message: `Model "${model}" not available. Please select a different model.`,
+                };
+            }
+            return {
+                success: false,
+                message: `Connection failed: ${errorMsg}`,
+            };
+        }
+    }
+
+    /**
+     * Test OpenRouter connection
+     */
+    static async testOpenRouterConnection(
+        apiKey: string,
+        model: string,
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            // Verify by fetching models list
+            const response = await requestUrl({
+                url: "https://openrouter.ai/api/v1/models",
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                return {
+                    success: false,
+                    message: `Invalid API key or connection failed (${response.status})`,
+                };
+            }
+
+            // Check if selected model exists
+            const data = response.json;
+            const modelExists = data.data.some((m: any) => m.id === model);
+
+            if (!modelExists) {
+                return {
+                    success: true,
+                    message: `API key valid, but model "${model}" not found. Click Refresh to update model list.`,
+                };
+            }
+
+            return {
+                success: true,
+                message: `✓ Connection successful! Model "${model}" is available.`,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: `Connection failed: ${error.message || "Unknown error"}`,
+            };
+        }
+    }
+
+    /**
+     * Test Ollama connection
+     */
+    static async testOllamaConnection(
+        endpoint: string,
+        model: string,
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const baseUrl = endpoint
+                ? endpoint.replace("/api/chat", "")
+                : "http://localhost:11434";
+
+            // First check if Ollama is running
+            const tagsResponse = await requestUrl({
+                url: `${baseUrl}/api/tags`,
+                method: "GET",
+            });
+
+            if (tagsResponse.status !== 200) {
+                return {
+                    success: false,
+                    message:
+                        "Ollama server not responding. Make sure Ollama is running.",
+                };
+            }
+
+            // Check if model is installed
+            const data = tagsResponse.json;
+            const installedModels = data.models
+                ? data.models.map((m: any) => m.name)
+                : [];
+
+            const modelInstalled = installedModels.some(
+                (m: string) => m === model || m.startsWith(model),
+            );
+
+            if (!modelInstalled) {
+                return {
+                    success: false,
+                    message: `Model "${model}" not found. Install it with: ollama pull ${model}`,
+                };
+            }
+
+            // Test actual generation
+            const testResponse = await requestUrl({
+                url: `${baseUrl}/api/generate`,
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: "test",
+                    stream: false,
+                }),
+            });
+
+            if (testResponse.status === 200) {
+                return {
+                    success: true,
+                    message: `✓ Ollama connection successful! Model "${model}" is ready.`,
+                };
+            } else {
+                return {
+                    success: false,
+                    message: `Model test failed (${testResponse.status})`,
+                };
+            }
+        } catch (error) {
+            const errorMsg = error.message || String(error);
+            if (
+                errorMsg.includes("ECONNREFUSED") ||
+                errorMsg.includes("fetch")
+            ) {
+                return {
+                    success: false,
+                    message:
+                        "Cannot connect to Ollama. Make sure Ollama is running with CORS enabled.",
+                };
+            }
+            return {
+                success: false,
+                message: `Connection failed: ${errorMsg}`,
+            };
+        }
+    }
 }

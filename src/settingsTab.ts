@@ -102,12 +102,34 @@ export class SettingsTab extends PluginSettingTab {
 
         // Add model info based on provider
         const modelInfo = containerEl.createDiv({
-            cls: "setting-item-description",
+            cls: "setting-item-description model-info-display",
         });
-        modelInfo.style.marginTop = "-8px";
-        modelInfo.style.marginBottom = "18px";
-        modelInfo.style.paddingLeft = "0";
         modelInfo.innerHTML = this.getModelInfo();
+
+        // Add Test Connection button
+        const testConnectionSetting = new Setting(containerEl)
+            .setName("Test connection")
+            .setDesc(
+                "Verify that your API key and model are working correctly",
+            );
+
+        testConnectionSetting.addButton((button) =>
+            button
+                .setButtonText("Test Connection")
+                .setTooltip("Verify API configuration")
+                .onClick(async () => {
+                    button.setButtonText("Testing...");
+                    button.setDisabled(true);
+
+                    const result = await this.testConnection();
+
+                    button.setButtonText("Test Connection");
+                    button.setDisabled(false);
+
+                    // Show result below the button
+                    this.showConnectionTestResult(containerEl, result);
+                }),
+        );
 
         new Setting(containerEl)
             .setName("Temperature")
@@ -141,12 +163,8 @@ export class SettingsTab extends PluginSettingTab {
         // Add provider-specific setup instructions
         if (this.plugin.settings.aiProvider === "ollama") {
             const ollamaInfo = containerEl.createDiv({
-                cls: "setting-item-description",
+                cls: "ollama-setup-info",
             });
-            ollamaInfo.style.marginTop = "12px";
-            ollamaInfo.style.padding = "12px";
-            ollamaInfo.style.backgroundColor = "var(--background-secondary)";
-            ollamaInfo.style.borderRadius = "6px";
             ollamaInfo.innerHTML = `
                 <strong>Ollama setup:</strong><br>
                 1. Install Ollama from <a href="https://ollama.com" target="_blank">ollama.com</a><br>
@@ -479,7 +497,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
                     .then((text) => {
-                        text.inputEl.style.width = "100%";
+                        text.inputEl.addClass("priority-mapping-input");
                     }),
             );
 
@@ -502,7 +520,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
                     .then((text) => {
-                        text.inputEl.style.width = "100%";
+                        text.inputEl.addClass("priority-mapping-input");
                     }),
             );
 
@@ -525,7 +543,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
                     .then((text) => {
-                        text.inputEl.style.width = "100%";
+                        text.inputEl.addClass("priority-mapping-input");
                     }),
             );
 
@@ -548,7 +566,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
                     .then((text) => {
-                        text.inputEl.style.width = "100%";
+                        text.inputEl.addClass("priority-mapping-input");
                     }),
             );
 
@@ -939,7 +957,7 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Get model info text (replaces getModelSuggestions)
+     * Get model info text
      */
     private getModelInfo(): string {
         const models = this.getAvailableModels();
@@ -957,5 +975,107 @@ export class SettingsTab extends PluginSettingTab {
             default:
                 return "";
         }
+    }
+
+    /**
+     * Test connection to AI provider
+     */
+    private async testConnection(): Promise<{
+        success: boolean;
+        message: string;
+    }> {
+        const provider = this.plugin.settings.aiProvider;
+        const apiKey = this.getCurrentApiKey();
+        const model = this.plugin.settings.model;
+
+        // Validate inputs
+        if (provider !== "ollama" && !apiKey) {
+            return {
+                success: false,
+                message: "Please enter an API key first",
+            };
+        }
+
+        if (!model) {
+            return {
+                success: false,
+                message: "Please select a model first",
+            };
+        }
+
+        try {
+            switch (provider) {
+                case "openai":
+                    return await ModelProviderService.testOpenAIConnection(
+                        apiKey,
+                        model,
+                    );
+
+                case "anthropic":
+                    return await ModelProviderService.testAnthropicConnection(
+                        apiKey,
+                        model,
+                    );
+
+                case "openrouter":
+                    return await ModelProviderService.testOpenRouterConnection(
+                        apiKey,
+                        model,
+                    );
+
+                case "ollama":
+                    return await ModelProviderService.testOllamaConnection(
+                        this.plugin.settings.apiEndpoint,
+                        model,
+                    );
+
+                default:
+                    return {
+                        success: false,
+                        message: "Unknown provider",
+                    };
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: `Test failed: ${error.message || "Unknown error"}`,
+            };
+        }
+    }
+
+    /**
+     * Show connection test result with visual feedback
+     */
+    private showConnectionTestResult(
+        containerEl: HTMLElement,
+        result: { success: boolean; message: string },
+    ): void {
+        // Remove any existing test result
+        const existingResult = containerEl.querySelector(
+            ".connection-test-result",
+        );
+        if (existingResult) {
+            existingResult.remove();
+        }
+
+        // Create result message element with appropriate class
+        const statusClass = result.success ? "success" : "error";
+        const resultEl = containerEl.createDiv({
+            cls: `connection-test-result ${statusClass}`,
+        });
+
+        resultEl.setText(result.message);
+
+        // Insert after the test connection setting
+        const testConnectionSetting = Array.from(
+            containerEl.querySelectorAll(".setting-item"),
+        ).find((el) => el.textContent?.includes("Test connection"));
+
+        if (testConnectionSetting) {
+            testConnectionSetting.after(resultEl);
+        }
+
+        // Also show a notice
+        new Notice(result.message, 5000);
     }
 }
