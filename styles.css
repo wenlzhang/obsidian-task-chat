@@ -85,23 +85,23 @@
 .task-chat-search-mode {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
-.task-chat-search-mode-label {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 500;
+.task-chat-search-mode-icon {
+    font-size: 14px;
+    opacity: 0.7;
 }
 
 .task-chat-search-mode-select {
-    padding: 4px 8px;
+    padding: 6px 8px;
     font-size: 13px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
     background: var(--background-primary);
     color: var(--text-normal);
     cursor: pointer;
+    min-width: 120px;
 }
 
 .task-chat-search-mode-select:hover {

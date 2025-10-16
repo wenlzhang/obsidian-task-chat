@@ -76,28 +76,33 @@ export class ChatView extends ItemView {
         // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
 
-        // Session group
+        // Group 1: Session management
         const sessionGroup = controlsEl.createDiv("task-chat-button-group");
 
         const newSessionBtn = sessionGroup.createEl("button", {
-            text: "+ New",
+            text: "New",
             cls: "task-chat-new-session-btn",
         });
         newSessionBtn.addEventListener("click", () => this.createNewSession());
+
+        const clearBtn = sessionGroup.createEl("button", { text: "Clear" });
+        clearBtn.addEventListener("click", () => this.clearChat());
 
         const sessionsBtn = sessionGroup.createEl("button", {
             text: "Sessions",
         });
         sessionsBtn.addEventListener("click", () => this.openSessionModal());
 
-        // Search mode group
+        // Group 2: Search mode (compact dropdown only)
         const searchModeGroup = controlsEl.createDiv("task-chat-button-group");
         const searchModeContainer = searchModeGroup.createDiv(
             "task-chat-search-mode",
         );
+
+        // Just the dropdown with an icon prefix
         searchModeContainer.createSpan({
-            text: "Search mode:",
-            cls: "task-chat-search-mode-label",
+            text: "🔍",
+            cls: "task-chat-search-mode-icon",
         });
 
         this.searchModeSelect = searchModeContainer.createEl("select", {
@@ -117,23 +122,18 @@ export class ChatView extends ItemView {
             console.log(`[Task Chat] Search mode changed to: ${value}`);
         });
 
-        // Task management group
+        // Group 3: Task management
         const taskGroup = controlsEl.createDiv("task-chat-button-group");
 
         const filterBtn = taskGroup.createEl("button", {
-            text: "Filter tasks",
+            text: "Filter",
         });
         filterBtn.addEventListener("click", () => this.openFilterModal());
 
         const refreshBtn = taskGroup.createEl("button", {
-            text: "Refresh tasks",
+            text: "Refresh",
         });
         refreshBtn.addEventListener("click", () => this.refreshTasks());
-
-        // Clear chat group (separate)
-        const clearGroup = controlsEl.createDiv("task-chat-button-group");
-        const clearBtn = clearGroup.createEl("button", { text: "Clear chat" });
-        clearBtn.addEventListener("click", () => this.clearChat());
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
@@ -253,21 +253,21 @@ export class ChatView extends ItemView {
             // Both options available when AI parsing is enabled
             const smartOption = this.searchModeSelect.createEl("option", {
                 value: "smart",
-                text: "Smart Search (AI)",
+                text: "Smart Search",
             });
             const directOption = this.searchModeSelect.createEl("option", {
                 value: "direct",
-                text: "Direct Search",
+                text: "Direct search",
             });
 
             // Default to Smart Search when AI parsing is enabled
             this.searchModeSelect.value = "smart";
             this.useAIQueryParsingOverride = true;
         } else {
-            // Only Direct Search available when AI parsing is disabled
+            // Only Direct search available when AI parsing is disabled
             const directOption = this.searchModeSelect.createEl("option", {
                 value: "direct",
-                text: "Direct Search",
+                text: "Direct search",
             });
 
             this.searchModeSelect.value = "direct";
@@ -390,7 +390,7 @@ export class ChatView extends ItemView {
                 ? "You"
                 : message.role === "assistant"
                   ? "AI"
-                  : "System";
+                  : "Task Chat";
         headerEl.createEl("strong", { text: roleName });
         headerEl.createEl("span", {
             text: new Date(message.timestamp).toLocaleTimeString(),
