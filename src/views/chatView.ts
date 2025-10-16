@@ -116,9 +116,11 @@ export class ChatView extends ItemView {
         });
 
         this.inputEl.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                this.sendMessage();
+            if (e.key === "Enter" && !e.shiftKey) {
+                if (e.metaKey || e.ctrlKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
             }
         });
 
@@ -265,6 +267,7 @@ export class ChatView extends ItemView {
 
         // Message header
         const headerEl = messageEl.createDiv("task-chat-message-header");
+
         const roleName =
             message.role === "user"
                 ? "You"
@@ -356,6 +359,32 @@ export class ChatView extends ItemView {
 
             usageEl.createEl("small", { text: parts.join(" • ") });
         }
+
+        // Add copy button at bottom of message
+        const copyBtn = messageEl.createEl("button", {
+            cls: "task-chat-copy-button",
+            attr: {
+                "aria-label": "Copy message",
+            },
+        });
+        copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+        copyBtn.addEventListener("click", () => {
+            let textToCopy = message.content;
+
+            // Include recommended tasks if they exist
+            if (
+                message.recommendedTasks &&
+                message.recommendedTasks.length > 0
+            ) {
+                textToCopy += "\n\nRecommended tasks:\n";
+                message.recommendedTasks.forEach((task, index) => {
+                    textToCopy += `${index + 1}. - [${task.status}] ${task.text}\n`;
+                });
+            }
+
+            navigator.clipboard.writeText(textToCopy);
+            new Notice("Message copied to clipboard");
+        });
     }
 
     /**

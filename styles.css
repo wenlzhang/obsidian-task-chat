@@ -66,6 +66,7 @@
     padding: 10px;
     border-radius: 6px;
     background: var(--background-primary-alt);
+    position: relative;
 }
 
 .task-chat-message-user {
@@ -73,6 +74,7 @@
     color: var(--text-on-accent);
     align-self: flex-end;
     max-width: 80%;
+    padding-bottom: 40px;
 }
 
 .task-chat-message-assistant {
@@ -91,7 +93,8 @@
 /* Message Header */
 .task-chat-message-header {
     display: flex;
-    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
     margin-bottom: 6px;
     font-size: 11px;
     opacity: 0.8;
@@ -99,6 +102,57 @@
 
 .task-chat-message-time {
     opacity: 0.6;
+}
+
+/* Copy Button - Square Icon */
+.task-chat-copy-button {
+    padding: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.task-chat-copy-button:hover {
+    opacity: 1;
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+.task-chat-copy-button svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+/* Copy button positioning for AI messages - bottom right */
+.task-chat-message-assistant .task-chat-copy-button {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+}
+
+/* Copy button positioning for user messages - centered at bottom of box */
+.task-chat-message-user .task-chat-copy-button {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-on-accent);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.task-chat-message-user .task-chat-copy-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Message Content */
@@ -138,7 +192,7 @@
     min-width: 24px;
     flex-shrink: 0;
     line-height: 1.5;
-    margin-right: 15px;
+    margin-right: 20px;
     margin-top: -2px;
 }
 
