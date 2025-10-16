@@ -357,28 +357,37 @@ export class AIService {
                     intent.extractedTags.length === 0);
 
             // Check if we should return direct results
-            // Condition 1: Small result set with simple query
-            // Condition 2: High-quality small result set (even with semantic expansion)
+            // Condition 1: Direct search mode (user explicitly chose it)
+            // Condition 2: Small result set with simple query
+            // Condition 3: High-quality small result set (even with semantic expansion)
+            const forceDirectResults = !settings.useAIQueryParsing; // Direct search = no AI analysis
             const hasSmallHighQualityResults =
                 sortedTasks.length <= 15 &&
                 intent.keywords.length >= 6 &&
                 qualityFilteredTasks.length < filteredTasks.length * 0.5;
 
             if (
+                forceDirectResults ||
                 (sortedTasks.length <= settings.maxDirectResults &&
                     isSimpleQuery) ||
                 hasSmallHighQualityResults
             ) {
-                const reason = hasSmallHighQualityResults
-                    ? `High-quality results (${sortedTasks.length} tasks passed strict filtering from ${filteredTasks.length})`
-                    : this.buildDirectSearchReason(
-                          sortedTasks.length,
-                          settings.maxDirectResults,
-                          isSimpleQuery,
-                          usingAIParsing,
-                      );
+                const reason = forceDirectResults
+                    ? `Direct search mode (${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""})`
+                    : hasSmallHighQualityResults
+                      ? `High-quality results (${sortedTasks.length} tasks passed strict filtering from ${filteredTasks.length})`
+                      : this.buildDirectSearchReason(
+                            sortedTasks.length,
+                            settings.maxDirectResults,
+                            isSimpleQuery,
+                            usingAIParsing,
+                        );
 
-                if (hasSmallHighQualityResults) {
+                if (forceDirectResults) {
+                    console.log(
+                        `[Task Chat] Direct search mode: Returning ${sortedTasks.length} results without AI analysis`,
+                    );
+                } else if (hasSmallHighQualityResults) {
                     console.log(
                         `[Task Chat] Returning direct results: ${sortedTasks.length} high-quality tasks (strict threshold filtered ${filteredTasks.length} → ${qualityFilteredTasks.length})`,
                     );
