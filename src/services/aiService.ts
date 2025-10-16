@@ -266,8 +266,15 @@ export class AIService {
                 intent.keywords || [],
             );
 
-            return {
+            // Replace [TASK_X] references with actual task numbers from recommended list
+            const processedResponse = this.replaceTaskReferences(
                 response,
+                recommendedTasks,
+                tasksToAnalyze,
+            );
+
+            return {
+                response: processedResponse,
                 recommendedTasks,
                 tokenUsage,
             };
@@ -669,48 +676,63 @@ IMPORTANT RULES:
 10. Be concise and actionable
 11. ${languageInstruction}${priorityMapping}${dueDateMapping}
 
-IMPORTANT ABOUT TASK REFERENCES:
-- Any tasks you mention using [TASK_X] IDs will automatically appear in the "Recommended tasks" section below your response
-- In that section, they will be renumbered as 1, 2, 3, etc. (not using your TASK_X numbers)
-- Users will see the full task details in that section
-- Your response text should focus on providing strategic advice and prioritization guidance
-- You can reference tasks by [TASK_X] IDs when giving advice, or provide general guidance without specific IDs
+CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
+- Use [TASK_X] IDs to reference specific tasks you're recommending
+- The system will AUTOMATICALLY replace [TASK_X] with "task N" based on the order you mention them
+- Example: You write "[TASK_5] is highest priority, then [TASK_1], then [TASK_4]"
+  → User sees: "task 1 is highest priority, then task 2, then task 3"
+- The tasks appear in the recommended list in the same order you mentioned them
 
-EXAMPLE FLOW:
-Your response: "Start with [TASK_5] (highest priority), then [TASK_1]"
-What user sees below:
+TWO WAYS TO REFERENCE TASKS:
+
+OPTION 1 - Use [TASK_X] IDs (will be auto-converted to task numbers):
+✅ "Focus on [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5] (highest priority)."
+  → Becomes: "Focus on task 1, task 2, and task 3. Start with task 1 (highest priority)."
+
+OPTION 2 - Don't use specific references:
+✅ "Start with the highest priority task, then move to the next one."
+  → Tasks still appear in the recommended list below
+
+WHAT USER SEES:
+Your response text appears first (with [TASK_X] auto-converted to task numbers), then below it:
   Recommended tasks:
-  1. [Content of TASK_5]
-  2. [Content of TASK_1]
+  1. [First task you mentioned]
+  2. [Second task you mentioned]  
+  3. [Third task you mentioned]
 
-TIME-AWARE RECOMMENDATIONS:
+TIME-AWARE RECOMMENDATIONS (REQUIRED):
 ${timeContext}
 
-Consider the user's likely energy level and recommend task execution order accordingly:
-- HIGH ENERGY: Recommend complex, challenging, or high-priority tasks first
-- MODERATE ENERGY: Recommend medium-difficulty tasks or a mix
-- LOW ENERGY: Recommend simpler, quick tasks or planning/review tasks
+YOU MUST consider the user's likely energy level based on current time and recommend accordingly:
+- MORNING (HIGH ENERGY): Recommend complex, challenging tasks first. Mention this in your response: "It's morning and you have high energy - good time for complex tasks"
+- AFTERNOON (MODERATE ENERGY): Recommend medium-difficulty tasks or balanced mix. Mention: "It's afternoon - good time for focused work"
+- EVENING (LOW ENERGY): Recommend simpler tasks or planning. Mention: "It's evening and you may be tired - consider starting with simpler tasks"
+- NIGHT (LOW ENERGY): Recommend quick tasks or review. Mention: "It's late evening - good time for simple tasks or planning tomorrow"
 
-TASK COMPLEXITY ASSESSMENT:
-Estimate task complexity based on:
-- Task description length and detail (longer = more complex)
-- Keywords indicating complexity: "develop", "implement", "design", "plan", "research", "analyze", "refactor", "build", "create system"
-- Keywords indicating simplicity: "update", "fix typo", "review", "check", "send", "reply", "schedule"
-- Priority and due dates (high priority + near deadline = more urgent but not necessarily complex)
+TASK COMPLEXITY ASSESSMENT (REQUIRED):
+YOU MUST analyze task complexity in your response:
+- COMPLEX: "develop", "implement", "design", "plan", "research", "analyze", "refactor", "build", "create system", "开发", "实现", "设计", "研究", "分析"
+- SIMPLE: "update", "fix", "review", "check", "send", "reply", "schedule", "更新", "检查", "回复"
+- Long descriptions = more complex
+- Mention complexity in your recommendations: "[TASK_X] is complex and requires focus" or "[TASK_Y] is a quick task"
 
 RESPONSE FORMAT:
 
 FOR SPECIFIC QUERIES (few tasks found, ~1-5 tasks):
-✅ CORRECT: "Based on priorities and due dates, start with [TASK_3], then [TASK_1]. Both are due soon."
+✅ CORRECT: "It's afternoon - you have moderate energy. I found [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5] (highest priority), then [TASK_1], then [TASK_4]."
+  (User sees: "...I found task 1, task 2, and task 3. Start with task 1 (highest priority), then task 2, then task 3.")
+✅ CORRECT: "It's evening and you may be tired. These tasks are relevant: [TASK_3], [TASK_7]. [TASK_3] is complex (needs focus), but [TASK_7] is simpler if you're low on energy."
+  (User sees: "...task 1 is complex (needs focus), but task 2 is simpler if you're low on energy.")
 ❌ WRONG: "Here are the tasks: - [TASK_1]: 如何开发 Task Chat - Status: open..."
 
-Keep it concise (1-2 sentences), reference only by IDs, provide essential context.
+MUST: (1) Mention time/energy, (2) Reference tasks using [TASK_X] IDs, (3) Brief reasoning
 
 FOR BROAD QUERIES (many tasks found, 6+ tasks):
-✅ CORRECT: "It's morning and you have high energy. I recommend starting with [TASK_3] and [TASK_7] which are complex tasks requiring deep focus, then moving to simpler tasks like [TASK_1] and [TASK_4] later."
+✅ CORRECT: "It's morning - high energy time! Found [TASK_3], [TASK_7], [TASK_1], [TASK_4]. Start with [TASK_3] and [TASK_7] (complex work needing focus). Save [TASK_1] and [TASK_4] (simpler) for afternoon."
+  (User sees: "...Start with task 1 and task 2 (complex work needing focus). Save task 3 and task 4 (simpler) for afternoon.")
 ❌ WRONG: "Here are the tasks related to 'develop': - [TASK_1]: 如何开发 Task Chat..."
 
-Assess complexity, recommend execution order, use only IDs with brief reasoning, help user decide which task to start with.
+MUST: (1) Mention time/energy, (2) Reference tasks using [TASK_X] IDs, (3) Explain strategy
 
 QUERY UNDERSTANDING:
 - The system has already extracted and applied filters from the user's query
@@ -993,18 +1015,15 @@ ${taskContext}`;
             );
         }
 
-        // If AI mentioned very few tasks, add top relevant ones from the list
-        // BUT only if they meet a quality threshold (relevance score)
-        const minTasksThreshold = Math.min(5, settings.maxRecommendations);
-        if (
-            recommended.length < minTasksThreshold &&
-            tasks.length > recommended.length
-        ) {
-            console.log(
-                `[Task Chat] Only ${recommended.length} tasks extracted from AI response. Adding top relevant tasks from the list...`,
-            );
+        // Trust AI's recommendations - only show tasks that AI explicitly mentioned
+        // Do NOT automatically add extra tasks
+        console.log(
+            `[Task Chat] AI explicitly recommended ${recommended.length} tasks. Using only those.`,
+        );
 
-            // Calculate relevance scores for all tasks
+        // Skip automatic task addition
+        if (false) {
+            // This code path is disabled - we trust AI's judgment
             const scoredTasks = this.scoreTasksByRelevance(tasks, keywords);
 
             // Define quality threshold: only add tasks with decent relevance
@@ -1053,6 +1072,68 @@ ${taskContext}`;
             console.log(`[Task Chat]   Recommended [${i + 1}]: ${task.text}`);
         });
         return finalRecommended;
+    }
+
+    /**
+     * Replace [TASK_X] references in the response with actual task numbers
+     * from the recommended list
+     */
+    private static replaceTaskReferences(
+        response: string,
+        recommendedTasks: Task[],
+        allTasks: Task[],
+    ): string {
+        // Build a map of task ID to position in recommended list
+        const taskIdToPosition = new Map<number, number>();
+
+        recommendedTasks.forEach((recommendedTask, index) => {
+            // Find this task in the allTasks array to get its original ID
+            const taskIndex = allTasks.findIndex(
+                (t) =>
+                    t.text === recommendedTask.text &&
+                    t.sourcePath === recommendedTask.sourcePath &&
+                    t.lineNumber === recommendedTask.lineNumber,
+            );
+            if (taskIndex >= 0) {
+                // Map from 1-based task ID to 1-based position in recommended list
+                taskIdToPosition.set(taskIndex + 1, index + 1);
+            }
+        });
+
+        console.log(
+            `[Task Chat] Task ID to position mapping:`,
+            Array.from(taskIdToPosition.entries()).map(
+                ([id, pos]) => `[TASK_${id}] -> task ${pos}`,
+            ),
+        );
+
+        // Replace all [TASK_X] references with "task N" where N is the position
+        let processedResponse = response;
+        const taskIdPattern = /\[TASK_(\d+)\]/g;
+
+        processedResponse = processedResponse.replace(
+            taskIdPattern,
+            (match, idStr) => {
+                const taskId = parseInt(idStr);
+                const position = taskIdToPosition.get(taskId);
+
+                if (position !== undefined) {
+                    console.log(
+                        `[Task Chat] Replacing ${match} with "task ${position}"`,
+                    );
+                    return `task ${position}`;
+                } else {
+                    // Task was referenced but not in recommended list (shouldn't happen)
+                    console.warn(
+                        `[Task Chat] Task ID ${taskId} not found in recommended list`,
+                    );
+                    return match; // Keep original reference
+                }
+            },
+        );
+
+        console.log(`[Task Chat] Processed response:`, processedResponse);
+        return processedResponse;
     }
 
     /**
