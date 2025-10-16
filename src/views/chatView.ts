@@ -16,6 +16,7 @@ export class ChatView extends ItemView {
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
     private isProcessing: boolean = false;
+    private typingIndicator: HTMLElement | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -216,6 +217,45 @@ export class ChatView extends ItemView {
     }
 
     /**
+     * Show typing indicator
+     */
+    private showTypingIndicator(): void {
+        if (this.typingIndicator) {
+            return;
+        }
+
+        this.typingIndicator = this.messagesEl.createDiv(
+            "task-chat-message task-chat-message-assistant task-chat-typing",
+        );
+
+        const headerEl = this.typingIndicator.createDiv(
+            "task-chat-message-header",
+        );
+        headerEl.createEl("strong", { text: "AI" });
+
+        const contentEl = this.typingIndicator.createDiv(
+            "task-chat-message-content",
+        );
+        const dotsEl = contentEl.createDiv("task-chat-typing-dots");
+        dotsEl.createSpan({ cls: "task-chat-typing-dot" });
+        dotsEl.createSpan({ cls: "task-chat-typing-dot" });
+        dotsEl.createSpan({ cls: "task-chat-typing-dot" });
+
+        // Auto-scroll to bottom
+        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+    }
+
+    /**
+     * Hide typing indicator
+     */
+    private hideTypingIndicator(): void {
+        if (this.typingIndicator) {
+            this.typingIndicator.remove();
+            this.typingIndicator = null;
+        }
+    }
+
+    /**
      * Render a single message
      */
     private renderMessage(message: ChatMessage): void {
@@ -339,6 +379,9 @@ export class ChatView extends ItemView {
         this.renderMessages();
         await this.plugin.saveSettings();
 
+        // Show typing indicator
+        this.showTypingIndicator();
+
         try {
             // Get AI response or direct results
             const result = await AIService.sendMessage(
@@ -356,6 +399,9 @@ export class ChatView extends ItemView {
                     result.tokenUsage.estimatedCost;
                 await this.plugin.saveSettings();
             }
+
+            // Hide typing indicator
+            this.hideTypingIndicator();
 
             // Handle direct results (no AI used)
             if (result.directResults) {
@@ -385,6 +431,8 @@ export class ChatView extends ItemView {
                 await this.plugin.saveSettings();
             }
         } catch (error) {
+            // Hide typing indicator on error
+            this.hideTypingIndicator();
             console.error("Error sending message:", error);
             new Notice(error.message || "Failed to get AI response");
 
