@@ -578,8 +578,17 @@ export class AIService {
                 break;
             case "auto":
             default:
-                languageInstruction =
-                    "Respond in the same language as the user's query. If the query mixes multiple languages, use the primary language detected.";
+                // Use queryLanguages if configured, otherwise default behavior
+                if (
+                    settings.queryLanguages &&
+                    settings.queryLanguages.length > 0
+                ) {
+                    const langs = settings.queryLanguages.join(", ");
+                    languageInstruction = `Respond in the same language as the user's query. Supported languages: ${langs}. If the query mixes multiple languages, use the primary language detected from the supported list.`;
+                } else {
+                    languageInstruction =
+                        "Respond in the same language as the user's query. If the query mixes multiple languages, use the primary language detected.";
+                }
                 break;
         }
 

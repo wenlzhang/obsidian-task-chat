@@ -138,12 +138,13 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Response language")
-            .setDesc("Choose the language for AI responses")
+            .setDesc(
+                "Choose the language for AI responses. Use 'Auto' to match user input language. For multi-language support, configure 'Query languages for semantic search' below.",
+            )
             .addDropdown((dropdown) =>
                 dropdown
                     .addOption("auto", "Auto (match user input)")
                     .addOption("english", "English")
-                    .addOption("chinese", "Chinese (中文)")
                     .addOption("custom", "Custom instruction")
                     .setValue(this.plugin.settings.responseLanguage)
                     .onChange(async (value) => {
@@ -189,11 +190,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query languages for semantic search")
             .setDesc(
-                "Languages to use for semantic keyword expansion when searching tasks. Requires 'AI-powered query parsing' to be enabled. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, 中文, 日本語, Español, Français, Deutsch. Separate with commas.",
+                "Languages to use for semantic keyword expansion and AI response. Requires 'AI-powered query parsing' to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("English, 中文, 日本語")
+                    .setPlaceholder("English")
                     .setValue(this.plugin.settings.queryLanguages.join(", "))
                     .onChange(async (value) => {
                         this.plugin.settings.queryLanguages = value
