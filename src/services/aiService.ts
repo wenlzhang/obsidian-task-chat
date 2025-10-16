@@ -202,12 +202,35 @@ export class AIService {
                 };
             }
 
-            // Respect user's sort preference
-            // If user selected "relevance" and we have keywords, use keyword relevance
-            // Otherwise always use user's configured sort order
-            let sortedTasks: Task[];
+            // Apply relevance filtering if user enabled it and we have keywords
+            // This ensures consistent behavior between direct search and AI analysis
+            let preFilteredTasks = filteredTasks;
             if (
                 settings.taskSortBy === "relevance" &&
+                intent.keywords &&
+                intent.keywords.length > 0 &&
+                settings.relevanceThreshold > 0
+            ) {
+                const scoredTasks = this.scoreTasksByRelevance(
+                    filteredTasks,
+                    intent.keywords,
+                );
+                preFilteredTasks = scoredTasks
+                    .filter((st) => st.score >= settings.relevanceThreshold)
+                    .map((st) => st.task);
+                console.log(
+                    `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
+                );
+            }
+
+            // Respect user's sort preference
+            // "auto" mode: Use due date for direct search (safe default)
+            // Other modes: Use user's explicit preference
+            let sortedTasks: Task[];
+            const effectiveSortBy = settings.taskSortBy === "auto" ? "dueDate" : settings.taskSortBy;
+            
+            if (
+                effectiveSortBy === "relevance" &&
                 intent.keywords &&
                 intent.keywords.length > 0
             ) {
@@ -216,17 +239,18 @@ export class AIService {
                 );
                 // Sort by keyword match relevance
                 sortedTasks = this.sortByKeywordRelevance(
-                    filteredTasks,
+                    preFilteredTasks,
                     intent.keywords,
                 );
             } else {
                 console.log(
-                    "[Task Chat] Using configured sort order:",
-                    settings.taskSortBy,
+                    "[Task Chat] Using sort order:",
+                    effectiveSortBy,
+                    settings.taskSortBy === "auto" ? "(auto → due date for direct search)" : "",
                 );
                 sortedTasks = TaskSortService.sortTasks(
-                    filteredTasks,
-                    settings,
+                    preFilteredTasks,
+                    { ...settings, taskSortBy: effectiveSortBy },
                 );
             }
 
@@ -353,11 +377,52 @@ export class AIService {
             };
         }
 
-        // Respect user's sort preference
-        // If user selected "relevance" and we have keywords, use keyword relevance
-        // Otherwise always use user's configured sort order
-        let sortedTasks: Task[];
+        // Apply relevance filtering if user enabled it and we have keywords
+        // This ensures consistent behavior between direct search and AI analysis
+        let preFilteredTasks = filteredTasks;
         if (
+            settings.taskSortBy === "relevance" &&
+            intent.keywords &&
+            intent.keywords.length > 0 &&
+            settings.relevanceThreshold > 0
+        ) {
+            const scoredTasks = this.scoreTasksByRelevance(
+                filteredTasks,
+                intent.keywords,
+            );
+            preFilteredTasks = scoredTasks
+                .filter((st) => st.score >= settings.relevanceThreshold)
+                .map((st) => st.task);
+            console.log(
+                `[Task Chat] Pre-filtered by relevance threshold ${settings.relevanceThreshold}: ${filteredTasks.length} → ${preFilteredTasks.length} tasks`,
+            );
+        }
+
+        // Respect user's sort preference for AI input
+        // "auto" mode: Sort by relevance if keywords exist (best for AI context), otherwise due date
+        // Other modes: Use user's explicit preference
+        let sortedTasks: Task[];
+        
+        if (settings.taskSortBy === "auto") {
+            // Auto mode: intelligent sorting based on query type
+            if (intent.keywords && intent.keywords.length > 0) {
+                console.log(
+                    "[Task Chat] Auto mode: Using relevance sorting for AI (keyword search detected)",
+                );
+                sortedTasks = this.sortByKeywordRelevance(
+                    preFilteredTasks,
+                    intent.keywords,
+                );
+            } else {
+                console.log(
+                    "[Task Chat] Auto mode: Using due date sorting for AI (no keywords)",
+                );
+                sortedTasks = TaskSortService.sortTasks(
+                    preFilteredTasks,
+                    { ...settings, taskSortBy: "dueDate" },
+                );
+            }
+        } else if (
             settings.taskSortBy === "relevance" &&
             intent.keywords &&
             intent.keywords.length > 0
@@ -366,7 +431,7 @@ export class AIService {
                 "[Task Chat] Using relevance-based sorting (user preference + keyword search)",
             );
             sortedTasks = this.sortByKeywordRelevance(
-                filteredTasks,
+                preFilteredTasks,
                 intent.keywords,
             );
         } else {
@@ -374,7 +439,7 @@ export class AIService {
                 "[Task Chat] Using configured sort order:",
                 settings.taskSortBy,
             );
-            sortedTasks = TaskSortService.sortTasks(filteredTasks, settings);
+            sortedTasks = TaskSortService.sortTasks(preFilteredTasks, settings);
         }
 
         // If simple query with few results, return directly without AI

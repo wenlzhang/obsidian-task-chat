@@ -44,9 +44,12 @@ An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter t
 
 ### 🎯 Task Display & Sorting
 - **Flexible Sorting Options**:
-  - Relevance (keyword match quality), Due Date, Priority, Created Date, Alphabetical
+  - **Auto (AI Context-Aware)** - Recommended default
+    - Direct search: Uses Due Date (safe fallback)
+    - AI analysis: Uses Relevance for keyword searches, Due Date otherwise
+  - Relevance (keyword match quality)
+  - Due Date, Priority, Created Date, Alphabetical
   - Ascending or Descending order
-  - Applies to both direct search and AI analysis
   - Pre-configured defaults optimized for task management
 - **Configurable Result Limits**:
   - Max Direct Results (default: 20): No-cost instant results
@@ -523,23 +526,29 @@ Total Cost: $0.002 - $0.0021
 ### Task Display Settings
 
 **Sorting Options**
-- **Task Sort By**: Field to sort tasks by (applies to both direct search and AI results)
+- **Task Sort By**: Field to sort tasks by
+  - **Auto (AI Context-Aware)** - ⭐ Recommended (new default)
+    - **Direct search**: Uses Due Date (safe, predictable)
+    - **AI analysis**: Intelligently chooses based on query type
+      - Keyword searches → Relevance sorting (best AI context)
+      - Other queries → Due Date sorting
+    - Best for: Most users who want smart behavior
   - **Relevance**: Keyword match quality score (only works when query has keywords)
     - Scores tasks based on how well they match your search keywords
-    - Best for finding most relevant tasks in keyword searches
-  - **Due Date**: Sort by deadline (default)
-    - Best for time-sensitive task management
+    - Applies to both direct search and AI analysis
+    - Best for: Finding most relevant tasks in keyword searches
+  - **Due Date**: Sort by deadline
+    - Best for: Time-sensitive task management
   - **Priority**: Sort by priority level (1-4)
-    - Best for importance-based workflows
+    - Best for: Importance-based workflows
   - **Created Date**: Sort by creation time
-    - Best for chronological task tracking
+    - Best for: Chronological task tracking
   - **Alphabetical**: Sort by task text
-    - Best for organized browsing
+    - Best for: Organized browsing
 - **Sort Direction**: Sort order
   - Low to High (ascending): 1→4, A→Z, Early→Late
   - High to Low (descending): 4→1, Z→A, Late→Early
-- **Note**: For direct search (no AI), your sort preference is always respected
-- **Note**: Relevance sorting requires keywords in your query to work
+- **Note**: "Auto" mode gives AI better context while keeping direct search predictable
 
 **Result Limits** (controls cost and performance)
 - **Max Direct Results** (default: 20, range: 5-100)
@@ -557,11 +566,13 @@ Total Cost: $0.002 - $0.0021
 
 **Relevance Threshold** (Advanced - Tune for your needs)
 - **Range**: 0-100 (default: 0 = system defaults)
-- **What it does**: Sets base threshold for keyword matching, then adapts based on query complexity
+- **What it does**: Sets base threshold for keyword matching in BOTH direct search and AI analysis
+- **When it applies**: Only when "Sort tasks by" is set to "Relevance" AND query has keywords
 - **How it works**: System applies intelligent adjustments around your base value:
   - 4+ keywords → **base - 10** (more lenient for complex queries)
   - 2-3 keywords → **base** (use your setting)
   - 1 keyword → **base + 10** (more strict for simple queries)
+- **Unified behavior**: Same filtering rules apply whether using direct search or AI analysis
 
 **Examples:**
 | Your Setting | 4+ Keywords | 2-3 Keywords | 1 Keyword |

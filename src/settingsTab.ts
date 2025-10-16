@@ -389,7 +389,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Relevance threshold (advanced)")
             .setDesc(
-                "Base relevance score (0-100) for keyword matching with AI query parsing. Default: 0 (use system defaults - recommended). The system intelligently adapts around your base: 4+ keywords → base-10, 2-3 keywords → base, 1 keyword → base+10. This means: Setting 0 uses defaults (20/30/40), Setting 15 gives you (5/15/25), Setting 30 gives you (20/30/40), Setting 45 gives you (35/45/55). Lower base = more lenient, Higher base = more strict. Tune this if you consistently get too few or too many results for your language/vocabulary.",
+                "Base relevance score (0-100) for keyword matching. Applies to BOTH direct search and AI analysis when 'Relevance' sorting is selected. Default: 0 (use system defaults - recommended). The system intelligently adapts around your base: 4+ keywords → base-10, 2-3 keywords → base, 1 keyword → base+10. Examples: Setting 0 uses defaults (20/30/40), Setting 15 gives you (5/15/25), Setting 30 gives you (20/30/40). Lower base = more lenient results, Higher base = stricter filtering. Note: Only active when 'Sort tasks by' is set to 'Relevance' and query has keywords.",
             )
             .addSlider((slider) =>
                 slider
@@ -405,10 +405,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sort tasks by")
             .setDesc(
-                'Field to sort tasks by. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries.',
+                'Field to sort tasks by. "Auto" (recommended) = AI decides based on query context for AI analysis, uses Due Date for direct search. "Relevance" sorts by keyword match quality (only works for keyword searches). Other options work for all queries.',
             )
             .addDropdown((dropdown) =>
                 dropdown
+                    .addOption("auto", "Auto (AI Context-Aware) - Recommended")
                     .addOption("relevance", "Relevance")
                     .addOption("dueDate", "Due Date")
                     .addOption("priority", "Priority")

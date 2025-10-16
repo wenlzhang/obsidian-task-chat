@@ -67,6 +67,7 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
     taskSortBy:
+        | "auto"
         | "relevance"
         | "dueDate"
         | "priority"
@@ -164,7 +165,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
-    taskSortBy: "dueDate", // Sort by due date
+    taskSortBy: "auto", // Auto = AI context-aware (recommended)
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking
