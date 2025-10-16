@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import TaskChatPlugin from "./main";
 import { ModelProviderService } from "./services/modelProviderService";
+import { PricingService } from "./services/pricingService";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -570,6 +571,63 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Pricing Information
+        containerEl.createEl("h3", { text: "Pricing data" });
+
+        const pricingInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+
+        const lastUpdate = PricingService.getTimeSinceUpdate(
+            this.plugin.settings.pricingCache.lastUpdated,
+        );
+        const modelCount = Object.keys(
+            this.plugin.settings.pricingCache.data,
+        ).length;
+
+        pricingInfo.createEl("p", {
+            text: `Pricing database: ${modelCount} models cached`,
+        });
+        pricingInfo.createEl("p", {
+            text: `Last updated: ${lastUpdate}`,
+        });
+        pricingInfo.createEl("p", {
+            text: "Pricing is fetched from OpenRouter API daily and includes all major providers (OpenAI, Anthropic, etc.)",
+            cls: "setting-item-description",
+        });
+
+        new Setting(containerEl)
+            .setName("Refresh pricing")
+            .setDesc("Manually update pricing data from OpenRouter API")
+            .addButton((button) =>
+                button.setButtonText("Refresh Now").onClick(async () => {
+                    button.setButtonText("Updating...");
+                    button.setDisabled(true);
+
+                    try {
+                        const pricing =
+                            await PricingService.fetchPricingFromOpenRouter();
+                        if (Object.keys(pricing).length > 0) {
+                            this.plugin.settings.pricingCache.data = pricing;
+                            this.plugin.settings.pricingCache.lastUpdated =
+                                Date.now();
+                            await this.plugin.saveSettings();
+                            new Notice(
+                                `Updated pricing for ${Object.keys(pricing).length} models`,
+                            );
+                            this.display(); // Refresh UI
+                        } else {
+                            new Notice("Failed to fetch pricing data");
+                        }
+                    } catch (error) {
+                        new Notice("Error updating pricing: " + error.message);
+                    }
+
+                    button.setButtonText("Refresh Now");
+                    button.setDisabled(false);
+                }),
+            );
+
         // Usage Statistics
         containerEl.createEl("h3", { text: "Usage statistics" });
 
@@ -585,7 +643,7 @@ export class SettingsTab extends PluginSettingTab {
             text: `Total tokens used: ${totalTokens}`,
         });
         statsContainer.createEl("p", {
-            text: `Total cost: $${totalCost}`,
+            text: `Total cost: $${totalCost} (based on real-time API pricing)`,
         });
 
         new Setting(containerEl)

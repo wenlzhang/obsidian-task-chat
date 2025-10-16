@@ -23,6 +23,12 @@ export interface PluginSettings {
         ollama: string[];
     };
 
+    // Cached pricing data (fetched from APIs)
+    pricingCache: {
+        data: Record<string, { input: number; output: number }>;
+        lastUpdated: number; // timestamp
+    };
+
     // DataView Settings
     dataviewKeys: {
         dueDate: string;
@@ -91,6 +97,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         anthropic: [],
         openrouter: [],
         ollama: [],
+    },
+    pricingCache: {
+        data: {},
+        lastUpdated: 0,
     },
 
     // DataView Settings

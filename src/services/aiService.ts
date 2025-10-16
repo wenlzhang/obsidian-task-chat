@@ -3,6 +3,7 @@ import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./queryParserService";
+import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
 
 /**
@@ -184,7 +185,9 @@ export class AIService {
                         completionTokens: 0,
                         totalTokens: 0,
                         estimatedCost: 0,
-                        model: settings.model,
+                        model: "none",
+                        provider: settings.aiProvider,
+                        isEstimated: true, // Direct search, no AI used
                     },
                 };
             }
@@ -238,7 +241,9 @@ export class AIService {
                         completionTokens: 0,
                         totalTokens: 0,
                         estimatedCost: 0,
-                        model: settings.model,
+                        model: "none",
+                        provider: settings.aiProvider,
+                        isEstimated: true, // Direct search, no AI used
                     },
                 };
             }
@@ -312,7 +317,9 @@ export class AIService {
                     completionTokens: 0,
                     totalTokens: 0,
                     estimatedCost: 0,
-                    model: settings.model,
+                    model: "none",
+                    provider: settings.aiProvider,
+                    isEstimated: true, // Direct search, no AI used
                 },
             };
         }
@@ -354,7 +361,9 @@ export class AIService {
                     completionTokens: 0,
                     totalTokens: 0,
                     estimatedCost: 0,
-                    model: settings.model,
+                    model: "none",
+                    provider: settings.aiProvider,
+                    isEstimated: true, // Direct search, no AI used
                 },
             };
         }
@@ -394,7 +403,9 @@ export class AIService {
                     completionTokens: 0,
                     totalTokens: 0,
                     estimatedCost: 0,
-                    model: settings.model,
+                    model: "none",
+                    provider: settings.aiProvider,
+                    isEstimated: true, // Direct search, no AI used
                 },
             };
         }
@@ -719,40 +730,37 @@ ${taskContext}`;
     }
 
     /**
-     * Calculate estimated cost based on token usage and model
+     * Calculate cost based on token usage and model (using dynamic pricing from API)
+     * Pricing data fetched from OpenRouter API and updated automatically
      */
     private static calculateCost(
         promptTokens: number,
         completionTokens: number,
         model: string,
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+        cachedPricing: Record<string, { input: number; output: number }>,
     ): number {
-        // Pricing per 1M tokens (as of 2024)
-        const pricing: Record<string, { input: number; output: number }> = {
-            "gpt-4o": { input: 2.5, output: 10.0 },
-            "gpt-4o-mini": { input: 0.15, output: 0.6 },
-            "gpt-4-turbo": { input: 10.0, output: 30.0 },
-            "gpt-4": { input: 30.0, output: 60.0 },
-            "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
-            "claude-3-5-sonnet-20241022": { input: 3.0, output: 15.0 },
-            "claude-3-opus": { input: 15.0, output: 75.0 },
-            "claude-3-sonnet": { input: 3.0, output: 15.0 },
-            "claude-3-haiku": { input: 0.25, output: 1.25 },
-        };
-
-        // Find matching pricing (case insensitive)
-        const modelLower = model.toLowerCase();
-        let rates = null;
-
-        for (const [key, value] of Object.entries(pricing)) {
-            if (modelLower.includes(key.toLowerCase())) {
-                rates = value;
-                break;
-            }
+        // Ollama is free (local)
+        if (provider === "ollama") {
+            return 0;
         }
+
+        // Get pricing from cache or embedded rates
+        const rates = PricingService.getPricing(model, cachedPricing);
 
         // Default to gpt-4o-mini pricing if unknown
         if (!rates) {
-            rates = pricing["gpt-4o-mini"];
+            console.warn(
+                `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
+            );
+            const fallback = PricingService.getPricing("gpt-4o-mini", {});
+            if (!fallback) {
+                return 0; // Should never happen
+            }
+            // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
+            const inputCost = (promptTokens / 1000000) * fallback.input;
+            const outputCost = (completionTokens / 1000000) * fallback.output;
+            return inputCost + outputCost;
         }
 
         // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
@@ -820,8 +828,12 @@ ${taskContext}`;
                 promptTokens,
                 completionTokens,
                 settings.model,
+                settings.aiProvider,
+                settings.pricingCache.data,
             ),
             model: settings.model,
+            provider: settings.aiProvider,
+            isEstimated: false, // Real token counts from API
         };
 
         return {
@@ -887,8 +899,12 @@ ${taskContext}`;
                 promptTokens,
                 completionTokens,
                 settings.model,
+                settings.aiProvider,
+                settings.pricingCache.data,
             ),
             model: settings.model,
+            provider: settings.aiProvider,
+            isEstimated: false, // Real token counts from API
         };
 
         return {
@@ -944,6 +960,8 @@ ${taskContext}`;
             ),
             estimatedCost: 0, // Ollama is local, no cost
             model: settings.model,
+            provider: "ollama",
+            isEstimated: true, // Ollama doesn't return real token counts
         };
 
         return {

@@ -44,6 +44,8 @@ export interface TokenUsage {
     totalTokens: number;
     estimatedCost: number;
     model: string;
+    provider: "openai" | "anthropic" | "openrouter" | "ollama";
+    isEstimated: boolean; // true for Ollama (no real token counts), false for API providers
 }
 
 export interface ChatContext {

@@ -382,27 +382,49 @@ export class ChatView extends ItemView {
 
             const parts: string[] = [];
 
+            // Show provider info
+            const providerName =
+                message.tokenUsage.provider === "openai"
+                    ? "OpenAI"
+                    : message.tokenUsage.provider === "anthropic"
+                      ? "Anthropic"
+                      : message.tokenUsage.provider === "openrouter"
+                        ? "OpenRouter"
+                        : "Ollama";
+
             if (message.tokenUsage.totalTokens > 0) {
+                // Show token count with estimation indicator
+                const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
                 parts.push(
-                    `${message.tokenUsage.totalTokens.toLocaleString()} tokens`,
+                    `${tokenStr}${message.tokenUsage.totalTokens.toLocaleString()} tokens`,
                 );
                 parts.push(
                     `(${message.tokenUsage.promptTokens.toLocaleString()} in, ${message.tokenUsage.completionTokens.toLocaleString()} out)`,
                 );
 
-                if (message.tokenUsage.estimatedCost > 0) {
-                    const cost = message.tokenUsage.estimatedCost;
-                    if (cost < 0.01) {
-                        parts.push(`~$${cost.toFixed(4)}`);
-                    } else {
-                        parts.push(`~$${cost.toFixed(3)}`);
+                // Show cost information
+                if (message.tokenUsage.provider === "ollama") {
+                    parts.push(`${providerName} (free)`);
+                } else if (message.tokenUsage.model === "none") {
+                    parts.push("Direct search (no cost)");
+                } else {
+                    parts.push(`${providerName} ${message.tokenUsage.model}`);
+                    if (message.tokenUsage.estimatedCost > 0) {
+                        const cost = message.tokenUsage.estimatedCost;
+                        if (cost < 0.01) {
+                            parts.push(`~$${cost.toFixed(4)}`);
+                        } else {
+                            parts.push(`~$${cost.toFixed(2)}`);
+                        }
                     }
                 }
-            } else {
-                parts.push("Direct search - no API cost");
+            } else if (message.tokenUsage.model === "none") {
+                parts.push("Direct search (no AI used)");
             }
 
-            usageEl.createEl("small", { text: parts.join(" • ") });
+            usageEl.createEl("small", {
+                text: parts.join(" • "),
+            });
         }
 
         // Add copy button at bottom of message

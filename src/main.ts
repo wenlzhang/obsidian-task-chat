@@ -8,6 +8,7 @@ import { ChatView, CHAT_VIEW_TYPE } from "./views/chatView";
 import { FilterModal } from "./views/filterModal";
 import { SessionManager } from "./services/sessionManager";
 import { ModelProviderService } from "./services/modelProviderService";
+import { PricingService } from "./services/pricingService";
 
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
@@ -134,7 +135,7 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Load models in background without blocking startup
+     * Load models and pricing in background without blocking startup
      */
     private async loadModelsInBackground(): Promise<void> {
         // Wait a bit for the plugin to fully initialize
@@ -142,7 +143,7 @@ export default class TaskChatPlugin extends Plugin {
             const provider = this.settings.aiProvider;
             const cached = this.settings.availableModels[provider];
 
-            // Only load if cache is empty
+            // Only load models if cache is empty
             if (!cached || cached.length === 0) {
                 console.log(`Loading ${provider} models in background...`);
                 try {
@@ -193,6 +194,35 @@ export default class TaskChatPlugin extends Plugin {
                 } catch (error) {
                     console.error("Error loading models in background:", error);
                 }
+            }
+
+            // Refresh pricing if needed (older than 24 hours)
+            if (
+                PricingService.shouldRefreshPricing(
+                    this.settings.pricingCache.lastUpdated,
+                )
+            ) {
+                console.log(
+                    "Pricing cache is stale, refreshing from OpenRouter API...",
+                );
+                try {
+                    const pricing =
+                        await PricingService.fetchPricingFromOpenRouter();
+                    if (Object.keys(pricing).length > 0) {
+                        this.settings.pricingCache.data = pricing;
+                        this.settings.pricingCache.lastUpdated = Date.now();
+                        await this.saveSettings();
+                        console.log(
+                            `Updated pricing for ${Object.keys(pricing).length} models`,
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error refreshing pricing:", error);
+                }
+            } else {
+                console.log(
+                    `Pricing cache is fresh (updated ${PricingService.getTimeSinceUpdate(this.settings.pricingCache.lastUpdated)})`,
+                );
             }
         }, 2000); // Wait 2 seconds after startup
     }
