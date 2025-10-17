@@ -5,6 +5,7 @@ import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./queryParserService";
 import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
+import { PromptBuilderService } from "./promptBuilderService";
 
 /**
  * Service for AI chat functionality
@@ -662,138 +663,8 @@ export class AIService {
     }
 
     /**
-     * Build priority mapping documentation from user settings
-     */
-    private static buildPriorityMapping(settings: PluginSettings): string {
-        const mapping = settings.dataviewPriorityMapping;
-        const lines = [];
-
-        if (mapping[1] && mapping[1].length > 0) {
-            lines.push(`- HIGH priority (1): ${mapping[1].join(", ")}`);
-        }
-        if (mapping[2] && mapping[2].length > 0) {
-            lines.push(`- MEDIUM priority (2): ${mapping[2].join(", ")}`);
-        }
-        if (mapping[3] && mapping[3].length > 0) {
-            lines.push(`- LOW priority (3): ${mapping[3].join(", ")}`);
-        }
-        if (mapping[4] && mapping[4].length > 0) {
-            lines.push(`- LOWEST priority (4): ${mapping[4].join(", ")}`);
-        }
-
-        if (lines.length === 0) {
-            return "";
-        }
-
-        return `\nPRIORITY MAPPING (DataView format [${settings.dataviewKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
-    }
-
-    /**
-     * Build date format documentation from user settings (all date types)
-     */
-    private static buildDateFormats(settings: PluginSettings): string {
-        const keys = settings.dataviewKeys;
-        return `
-DATE FORMATS (DataView):
-- Due date: [${keys.dueDate}::YYYY-MM-DD] - Users may ask for "due today", "overdue", "this week", etc.
-- Created date: [${keys.createdDate}::YYYY-MM-DD] - When the task was created
-- Completed date: [${keys.completedDate}::YYYY-MM-DD] - When the task was finished
-Users may reference tasks by any of these dates.`;
-    }
-
-    /**
-     * Build task status mapping from user settings
-     */
-    private static buildStatusMapping(settings: PluginSettings): string {
-        const names = settings.taskStatusDisplayNames;
-        return `
-TASK STATUS CATEGORIES (User-Configured):
-- ${names.open || "Open"}: Tasks not yet started or in progress
-- ${names.completed || "Completed"}: Finished tasks
-- ${names.inProgress || "In progress"}: Tasks currently being worked on
-- ${names.cancelled || "Cancelled"}: Tasks that were abandoned
-- ${names.other || "Other"}: Miscellaneous task states
-Use these exact names when referring to task status.`;
-    }
-
-    /**
-     * Build recommendation limits based on user settings
-     */
-    private static buildRecommendationLimits(settings: PluginSettings): string {
-        return `
-RECOMMENDATION LIMITS:
-- Recommend up to ${settings.maxRecommendations} tasks maximum
-- If more tasks are relevant, prioritize the most critical ones
-- It's okay to recommend fewer if only a few are truly relevant
-- Focus on quality over quantity`;
-    }
-
-    /**
-     * Build sort order explanation based on user's actual configuration
-     */
-    private static buildSortOrderExplanation(
-        sortOrder: SortCriterion[],
-    ): string {
-        // Convert criteria to human-readable names
-        const criteriaNames = sortOrder.map((criterion) => {
-            switch (criterion) {
-                case "relevance":
-                    return "keyword relevance";
-                case "dueDate":
-                    return "due date";
-                case "priority":
-                    return "priority level";
-                case "created":
-                    return "creation date";
-                case "alphabetical":
-                    return "alphabetical order";
-                default:
-                    return criterion;
-            }
-        });
-
-        // Build primary sort description
-        const primaryCriterion = sortOrder[0];
-        let primaryDescription = "";
-
-        switch (primaryCriterion) {
-            case "relevance":
-                primaryDescription = "keyword relevance (best matches first)";
-                break;
-            case "dueDate":
-                primaryDescription = "urgency (overdue → today → future)";
-                break;
-            case "priority":
-                primaryDescription = "priority (1=highest → 4=lowest)";
-                break;
-            case "created":
-                primaryDescription = "recency (newest → oldest)";
-                break;
-            case "alphabetical":
-                primaryDescription = "alphabetical order (A → Z)";
-                break;
-        }
-
-        // Build complete explanation
-        const sortChain = criteriaNames.join(" → ");
-
-        return `
-TASK ORDERING (User-Configured):
-- Tasks are sorted using multi-criteria sorting: ${sortChain}
-- Primary sort: ${primaryDescription}
-- Earlier tasks in the list are MORE important based on this sorting
-- [TASK_1] through [TASK_5] are typically the most critical
-- When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
-- Each criterion has smart defaults:
-  * Relevance: Higher scores first (100 → 0)
-  * Priority: Highest first (1 → 2 → 3 → 4, where 1 is highest)
-  * Due date: Most urgent first (overdue → today → future)
-  * Created: Newest first (recent → older)
-  * Alphabetical: A → Z`;
-    }
-
-    /**
      * Build messages array for AI API
+     * Uses shared PromptBuilderService for consistent prompt generation across all AI interactions
      */
     private static buildMessages(
         userMessage: string,
@@ -831,10 +702,11 @@ TASK ORDERING (User-Configured):
                 break;
         }
 
-        // Build dynamic mappings from settings
-        const priorityMapping = this.buildPriorityMapping(settings);
-        const dateFormats = this.buildDateFormats(settings);
-        const statusMapping = this.buildStatusMapping(settings);
+        // Build dynamic mappings from settings (using shared PromptBuilderService)
+        const priorityMapping =
+            PromptBuilderService.buildPriorityMapping(settings);
+        const dateFormats = PromptBuilderService.buildDateFormats(settings);
+        const statusMapping = PromptBuilderService.buildStatusMapping(settings);
 
         // Build filter context description
         let filterContext = "";
@@ -894,8 +766,10 @@ IMPORTANT RULES:
 8. Help prioritize based on user's query, relevance, due dates, priority levels, and time context
 9. If tasks are related, explain the relationships using only task IDs
 10. Be concise and actionable
-11. ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
-12. ${this.buildRecommendationLimits(settings)}
+
+${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
+
+${PromptBuilderService.buildRecommendationLimits(settings)}
 
 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
 - Use [TASK_X] IDs to reference specific tasks you're recommending
@@ -922,7 +796,7 @@ QUERY UNDERSTANDING:
 - If multiple filters were detected, tasks have been pre-filtered to match ALL criteria
 - Your job is to provide helpful context and prioritization for the filtered results${filterContext}
 
-${this.buildSortOrderExplanation(sortOrder)}
+${PromptBuilderService.buildSortOrderExplanation(sortOrder)}
 
 ${taskContext}`;
 

@@ -1,5 +1,7 @@
 import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
+import { ModelProviderService } from "./modelProviderService";
+import { PromptBuilderService } from "./promptBuilderService";
 import { StopWords } from "./stopWords";
 
 /**
@@ -207,6 +209,7 @@ export class QueryParserService {
 
     /**
      * Use AI to parse query into structured format
+     * Uses shared PromptBuilderService for consistent prompt generation
      */
     private static async parseWithAI(
         query: string,
@@ -219,17 +222,25 @@ export class QueryParserService {
                 : ["English", "中文"];
         const languageList = queryLanguages.join(", ");
 
+        // Build user-specific mappings (using shared PromptBuilderService)
+        const priorityMapping =
+            PromptBuilderService.buildPriorityMappingForParser(settings);
+        const statusMapping =
+            PromptBuilderService.buildStatusMappingForParser(settings);
+        const dateFieldNames =
+            PromptBuilderService.buildDateFieldNamesForParser(settings);
+
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
 
 SEMANTIC KEYWORD EXPANSION:
 The user has configured the following languages for semantic search: ${languageList}
 When extracting keywords, provide translations and semantic variations in ALL configured languages to enable cross-language matching.
 
-PRIORITY MAPPING:
-- 1 = highest/high priority (高优先级, 最高优先级, high, highest, p1, 1)
-- 2 = medium priority (中优先级, 普通优先级, medium, normal, p2, 2)
-- 3 = low priority (低优先级, low, p3, 3)
-- 4 = none/no priority (无优先级, none, p4, 4)
+${priorityMapping}
+
+${statusMapping}
+
+${dateFieldNames}
 
 DUE DATE MAPPING (normalize different field names to these values):
 - "any" = tasks that HAVE a due date (有截止日期, due, due tasks, scheduled, has due date)
@@ -244,12 +255,7 @@ DUE DATE MAPPING (normalize different field names to these values):
 IMPORTANT for dueDate:
 - "due" or "due tasks" alone means "any" (has a due date)
 - Be smart about implied meanings: "deadline tasks" = "any" (has deadline/due date)
-- Users may use different field names (due, deadline, dueDate) - ALWAYS map to the values above
-
-STATUS MAPPING:
-- "open" = incomplete tasks (未完成, 待办, open, incomplete, pending, todo)
-- "completed" = done tasks (完成, 已完成, completed, done, finished)
-- "inProgress" = in progress (进行中, 正在做, in progress, ongoing)
+- Users may use different field names - recognize all the variations listed above
 
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
