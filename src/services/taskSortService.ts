@@ -3,20 +3,27 @@ import { PluginSettings } from "../settings";
 
 export class TaskSortService {
     /**
-     * Sort tasks based on settings
+     * Sort tasks based on sort preference and direction
      */
-    static sortTasks(tasks: Task[], settings: PluginSettings): Task[] {
-        const { taskSortBy, taskSortDirection } = settings;
-
+    static sortTasks(
+        tasks: Task[],
+        sortBy:
+            | "relevance"
+            | "dueDate"
+            | "priority"
+            | "created"
+            | "alphabetical",
+        sortDirection: "asc" | "desc" = "asc",
+    ): Task[] {
         // "relevance" means don't sort - keep original order (from search/filter)
-        if (taskSortBy === "relevance") {
+        if (sortBy === "relevance") {
             return tasks;
         }
 
         const sorted = [...tasks].sort((a, b) => {
             let comparison = 0;
 
-            switch (taskSortBy) {
+            switch (sortBy) {
                 case "dueDate":
                     comparison = this.compareDates(a.dueDate, b.dueDate);
                     break;
@@ -35,7 +42,7 @@ export class TaskSortService {
             }
 
             // Apply sort direction
-            return taskSortDirection === "asc" ? comparison : -comparison;
+            return sortDirection === "asc" ? comparison : -comparison;
         });
 
         return sorted;

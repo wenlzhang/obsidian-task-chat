@@ -1213,52 +1213,80 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Render the "Sort tasks by" setting with appropriate options based on search mode
+     * Render per-mode sort settings (each mode remembers its own sort preference)
      */
     private renderSortBySetting(): void {
         if (!this.sortByContainerEl) return;
 
-        const defaultChatMode = this.plugin.settings.defaultChatMode;
-        const isTaskChatMode = defaultChatMode === "chat";
-
-        // Get current value
-        const currentValue = this.plugin.settings.taskSortBy;
-
-        // Create the setting
-        this.sortBySetting = new Setting(this.sortByContainerEl)
-            .setName("Sort tasks by")
+        // Simple Search sort
+        new Setting(this.sortByContainerEl)
+            .setName("Sort for Simple Search")
             .setDesc(
-                isTaskChatMode
-                    ? 'Display order for results (applied AFTER quality filtering). Default: "Auto" (recommended for Task Chat mode). "Auto" = AI-driven sorting. "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
-                    : 'Display order for results (applied AFTER quality filtering). Default: "Relevance" (recommended for Simple/Smart Search). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Switch to "Task Chat" mode to unlock Auto sorting.',
+                'How to sort results in Simple Search mode. Default: "Relevance" (best-match-first for keyword searches).',
             )
-            .addDropdown((dropdown) => {
-                // Conditionally add Auto option only for Task Chat mode
-                if (isTaskChatMode) {
-                    dropdown.addOption("auto", "Auto (AI-driven)");
-                }
+            .addDropdown((dropdown) =>
                 dropdown
                     .addOption("relevance", "Relevance")
                     .addOption("dueDate", "Due date")
                     .addOption("priority", "Priority")
                     .addOption("created", "Created date")
-                    .addOption("alphabetical", "Alphabetical");
+                    .addOption("alphabetical", "Alphabetical")
+                    .setValue(this.plugin.settings.taskSortBySimple)
+                    .onChange(async (value: any) => {
+                        this.plugin.settings.taskSortBySimple = value;
+                        await this.plugin.saveSettings();
+                        console.log(
+                            `[Task Chat] Simple Search sort saved: ${value}`,
+                        );
+                    }),
+            );
 
-                // Set current value, fallback to relevance if auto is selected but not in chat mode
-                const valueToSet =
-                    !isTaskChatMode && currentValue === "auto"
-                        ? "relevance"
-                        : currentValue;
-                dropdown.setValue(valueToSet);
+        // Smart Search sort
+        new Setting(this.sortByContainerEl)
+            .setName("Sort for Smart Search")
+            .setDesc(
+                'How to sort results in Smart Search mode. Default: "Relevance" (best-match-first for AI-expanded keywords).',
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("relevance", "Relevance")
+                    .addOption("dueDate", "Due date")
+                    .addOption("priority", "Priority")
+                    .addOption("created", "Created date")
+                    .addOption("alphabetical", "Alphabetical")
+                    .setValue(this.plugin.settings.taskSortBySmart)
+                    .onChange(async (value: any) => {
+                        this.plugin.settings.taskSortBySmart = value;
+                        await this.plugin.saveSettings();
+                        console.log(
+                            `[Task Chat] Smart Search sort saved: ${value}`,
+                        );
+                    }),
+            );
 
-                dropdown.onChange(async (value: any) => {
-                    this.plugin.settings.taskSortBy = value;
-                    await this.plugin.saveSettings();
-                    console.log(`[Task Chat] Sort preference saved: ${value}`);
-                });
-
-                return dropdown;
-            });
+        // Task Chat sort
+        new Setting(this.sortByContainerEl)
+            .setName("Sort for Task Chat")
+            .setDesc(
+                'How to sort results in Task Chat mode. Default: "Auto" (AI-driven: relevance for keywords, due date otherwise).',
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("auto", "Auto (AI-driven)")
+                    .addOption("relevance", "Relevance")
+                    .addOption("dueDate", "Due date")
+                    .addOption("priority", "Priority")
+                    .addOption("created", "Created date")
+                    .addOption("alphabetical", "Alphabetical")
+                    .setValue(this.plugin.settings.taskSortByChat)
+                    .onChange(async (value: any) => {
+                        this.plugin.settings.taskSortByChat = value;
+                        await this.plugin.saveSettings();
+                        console.log(
+                            `[Task Chat] Task Chat sort saved: ${value}`,
+                        );
+                    }),
+            );
     }
 
     /**

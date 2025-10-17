@@ -62,6 +62,21 @@ export class AIService {
 
         // Parse query based on chat mode (three-mode system)
         const chatMode = settings.defaultChatMode;
+
+        // Get mode-specific sort setting
+        let modeSortBy: string;
+        switch (chatMode) {
+            case "simple":
+                modeSortBy = settings.taskSortBySimple;
+                break;
+            case "smart":
+                modeSortBy = settings.taskSortBySmart;
+                break;
+            case "chat":
+                modeSortBy = settings.taskSortByChat;
+                break;
+        }
+
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
         let usingAIParsing = false; // Track if AI parsing was actually used
@@ -294,7 +309,7 @@ export class AIService {
             // For direct results: Sort by user preference for display
             let sortedTasks: Task[];
 
-            if (settings.taskSortBy === "auto") {
+            if (modeSortBy === "auto") {
                 // Auto mode: Use relevance for keyword searches, dueDate otherwise
                 if (intent.keywords && intent.keywords.length > 0) {
                     console.log(
@@ -306,18 +321,16 @@ export class AIService {
                     );
                 } else {
                     console.log(
-                        "[Task Chat] Sorting: By due date (auto mode, no keywords)",
+                        "[Task Chat] Sorting: By dueDate (auto mode, no keywords)",
                     );
                     sortedTasks = TaskSortService.sortTasks(
                         qualityFilteredTasks,
-                        {
-                            ...settings,
-                            taskSortBy: "dueDate" as any,
-                        },
+                        "dueDate",
+                        settings.taskSortDirection,
                     );
                 }
             } else if (
-                settings.taskSortBy === "relevance" &&
+                modeSortBy === "relevance" &&
                 intent.keywords &&
                 intent.keywords.length > 0
             ) {
@@ -330,11 +343,12 @@ export class AIService {
                 );
             } else {
                 console.log(
-                    `[Task Chat] Sorting: By ${settings.taskSortBy} (user preference)`,
+                    `[Task Chat] Sorting: By ${modeSortBy} (user preference)`,
                 );
                 sortedTasks = TaskSortService.sortTasks(
                     qualityFilteredTasks,
-                    settings,
+                    modeSortBy as any,
+                    settings.taskSortDirection,
                 );
             }
 
@@ -347,10 +361,10 @@ export class AIService {
                     `[Task Chat] Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasks.length} results)`,
                 );
 
-                // Build token usage based on mode
-                let tokenUsage: TokenUsage;
+                // Calculate token usage based on mode
+                let tokenUsage;
                 if (chatMode === "simple") {
-                    // Simple Search: No AI used at all
+                    // Simple Search: No AI usage at all
                     tokenUsage = {
                         promptTokens: 0,
                         completionTokens: 0,
@@ -387,9 +401,17 @@ export class AIService {
                 };
             }
 
-            // Mode 3: Task Chat - AI analysis
-            // Limit to maxTasksForAI for token efficiency
+            // Mode 3: Task Chat - Continue to AI analysis
+            console.log(
+                `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasks.length} tasks)`,
+            );
+
+            // Select top tasks for AI analysis
             const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
+
+            console.log(
+                `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
+            );
 
             const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
             const messages = this.buildMessages(
@@ -400,209 +422,44 @@ export class AIService {
                 intent,
             );
 
-            const { response, tokenUsage } = await this.callAI(
-                messages,
-                settings,
-            );
-
-            console.log("[Task Chat] AI response:", response);
-
-            const recommendedTasks = this.extractRecommendedTasks(
-                response,
-                tasksToAnalyze,
-                settings,
-                intent.keywords || [],
-            );
-
-            // Replace [TASK_X] references with actual task numbers from recommended list
-            const processedResponse = this.replaceTaskReferences(
-                response,
-                recommendedTasks,
-                tasksToAnalyze,
-            );
-
-            return {
-                response: processedResponse,
-                recommendedTasks,
-                tokenUsage,
-            };
-        }
-
-        // Apply compound filters (priority, due date, status, folder, tags, keywords)
-        const filteredTasks = TaskSearchService.applyCompoundFilters(tasks, {
-            priority: intent.extractedPriority,
-            dueDate: intent.extractedDueDateFilter,
-            status: intent.extractedStatus,
-            folder: intent.extractedFolder,
-            tags: intent.extractedTags,
-            keywords:
-                intent.keywords && intent.keywords.length > 0
-                    ? intent.keywords
-                    : undefined,
-        });
-
-        console.log(
-            `[Task Chat] After filtering: ${filteredTasks.length} tasks found`,
-        );
-
-        // No tasks found matching the filters
-        if (filteredTasks.length === 0) {
-            const filterDesc = this.buildFilterDescription(intent);
-            const reason = this.buildDirectSearchReason(
-                0,
-                settings.maxDirectResults,
-                false,
-                usingAIParsing,
-            );
-            return {
-                response: `No tasks found matching ${filterDesc}.`,
-                directResults: [],
-                tokenUsage: {
-                    promptTokens: 0,
-                    completionTokens: 0,
-                    totalTokens: 0,
-                    estimatedCost: 0,
-                    model: "none",
-                    provider: settings.aiProvider,
-                    isEstimated: true,
-                    directSearchReason: reason,
-                },
-            };
-        }
-
-        // PHASE 1: Quality filtering (always for keyword searches)
-        // Apply relevance filtering to remove low-quality matches
-        // This ensures consistent quality regardless of sort/display preference
-        let qualityFilteredTasks = filteredTasks;
-        if (intent.keywords && intent.keywords.length > 0) {
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                filteredTasks,
-                intent.keywords,
-            );
-
-            // Determine adaptive relevance threshold
-            // User's setting is the BASE, then we apply intelligent adjustments
-            let baseThreshold: number;
-            if (settings.relevanceThreshold === 0) {
-                // Use system defaults as base
-                if (intent.keywords.length >= 4) {
-                    baseThreshold = 20;
-                } else if (intent.keywords.length >= 2) {
-                    baseThreshold = 30;
-                } else {
-                    baseThreshold = 40;
-                }
-                console.log(
-                    `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
+            try {
+                const { response, tokenUsage } = await this.callAI(
+                    messages,
+                    settings,
                 );
-            } else {
-                // User has set a custom base - respect it
-                baseThreshold = settings.relevanceThreshold;
-                console.log(
-                    `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
+
+                console.log("[Task Chat] AI response:", response);
+
+                // Extract task IDs that AI referenced
+                const recommendedTasks = this.extractRecommendedTasks(
+                    response,
+                    tasksToAnalyze,
+                    settings,
+                    intent.keywords || [],
                 );
+
+                // Replace [TASK_X] references with actual task numbers from recommended list
+                const processedResponse = this.replaceTaskReferences(
+                    response,
+                    recommendedTasks,
+                    tasksToAnalyze,
+                );
+
+                return {
+                    response: processedResponse,
+                    recommendedTasks,
+                    tokenUsage,
+                };
+            } catch (error) {
+                console.error("AI Service Error:", error);
+                throw error;
             }
-
-            // Apply adaptive adjustments relative to base
-            // IMPORTANT: More keywords from semantic expansion = HIGHER threshold needed
-            // to filter out the noise from broad matching
-            let finalThreshold: number;
-            if (intent.keywords.length >= 6) {
-                // Many keywords (semantic expansion) - INCREASE threshold significantly
-                // This filters out noise from overly broad matching
-                finalThreshold = Math.min(100, baseThreshold + 20);
-                console.log(
-                    `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), increasing threshold to combat noise`,
-                );
-            } else if (intent.keywords.length >= 4) {
-                // Several keywords - increase threshold moderately
-                finalThreshold = Math.min(100, baseThreshold + 10);
-            } else if (intent.keywords.length >= 2) {
-                // Moderate keywords - use base as-is
-                finalThreshold = baseThreshold;
-            } else {
-                // Single keyword - slight increase for precision
-                finalThreshold = Math.min(100, baseThreshold + 5);
-            }
-
-            console.log(
-                `[Task Chat] Quality filter threshold: ${finalThreshold} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
-            );
-
-            // Apply quality filter
-            qualityFilteredTasks = scoredTasks
-                .filter(
-                    (st: { score: number; task: Task }) =>
-                        st.score >= finalThreshold,
-                )
-                .map((st: { score: number; task: Task }) => st.task);
-
-            console.log(
-                `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold})`,
-            );
-
-            // Safety: If threshold filtered out too many, keep a minimum
-            // This prevents overly strict filtering from returning no results
-            if (
-                qualityFilteredTasks.length < Math.min(5, filteredTasks.length)
-            ) {
-                console.log(
-                    `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top scored tasks`,
-                );
-                qualityFilteredTasks = scoredTasks
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, Math.min(20, filteredTasks.length))
-                    .map((st) => st.task);
-            }
-        }
-
-        // PHASE 2: Sorting for AI Input
-        // For AI analysis: Prioritize relevance to give AI the best context
-        // (AI will analyze and recommend, order matters for context quality)
-        let sortedTasks: Task[];
-
-        if (intent.keywords && intent.keywords.length > 0) {
-            // For keyword searches: Always sort by relevance for AI
-            // This gives AI the most relevant tasks first (best context)
-            console.log(
-                "[Task Chat] Sorting: By relevance (keyword search, AI input optimization)",
-            );
-            sortedTasks = TaskSearchService.sortByKeywordRelevance(
-                qualityFilteredTasks,
-                intent.keywords,
-            );
         } else {
-            // For non-keyword searches: Use due date (temporal context)
-            console.log(
-                "[Task Chat] Sorting: By due date (no keywords, temporal context)",
-            );
-            sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
-                ...settings,
-                taskSortBy: "dueDate" as any,
-            });
-        }
-
-        // If simple query with few results, return directly without AI
-        const isSimpleQuery =
-            !intent.hasMultipleFilters ||
-            (intent.keywords.length > 0 &&
-                !intent.extractedPriority &&
-                !intent.extractedDueDateFilter &&
-                !intent.extractedStatus &&
-                !intent.extractedFolder &&
-                intent.extractedTags.length === 0);
-
-        if (sortedTasks.length <= settings.maxDirectResults && isSimpleQuery) {
-            const reason = this.buildDirectSearchReason(
-                sortedTasks.length,
-                settings.maxDirectResults,
-                isSimpleQuery,
-                usingAIParsing,
-            );
-
+            // No filters detected - return all tasks
+            console.log("[Task Chat] No filters detected, returning all tasks");
             return {
                 response: "",
-                directResults: sortedTasks.slice(0, settings.maxDirectResults),
+                directResults: tasks.slice(0, settings.maxDirectResults),
                 tokenUsage: {
                     promptTokens: 0,
                     completionTokens: 0,
@@ -611,71 +468,9 @@ export class AIService {
                     model: "none",
                     provider: settings.aiProvider,
                     isEstimated: true,
-                    directSearchReason: reason,
+                    directSearchReason: `${tasks.length} task${tasks.length !== 1 ? "s" : ""}`,
                 },
             };
-        }
-
-        // Select top tasks for AI analysis (already quality-filtered)
-        // Tasks have been filtered by relevance in Phase 1, now just limit count
-        const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
-
-        // Safety: Early return if no tasks remain after filtering
-        if (tasksToAnalyze.length === 0) {
-            return {
-                response:
-                    "Found tasks matching your filters, but they don't appear to be highly relevant to your keywords. Try lowering the relevance threshold in settings or refining your search.",
-                directResults: [],
-                tokenUsage: {
-                    promptTokens: 0,
-                    completionTokens: 0,
-                    totalTokens: 0,
-                    estimatedCost: 0,
-                    model: "none",
-                    provider: settings.aiProvider,
-                    isEstimated: true,
-                    directSearchReason: "No tasks passed quality filter",
-                },
-            };
-        }
-
-        console.log(
-            `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
-        );
-
-        const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
-        const messages = this.buildMessages(
-            message,
-            taskContext,
-            chatHistory,
-            settings,
-            intent,
-        );
-
-        try {
-            const { response, tokenUsage } = await this.callAI(
-                messages,
-                settings,
-            );
-
-            console.log("[Task Chat] AI response:", response);
-
-            // Extract task IDs that AI referenced
-            const recommendedTasks = this.extractRecommendedTasks(
-                response,
-                tasksToAnalyze,
-                settings,
-                intent.keywords || [],
-            );
-
-            return {
-                response,
-                recommendedTasks,
-                tokenUsage,
-            };
-        } catch (error) {
-            console.error("AI Service Error:", error);
-            throw error;
         }
     }
 

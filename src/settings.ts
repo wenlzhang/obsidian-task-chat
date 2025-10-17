@@ -68,14 +68,26 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
 
-    // Sort settings (note: "auto" is only available in Task Chat mode)
-    taskSortBy:
+    // Sort settings - Per-mode preferences (each mode remembers its own sort)
+    taskSortBySimple:
+        | "relevance"
+        | "dueDate"
+        | "priority"
+        | "created"
+        | "alphabetical"; // Simple Search sort
+    taskSortBySmart:
+        | "relevance"
+        | "dueDate"
+        | "priority"
+        | "created"
+        | "alphabetical"; // Smart Search sort
+    taskSortByChat:
         | "auto"
         | "relevance"
         | "dueDate"
         | "priority"
         | "created"
-        | "alphabetical"; // Current sort setting
+        | "alphabetical"; // Task Chat sort (includes "auto")
     taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
 
     // Usage Tracking
@@ -170,7 +182,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 30, // Minimum relevance score (0-100). Lower = more results. 0 = adaptive.
-    taskSortBy: "auto", // Default sort: auto (Task Chat), relevance (Simple/Smart)
+    taskSortBySimple: "relevance", // Simple Search: relevance (keyword-based)
+    taskSortBySmart: "relevance", // Smart Search: relevance (AI keywords)
+    taskSortByChat: "auto", // Task Chat: auto (AI-driven)
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking
