@@ -353,8 +353,7 @@ export class ChatView extends ItemView {
             "task-chat-message-header",
         );
 
-        const headerLeft = headerEl.createDiv("task-chat-message-header-left");
-        headerLeft.createEl("strong", { text: indicatorText });
+        headerEl.createEl("strong", { text: indicatorText });
 
         const contentEl = this.typingIndicator.createDiv(
             "task-chat-message-content",
@@ -389,9 +388,6 @@ export class ChatView extends ItemView {
         // Message header
         const headerEl = messageEl.createDiv("task-chat-message-header");
 
-        // Left side: role name and timestamp
-        const headerLeft = headerEl.createDiv("task-chat-message-header-left");
-
         // Map message roles to display names
         let roleName: string;
         if (message.role === "user") {
@@ -406,35 +402,10 @@ export class ChatView extends ItemView {
             // Fallback for legacy messages
             roleName = message.role === "assistant" ? "Task Chat" : "System";
         }
-        headerLeft.createEl("strong", { text: roleName });
-        headerLeft.createEl("span", {
+        headerEl.createEl("strong", { text: roleName });
+        headerEl.createEl("span", {
             text: new Date(message.timestamp).toLocaleTimeString(),
             cls: "task-chat-message-time",
-        });
-
-        // Right side: copy button
-        const copyBtn = headerEl.createEl("button", {
-            cls: "task-chat-copy-button",
-            attr: {
-                "aria-label": "Copy message",
-            },
-        });
-        copyBtn.addEventListener("click", () => {
-            let textToCopy = message.content;
-
-            // Include recommended tasks if present
-            if (
-                message.recommendedTasks &&
-                message.recommendedTasks.length > 0
-            ) {
-                textToCopy += "\n\nRecommended tasks:\n";
-                message.recommendedTasks.forEach((task, index) => {
-                    textToCopy += `${index + 1}. ${task.text}\n`;
-                });
-            }
-
-            navigator.clipboard.writeText(textToCopy);
-            new Notice("Message copied to clipboard");
         });
 
         // Message content
@@ -551,7 +522,46 @@ export class ChatView extends ItemView {
             usageEl.createEl("small", {
                 text: "📊 " + parts.join(" • "),
             });
+
+            // Add copy button to token usage line for assistant/system messages
+            if (message.role !== "user") {
+                this.addCopyButton(usageEl, message);
+            }
         }
+
+        // Add copy button below message for user messages
+        if (message.role === "user") {
+            this.addCopyButton(messageEl, message);
+        }
+    }
+
+    /**
+     * Add copy button to a container element
+     */
+    private addCopyButton(container: HTMLElement, message: ChatMessage): void {
+        const copyBtn = container.createEl("button", {
+            cls: "task-chat-copy-button",
+            attr: {
+                "aria-label": "Copy message",
+            },
+        });
+        copyBtn.addEventListener("click", () => {
+            let textToCopy = message.content;
+
+            // Include recommended tasks if present (with markdown status)
+            if (
+                message.recommendedTasks &&
+                message.recommendedTasks.length > 0
+            ) {
+                textToCopy += "\n\nRecommended tasks:\n";
+                message.recommendedTasks.forEach((task, index) => {
+                    textToCopy += `${index + 1}. - [${task.status}] ${task.text}\n`;
+                });
+            }
+
+            navigator.clipboard.writeText(textToCopy);
+            new Notice("Message copied to clipboard");
+        });
     }
 
     /**

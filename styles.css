@@ -118,11 +118,20 @@
     gap: 12px;
 }
 
+/* Hide scrollbar */
+.task-chat-messages::-webkit-scrollbar {
+    display: none;
+}
+
+.task-chat-messages {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
 /* Individual Message */
 .task-chat-message {
     padding: 10px;
     border-radius: 6px;
-    position: relative;
     border-left: 2px solid transparent;
 }
 
@@ -130,34 +139,32 @@
     align-self: flex-end;
     max-width: 80%;
     border-left: 2px solid var(--interactive-accent);
+    margin-bottom: 32px; /* Space for copy button below */
+    position: relative; /* For copy button positioning */
 }
 
 .task-chat-message-assistant {
     align-self: flex-start;
     max-width: 90%;
     border-left: 2px solid var(--text-muted);
+    /* Copy button inline with token usage, no extra margin needed */
 }
 
 .task-chat-message-system {
     align-self: flex-start;
     max-width: 100%;
     border-left: 2px solid var(--text-faint);
+    /* Copy button inline with token usage, no extra margin needed */
 }
 
 /* Message Header */
 .task-chat-message-header {
     display: flex;
-    justify-content: space-between;
+    gap: 8px;
     align-items: center;
     margin-bottom: 6px;
     font-size: 11px;
     opacity: 0.8;
-}
-
-.task-chat-message-header-left {
-    display: flex;
-    gap: 8px;
-    align-items: center;
 }
 
 .task-chat-message-time {
@@ -198,10 +205,23 @@
     border-color: var(--background-modifier-border);
 }
 
-/* Copy button positioning - in header for all message types */
-.task-chat-message .task-chat-copy-button {
+/* Copy button positioning */
+
+/* User messages: below the message box on the right */
+.task-chat-message-user .task-chat-copy-button {
+    position: absolute;
+    bottom: -24px;
+    right: 0;
+}
+
+/* Assistant/System messages: inline with token usage */
+.task-chat-message-assistant .task-chat-copy-button,
+.task-chat-message-system .task-chat-copy-button {
     position: static;
-    margin-left: auto;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0;
+    flex-shrink: 0;
 }
 
 /* Message Content */
@@ -345,11 +365,15 @@
     padding-top: 8px;
     border-top: 1px solid var(--background-modifier-border);
     opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .task-chat-token-usage small {
     font-size: 11px;
     color: var(--text-muted);
+    flex: 1;
 }
 
 /* Session Management */
