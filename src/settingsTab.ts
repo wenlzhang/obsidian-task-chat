@@ -152,6 +152,22 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Max response length")
+            .setDesc(
+                "Maximum length of AI responses in Task Chat mode. Dependent on model capabilities. Higher = more detailed but slower and more expensive. Lower = faster and cheaper but may miss details. Recommended: 2000 (balanced), 4000 (detailed), 1000 (concise). Only affects Task Chat responses, not query parsing.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(500, 64000, 100)
+                    .setValue(this.plugin.settings.maxTokensChat)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxTokensChat = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
             .setName("API endpoint")
             .setDesc(this.getEndpointDescription())
             .addText((text) =>

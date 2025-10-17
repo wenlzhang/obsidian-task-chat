@@ -22,6 +22,7 @@ export interface PluginSettings {
     model: string;
     apiEndpoint: string;
     temperature: number; // AI temperature (0.0-2.0, lower = more consistent)
+    maxTokensChat: number; // Max tokens for Task Chat AI responses (300-4000, higher = longer responses)
     // Cached available models per provider
     availableModels: {
         openai: string[];
@@ -107,6 +108,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     model: "gpt-4o-mini",
     apiEndpoint: "https://api.openai.com/v1/chat/completions",
     temperature: 0.1, // Low temperature for consistent, deterministic responses
+    maxTokensChat: 2000, // Default to 2000 tokens to match user's preference and provide more detailed responses by default
     availableModels: {
         openai: [],
         anthropic: [],

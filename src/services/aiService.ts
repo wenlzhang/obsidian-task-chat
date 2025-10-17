@@ -927,7 +927,7 @@ ${taskContext}`;
                 model: settings.model,
                 messages: messages,
                 temperature: settings.temperature,
-                max_tokens: 1000,
+                max_tokens: settings.maxTokensChat || 2000, // User-configurable response length
             }),
         });
 
@@ -1002,7 +1002,7 @@ ${taskContext}`;
                 messages: conversationMessages,
                 system: systemMessage?.content || "",
                 temperature: settings.temperature,
-                max_tokens: 1000,
+                max_tokens: settings.maxTokensChat || 2000, // User-configurable response length
             }),
         });
 

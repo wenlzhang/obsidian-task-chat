@@ -713,6 +713,86 @@ Works perfectly! Each keyword expanded independently.
 - **Temperature**: AI creativity (0.0-2.0, default: 0.1)
   - Lower = more consistent, deterministic
   - Higher = more creative, varied
+- **Max Response Length**: Maximum AI response length (500-16,000 tokens, default: 2,000)
+  - Controls response detail and length
+  - Higher = more detailed but slower and more expensive
+  - Lower = faster and cheaper but may miss details
+  - See "Model Capabilities" below for model-specific limits
+
+### Model Capabilities and Token Limits
+
+Different AI models have different **maximum output token limits** (how long their responses can be). Understanding these helps you choose appropriate settings.
+
+**Note:** This refers to response length (output tokens), not context window (input).
+
+#### OpenAI Models
+
+**GPT-4o / GPT-4o-mini** (Recommended)
+- **Max output:** 16,384 tokens (~12,000 words)
+- **Context:** 128,000 tokens
+- **Best for:** Most use cases, excellent value
+- **Recommended setting:** 2,000-8,000 tokens
+- **Cost (gpt-4o-mini):** $0.15 input / $0.60 output per 1M tokens
+
+**GPT-4-turbo**
+- **Max output:** 4,096 tokens (~3,000 words)
+- **Context:** 128,000 tokens
+- **Best for:** Complex reasoning
+- **Recommended setting:** 1,500-4,000 tokens
+- **Cost:** $10.00 input / $30.00 output per 1M tokens
+
+#### Anthropic Models (Claude)
+
+**Claude 3.5 Sonnet** (Latest)
+- **Max output:** 8,192 tokens (~6,000 words)
+- **Context:** 200,000 tokens
+- **Best for:** Excellent reasoning and coding
+- **Recommended setting:** 2,000-6,000 tokens
+- **Cost:** $3.00 input / $15.00 output per 1M tokens
+
+**Claude 3 Opus/Sonnet/Haiku**
+- **Max output:** 4,096 tokens (~3,000 words)
+- **Context:** 200,000 tokens
+- **Recommended setting:** 1,500-4,000 tokens
+
+#### Local Models (Ollama)
+
+**Llama 3.2 / 3.1**
+- **Max output:** 2,048-4,096 tokens (configurable)
+- **Context:** 128,000 tokens
+- **Best for:** Free local processing
+- **Recommended setting:** 1,000-2,000 tokens
+
+**Other local models** (Mistral, Phi3, Qwen)
+- **Max output:** 2,048-4,096 tokens
+- **Recommended setting:** 1,000-2,000 tokens
+
+#### Choosing Your Setting
+
+**By model:**
+- GPT-4o/4o-mini: Can use up to 8,000+ tokens
+- Claude 3.5 Sonnet: Can use up to 6,000 tokens
+- GPT-4-turbo/Claude 3: Keep under 4,000 tokens
+- Local models: Keep under 2,000 tokens
+
+**By use case:**
+- Quick checks: 1,000 tokens (~750 words)
+- Daily analysis: 2,000 tokens (~1,500 words) ← default
+- Detailed reports: 4,000-6,000 tokens (~3,000-4,500 words)
+- Comprehensive analysis: 8,000+ tokens (~6,000+ words)
+
+**By budget:**
+- Cost-conscious: 1,000 tokens
+- Balanced: 2,000 tokens
+- Money not an issue: 4,000+ tokens
+
+**Cost example** (gpt-4o-mini, 50 queries/day):
+- 1,000 tokens: $0.90/month
+- 2,000 tokens: $1.80/month ← default
+- 4,000 tokens: $3.60/month
+- 8,000 tokens: $7.20/month
+
+**⚠️ Important:** Setting above your model's limit may cause errors or response truncation. Check your model's specifications!
 
 ### Chat Settings
 
