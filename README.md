@@ -2,6 +2,18 @@
 
 An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter tasks by text, folders, priority, due date, completion status, and more. Get AI recommendations and navigate directly to tasks in your notes.
 
+## ⚡ Three Search Modes
+
+Choose the mode that fits your needs:
+
+| Mode | AI Usage | Cost | Best For |
+|------|----------|------|----------|
+| **🚀 Simple Search** | None | $0 | Quick searches, free operation |
+| **🧠 Smart Search** | Keyword expansion | ~$0.0001 | Multilingual, broader results |
+| **💬 Task Chat** | Full AI assistant | ~$0.0021 | AI insights, prioritization |
+
+**Default**: Simple Search (free). Switch anytime using the dropdown in chat interface.
+
 ## Features
 
 ### 🤖 AI-Powered Task Analysis
@@ -11,16 +23,25 @@ An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter t
 - **Temperature Control**: Adjust AI creativity/consistency (0.0-2.0)
 - **Custom System Prompts**: Tailor AI assistant behavior to your needs
 
-### 🔍 Advanced Query System
-- **AI Query Parsing** (Optional): Intelligent natural language understanding
-  - Multilingual support (English, Chinese, and more)
-  - Semantic keyword extraction and expansion
+### 🔍 Three Search Modes
+Choose the mode that fits your needs:
+
+- **Simple Search** (Default, Free): Fast regex-based keyword search
+  - No AI usage, always $0
+  - Perfect for quick searches and simple filters
+  - Stop word removal for better accuracy
+  
+- **Smart Search** (AI Keyword Expansion, ~$0.0001): Enhanced semantic search
+  - AI expands keywords into multilingual synonyms
   - Cross-language task matching
-- **Regex-Based Parsing** (Default): Fast pattern-based query processing
-- **Intelligent Search System**: Three-tier automatic cost optimization
-  - Direct search for simple queries (no cost)
-  - AI analysis for complex queries (optimized)
-  - Automatic decision based on query complexity
+  - Direct results (no AI analysis)
+  - Best for multilingual and broader searches
+  
+- **Task Chat** (Full AI Assistant, ~$0.0021): Complete AI experience
+  - AI keyword expansion + Analysis + Recommendations
+  - Context-aware prioritization
+  - Conversational insights
+  - Best for complex queries and task prioritization
 
 ### 📊 Comprehensive Task Filtering
 - **Text Search**: Semantic keyword matching across task content
@@ -135,12 +156,12 @@ The chat interface has controls grouped into sections:
 - **+ New**: Create a new chat session
 - **Sessions**: View and switch between sessions
 
-**Group 2: Search Mode** (conditional)
-- **Search mode dropdown**: Choose between Smart Search (AI) and Direct Search
-  - Only visible when "AI query understanding" is enabled in settings
-  - Allows per-query override of global setting
-  - Smart Search: AI-powered query understanding (~$0.0001/query)
-  - Direct Search: Fast regex-based parsing (free)
+**Group 2: Search Mode**
+- **Search mode dropdown**: Choose between three modes
+  - **Simple Search**: Free keyword search (no AI)
+  - **Smart Search**: AI keyword expansion (~$0.0001/query)
+  - **Task Chat**: Full AI assistant (~$0.0021/query)
+  - Allows per-query override of default setting
 
 **Group 3: Task Management**
 - **Filter tasks**: Open filter modal to narrow down tasks
@@ -152,12 +173,11 @@ The chat interface has controls grouped into sections:
 ### Basic Usage
 
 **1. Start a Conversation**
-```
 
-1. **Choose search mode** (optional):
-   - **Smart Search (AI)**: Uses AI to understand your query (requires "AI query understanding" enabled in settings)
-   - **Direct Search**: Fast regex-based search (always available)
-   - Dropdown appears in the controls bar
+1. **Choose search mode** (always visible in controls bar):
+   - **Simple Search**: Free, instant results
+   - **Smart Search**: AI-enhanced keyword matching
+   - **Task Chat**: Full AI analysis and recommendations
 2. Click "Filter tasks" to select which tasks to focus on (optional)
 3. Type your question or request in the chat input
 4. Press Cmd/Ctrl+Enter to send
@@ -180,192 +200,171 @@ The chat interface has controls grouped into sections:
 
 ### Example Queries
 
-**Simple Queries** (Direct Search - No Cost)
+**Simple Search Mode** ($0)
 - `"priority 1"` → Shows all high priority tasks
 - `"due today"` → Shows tasks due today
 - `"overdue"` → Shows past-due tasks
 - `"#work"` → Shows tasks with #work tag
+- `"bug fix"` → Keyword search (stop words removed)
 
-**Complex Queries** (AI Analysis)
-- `"What should I focus on today?"` → AI recommends based on priority and deadlines
-- `"high priority overdue tasks in project folder"` → Multi-filter with AI prioritization
-- `"如何开发 Task Chat"` → Multilingual semantic search
-- `"Which tasks are blocking my progress?"` → Contextual analysis
+**Smart Search Mode** (~$0.0001)
+- `"urgent meeting"` → AI expands to ["urgent", "紧急", "meeting", "会议"]
+- `"开发任务"` → Finds tasks in any language
+- `"fix bug"` → AI finds synonyms: repair, resolve, debug
+- `"priority 1 due today"` → AI parsing + direct results
 
-**Advanced Filtering**
-- `"priority 1 due this week #urgent"` → Compound filters
-- `"completed tasks in folder projects"` → Status + folder filtering
-- `"tasks with no due date"` → Find unscheduled tasks
-- `"in progress tasks tagged work"` → Status + tag filtering
+**Task Chat Mode** (~$0.0021)
+- `"What should I focus on today?"` → AI recommends with explanations
+- `"Which tasks are most urgent?"` → AI analyzes and prioritizes
+- `"Help me plan my week"` → Comprehensive AI insights
+- `"What's blocking my progress?"` → Contextual analysis
 
-## How the Intelligent Search System Works
+## How the Three Search Modes Work
 
-Task Chat uses a sophisticated three-tier search system that automatically optimizes for cost and performance:
+Task Chat offers three distinct search modes, each with **predictable behavior and costs**:
 
-### 🔍 Three-Tier Search Strategy
+### 🚀 Simple Search (Default, Free)
+
+**No AI, always $0**
 
 ```
-Your Query → Query Parsing → Task Filtering → Result Handling
+Your Query → Regex Parsing → Task Filtering → Direct Results
 ```
 
-#### **Tier 1: Query Parsing** (Understanding Your Request)
+**How it works:**
+1. **Query Parsing**: Pattern matching extracts filters and keywords
+2. **Stop Word Removal**: Removes "the", "a", "how", "what", etc.
+3. **Task Filtering**: Applies filters (priority, due date, tags, etc.)
+4. **Direct Results**: Displays filtered and sorted tasks
 
-You can choose between two parsing methods:
+**Examples:**
+- `"priority 1"` → Finds all priority 1 tasks
+- `"due today"` → Finds tasks due today
+- `"#work"` → Finds tasks with #work tag
+- `"bug fix"` → Searches for "bug" and "fix" (removes stop words)
 
-**AI Query Parsing** (Optional, Toggle in Settings)
-- **What it does**: Uses AI to understand natural language queries and extract filters
-- **Best for**: Complex queries, multilingual queries, semantic understanding
-- **Cost**: ~200 tokens (~$0.0001 per query with GPT-4o-mini)
-- **Examples**: 
-  - ✅ "如何开发 Task Chat" → Extracts keywords: ["开发", "Task", "Chat"]
-  - ✅ "high priority tasks due this week" → priority=1, dueDate=week
-  - ✅ "show me overdue items in project folder" → dueDate=overdue, folder=project
+**When to use:**
+- ✅ Quick searches and simple filters
+- ✅ When you want instant, free results
+- ✅ When you know exactly what you're looking for
 
-**Regex-Based Parsing** (Default, Always Available)
-- **What it does**: Uses pattern matching to extract filters from queries
-- **Best for**: Simple queries with clear keywords
-- **Cost**: $0 (no AI used)
-- **Examples**:
-  - ✅ "priority 1" → priority=1
-  - ✅ "due today" → dueDate=today
-  - ✅ "#work tasks" → tags=["work"]
-
-**When to use AI Query Parsing?**
-- ✅ Turn ON: Complex multilingual queries, semantic understanding needed
-- ❌ Turn OFF: Simple direct queries, cost savings more important
+**Cost:** Always $0
 
 ---
 
-#### **Tier 2: Task Filtering** (Finding Matches)
+### 🧠 Smart Search (AI Keyword Expansion, ~$0.0001)
 
-After parsing, tasks are filtered using the extracted criteria:
-- Keywords: Semantic matching across task content
-- Priority: Exact priority level matching (1-4)
-- Due Date: Date range filtering (overdue, today, tomorrow, week, etc.)
-- Status: Task completion status (open, completed, in progress)
-- Folder: Path-based filtering
-- Tags: Hashtag matching
+**AI expands keywords, direct results**
+
+```
+Your Query → AI Parsing → Keyword Expansion → Task Filtering → Direct Results
+```
+
+**How it works:**
+1. **AI Query Parsing**: AI extracts filters and keywords
+2. **Keyword Expansion**: AI generates multilingual synonyms
+   - "urgent" → ["urgent", "紧急", "critical", "high-priority"]
+   - "meeting" → ["meeting", "会议", "reunion", "conference"]
+3. **Task Filtering**: Matches expanded keywords across all languages
+4. **Direct Results**: Displays filtered and sorted tasks (no AI analysis)
+
+**Examples:**
+- `"urgent meeting"` → Expands to multilingual synonyms, finds more results
+- `"开发任务"` → Finds tasks in English and Chinese
+- `"fix bug"` → Expands to "repair", "resolve", "debug"
+
+**When to use:**
+- ✅ Multilingual task searches
+- ✅ When you want broader, more comprehensive results
+- ✅ When simple keyword matching is too narrow
+
+**Cost:** ~$0.0001 per query (~250 tokens)
 
 ---
 
-#### **Tier 3: Result Handling** (Direct Search vs AI Analysis)
+### 💬 Task Chat (Full AI Assistant, ~$0.0021)
 
-The system automatically decides whether to use **Direct Search** or **AI Task Analysis** based on query complexity:
+**AI keyword expansion + analysis + recommendations**
 
-**Direct Search** (Automatic, No Additional Cost)
-- **When used**:
-  - ✅ Simple query (0-1 filter type) + Few results (≤10 by default)
-  - ✅ Example: "priority 1" with 5 results
-- **What happens**: Returns results immediately without AI analysis
-- **Cost**: $0 for analysis (may have $0.0001 for query parsing if enabled)
-- **Display**: Shows explanation like "Simple query, 5 result(s) found (no AI task analysis needed)"
+```
+Your Query → AI Parsing → Keyword Expansion → Task Filtering → AI Analysis → Recommendations
+```
 
-**AI Task Analysis** (Automatic When Needed)
-- **When used**:
-  - ✅ Complex query (2+ filter types), OR
-  - ✅ Many results (>10), OR
-  - ✅ User asks for recommendations/prioritization
-  - ✅ Example: "priority 1 due today" or "priority 1" with 25 results
-- **What happens**: AI analyzes tasks and provides smart recommendations
-- **Cost**: ~1000-2000 tokens (~$0.002-0.004 per query with GPT-4o-mini)
-- **Display**: AI provides context-aware analysis and task prioritization
+**How it works:**
+1. **AI Query Parsing**: AI extracts filters and keywords
+2. **Keyword Expansion**: AI generates multilingual synonyms
+3. **Task Filtering**: Matches expanded keywords
+4. **AI Analysis**: AI analyzes filtered tasks for context and priority
+5. **Recommendations**: AI provides ranked recommendations with explanations
+
+**Examples:**
+- `"What should I focus on today?"` → AI recommends top priorities
+- `"Which tasks are most urgent?"` → AI analyzes and ranks by urgency
+- `"Help me plan my week"` → AI provides strategic insights
+
+**When to use:**
+- ✅ Complex questions about your tasks
+- ✅ When you want AI recommendations and prioritization
+- ✅ When you need insights, not just a list
+
+**Cost:** ~$0.0021 per query (~1,000-1,500 tokens)
 
 ---
 
-### 💡 Query Complexity Examples
+### 📊 Mode Comparison
 
-| Query | Filter Count | Classification | Direct Search? | AI Analysis? |
-|-------|--------------|----------------|----------------|--------------|
-| `"priority 1"` | 1 (priority) | Simple ✅ | Yes (if ≤10 results) | No |
-| `"due today"` | 1 (due date) | Simple ✅ | Yes (if ≤10 results) | No |
-| `"obsidian plugin"` | 1 (keywords) | Simple ✅ | Yes (if ≤10 results) | No |
-| `"priority 1 due today"` | 2 (priority + date) | Complex ❌ | No | Yes |
-| `"high priority #work tasks"` | 2 (priority + tag) | Complex ❌ | No | Yes |
-| `"priority 1"` (50 results) | 1 (priority) | Simple ✅ | No (>10 results) | Yes |
-
-**Filter types counted**:
-1. Priority (1-4)
-2. Due Date (today, overdue, week, etc.)
-3. Status (open, completed, in progress)
-4. Folder (path-based)
-5. Tags (#work, #personal)
-6. Keywords (semantic search terms)
+| Feature | Simple Search | Smart Search | Task Chat |
+|---------|--------------|--------------|-----------|
+| **Query Parsing** | Regex | AI | AI |
+| **Keyword Expansion** | No | Yes (multilingual) | Yes (multilingual) |
+| **AI Analysis** | No | No | Yes |
+| **Recommendations** | No | No | Yes |
+| **Cost** | $0 | ~$0.0001 | ~$0.0021 |
+| **Speed** | Instant | 1-2 sec | 2-3 sec |
+| **Best For** | Quick searches | Multilingual | AI insights |
 
 ---
 
-### 💰 Cost Optimization Strategy
+### 💰 Cost Examples
 
-The system automatically minimizes costs while maintaining quality:
+**Daily Usage Scenarios:**
 
-**Scenario 1: Simple Query, Few Results**
-```
-Query: "priority 1" (finds 5 tasks)
-├─ Query Parsing: 
-│  ├─ AI Parsing OFF: $0
-│  └─ AI Parsing ON: ~$0.0001
-└─ Result Handling: Direct Search (auto) = $0
-Total Cost: $0 - $0.0001
-```
+**Scenario 1: Free User (Simple Search only)**
+- 50 queries/day
+- Daily cost: **$0**
+- Monthly cost: **$0**
 
-**Scenario 2: Complex Query**
-```
-Query: "high priority overdue tasks in project folder"
-├─ Query Parsing:
-│  ├─ AI Parsing OFF: $0 (regex extracts: priority=1, dueDate=overdue, folder=project)
-│  └─ AI Parsing ON: ~$0.0001
-└─ Result Handling: AI Analysis (auto) = ~$0.002
-Total Cost: $0.002 - $0.0021
-```
+**Scenario 2: Mixed User**
+- 30 Simple Search (free)
+- 15 Smart Search (~$0.0015)
+- 5 Task Chat (~$0.0105)
+- Daily cost: **~$0.012**
+- Monthly cost: **~$0.36**
 
-**Scenario 3: Simple Query, Many Results**
-```
-Query: "priority 1" (finds 50 tasks)
-├─ Query Parsing:
-│  ├─ AI Parsing OFF: $0
-│  └─ AI Parsing ON: ~$0.0001
-└─ Result Handling: AI Analysis (auto, needs prioritization) = ~$0.002
-Total Cost: $0.002 - $0.0021
-```
-
----
-
-### ⚡ Performance Benefits
-
-**Reduced Latency**
-- Direct search: ~50-100ms (instant results)
-- AI analysis: ~1-3 seconds (only when valuable)
-
-**Reduced Token Usage**
-- Skips AI analysis for 60-70% of queries
-- Saves ~1000-2000 tokens per simple query
-- Cumulative savings: ~$0.50-1.00 per 1000 queries
-
-**Smart Defaults**
-- `maxDirectResults`: 10 (configurable in settings)
-- Automatically adjusts based on query complexity
-- Balances cost vs. quality intelligently
+**Scenario 3: Power User**
+- 50 Task Chat queries/day
+- Daily cost: **~$0.105**
+- Monthly cost: **~$3.15**
 
 ---
 
 ### 🎯 Best Practices
 
-**For Cost Optimization**
-- ✅ Use simple, direct queries when possible
-- ✅ Keep AI Query Parsing OFF for basic filters
-- ✅ Enable AI Query Parsing for complex multilingual queries
-- ✅ Let the system auto-decide on AI Analysis (don't override)
+**Choosing the Right Mode:**
+- Use **Simple Search** for: `"priority 1"`, `"due today"`, `"#work"`
+- Use **Smart Search** for: `"urgent meeting"`, `"开发任务"`, `"fix bug"`
+- Use **Task Chat** for: `"What's urgent?"`, `"Plan my week"`, `"Top priorities?"`
 
-**For Best Results**
-- ✅ Use AI Query Parsing for semantic understanding
-- ✅ Use specific filters to narrow results
-- ✅ Combine multiple filters for complex queries
-- ✅ Trust the automatic direct search optimization
+**Cost Optimization:**
+1. Default to **Simple Search** for most queries
+2. Switch to **Smart Search** when you need multilingual/broader results
+3. Reserve **Task Chat** for when you want AI insights
 
-**Understanding Your Costs**
-- Check the explanation line below results: 
-  - `"Simple query, 5 result(s) found (no AI task analysis needed) • No cost"`
-  - `"Direct search with 8 result(s) (AI query parsing disabled) • No cost"`
-  - Token usage shown for AI operations
+**Understanding Token Usage:**
+Every response shows which mode was used:
+- `📊 Mode: Simple Search • $0`
+- `📊 Mode: Smart Search • 250 tokens • ~$0.0001`
+- `📊 Mode: Task Chat • 1,234 tokens • ~$0.0021`
 
 ## Requirements
 
@@ -468,94 +467,99 @@ Total Cost: $0.002 - $0.0021
 
 ### Query & Search Settings
 
-**🔑 Understanding the Two AI Features**
+**🔑 Three Search Modes**
+
+Task Chat offers three modes with **predictable behavior and costs**:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ FEATURE 1: AI Query Understanding (Optional Toggle) │
-├─────────────────────────────────────────────────────┤
-│ • Parses your query to extract filters              │
-│ • Cost: ~$0.0001 per query                          │
-│ • YOU CONTROL: Toggle ON/OFF in settings            │
-│ • Alternative: Free regex-based parsing             │
-└─────────────────────────────────────────────────────┘
-                         ↓
-                 Filters Extracted
-                         ↓
-┌─────────────────────────────────────────────────────┐
-│ FEATURE 2: AI Task Analysis (Always Available)      │
-├─────────────────────────────────────────────────────┤
-│ • Analyzes tasks and provides recommendations       │
-│ • Cost: ~$0.002 per analysis                        │
-│ • AUTOMATIC: Triggers based on complexity           │
-│ • YOU CONTROL: Adjust when it triggers via settings │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ Simple Search (Default) - Free                   │
+├──────────────────────────────────────────────────┤
+│ • Regex parsing, no AI                           │
+│ • Always $0                                      │
+│ • Instant results                                │
+│ • Best for: Quick searches, cost-free operation  │
+└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ Smart Search - AI Keyword Expansion (~$0.0001)   │
+├──────────────────────────────────────────────────┤
+│ • AI expands keywords to multilingual synonyms   │
+│ • Direct results (no AI analysis)                │
+│ • ~250 tokens per query                          │
+│ • Best for: Multilingual, broader results        │
+└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ Task Chat - Full AI Assistant (~$0.0021)         │
+├──────────────────────────────────────────────────┤
+│ • AI keyword expansion + analysis + insights     │
+│ • Ranked recommendations with explanations       │
+│ • ~1,000-1,500 tokens per query                  │
+│ • Best for: Complex queries, AI prioritization   │
+└──────────────────────────────────────────────────┘
 ```
 
-**Key Point**: These are TWO SEPARATE features. Disabling Feature 1 does NOT disable Feature 2!
+**How to Choose Your Default Mode:**
+- Go to Settings → Task Chat → **Search mode**
+- Select: Simple Search (free) | Smart Search (AI keywords) | Task Chat (full AI)
+- You can override per-query using the dropdown in chat interface
+
+**Mode-Specific Features:**
+- **Simple Search**: Free, instant, no AI
+- **Smart Search**: Multilingual keyword expansion, direct results
+- **Task Chat**: AI analysis, recommendations, "Auto" sorting mode available
 
 ---
 
-**Query Understanding** (Query Parsing Only)
-- **AI Query Understanding**: Enable AI to understand your queries (optional)
-  - What it does: AI parses your query to extract filters and keywords
-  - When ON: 
-    - Better semantic understanding, multilingual support (~$0.0001/query)
-    - Unlocks "Auto (AI Context-Aware)" sorting mode (smart sorting)
-  - When OFF: Fast regex-based parsing ($0), "Auto" sorting unavailable
-  - Recommended: ON for complex multilingual queries, OFF for cost savings
-  - **Important**: This does NOT control AI task analysis - that's always available and automatic!
+**Search Optimization Settings**
 
-**AI Task Analysis** (Always Available, Automatic)
-- AI task analysis is **ALWAYS ENABLED** and works automatically
-- You cannot disable it - it's a core feature
-- Triggers automatically when:
-  - Query has 2+ filter types (complex query), OR
-  - Results exceed maxDirectResults (needs prioritization)
-- Costs: ~$0.002 per analysis (~1000-2000 tokens)
-- **Control when it triggers**:
-  - Adjust "Max Direct Results" (higher = less frequent AI analysis)
-  - Use simple queries when possible (1 filter type)
+- **Max Direct Results** (default: 20)
+  - Controls how many results to show for Simple/Smart Search modes
+  - Task Chat mode analyzes up to this many tasks
+  - Range: 5-100 tasks
 
-**Search Optimization**
-- **Max Direct Results**: Maximum results for direct search without AI analysis (default: 20)
-  - Lower values (5-10): More aggressive cost saving, AI triggers earlier
-  - Higher values (20-50): More results shown directly, less frequent AI
-  - Recommended: 10-20 based on your typical query complexity
-  - This is the main way to control AI task analysis frequency
+- **Max Tasks for AI** (default: 30)
+  - Only affects Task Chat mode
+  - Controls how many tasks AI analyzes
+  - Higher = more context for AI, higher token cost
+  - Lower = faster, cheaper responses
 
-- **Max Tasks for AI**: Maximum tasks sent to AI for analysis (default: 30)
-  - Controls token usage when AI analysis is needed
-  - Higher values: More comprehensive analysis, higher token cost
-  - Lower values: Faster responses, lower cost
-  - Does not affect when AI is triggered
+- **Max Recommendations** (default: 20)
+  - Only affects Task Chat mode
+  - Final curated list size after AI analysis
+  - Keep manageable for user review
+
+---
 
 **Language Settings**
-- **Query Languages**: Languages for semantic search (default: English, 中文)
-  - Used by AI Query Parsing for keyword extraction
-  - Enables cross-language task matching
-  - Add your languages for better search results
 
-- **Response Language**: AI response language preference
-  - Auto: Match query language
+- **Query Languages** (default: English, 中文)
+  - Used by Smart Search and Task Chat modes for keyword expansion
+  - Simple Search mode doesn't use this (regex-based)
+  - Add your languages for better multilingual matching
+  - Example: English, Español, 中文, 日本語
+
+- **Response Language** (AI response preference)
+  - Only affects Task Chat mode (only mode with AI responses)
+  - Auto: Match query language automatically
   - English: Always respond in English
   - Chinese: Always respond in Chinese (中文)
-  - Custom: Use custom language instruction
+  - Custom: Define your own language instruction
 
 ### Task Display Settings
 
 **Sorting Options**
 - **Task Sort By**: Field to sort tasks by
-  - **Auto (AI Context-Aware)** - ⭐ Recommended (requires AI query understanding enabled)
-    - **Availability**: Only shown when "AI query understanding" is enabled in Query & Search Settings
-    - **Direct search**: Uses Due Date (safe, predictable)
-    - **AI analysis**: Intelligently chooses based on query type
-      - Keyword searches → Relevance sorting (best AI context)
+  - **Auto (AI-driven)** - ⭐ Only available in Task Chat mode
+    - **Availability**: Only shown when search mode is set to "Task Chat"
+    - AI intelligently chooses sorting based on query type
+      - Keyword searches → Relevance sorting
       - Other queries → Due Date sorting
-    - Best for: Users who want smart behavior and use AI query parsing
-  - **Relevance**: Keyword match quality score (only works when query has keywords)
+    - Best for: Task Chat mode users who want smart AI-driven sorting
+  - **Relevance**: Keyword match quality score (works when query has keywords)
     - Scores tasks based on how well they match your search keywords
-    - Applies to both direct search and AI analysis
+    - Works in all three modes
     - Best for: Finding most relevant tasks in keyword searches
   - **Due Date**: Sort by deadline
     - Best for: Time-sensitive task management
@@ -568,7 +572,7 @@ Total Cost: $0.002 - $0.0021
 - **Sort Direction**: Sort order
   - Low to High (ascending): 1→4, A→Z, Early→Late
   - High to Low (descending): 4→1, Z→A, Late→Early
-- **Note**: "Auto" mode gives AI better context while keeping direct search predictable
+- **Note**: "Auto" sorting is exclusive to Task Chat mode for AI-driven prioritization
 
 **Result Limits** (controls cost and performance)
 - **Max Direct Results** (default: 20, range: 5-100)
@@ -797,36 +801,36 @@ This plugin leverages code patterns from:
 2. Try refreshing tasks
 3. Check that line numbers are being captured correctly
 
-### Understanding search behavior
+### Understanding search modes
 
-**Why is my query using direct search instead of AI?**
-- Your query is simple (single filter) with few results (≤10 by default)
-- This is intentional to save costs - direct search is sufficient
-- Check the explanation line: "Simple query, X result(s) found (no AI task analysis needed)"
+**Which mode should I use?**
+- **Simple Search**: Quick searches, simple filters, free operation
+- **Smart Search**: Multilingual searches, broader keyword matching
+- **Task Chat**: Complex questions, AI recommendations, task prioritization
 
-**Why does AI analysis cost vary?**
-- Query Parsing: ~$0.0001 (if enabled)
-- Task Analysis: ~$0.002-0.004 (only for complex queries or many results)
-- Token usage depends on number of tasks analyzed (max: 20 by default)
+**How do I switch modes?**
+- Default mode: Settings → Task Chat → Search mode dropdown
+- Per-query override: Use dropdown in chat interface (top controls)
+
+**Understanding costs:**
+- **Simple Search**: Always $0 (no AI)
+- **Smart Search**: ~$0.0001 per query (AI keyword expansion only)
+- **Task Chat**: ~$0.0021 per query (full AI analysis)
 
 **How to reduce costs?**
-1. Disable AI Query Parsing for simple queries
-2. Lower `maxDirectResults` to trigger AI analysis less often
-3. Use specific filters to reduce result count
-4. Use Ollama for free local AI processing
+1. Use Simple Search as your default mode
+2. Switch to Smart Search only when you need multilingual/broader results
+3. Reserve Task Chat for when you want AI recommendations
+4. Use Ollama for free local AI processing (all modes)
 
 **Query not understood correctly?**
-- Enable AI Query Parsing in settings for better understanding
+- Try Smart Search or Task Chat mode for better AI understanding
+- Check Settings → Query Languages to ensure your language is listed
 - Use more specific keywords or filters
-- Check the extracted filters in the console (Ctrl/Cmd + Shift + I)
+- Check the console for extracted filters (Ctrl/Cmd + Shift + I)
 
-**Want more control over AI usage?**
-- Adjust `maxDirectResults` (default: 10) to control when AI analysis triggers
-- Lower value = more direct search, less AI cost
-- Higher value = fewer AI calls, but may miss complex prioritization
-
-**Getting too few results with AI query parsing?**
-- The relevance base threshold may be too strict for your language/vocabulary
+**Getting too few results in Smart Search or Task Chat?**
+- The relevance base threshold may be too strict for your language
 - Go to Settings → Task Display → Relevance threshold
 - **Quick fix**: Try setting to 15 (gives you 5/15/25 thresholds)
 - **Understanding**: System will still adapt, but around a lower base

@@ -280,8 +280,14 @@ export class SettingsTab extends PluginSettingTab {
             .addDropdown((dropdown) =>
                 dropdown
                     .addOption("simple", "Simple Search - Free keyword search")
-                    .addOption("smart", "Smart Search - AI keyword expansion (~$0.0001)")
-                    .addOption("chat", "Task Chat - Full AI assistant (~$0.0021)")
+                    .addOption(
+                        "smart",
+                        "Smart Search - AI keyword expansion (~$0.0001)",
+                    )
+                    .addOption(
+                        "chat",
+                        "Task Chat - Full AI assistant (~$0.0021)",
+                    )
                     .setValue(this.plugin.settings.searchMode)
                     .onChange(async (value: "simple" | "smart" | "chat") => {
                         this.plugin.settings.searchMode = value;
@@ -1259,17 +1265,16 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("alphabetical", "Alphabetical");
 
                 // Set current value, fallback to relevance if auto is selected but not in chat mode
-                const valueToSet = !isTaskChatMode && currentValue === "auto" 
-                    ? "relevance" 
-                    : currentValue;
+                const valueToSet =
+                    !isTaskChatMode && currentValue === "auto"
+                        ? "relevance"
+                        : currentValue;
                 dropdown.setValue(valueToSet);
 
                 dropdown.onChange(async (value: any) => {
                     this.plugin.settings.taskSortBy = value;
                     await this.plugin.saveSettings();
-                    console.log(
-                        `[Task Chat] Sort preference saved: ${value}`,
-                    );
+                    console.log(`[Task Chat] Sort preference saved: ${value}`);
                 });
 
                 return dropdown;

@@ -58,7 +58,7 @@ export interface PluginSettings {
     systemPrompt: string;
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
-    
+
     // Search Mode (three-mode system)
     searchMode: "simple" | "smart" | "chat"; // Simple=free, Smart=AI expansion, Chat=full AI
     useAIQueryParsing: boolean; // DEPRECATED: kept for migration only
@@ -175,7 +175,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs. Be concise and actionable.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
-    
+
     // Search Mode
     searchMode: "simple", // Default to free mode
     useAIQueryParsing: false, // DEPRECATED: will be migrated to searchMode

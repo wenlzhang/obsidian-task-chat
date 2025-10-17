@@ -69,16 +69,22 @@ export class AIService {
             }
         }
 
-        // Parse query using AI if enabled, otherwise use regex
+        // Parse query based on search mode (three-mode system)
+        const searchMode = settings.searchMode;
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
         let usingAIParsing = false; // Track if AI parsing was actually used
 
-        if (settings.useAIQueryParsing) {
+        if (searchMode === "simple") {
+            // Mode 1: Simple Search - Regex parsing only
+            console.log("[Task Chat] Mode: Simple Search (regex parsing)");
+            intent = TaskSearchService.analyzeQueryIntent(message);
+            usingAIParsing = false;
+        } else {
+            // Mode 2 & 3: Smart Search / Task Chat - AI parsing
             console.log(
-                "[Task Chat] Query parsing: AI-powered (smart search mode)",
+                `[Task Chat] Mode: ${searchMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
             );
-            // Use AI to parse query for better accuracy
             try {
                 parsedQuery = await QueryParserService.parseQuery(
                     message,
@@ -139,12 +145,6 @@ export class AIService {
                 // AI parsing failed, fall back to regex
                 intent = TaskSearchService.analyzeQueryIntent(message);
             }
-        } else {
-            // Use fast regex-based parsing (default)
-            console.log(
-                "[Task Chat] Query parsing: Regex-based (direct search mode)",
-            );
-            intent = TaskSearchService.analyzeQueryIntent(message);
         }
 
         // Apply compound filters if any structured filters or keywords are detected
@@ -348,52 +348,43 @@ export class AIService {
                 });
             }
 
-            // Simple query - return directly without AI if within limits
-            // Allow direct results for simple queries (single filter or simple keyword search)
-            const isSimpleQuery =
-                !intent.hasMultipleFilters ||
-                (intent.keywords.length > 0 &&
-                    !intent.extractedPriority &&
-                    !intent.extractedDueDateFilter &&
-                    !intent.extractedStatus &&
-                    !intent.extractedFolder &&
-                    intent.extractedTags.length === 0);
+            // Three-mode result delivery logic
+            // Mode 1 (Simple Search) & Mode 2 (Smart Search) → Direct results
+            // Mode 3 (Task Chat) → AI analysis
+            if (searchMode === "simple" || searchMode === "smart") {
+                // Return direct results for Simple Search and Smart Search
+                console.log(
+                    `[Task Chat] Result delivery: Direct (${searchMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasks.length} results)`,
+                );
 
-            // Check if we should return direct results
-            // Condition 1: Direct search mode (user explicitly chose it)
-            // Condition 2: Small result set with simple query
-            // Condition 3: High-quality small result set (even with semantic expansion)
-            const forceDirectResults = !settings.useAIQueryParsing; // Direct search = no AI analysis
-            const hasSmallHighQualityResults =
-                sortedTasks.length <= 15 &&
-                intent.keywords.length >= 6 &&
-                qualityFilteredTasks.length < filteredTasks.length * 0.5;
-
-            if (
-                forceDirectResults ||
-                (sortedTasks.length <= settings.maxDirectResults &&
-                    isSimpleQuery) ||
-                hasSmallHighQualityResults
-            ) {
-                const reason = forceDirectResults
-                    ? `Direct search mode (${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""})`
-                    : hasSmallHighQualityResults
-                      ? `High-quality results (${sortedTasks.length} tasks passed strict filtering from ${filteredTasks.length})`
-                      : this.buildDirectSearchReason(
-                            sortedTasks.length,
-                            settings.maxDirectResults,
-                            isSimpleQuery,
-                            usingAIParsing,
-                        );
-
-                if (forceDirectResults) {
-                    console.log(
-                        `[Task Chat] Result delivery: Direct (${sortedTasks.length} results, direct search mode)`,
-                    );
-                } else if (hasSmallHighQualityResults) {
-                    console.log(
-                        `[Task Chat] Returning direct results: ${sortedTasks.length} high-quality tasks (strict threshold filtered ${filteredTasks.length} → ${qualityFilteredTasks.length})`,
-                    );
+                // Build token usage based on mode
+                let tokenUsage: TokenUsage;
+                if (searchMode === "simple") {
+                    // Simple Search: No AI used at all
+                    tokenUsage = {
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        totalTokens: 0,
+                        estimatedCost: 0,
+                        model: "none",
+                        provider: settings.aiProvider,
+                        isEstimated: false,
+                        directSearchReason: `${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""}`,
+                    };
+                } else {
+                    // Smart Search: AI used for keyword expansion only
+                    // Note: Actual token usage from QueryParserService would need to be tracked
+                    // For now, using estimated values
+                    tokenUsage = {
+                        promptTokens: 200,
+                        completionTokens: 50,
+                        totalTokens: 250,
+                        estimatedCost: 0.0001,
+                        model: settings.model,
+                        provider: settings.aiProvider,
+                        isEstimated: true,
+                        directSearchReason: `${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""}`,
+                    };
                 }
 
                 return {
@@ -402,20 +393,11 @@ export class AIService {
                         0,
                         settings.maxDirectResults,
                     ),
-                    tokenUsage: {
-                        promptTokens: 0,
-                        completionTokens: 0,
-                        totalTokens: 0,
-                        estimatedCost: 0,
-                        model: "none",
-                        provider: settings.aiProvider,
-                        isEstimated: true,
-                        directSearchReason: reason,
-                    },
+                    tokenUsage,
                 };
             }
 
-            // Complex query or large result set - use AI for refinement
+            // Mode 3: Task Chat - AI analysis
             // Limit to maxTasksForAI for token efficiency
             const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
 

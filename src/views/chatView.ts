@@ -113,7 +113,10 @@ export class ChatView extends ItemView {
         this.updateSearchModeOptions();
 
         this.searchModeSelect.addEventListener("change", () => {
-            const value = this.searchModeSelect?.value as "simple" | "smart" | "chat";
+            const value = this.searchModeSelect?.value as
+                | "simple"
+                | "smart"
+                | "chat";
             this.searchModeOverride = value;
             console.log(`[Task Chat] Search mode changed to: ${value}`);
         });
@@ -258,12 +261,11 @@ export class ChatView extends ItemView {
         });
 
         // Set to current setting (or override if one exists)
-        const currentMode = this.searchModeOverride || this.plugin.settings.searchMode;
+        const currentMode =
+            this.searchModeOverride || this.plugin.settings.searchMode;
         this.searchModeSelect.value = currentMode;
 
-        console.log(
-            `[Task Chat] Search mode dropdown updated: ${currentMode}`,
-        );
+        console.log(`[Task Chat] Search mode dropdown updated: ${currentMode}`);
     }
 
     /**
@@ -372,12 +374,20 @@ export class ChatView extends ItemView {
         // Message header
         const headerEl = messageEl.createDiv("task-chat-message-header");
 
-        const roleName =
-            message.role === "user"
-                ? "You"
-                : message.role === "assistant"
-                  ? "Assistant"
-                  : "System";
+        // Map message roles to display names
+        let roleName: string;
+        if (message.role === "user") {
+            roleName = "You";
+        } else if (message.role === "simple") {
+            roleName = "Simple Search";
+        } else if (message.role === "smart") {
+            roleName = "Smart Search";
+        } else if (message.role === "chat") {
+            roleName = "Task Chat";
+        } else {
+            // Fallback for legacy messages
+            roleName = message.role === "assistant" ? "Task Chat" : "System";
+        }
         headerEl.createEl("strong", { text: roleName });
         headerEl.createEl("span", {
             text: new Date(message.timestamp).toLocaleTimeString(),
@@ -441,34 +451,23 @@ export class ChatView extends ItemView {
 
             const parts: string[] = [];
 
-            // Determine query parsing method and result delivery method
-            const isDirectSearch = message.tokenUsage.model === "none";
+            // Show mode name first
+            if (message.role === "simple") {
+                parts.push("Mode: Simple Search");
+            } else if (message.role === "smart") {
+                parts.push("Mode: Smart Search");
+            } else if (message.role === "chat") {
+                parts.push("Mode: Task Chat");
+            } else {
+                // Legacy message handling
+                parts.push(
+                    `Mode: ${message.role === "assistant" ? "Task Chat" : "System"}`,
+                );
+            }
+
+            // Determine if AI was used
+            const isSimpleSearch = message.tokenUsage.model === "none";
             const hasAIAnalysis = message.tokenUsage.totalTokens > 0;
-
-            // Phase 1: Query parsing method
-            if (isDirectSearch) {
-                parts.push("Query: Regex-parsed");
-            } else {
-                parts.push("Query: AI-parsed");
-            }
-
-            // Phase 2: Result delivery method
-            if (isDirectSearch) {
-                // Direct search mode or direct results
-                if (message.tokenUsage.directSearchReason) {
-                    parts.push(
-                        `Results: ${message.tokenUsage.directSearchReason}`,
-                    );
-                } else {
-                    parts.push("Results: Direct");
-                }
-            } else if (message.role === "system") {
-                // Smart search with direct results
-                parts.push("Results: Direct (simple query)");
-            } else {
-                // AI analysis was used
-                parts.push("Results: AI-analyzed");
-            }
 
             // Show model and token details when AI was used (parsing or analysis)
             if (hasAIAnalysis) {
@@ -495,7 +494,7 @@ export class ChatView extends ItemView {
             // Cost information
             if (message.tokenUsage.provider === "ollama") {
                 parts.push("Free (local)");
-            } else if (isDirectSearch) {
+            } else if (isSimpleSearch) {
                 parts.push("$0");
             } else if (message.tokenUsage.estimatedCost > 0) {
                 const cost = message.tokenUsage.estimatedCost;
@@ -596,10 +595,14 @@ export class ChatView extends ItemView {
             // Hide typing indicator
             this.hideTypingIndicator();
 
-            // Handle direct results (no AI task analysis used)
+            // Get the search mode that was used (from override or settings)
+            const usedSearchMode =
+                this.searchModeOverride || this.plugin.settings.searchMode;
+
+            // Handle direct results (Simple Search or Smart Search)
             if (result.directResults) {
                 const directMessage: ChatMessage = {
-                    role: "system",
+                    role: usedSearchMode as "simple" | "smart",
                     content: `Found ${result.directResults.length} matching task(s):`,
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
@@ -610,9 +613,9 @@ export class ChatView extends ItemView {
                 this.renderMessages();
                 await this.plugin.saveSettings();
             } else {
-                // Add AI response
+                // Add AI analysis response (Task Chat mode)
                 const aiMessage: ChatMessage = {
-                    role: "assistant",
+                    role: "chat",
                     content: result.response,
                     timestamp: Date.now(),
                     recommendedTasks: result.recommendedTasks,

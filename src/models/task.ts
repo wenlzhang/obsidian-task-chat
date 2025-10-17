@@ -31,7 +31,7 @@ export interface DateRange {
 export type TaskStatusCategory = string;
 
 export interface ChatMessage {
-    role: "user" | "assistant" | "system";
+    role: "user" | "assistant" | "system" | "simple" | "smart" | "chat"; // assistant/system for legacy, simple/smart/chat for three-mode system
     content: string;
     timestamp: number;
     recommendedTasks?: Task[];
