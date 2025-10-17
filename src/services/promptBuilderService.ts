@@ -241,34 +241,56 @@ ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}`;
         return `
 IMPORTANT: UNDERSTANDING TASK METADATA (User-Configured)
 - Each task is displayed with its text content AND structured metadata
-- Metadata format: "Status: X | Priority: Y | Due: Z | Created: C | Completed: D | Folder: W | Tags: T1, T2"
 - ONLY use metadata shown explicitly - do NOT infer properties from task text
 
-FIELD-SPECIFIC RULES:
-- **Status**: Uses your configured display names (${statusNames})
-  → ONLY trust "Status:" field, NOT text content
-  
-- **Priority**: Uses your configured values (${priorityMappings})
-  → ONLY trust "Priority:" field, NOT text content
-  → Lower numbers = higher priority (1=highest, 4=lowest)
-  
-- **Due date**: Field name "${settings.dataviewKeys.dueDate}" in user's vault
-  → ONLY trust "Due:" field, NOT text content
-  → If task has NO "Due:" field, it has NO due date
-  → Emojis in text (📝, ⏰) are NOT due dates
-  → Timestamps in text are NOT due dates
-  
-- **Created date**: Field name "${settings.dataviewKeys.createdDate}" in user's vault
-  → Shows when task was created
-  → Appears in "Created:" field
-  
-- **Completed date**: Field name "${settings.dataviewKeys.completedDate}" in user's vault
-  → Shows when task was finished
-  → Appears in "Completed:" field
-  
-- **Folder**: Task's location in vault hierarchy
-- **Tags**: Task's assigned tags from vault
+⚠️ IMPORTANT: RAW DATAVIEW SYNTAX IN TASK TEXT
+You will see tasks with BOTH:
+1. Original task text (may contain raw DataView syntax)
+2. Extracted metadata below each task (clean, structured format)
 
-CRITICAL: Dates/emojis/timestamps in task TEXT are NOT metadata unless shown in structured fields!`;
+Example:
+  [TASK_1] Fix bug [due::2025-10-20] 🗓️ 2025-10-20 [p::1] ⏫
+    Status: Open | Priority: 1 | Due: 2025-10-20
+
+WHY you see raw syntax in text:
+- Raw syntax ([due::DATE], 🗓️ DATE, ⏫) is how users store metadata in their vault
+- We keep it in task text for vault compatibility
+- BUT we've ALREADY extracted it using DataView API
+
+WHAT YOU MUST DO:
+→ Use ONLY the structured metadata (e.g., "Priority: 1", "Due: 2025-10-20")
+→ Do NOT try to parse [due::2025-10-20] or 🗓️ 2025-10-20 from the task text
+→ If you see BOTH raw syntax in text AND clean metadata, trust the metadata
+→ The raw syntax is already processed - you don't need to interpret it
+
+Common raw DataView formats you might see in text (already extracted for you):
+- Inline fields: [${settings.dataviewKeys.dueDate}::2025-10-20], [${settings.dataviewKeys.priority}::1]
+- Emoji dates: 🗓️ 2025-10-20 (due), ✅ 2025-10-15 (completed), ➕ 2025-10-10 (created)
+- Priority emojis: ⏫ (high), 🔼 (medium), 🔽 (low)
+
+METADATA FIELD REFERENCE (User's Configuration):
+
+- **Status**: Display names = (${statusNames})
+  * Appears as: "Status: Open" (not "status: open" or [ ] checkbox)
+  
+- **Priority**: Values = (${priorityMappings})
+  * Appears as: "Priority: 1" or "Priority: high" (user's first configured value)
+  * Lower numbers = higher priority (1=highest, 4=lowest)
+  * Vault field: "${settings.dataviewKeys.priority}"
+  
+- **Due date**: Vault field = "${settings.dataviewKeys.dueDate}"
+  * Appears as: "Due: 2025-10-20" (clean date format)
+  * If NO "Due:" in metadata → task has NO due date
+  
+- **Created date**: Vault field = "${settings.dataviewKeys.createdDate}"
+  * Appears as: "Created: 2025-10-15" (when task was created)
+  
+- **Completed date**: Vault field = "${settings.dataviewKeys.completedDate}"
+  * Appears as: "Completed: 2025-10-18" (when task was finished)
+  
+- **Folder**: Task's vault location (e.g., "Projects/Work")
+- **Tags**: Task's tags (e.g., "#urgent #coding")
+
+REMEMBER: All these fields are extracted from DataView syntax and shown as clean metadata. Always use the metadata values, never try to parse raw syntax from task text!`;
     }
 }
