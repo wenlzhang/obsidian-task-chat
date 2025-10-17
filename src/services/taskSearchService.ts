@@ -131,7 +131,22 @@ export class TaskSearchService {
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
         // Remove stop words using shared service (consistent with AI mode)
-        return StopWords.filterStopWords(words);
+        const filteredWords = StopWords.filterStopWords(words);
+
+        // Log stop word filtering (for consistency with AI mode)
+        if (words.length !== filteredWords.length) {
+            console.log(
+                `[Task Chat] Keywords after stop word filtering: ${words.length} → ${filteredWords.length}`,
+            );
+            console.log(
+                `[Task Chat] Removed stop words: [${words.filter((w) => !filteredWords.includes(w)).join(", ")}]`,
+            );
+        }
+
+        // IMPORTANT: Return ALL keywords (including overlaps) for filtering
+        // Overlapping keywords will be deduplicated later ONLY for scoring
+        // This ensures broad recall (find more tasks) while maintaining accurate scoring
+        return filteredWords;
     }
 
     /**
@@ -654,6 +669,33 @@ export class TaskSearchService {
     }
 
     /**
+     * Remove overlapping/substring keywords to avoid double-counting
+     * Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
+     * This prevents scoring "开" and "发" separately when "开发" already matches
+     */
+    private static deduplicateOverlappingKeywords(
+        keywords: string[],
+    ): string[] {
+        // Sort by length (longest first) to prioritize multi-character words
+        const sorted = [...keywords].sort((a, b) => b.length - a.length);
+        const deduplicated: string[] = [];
+
+        for (const keyword of sorted) {
+            // Check if this keyword is a substring of any already-kept keyword
+            const isSubstring = deduplicated.some((kept) =>
+                kept.includes(keyword),
+            );
+
+            // Keep this keyword only if it's not a substring of a longer keyword
+            if (!isSubstring) {
+                deduplicated.push(keyword);
+            }
+        }
+
+        return deduplicated;
+    }
+
+    /**
      * Score tasks by relevance to keywords
      * Returns array of {task, score} sorted by score (highest first)
      * Used for both direct search and AI analysis
@@ -662,6 +704,21 @@ export class TaskSearchService {
         tasks: Task[],
         keywords: string[],
     ): Array<{ task: Task; score: number }> {
+        // Deduplicate overlapping keywords to avoid double-counting
+        // Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
+        const deduplicatedKeywords =
+            this.deduplicateOverlappingKeywords(keywords);
+
+        // Log deduplication if any keywords were removed
+        if (keywords.length !== deduplicatedKeywords.length) {
+            console.log(
+                `[Task Chat] Deduplicated overlapping keywords: ${keywords.length} → ${deduplicatedKeywords.length}`,
+            );
+            console.log(
+                `[Task Chat] Removed overlaps: [${keywords.filter((k) => !deduplicatedKeywords.includes(k)).join(", ")}]`,
+            );
+        }
+
         const scored = tasks.map((task) => {
             const taskText = task.text.toLowerCase();
             let score = 0;
@@ -671,7 +728,7 @@ export class TaskSearchService {
                 score -= 50;
             }
 
-            keywords.forEach((keyword) => {
+            deduplicatedKeywords.forEach((keyword) => {
                 const keywordLower = keyword.toLowerCase();
 
                 // Exact match gets highest score
@@ -689,8 +746,8 @@ export class TaskSearchService {
                 }
             });
 
-            // More generous bonus for matching multiple keywords
-            const matchingKeywords = keywords.filter((kw) =>
+            // More generous bonus for matching multiple keywords (using deduplicated keywords)
+            const matchingKeywords = deduplicatedKeywords.filter((kw) =>
                 taskText.includes(kw.toLowerCase()),
             ).length;
             score += matchingKeywords * 8;

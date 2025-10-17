@@ -65,12 +65,7 @@ export class StopWords {
         "has",
         "had",
 
-        // Task-related generic words (too generic to be useful)
-        "task",
-        "tasks",
-
         // Chinese stop words (common particles and question words)
-        "给我", // "give me"
         "给", // "give"
         "我", // "me/I"
         "的", // possessive particle
@@ -84,8 +79,8 @@ export class StopWords {
         "什么", // "what"
         "哪些", // "which (plural)"
         "哪个", // "which"
+        "哪里", // "where"
         "为什么", // "why"
-        "任务", // "task"
     ]);
 
     /**
