@@ -696,13 +696,17 @@ CRITICAL RULES:
                     }
                 });
 
-                console.log("[Task Chat] Language Distribution (estimated - for diagnostics only):");
-                console.log("[Task Chat] Note: This uses heuristics to estimate distribution. Actual functionality doesn't depend on detection.");
-                
+                console.log(
+                    "[Task Chat] Language Distribution (estimated - for diagnostics only):",
+                );
+                console.log(
+                    "[Task Chat] Note: This uses heuristics to estimate distribution. Actual functionality doesn't depend on detection.",
+                );
+
                 // Check for missing languages
                 const missingLanguages: string[] = [];
                 const expectedMinPerLanguage = Math.floor(maxExpansions * 0.5); // At least 50% of expected
-                
+
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
                         console.log(

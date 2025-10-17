@@ -439,6 +439,263 @@ Every response shows which mode was used:
 - No API key needed, runs locally
 - Recommended model: `llama3.2`
 
+## Understanding Semantic Expansion
+
+**Applies to: Smart Search and Task Chat modes only**
+
+Semantic expansion is the core technology that enables multilingual and broader task discovery in Smart Search and Task Chat modes.
+
+### What is Semantic Expansion?
+
+**Direct Cross-Language Semantic Equivalence Generation**
+
+For each keyword extracted from your query, the AI generates semantic equivalents **directly** in all your configured languages. This is **NOT literal translation** but conceptual equivalence.
+
+**Key Concept:**
+- Not "translate this word" → Literal word-for-word conversion
+- But "how would you express this concept in language X?" → Contextual equivalents
+
+### How It Works
+
+**Step-by-Step Process:**
+
+```
+Your Query: "How to develop Task Chat plugin"
+     ↓
+1. AI Extracts Keywords: ["develop", "Task", "Chat", "plugin"]
+     ↓
+2. For EACH Keyword, Generate Semantic Equivalents in ALL Languages:
+   
+   "develop" →
+     English (5): develop, build, create, implement, code
+     中文 (5): 开发, 构建, 创建, 编程, 实现
+     Svenska (5): utveckla, bygga, skapa, programmera, implementera
+     Total: 15 equivalents
+   
+   "Task" →
+     English (5): task, work, item, assignment, job
+     中文 (5): 任务, 工作, 事项, 项目, 作业
+     Svenska (5): uppgift, arbete, göra, uppdrag, ärende
+     Total: 15 equivalents
+   
+   "Chat" →
+     English (5): chat, conversation, talk, discussion, dialogue
+     中文 (5): 聊天, 对话, 交流, 谈话, 沟通
+     Svenska (5): chatt, konversation, prata, diskussion, samtal
+     Total: 15 equivalents
+   
+   "plugin" →
+     English (5): plugin, extension, addon, module, component
+     中文 (5): 插件, 扩展, 附加组件, 模块, 组件
+     Svenska (5): plugin, tillägg, modul, komponent, instick
+     Total: 15 equivalents
+     ↓
+3. Total Keywords: 4 × 15 = 60 keywords for matching
+     ↓
+4. Search your vault for tasks containing ANY of these 60 keywords
+```
+
+### Expansion Math Explained
+
+**The Formula:**
+
+```
+Per keyword, per language:     Your setting (default: 5)
+Per keyword, all languages:    Setting × Number of languages
+Entire query total:            Number of keywords × (Setting × Languages)
+```
+
+**Concrete Example:**
+
+**Your settings:**
+- Max expansions per language: `5`
+- Query languages: `["English", "中文", "Svenska"]` (3 languages)
+
+**Query:** "如何开发 Task Chat 插件"
+
+**Calculation:**
+```
+Step 1: Extract keywords
+  → ["开发", "Task", "Chat", "插件"] = 4 keywords
+
+Step 2: Calculate per-keyword total
+  → 5 per language × 3 languages = 15 per keyword
+
+Step 3: Calculate query total
+  → 4 keywords × 15 per keyword = 60 total keywords
+```
+
+**Result:** Your 4-keyword query expands to 60 keywords for comprehensive matching!
+
+### Why NOT "Translation"?
+
+**Translation (❌ Not what we do):**
+```
+开发 → Literally translate to English → "develop"
+Task → Literally translate to Chinese → "任务"
+```
+
+**Semantic Equivalence (✅ What we actually do):**
+```
+开发 → "How do English speakers express 'development/building'?"
+  → develop, build, create, implement, code, program, construct
+
+Task → "How do Chinese speakers express 'task/work item'?"
+  → 任务, 工作, 事项, 项目, 作业, 任务项
+```
+
+**Why this is better:**
+- Captures full semantic range, not just one translation
+- Generates context-appropriate terms
+- Handles cultural/linguistic nuances
+- Works naturally for mixed-language queries
+
+### Mixed-Language Queries
+
+**Scenario:** Your query mixes multiple languages
+
+**Query:** "开发 plugin for Task管理"
+- "开发" = Chinese
+- "plugin" = English  
+- "Task" = English
+- "管理" = Chinese
+
+**How expansion handles it:**
+
+```
+For EACH keyword (regardless of its original language):
+  → Generate equivalents in ALL configured languages
+
+"开发" (originally Chinese) →
+  English: develop, build, create, implement, code
+  中文: 开发, 构建, 创建, 编程, 实现
+  Svenska: utveckla, bygga, skapa, programmera, implementera
+
+"plugin" (originally English) →
+  English: plugin, extension, addon, module, component
+  中文: 插件, 扩展, 附加组件, 模块, 组件
+  Svenska: plugin, tillägg, modul, komponent, instick
+```
+
+**Result:** Same comprehensive coverage regardless of query language mix!
+
+### Settings Configuration
+
+**Location:** Settings → Task Chat → Semantic Expansion
+
+**Max keyword expansions per language** (Default: 5)
+- Controls how many equivalents to generate per language
+- Range: 1-15
+- Higher = Better recall, more token usage
+- Lower = Faster, cheaper, narrower matching
+
+**Visual in settings shows:**
+```
+🧮 Expansion Math:
+• Per keyword, per language: Your setting (default 5)
+• Per keyword, all languages: Setting × Number of languages
+• Entire query: (Keywords in query) × (Setting × Languages)
+
+Example: Query "如何开发 Task Chat插件"
+→ Extracts 4 keywords: [开发, Task, Chat, 插件]
+→ With 5 per language × 3 languages = 15 per keyword
+→ Total: 4 × 15 = 60 keywords for matching
+
+⚡ Current: 5 per language × 3 languages = 15 per keyword
+```
+
+### Cost Impact
+
+**Token Usage:**
+
+Semantic expansion increases token usage for the query parsing step:
+
+**Without expansion (Simple Search):**
+- Tokens: ~0 (regex-based)
+- Cost: $0
+
+**With expansion (Smart Search):**
+- Tokens: ~150-300 (depends on keyword count)
+- Cost: ~$0.0001 per query
+- Impact: Minimal
+
+**With expansion + AI analysis (Task Chat):**
+- Tokens: ~1,000-1,500 (expansion + analysis)
+- Cost: ~$0.0021 per query
+- Impact: Low for occasional use, moderate for heavy use
+
+**Optimization tip:** Use Simple Search for quick lookups, Smart Search when you need broader/multilingual results.
+
+### Benefits
+
+**1. Cross-Language Task Discovery**
+```
+Query in English: "urgent meeting"
+Finds tasks in ANY language:
+  - English: "urgent meeting tomorrow"
+  - Chinese: "紧急会议"
+  - Swedish: "brådskande möte"
+```
+
+**2. Broader Semantic Coverage**
+```
+Query: "fix bug"
+Also finds:
+  - "repair error"
+  - "resolve issue"
+  - "debug problem"
+  - "修复错误"
+  - "fixa fel"
+```
+
+**3. Natural Mixed-Language Queries**
+```
+Query: "开发 plugin for Task管理"
+Works perfectly! Each keyword expanded independently.
+```
+
+**4. No Special Cases**
+- Proper nouns get expanded too
+- Technical terms get context-appropriate equivalents
+- Same process for all keywords
+
+### When to Adjust Settings
+
+**Increase max expansions (6-10) when:**
+- ✅ You have diverse multilingual tasks
+- ✅ Tasks use varied vocabulary
+- ✅ You want maximum recall
+- ✅ Token cost is not a concern
+
+**Decrease max expansions (2-4) when:**
+- ✅ You want faster, cheaper queries
+- ✅ Your tasks use consistent vocabulary
+- ✅ You mainly use one language
+- ✅ Precision more important than recall
+
+**Default (5) works well for:**
+- ✅ Most users
+- ✅ Balanced recall and precision
+- ✅ Multilingual workflows
+- ✅ Moderate token usage
+
+### Troubleshooting
+
+**Getting too few results?**
+- Check console to see how many keywords were expanded
+- Increase "Max keyword expansions per language" (try 7-10)
+- Verify your languages are configured correctly
+- Lower relevance threshold (Settings → Task Display)
+
+**Getting too many irrelevant results?**
+- Decrease "Max keyword expansions per language" (try 3-4)
+- Raise relevance threshold (Settings → Task Display)
+- Use more specific keywords in your query
+
+**Other language not working?**
+- Use English language names
+- AI models may recognize English names better
+
 ## Configuration
 
 ### AI Provider Settings
@@ -545,17 +802,20 @@ Task Chat offers three modes with **predictable behavior and costs**. The **defa
 **Language Settings**
 
 - **Query Languages** (default: English, 中文)
-  - Used by Smart Search and Task Chat modes for keyword expansion
-  - Simple Search mode doesn't use this (regex-based)
-  - Add your languages for better multilingual matching
+  - Languages for semantic expansion in Smart Search and Task Chat modes
+  - Simple Search mode doesn't use this (regex-based keyword matching only)
+  - For EACH keyword, AI generates semantic equivalents in ALL these languages
+  - More languages = broader cross-language matching but slightly more tokens
   - Example: English, Español, 中文, 日本語
+  - **Tip:** Use English language names for better AI recognition
 
 - **Response Language** (AI response preference)
   - Only affects Task Chat mode (only mode with AI responses)
-  - Auto: Match query language automatically
+  - Auto: AI detects and responds in the language matching your query
   - English: Always respond in English
   - Chinese: Always respond in Chinese (中文)
   - Custom: Define your own language instruction
+  - **Note:** This only controls response language, not expansion languages
 
 ### Task Display Settings
 
