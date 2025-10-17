@@ -56,6 +56,20 @@ Example: `["relevance", "dueDate", "priority"]`
    - Prioritizes most relevant and urgent tasks for AI understanding
    - Can differ from display order for optimal AI performance
 
+## Smart Sort Directions (Updated 2024-10-17)
+
+Each criterion uses an **optimized internal direction** for intuitive behavior:
+
+| Criterion | Direction | Internal Logic | User-Visible Result |
+|-----------|-----------|----------------|---------------------|
+| **Relevance** | DESC | Score 100 → 0 | Best matches appear first |
+| **Priority** | ASC | 1 → 2 → 3 → 4 | Highest priority (1 = "high", "urgent") appears first |
+| **Due Date** | ASC | Earlier → Later | Overdue/urgent tasks appear first, no-date tasks last |
+| **Created** | DESC | Newer → Older | Recently created tasks appear first |
+| **Alphabetical** | ASC | A → Z | Natural alphabetical order |
+
+**Key Design Decision**: No global `sortDirection` setting. Each criterion has a fixed, semantically optimal direction that users expect. This eliminates confusion (e.g., DESC priority would show low-priority tasks first, which is never desired).
+
 ## Implementation Details
 
 ### 1. Settings Type System (`src/settings.ts`)
@@ -93,18 +107,36 @@ export interface PluginSettings {
 ```typescript
 class TaskSortService {
     /**
-     * Multi-criteria sorting - NEW primary method
+     * Multi-criteria sorting with smart internal defaults
+     * 
+     * SMART SORT DIRECTIONS (optimized for intuitive behavior):
+     * - Relevance: DESC (higher scores = more relevant, shown first)
+     * - Priority: ASC (1=highest priority shown first, then 2, 3, 4)
+     * - Due Date: ASC (overdue/earliest = most urgent, shown first)
+     * - Created: DESC (newest tasks shown first)
+     * - Alphabetical: ASC (A → Z natural order)
      */
     static sortTasksMultiCriteria(
         tasks: Task[],
         sortOrder: SortCriterion[],
-        sortDirection: "asc" | "desc" = "asc",
         relevanceScores?: Map<string, number>,
     ): Task[] {
         // Filters out "auto" (should be resolved before calling)
         // Applies criteria in sequence until difference found
-        // Relevance always DESC (higher scores first)
-        // Other criteria respect sortDirection parameter
+        // Each criterion uses its optimal internal direction
+        // No global sortDirection parameter needed
+        
+        // Example internal logic:
+        case "priority":
+            // Always ASC: 1 (highest) comes before 4 (lowest)
+            comparison = this.comparePriority(a.priority, b.priority);
+            break;
+            
+        case "created":
+            // Always DESC: newer before older
+            comparison = this.compareDates(a.createdDate, b.createdDate);
+            comparison = -comparison; // Reverse for DESC
+            break;
     }
     
     /**
@@ -163,7 +195,6 @@ const resolvedDisplaySortOrder = displaySortOrder.map((criterion) => {
 const sortedTasksForDisplay = TaskSortService.sortTasksMultiCriteria(
     qualityFilteredTasks,
     resolvedDisplaySortOrder,
-    settings.taskSortDirection,
     relevanceScores,
 );
 
@@ -172,7 +203,6 @@ const resolvedAIContextSortOrder = aiContextSortOrder.map(...);
 const sortedTasksForAI = TaskSortService.sortTasksMultiCriteria(
     qualityFilteredTasks,
     resolvedAIContextSortOrder,
-    settings.taskSortDirection,
     relevanceScores,
 );
 ```
@@ -337,8 +367,58 @@ Potential improvements for future versions:
 - ✅ Comprehensive comments and documentation
 - ✅ No breaking changes to existing functionality
 
+## Update: Smart Sort Directions (2024-10-17)
+
+### Motivation for Change
+
+The initial implementation used a global `taskSortDirection: "asc" | "desc"` setting that applied to all criteria except relevance. This created logical inconsistencies:
+
+**Problem Examples:**
+- `sortDirection = "desc"` + Priority → Shows Priority 4 before Priority 1 ❌ (backwards!)
+- `sortDirection = "desc"` + Due Date → Shows future before overdue ❌ (backwards!)
+- No single direction works correctly for all criteria
+
+### Solution: Smart Internal Defaults
+
+Each criterion now has a **fixed, semantically optimal direction**:
+
+```typescript
+// SMART DEFAULTS (automatically applied)
+case "relevance":   comparison = scoreB - scoreA;           // DESC: 100 → 0
+case "priority":    comparison = a.priority - b.priority;   // ASC:  1 → 4
+case "dueDate":     comparison = compareDates(a, b);        // ASC:  earlier → later
+case "created":     comparison = -compareDates(a, b);       // DESC: newer → older
+case "alphabetical": comparison = a.text.localeCompare(b);  // ASC:  A → Z
+```
+
+### Benefits
+
+1. **Always intuitive**: Priority 1 always appears before Priority 4
+2. **No configuration needed**: Works correctly out-of-the-box
+3. **Simpler UI**: Removed confusing sort direction setting
+4. **Better documentation**: Clear explanation of how each criterion sorts
+
+### Migration Notes
+
+- **Removed**: Global `taskSortDirection` parameter (kept in settings for backward compatibility but not used)
+- **Updated**: `sortTasksMultiCriteria()` signature (removed sortDirection parameter)
+- **Updated**: Settings UI explanations (added detailed sort behavior descriptions)
+- **Updated**: README (comprehensive sort documentation)
+
+### User-Visible Changes
+
+**Settings Tab:**
+- Added explanation box showing how each criterion sorts internally
+- Clarified that Priority 1-4 maps to user-defined strings ("high", "urgent", etc.)
+- Removed sort direction dropdown (no longer needed)
+
+**README:**
+- Added detailed table of sort directions and internal logic
+- Explained priority number-to-string mapping
+- Clarified "no due date" handling (always appears last)
+
 ## Conclusion
 
-The multi-criteria sorting system significantly improves task organization and AI performance without adding complexity for users who don't need it. Smart defaults ensure good experience out-of-the-box, while power users can fine-tune sort behavior per mode and context.
+The multi-criteria sorting system with smart internal defaults significantly improves task organization and AI performance without adding complexity. Each criterion sorts in the most intuitive way, and users can focus on **what order** to apply criteria rather than worrying about directions.
 
-This implementation addresses the core concern: **when filtering results in many tasks, having multiple sort criteria ensures consistent, meaningful ordering that benefits both display and AI analysis.**
+This implementation addresses the core concern: **when filtering results in many tasks, having multiple sort criteria with optimal directions ensures consistent, meaningful ordering that benefits both display and AI analysis.**

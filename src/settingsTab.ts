@@ -1219,9 +1219,45 @@ export class SettingsTab extends PluginSettingTab {
         if (!this.sortByContainerEl) return;
 
         // Header with explanation
+        this.sortByContainerEl.createEl("h3", {
+            text: "Multi-criteria sorting",
+        });
+
         this.sortByContainerEl.createEl("p", {
-            text: "Configure multi-criteria sorting for each mode. Tasks are sorted by the first criterion, then by the second for ties, and so on. Use ↑↓ to reorder, ✕ to remove, and + to add criteria.",
+            text: "Configure how tasks are sorted for each mode. Tasks are sorted by the first criterion, then by the second criterion for ties, and so on. Use ↑↓ to reorder, ✕ to remove, and + to add criteria.",
             cls: "setting-item-description",
+        });
+
+        // Sort behavior explanation box
+        const explanationBox = this.sortByContainerEl.createDiv({
+            cls: "task-chat-info-box",
+        });
+
+        explanationBox.createEl("div", {
+            text: "How sort criteria work:",
+            cls: "task-chat-info-box-title",
+        });
+
+        const explanationList = explanationBox.createEl("ul");
+
+        explanationList.createEl("li").innerHTML =
+            "<strong>Relevance:</strong> Best matches first (based on keyword similarity scores, 100 = perfect match, 0 = no match)";
+
+        explanationList.createEl("li").innerHTML =
+            "<strong>Priority:</strong> Highest priority first (internal values 1→2→3→4, where 1 is highest and maps to your priority settings like 'high', 'urgent', etc.)";
+
+        explanationList.createEl("li").innerHTML =
+            "<strong>Due date:</strong> Most urgent first (overdue → today → tomorrow → future; tasks without due dates appear last)";
+
+        explanationList.createEl("li").innerHTML =
+            "<strong>Created date:</strong> Newest first (recently created tasks appear before older ones)";
+
+        explanationList.createEl("li").innerHTML =
+            "<strong>Alphabetical:</strong> Standard A → Z order (case-insensitive natural sorting)";
+
+        explanationBox.createEl("div", {
+            text: "Note: Sort directions are automatically optimized for each criterion to provide the most intuitive results. For example, Priority 1 (highest) always appears before Priority 4 (lowest), regardless of other settings.",
+            cls: "task-chat-info-box-description",
         });
 
         // Simple Search multi-criteria sort

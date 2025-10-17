@@ -359,7 +359,6 @@ export class AIService {
                 TaskSortService.sortTasksMultiCriteria(
                     qualityFilteredTasks,
                     resolvedDisplaySortOrder,
-                    settings.taskSortDirection,
                     relevanceScores,
                 );
 
@@ -438,7 +437,6 @@ export class AIService {
             const sortedTasksForAI = TaskSortService.sortTasksMultiCriteria(
                 qualityFilteredTasks,
                 resolvedAIContextSortOrder,
-                settings.taskSortDirection,
                 relevanceScores,
             );
 

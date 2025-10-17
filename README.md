@@ -64,14 +64,20 @@ Choose the mode that fits your needs. Set your default in settings, override per
   - Example: "high priority overdue tasks in project folder with #urgent tag"
 
 ### 🎯 Task Display & Sorting
-- **Flexible Sorting Options**:
-  - **Auto (AI Context-Aware)** - Recommended default
-    - Direct search: Uses Due Date (safe fallback)
-    - AI analysis: Uses Relevance for keyword searches, Due Date otherwise
-  - Relevance (keyword match quality)
-  - Due Date, Priority, Created Date, Alphabetical
-  - Ascending or Descending order
-  - Pre-configured defaults optimized for task management
+- **Multi-Criteria Sorting**: Tasks are sorted by multiple criteria in sequence
+  - Primary sort applied first, secondary for ties, tertiary for further ties
+  - Separate configurations for display vs. AI context
+  - Fully customizable order per mode (Simple/Smart/Chat)
+  - **Smart Internal Defaults**:
+    - **Relevance**: Best matches first (score 100 → 0)
+    - **Priority**: Highest first (1 → 2 → 3 → 4, where 1 maps to "high", "urgent", etc.)
+    - **Due Date**: Most urgent first (overdue → today → future; no date = last)
+    - **Created Date**: Newest first (recent tasks → older tasks)
+    - **Alphabetical**: Natural A → Z order
+  - **Auto Mode**: Intelligently picks relevance or due date based on query type
+  - Default for Simple/Smart: Relevance → Due Date → Priority
+  - Default for Chat Display: Auto → Relevance → Due Date → Priority  
+  - Default for Chat AI Context: Relevance → Due Date → Priority
 - **Configurable Result Limits**:
   - Max Direct Results (default: 20): No-cost instant results
   - Max Tasks for AI (default: 30): Context for AI analysis

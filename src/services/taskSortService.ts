@@ -49,20 +49,25 @@ export class TaskSortService {
     }
 
     /**
-     * Sort tasks using multi-criteria sorting (NEW)
+     * Sort tasks using multi-criteria sorting with smart internal defaults
      * Applies sort criteria in order: primary, secondary, tertiary, etc.
      * Each criterion is only used when previous criteria result in a tie
      *
+     * SMART SORT DIRECTIONS (optimized for intuitive behavior):
+     * - Relevance: DESC (higher scores = more relevant, shown first)
+     * - Priority: ASC (1=highest priority shown first, then 2, 3, 4)
+     * - Due Date: ASC (overdue/earliest = most urgent, shown first)
+     * - Created: DESC (newest tasks shown first)
+     * - Alphabetical: ASC (A → Z natural order)
+     *
      * @param tasks - Tasks to sort
      * @param sortOrder - Ordered array of sort criteria (e.g., ["relevance", "dueDate", "priority"])
-     * @param sortDirection - Direction for non-relevance sorts
      * @param relevanceScores - Optional map of task IDs to relevance scores (required if "relevance" in sortOrder)
      * @returns Sorted tasks
      */
     static sortTasksMultiCriteria(
         tasks: Task[],
         sortOrder: SortCriterion[],
-        sortDirection: "asc" | "desc" = "asc",
         relevanceScores?: Map<string, number>,
     ): Task[] {
         // If no sort order specified, return tasks as-is
@@ -86,42 +91,51 @@ export class TaskSortService {
 
                 switch (criterion) {
                     case "relevance":
-                        // Relevance: higher scores come first (DESC), regardless of sortDirection
+                        // RELEVANCE: Higher scores = more relevant
+                        // Direction: DESC (100 before 50)
+                        // Rationale: Best matches should appear first
                         if (relevanceScores) {
                             const scoreA = relevanceScores.get(a.id) || 0;
                             const scoreB = relevanceScores.get(b.id) || 0;
-                            comparison = scoreB - scoreA; // DESC by default for relevance
+                            comparison = scoreB - scoreA; // DESC
                         }
                         break;
 
                     case "dueDate":
-                        comparison = this.compareDates(a.dueDate, b.dueDate);
-                        comparison =
-                            sortDirection === "asc" ? comparison : -comparison;
+                        // DUE DATE: Earlier dates = more urgent
+                        // Direction: ASC (2025-10-15 before 2025-10-20)
+                        // Rationale: Overdue and soon-due tasks should appear first
+                        // Special: Tasks without due dates appear last
+                        comparison = this.compareDates(a.dueDate, b.dueDate); // ASC
                         break;
-
+                    
                     case "priority":
+                        // PRIORITY: Internal values 1-4 (1=highest, 4=lowest/none)
+                        // Direction: ASC (1 before 2 before 3 before 4)
+                        // Rationale: Highest priority (1) should appear first
+                        // Note: Priority values map to user-defined strings (e.g., "high", "medium", "low")
                         comparison = this.comparePriority(
                             a.priority,
                             b.priority,
-                        );
-                        comparison =
-                            sortDirection === "asc" ? comparison : -comparison;
-                        break;
+                        ); // ASC
+                        break;                    
 
                     case "created":
+                        // CREATED DATE: Newer = more relevant
+                        // Direction: DESC (2025-10-20 before 2025-10-15)
+                        // Rationale: Recently created tasks are usually more relevant
                         comparison = this.compareDates(
                             a.createdDate,
                             b.createdDate,
                         );
-                        comparison =
-                            sortDirection === "asc" ? comparison : -comparison;
+                        comparison = -comparison; // DESC (reverse ASC)
                         break;
 
                     case "alphabetical":
-                        comparison = a.text.localeCompare(b.text);
-                        comparison =
-                            sortDirection === "asc" ? comparison : -comparison;
+                        // ALPHABETICAL: Natural A-Z order
+                        // Direction: ASC (A before Z)
+                        // Rationale: Standard alphabetical ordering
+                        comparison = a.text.localeCompare(b.text); // ASC
                         break;
                 }
 
