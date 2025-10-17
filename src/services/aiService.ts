@@ -689,11 +689,43 @@ export class AIService {
     }
 
     /**
-     * Build due date documentation from user settings
+     * Build date format documentation from user settings (all date types)
      */
-    private static buildDueDateMapping(settings: PluginSettings): string {
-        const dueDateKey = settings.dataviewKeys.dueDate;
-        return `\nDUE DATE SUPPORT:\n- DataView format: [${dueDateKey}::YYYY-MM-DD]\n- Users may ask for tasks "due today", "due this week", "overdue", etc.\n- Parse natural date queries and filter tasks accordingly.`;
+    private static buildDateFormats(settings: PluginSettings): string {
+        const keys = settings.dataviewKeys;
+        return `
+DATE FORMATS (DataView):
+- Due date: [${keys.dueDate}::YYYY-MM-DD] - Users may ask for "due today", "overdue", "this week", etc.
+- Created date: [${keys.createdDate}::YYYY-MM-DD] - When the task was created
+- Completed date: [${keys.completedDate}::YYYY-MM-DD] - When the task was finished
+Users may reference tasks by any of these dates.`;
+    }
+
+    /**
+     * Build task status mapping from user settings
+     */
+    private static buildStatusMapping(settings: PluginSettings): string {
+        const names = settings.taskStatusDisplayNames;
+        return `
+TASK STATUS CATEGORIES (User-Configured):
+- ${names.open || "Open"}: Tasks not yet started or in progress
+- ${names.completed || "Completed"}: Finished tasks
+- ${names.inProgress || "In progress"}: Tasks currently being worked on
+- ${names.cancelled || "Cancelled"}: Tasks that were abandoned
+- ${names.other || "Other"}: Miscellaneous task states
+Use these exact names when referring to task status.`;
+    }
+
+    /**
+     * Build recommendation limits based on user settings
+     */
+    private static buildRecommendationLimits(settings: PluginSettings): string {
+        return `
+RECOMMENDATION LIMITS:
+- Recommend up to ${settings.maxRecommendations} tasks maximum
+- If more tasks are relevant, prioritize the most critical ones
+- It's okay to recommend fewer if only a few are truly relevant
+- Focus on quality over quantity`;
     }
 
     /**
@@ -801,7 +833,8 @@ TASK ORDERING (User-Configured):
 
         // Build dynamic mappings from settings
         const priorityMapping = this.buildPriorityMapping(settings);
-        const dueDateMapping = this.buildDueDateMapping(settings);
+        const dateFormats = this.buildDateFormats(settings);
+        const statusMapping = this.buildStatusMapping(settings);
 
         // Build filter context description
         let filterContext = "";
@@ -832,8 +865,11 @@ TASK ORDERING (User-Configured):
             }
         }
 
-        // Build context-aware system prompt
-        let systemPrompt = `You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.
+        // Start with user's custom system prompt (respects user configuration)
+        let systemPrompt = settings.systemPrompt;
+
+        // Append technical instructions for task management
+        systemPrompt += `
 
 ⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST ⚠️
 - DO NOT provide generic advice or general knowledge (e.g., "research the market")
@@ -858,7 +894,8 @@ IMPORTANT RULES:
 8. Help prioritize based on user's query, relevance, due dates, priority levels, and time context
 9. If tasks are related, explain the relationships using only task IDs
 10. Be concise and actionable
-11. ${languageInstruction}${priorityMapping}${dueDateMapping}
+11. ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
+12. ${this.buildRecommendationLimits(settings)}
 
 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
 - Use [TASK_X] IDs to reference specific tasks you're recommending
