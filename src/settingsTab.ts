@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import TaskChatPlugin from "./main";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
+import { DEFAULT_SETTINGS } from "./settings";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -485,7 +486,9 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("System prompt")
-            .setDesc("System prompt for the AI assistant (advanced)")
+            .setDesc(
+                "Customize the AI's base behavior and personality. This sets the tone and style - technical task management instructions are automatically appended. Default: 'You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.'",
+            )
             .addTextArea((text) =>
                 text
                     .setPlaceholder("Enter system prompt")
@@ -497,6 +500,20 @@ export class SettingsTab extends PluginSettingTab {
                     .then((text) => {
                         text.inputEl.rows = 4;
                         text.inputEl.cols = 50;
+                    }),
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset to default")
+                    .setTooltip(
+                        "Reset to the recommended system prompt optimized for task management",
+                    )
+                    .onClick(async () => {
+                        this.plugin.settings.systemPrompt =
+                            DEFAULT_SETTINGS.systemPrompt;
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh settings to show reset value
+                        new Notice("System prompt reset to default");
                     }),
             );
 

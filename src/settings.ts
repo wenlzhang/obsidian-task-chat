@@ -186,7 +186,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     showTaskCount: true,
     autoOpenSidebar: false,
     systemPrompt:
-        "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs. Be concise and actionable.",
+        "You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
 
