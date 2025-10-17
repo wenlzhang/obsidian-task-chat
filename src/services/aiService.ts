@@ -325,7 +325,7 @@ export class AIService {
             }
 
             // Resolve "auto" in displaySortOrder
-            const resolvedDisplaySortOrder = displaySortOrder.map(
+            const resolvedDisplaySortOrderWithDupes = displaySortOrder.map(
                 (criterion) => {
                     if (criterion === "auto") {
                         // Auto mode: Use relevance for keyword searches, dueDate otherwise
@@ -336,6 +336,14 @@ export class AIService {
                     return criterion;
                 },
             ) as SortCriterion[];
+
+            // Deduplicate sort criteria (e.g., if "auto" resolved to "relevance" and "relevance" already exists)
+            // Keep first occurrence, remove subsequent duplicates
+            const resolvedDisplaySortOrder =
+                resolvedDisplaySortOrderWithDupes.filter(
+                    (criterion, index, array) =>
+                        array.indexOf(criterion) === index,
+                );
 
             console.log(
                 `[Task Chat] Display sort order: [${resolvedDisplaySortOrder.join(", ")}]`,
@@ -405,7 +413,7 @@ export class AIService {
             );
 
             // Resolve "auto" in aiContextSortOrder
-            const resolvedAIContextSortOrder = aiContextSortOrder.map(
+            const resolvedAIContextSortOrderWithDupes = aiContextSortOrder.map(
                 (criterion) => {
                     if (criterion === "auto") {
                         return intent.keywords && intent.keywords.length > 0
@@ -415,6 +423,13 @@ export class AIService {
                     return criterion;
                 },
             ) as SortCriterion[];
+
+            // Deduplicate sort criteria (e.g., if "auto" resolved to "relevance" and "relevance" already exists)
+            const resolvedAIContextSortOrder =
+                resolvedAIContextSortOrderWithDupes.filter(
+                    (criterion, index, array) =>
+                        array.indexOf(criterion) === index,
+                );
 
             console.log(
                 `[Task Chat] AI context sort order: [${resolvedAIContextSortOrder.join(", ")}]`,
@@ -486,7 +501,7 @@ export class AIService {
             );
 
             // Resolve "auto" in displaySortOrder (no keywords, so use dueDate)
-            const resolvedDisplaySortOrder = displaySortOrder.map(
+            const resolvedDisplaySortOrderWithDupes = displaySortOrder.map(
                 (criterion) => {
                     if (criterion === "auto") {
                         return "dueDate"; // No keywords, default to dueDate
@@ -494,6 +509,13 @@ export class AIService {
                     return criterion;
                 },
             ) as SortCriterion[];
+
+            // Deduplicate sort criteria
+            const resolvedDisplaySortOrder =
+                resolvedDisplaySortOrderWithDupes.filter(
+                    (criterion, index, array) =>
+                        array.indexOf(criterion) === index,
+                );
 
             console.log(
                 `[Task Chat] Default sort order: [${resolvedDisplaySortOrder.join(", ")}]`,

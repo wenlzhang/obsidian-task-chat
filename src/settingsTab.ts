@@ -1292,7 +1292,6 @@ export class SettingsTab extends PluginSettingTab {
             "taskSortOrderChat",
             true, // has "auto" option
         );
-        
     }
 
     /**
