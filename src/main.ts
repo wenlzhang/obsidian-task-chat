@@ -106,59 +106,6 @@ export default class TaskChatPlugin extends Plugin {
             await this.loadData(),
         );
 
-        // Migrate legacy apiKey to provider-specific keys
-        if (
-            this.settings.apiKey &&
-            !this.settings.openaiApiKey &&
-            !this.settings.anthropicApiKey &&
-            !this.settings.openrouterApiKey
-        ) {
-            console.log(
-                "Migrating legacy API key to provider-specific storage",
-            );
-            switch (this.settings.aiProvider) {
-                case "openai":
-                    this.settings.openaiApiKey = this.settings.apiKey;
-                    break;
-                case "anthropic":
-                    this.settings.anthropicApiKey = this.settings.apiKey;
-                    break;
-                case "openrouter":
-                    this.settings.openrouterApiKey = this.settings.apiKey;
-                    break;
-            }
-            await this.saveSettings();
-        }
-
-        // Migrate useAIQueryParsing to searchMode (three-mode system)
-        if (!this.settings.searchMode) {
-            console.log(
-                "Migrating useAIQueryParsing to three-mode searchMode system",
-            );
-            if (this.settings.useAIQueryParsing) {
-                // If AI parsing was enabled, default to "chat" mode (full AI experience)
-                this.settings.searchMode = "chat";
-            } else {
-                // If AI parsing was disabled, default to "simple" mode (free)
-                this.settings.searchMode = "simple";
-            }
-            await this.saveSettings();
-        }
-
-        // Migrate searchMode to defaultChatMode (renamed for clarity)
-        if (!this.settings.defaultChatMode && this.settings.searchMode) {
-            console.log("Migrating searchMode to defaultChatMode");
-            this.settings.defaultChatMode = this.settings.searchMode;
-            await this.saveSettings();
-        }
-
-        // Migrate searchMode to currentChatMode (renamed for clarity)
-        if (!this.settings.currentChatMode && this.settings.searchMode) {
-            console.log("Migrating searchMode to currentChatMode");
-            this.settings.currentChatMode = this.settings.searchMode;
-            await this.saveSettings();
-        }
-
         // Auto-load models if not already cached
         this.loadModelsInBackground();
     }

@@ -366,7 +366,7 @@ export class ChatView extends ItemView {
 
         // Determine what text to show based on current mode
         const currentMode =
-            this.searchModeOverride || this.plugin.settings.searchMode;
+            this.searchModeOverride || this.plugin.settings.currentChatMode;
         let indicatorText: string;
 
         if (currentMode === "simple") {

@@ -10,8 +10,6 @@ export interface PluginSettings {
     openaiApiKey: string;
     anthropicApiKey: string;
     openrouterApiKey: string;
-    // Legacy API key (for backward compatibility)
-    apiKey: string;
     model: string;
     apiEndpoint: string;
     temperature: number; // AI temperature (0.0-2.0, lower = more consistent)
@@ -62,8 +60,6 @@ export interface PluginSettings {
     // Default Chat Mode (three-mode system)
     defaultChatMode: "simple" | "smart" | "chat"; // Default mode for new sessions. Simple=free, Smart=AI expansion, Chat=full AI
     currentChatMode: "simple" | "smart" | "chat"; // Current session's chat mode (persists in data.json across reloads, resets on new session)
-    searchMode: "simple" | "smart" | "chat"; // DEPRECATED: renamed to currentChatMode, kept for migration
-    useAIQueryParsing: boolean; // DEPRECATED: kept for migration only
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
     // Task Display Settings
@@ -80,19 +76,6 @@ export interface PluginSettings {
         | "priority"
         | "created"
         | "alphabetical"; // Current sort setting
-    taskSortByAIEnabled:
-        | "auto"
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical"; // DEPRECATED: kept for migration
-    taskSortByAIDisabled:
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical"; // DEPRECATED: kept for migration
     taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
 
     // Usage Tracking
@@ -110,7 +93,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     openaiApiKey: "",
     anthropicApiKey: "",
     openrouterApiKey: "",
-    apiKey: "", // Legacy field for backward compatibility
     model: "gpt-4o-mini",
     apiEndpoint: "https://api.openai.com/v1/chat/completions",
     temperature: 0.1, // Low temperature for consistent, deterministic responses
@@ -181,8 +163,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Default Chat Mode
     defaultChatMode: "simple", // Default to free mode for new sessions
     currentChatMode: "simple", // Current session's chat mode (stored in data.json)
-    searchMode: "simple", // DEPRECATED: renamed to currentChatMode
-    useAIQueryParsing: false, // DEPRECATED: will be migrated to defaultChatMode
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Task Display Settings
@@ -191,8 +171,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
     taskSortBy: "dueDate", // Current sort setting
-    taskSortByAIEnabled: "auto", // DEPRECATED: kept for migration
-    taskSortByAIDisabled: "relevance", // DEPRECATED: kept for migration
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking

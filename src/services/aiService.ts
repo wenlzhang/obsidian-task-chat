@@ -36,14 +36,6 @@ import { TaskSortService } from "./taskSortService";
  *    - Empty results preferred over irrelevant results
  */
 export class AIService {
-    /**
-     * Get the effective task sort setting based on AI parsing state
-     */
-    private static getEffectiveTaskSortBy(settings: PluginSettings): string {
-        return settings.useAIQueryParsing
-            ? settings.taskSortByAIEnabled
-            : settings.taskSortByAIDisabled;
-    }
 
     /**
      * Send a message to AI and get a response with recommended tasks
@@ -301,10 +293,9 @@ export class AIService {
 
             // PHASE 2: Sorting for Direct Search (user's display preference)
             // For direct results: Sort by user preference for display
-            const effectiveTaskSortBy = this.getEffectiveTaskSortBy(settings);
             let sortedTasks: Task[];
 
-            if (effectiveTaskSortBy === "auto") {
+            if (settings.taskSortBy === "auto") {
                 // Auto mode: Use relevance for keyword searches, dueDate otherwise
                 if (intent.keywords && intent.keywords.length > 0) {
                     console.log(
@@ -327,7 +318,7 @@ export class AIService {
                     );
                 }
             } else if (
-                effectiveTaskSortBy === "relevance" &&
+                settings.taskSortBy === "relevance" &&
                 intent.keywords &&
                 intent.keywords.length > 0
             ) {
@@ -340,12 +331,9 @@ export class AIService {
                 );
             } else {
                 console.log(
-                    `[Task Chat] Sorting: By ${effectiveTaskSortBy} (user preference)`,
+                    `[Task Chat] Sorting: By ${settings.taskSortBy} (user preference)`,
                 );
-                sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, {
-                    ...settings,
-                    taskSortBy: effectiveTaskSortBy as any,
-                });
+                sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, settings);
             }
 
             // Three-mode result delivery logic
@@ -1495,15 +1483,15 @@ ${taskContext}`;
     private static getApiKeyForProvider(settings: PluginSettings): string {
         switch (settings.aiProvider) {
             case "openai":
-                return settings.openaiApiKey || settings.apiKey || "";
+                return settings.openaiApiKey || "";
             case "anthropic":
-                return settings.anthropicApiKey || settings.apiKey || "";
+                return settings.anthropicApiKey || "";
             case "openrouter":
-                return settings.openrouterApiKey || settings.apiKey || "";
+                return settings.openrouterApiKey || "";
             case "ollama":
                 return ""; // No API key needed
             default:
-                return settings.apiKey || "";
+                return "";
         }
     }
 }

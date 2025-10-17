@@ -975,23 +975,11 @@ export class SettingsTab extends PluginSettingTab {
     private getCurrentApiKey(): string {
         switch (this.plugin.settings.aiProvider) {
             case "openai":
-                return (
-                    this.plugin.settings.openaiApiKey ||
-                    this.plugin.settings.apiKey ||
-                    ""
-                );
+                return this.plugin.settings.openaiApiKey || "";
             case "anthropic":
-                return (
-                    this.plugin.settings.anthropicApiKey ||
-                    this.plugin.settings.apiKey ||
-                    ""
-                );
+                return this.plugin.settings.anthropicApiKey || "";
             case "openrouter":
-                return (
-                    this.plugin.settings.openrouterApiKey ||
-                    this.plugin.settings.apiKey ||
-                    ""
-                );
+                return this.plugin.settings.openrouterApiKey || "";
             default:
                 return "";
         }
@@ -1012,8 +1000,6 @@ export class SettingsTab extends PluginSettingTab {
                 this.plugin.settings.openrouterApiKey = value;
                 break;
         }
-        // Also update legacy field for backward compatibility
-        this.plugin.settings.apiKey = value;
     }
 
     /**

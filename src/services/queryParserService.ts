@@ -472,15 +472,15 @@ CRITICAL RULES:
     private static getApiKeyForProvider(settings: PluginSettings): string {
         switch (settings.aiProvider) {
             case "openai":
-                return settings.openaiApiKey || settings.apiKey || "";
+                return settings.openaiApiKey || "";
             case "anthropic":
-                return settings.anthropicApiKey || settings.apiKey || "";
+                return settings.anthropicApiKey || "";
             case "openrouter":
-                return settings.openrouterApiKey || settings.apiKey || "";
+                return settings.openrouterApiKey || "";
             case "ollama":
                 return ""; // No API key needed
             default:
-                return settings.apiKey || "";
+                return "";
         }
     }
 
