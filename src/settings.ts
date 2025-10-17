@@ -112,7 +112,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         dueDate: "due",
         createdDate: "created",
         completedDate: "completed",
-        priority: "priority",
+        priority: "p",
     },
 
     // Task Status Mapping (matching Tasks plugin defaults)
@@ -138,8 +138,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Example: User can add "高" to level 1, then [p::高] will be treated as priority 1
     // System always uses numbers (1-4) internally for comparisons and filtering
     dataviewPriorityMapping: {
-        1: ["1", "p1", "high", "highest"],
-        2: ["2", "p2", "medium", "med"],
+        1: ["1", "p1", "high"],
+        2: ["2", "p2", "medium"],
         3: ["3", "p3", "low"],
         4: ["4", "p4", "none"],
     },
@@ -169,8 +169,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxDirectResults: 20, // Direct results have no token cost, can be higher
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
-    relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
-    taskSortBy: "dueDate", // Current sort setting
+    relevanceThreshold: 30, // Minimum relevance score (0-100). Lower = more results. 0 = adaptive.
+    taskSortBy: "auto", // Default sort: auto (Task Chat), relevance (Simple/Smart)
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking

@@ -630,7 +630,7 @@ Task Chat offers three modes with **predictable behavior and costs**. The **defa
 Configure field names to match your task metadata format:
 
 - **Due Date Field**: Default is `due`
-  - Supports: `[due::2025-01-20]` or `📅 2025-01-20`
+  - Supports: `[due::2025-01-20]`
 - **Created Date Field**: Default is `created`
 - **Completed Date Field**: Default is `completed`
 - **Priority Field**: Default is `priority`
@@ -638,11 +638,9 @@ Configure field names to match your task metadata format:
 **Priority Mapping** (Customizable, Todoist-style)
 Map text values to numeric priority levels (1-4):
 - **Level 1 (Highest)**: Default: `1, p1, high, highest`
-  - Add your own: `高, urgent, critical`
+  - Add your own: `urgent, critical`
 - **Level 2 (High)**: Default: `2, p2, medium, med`
-  - Add your own: `中, normal`
 - **Level 3 (Medium/Low)**: Default: `3, p3, low`
-  - Add your own: `低`
 - **Level 4 (None)**: Default: `4, p4, none`
 
 System uses 1-4 internally for consistent filtering.
@@ -668,21 +666,18 @@ Define which symbols represent each status:
 Task Chat works with standard Markdown tasks that include DataView metadata:
 
 ```markdown
-- [ ] Buy groceries 📅 2025-01-20 ⏫
-- [x] Write blog post [due::2025-01-15] [priority::high]
-- [/] Review pull requests [due::2025-01-18] [priority::medium]
+- [x] Write blog post [due::2025-01-15] [p::high]
+- [/] Review pull requests [due::2025-01-18] [p::medium]
 ```
 
 **Supported Task Properties:**
 - **Due Dates**: 
-  - Emoji format: `📅 YYYY-MM-DD`
   - DataView format: `[due::YYYY-MM-DD]`
-  - Example: `- [ ] Task 📅 2025-01-20` or `- [ ] Task [due::2025-01-20]`
+  - Example: `- [ ] Task [due::2025-01-20]`
   
 - **Priority**: 
-  - Emoji format: `⏫` (high), `🔼` (medium), `🔽` (low)
-  - DataView format: `[priority::high]`, `[priority::1]`, `[priority::p1]`
-  - Custom values: Add in settings (e.g., `[priority::urgent]`)
+  - DataView format: `[p::high]`, `[p::1]`, `[p::p1]`
+  - Custom values: Add in settings (e.g., `[p::urgent]`)
   
 - **Status Indicators**: 
   - Open: `- [ ] Task`
@@ -700,11 +695,11 @@ Task Chat works with standard Markdown tasks that include DataView metadata:
 ```markdown
 ## Projects
 
-- [ ] Design new feature [due::2025-01-25] [priority::high] #design #urgent
-- [/] Write documentation 📅 2025-01-20 ⏫ #docs
-- [x] Fix login bug [due::2025-01-15] [priority::1] [completed::2025-01-14] #bugfix
-- [ ] Review PR #123 [priority::medium] #code-review
-- [-] Old task [priority::low]
+- [ ] Design new feature [due::2025-01-25] [p::high] #design #urgent
+- [/] Write documentation [due::2025-01-20] [p::medium] #docs
+- [x] Fix login bug [due::2025-01-15] [p::1] [completed::2025-01-14] #bugfix
+- [ ] Review PR #123 [p::medium] #code-review
+- [-] Old task [p::low]
 ```
 
 ## Advanced Usage Tips

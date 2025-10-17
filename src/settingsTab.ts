@@ -445,7 +445,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Relevance threshold (quality filter)")
             .setDesc(
-                "Quality filter for keyword searches (0-100). ALWAYS applied for keyword searches to remove low-quality matches, regardless of sort preference. Default: 0 (adaptive thresholds - recommended). Adaptive behavior: 4+ keywords=20, 2-3 keywords=30, 1 keyword=40. Custom values (1-100) override the adaptive base. Lower = more lenient (more results), Higher = stricter (fewer, higher-quality results). This ensures that even 'Sort by Due Date' only shows relevant tasks.",
+                "Quality filter for keyword searches (0-100). Filters out low-quality matches in all modes. Default: 30 (balanced). Set to 0 for adaptive thresholds (4+ keywords=20, 2-3 keywords=30, 1 keyword=40). Lower = more results (lenient), Higher = fewer results (strict). Fine-tune based on your needs to get the right balance between quantity and quality.",
             )
             .addSlider((slider) =>
                 slider
@@ -1229,8 +1229,8 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Sort tasks by")
             .setDesc(
                 isTaskChatMode
-                    ? 'Display order for results (applied AFTER quality filtering). "Auto" = AI-driven sorting (Task Chat mode only). "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
-                    : 'Display order for results (applied AFTER quality filtering). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Switch to "Task Chat" mode to unlock Auto sorting. For keyword searches, low-quality tasks are filtered out before sorting.',
+                    ? 'Display order for results (applied AFTER quality filtering). Default: "Auto" (recommended for Task Chat mode). "Auto" = AI-driven sorting. "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
+                    : 'Display order for results (applied AFTER quality filtering). Default: "Relevance" (recommended for Simple/Smart Search). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Switch to "Task Chat" mode to unlock Auto sorting.',
             )
             .addDropdown((dropdown) => {
                 // Conditionally add Auto option only for Task Chat mode
