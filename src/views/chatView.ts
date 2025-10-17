@@ -20,7 +20,7 @@ export class ChatView extends ItemView {
     private isProcessing: boolean = false;
     private typingIndicator: HTMLElement | null = null;
     private searchModeSelect: HTMLSelectElement | null = null;
-    private useAIQueryParsingOverride: boolean | null = null; // null = use setting, true/false = override
+    private searchModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -113,12 +113,8 @@ export class ChatView extends ItemView {
         this.updateSearchModeOptions();
 
         this.searchModeSelect.addEventListener("change", () => {
-            const value = this.searchModeSelect?.value;
-            if (value === "smart") {
-                this.useAIQueryParsingOverride = true;
-            } else if (value === "direct") {
-                this.useAIQueryParsingOverride = false;
-            }
+            const value = this.searchModeSelect?.value as "simple" | "smart" | "chat";
+            this.searchModeOverride = value;
             console.log(`[Task Chat] Search mode changed to: ${value}`);
         });
 
@@ -239,7 +235,7 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Update search mode dropdown options based on AI query parsing setting
+     * Update search mode dropdown options - always shows all three modes
      * Public method so it can be called when settings change
      */
     public updateSearchModeOptions(): void {
@@ -247,35 +243,26 @@ export class ChatView extends ItemView {
 
         this.searchModeSelect.empty();
 
-        const aiParsingEnabled = this.plugin.settings.useAIQueryParsing;
+        // Create all three mode options
+        this.searchModeSelect.createEl("option", {
+            value: "simple",
+            text: "Simple Search",
+        });
+        this.searchModeSelect.createEl("option", {
+            value: "smart",
+            text: "Smart Search",
+        });
+        this.searchModeSelect.createEl("option", {
+            value: "chat",
+            text: "Task Chat",
+        });
 
-        if (aiParsingEnabled) {
-            // Both options available when AI parsing is enabled
-            const smartOption = this.searchModeSelect.createEl("option", {
-                value: "smart",
-                text: "Smart search",
-            });
-            const directOption = this.searchModeSelect.createEl("option", {
-                value: "direct",
-                text: "Direct search",
-            });
-
-            // Default to smart search when AI parsing is enabled
-            this.searchModeSelect.value = "smart";
-            this.useAIQueryParsingOverride = true;
-        } else {
-            // Only Direct search available when AI parsing is disabled
-            const directOption = this.searchModeSelect.createEl("option", {
-                value: "direct",
-                text: "Direct search",
-            });
-
-            this.searchModeSelect.value = "direct";
-            this.useAIQueryParsingOverride = false;
-        }
+        // Set to current setting (or override if one exists)
+        const currentMode = this.searchModeOverride || this.plugin.settings.searchMode;
+        this.searchModeSelect.value = currentMode;
 
         console.log(
-            `[Task Chat] Search mode updated: AI parsing ${aiParsingEnabled ? "enabled" : "disabled"}`,
+            `[Task Chat] Search mode dropdown updated: ${currentMode}`,
         );
     }
 
@@ -582,11 +569,10 @@ export class ChatView extends ItemView {
         try {
             // Apply search mode override if user selected different mode
             const effectiveSettings = { ...this.plugin.settings };
-            if (this.useAIQueryParsingOverride !== null) {
-                effectiveSettings.useAIQueryParsing =
-                    this.useAIQueryParsingOverride;
+            if (this.searchModeOverride !== null) {
+                effectiveSettings.searchMode = this.searchModeOverride;
                 console.log(
-                    `[Task Chat] Using overridden search mode: ${this.useAIQueryParsingOverride ? "Smart search" : "Direct search"}`,
+                    `[Task Chat] Using overridden search mode: ${this.searchModeOverride}`,
                 );
             }
 

@@ -130,6 +130,21 @@ export default class TaskChatPlugin extends Plugin {
             await this.saveSettings();
         }
 
+        // Migrate useAIQueryParsing to searchMode (three-mode system)
+        if (!this.settings.searchMode) {
+            console.log(
+                "Migrating useAIQueryParsing to three-mode searchMode system",
+            );
+            if (this.settings.useAIQueryParsing) {
+                // If AI parsing was enabled, default to "chat" mode (full AI experience)
+                this.settings.searchMode = "chat";
+            } else {
+                // If AI parsing was disabled, default to "simple" mode (free)
+                this.settings.searchMode = "simple";
+            }
+            await this.saveSettings();
+        }
+
         // Auto-load models if not already cached
         this.loadModelsInBackground();
     }

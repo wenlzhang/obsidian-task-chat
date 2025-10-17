@@ -273,15 +273,18 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName("Enable smart search mode")
+            .setName("Search mode")
             .setDesc(
-                "Enables AI-powered query understanding in smart search mode. When enabled, you can choose between two modes in the chat interface: (1) Smart search: AI-powered parsing with automatic analysis for complex queries (~$0.0001-$0.0021/query), (2) Direct search: Regex-based parsing with direct results (always free). When disabled, only direct search mode is available.",
+                "Choose how Task Chat processes your queries. Simple Search is free and fast. Smart Search uses AI to expand keywords (~$0.0001/query). Task Chat provides full AI analysis and recommendations (~$0.0021/query).",
             )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.useAIQueryParsing)
-                    .onChange(async (value) => {
-                        this.plugin.settings.useAIQueryParsing = value;
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("simple", "Simple Search - Free keyword search")
+                    .addOption("smart", "Smart Search - AI keyword expansion (~$0.0001)")
+                    .addOption("chat", "Task Chat - Full AI assistant (~$0.0021)")
+                    .setValue(this.plugin.settings.searchMode)
+                    .onChange(async (value: "simple" | "smart" | "chat") => {
+                        this.plugin.settings.searchMode = value;
                         await this.plugin.saveSettings();
 
                         // Update settings tab sort dropdown and description
@@ -299,52 +302,77 @@ export class SettingsTab extends PluginSettingTab {
                 cls: "task-chat-info-box-title",
             });
 
-            // Smart search mode
+            // Simple Search mode
             el.createEl("div", {
-                text: "Smart search mode:",
+                text: "Simple Search:",
+                cls: "task-chat-info-box-subtitle",
+            });
+            const simpleList = el.createEl("ul");
+            simpleList.createEl("li", {
+                text: "Keyword matching: Regex-based (stop words removed)",
+            });
+            simpleList.createEl("li", {
+                text: "AI usage: None",
+            });
+            simpleList.createEl("li", {
+                text: "Sorting: By user preference (relevance, due date, priority, etc.)",
+            });
+            simpleList.createEl("li", {
+                text: "Cost: $0 (completely free)",
+            });
+            simpleList.createEl("li", {
+                text: "Best for: Quick searches, simple filters, cost-free operation",
+            });
+
+            // Smart Search mode
+            el.createEl("div", {
+                text: "Smart Search:",
                 cls: "task-chat-info-box-subtitle",
             });
             const smartList = el.createEl("ul");
             smartList.createEl("li", {
-                text: "Query parsing: AI-powered (~$0.0001)",
+                text: "Keyword matching: AI-expanded multilingual synonyms",
             });
             smartList.createEl("li", {
-                text: "Result delivery: Automatic (intelligent decision)",
+                text: "AI usage: Keyword expansion only",
             });
             smartList.createEl("li", {
-                text: `Simple queries + ≤${this.plugin.settings.maxDirectResults} results → Direct results`,
+                text: "Sorting: By user preference (relevance, due date, priority, etc.)",
             });
             smartList.createEl("li", {
-                text: "Complex queries or many results → AI analysis (~$0.002)",
+                text: "Cost: ~$0.0001 per query",
             });
             smartList.createEl("li", {
-                text: "Best for: Natural language, multilingual queries, AI insights",
+                text: "Best for: Multilingual searches, broader results, semantic matching",
             });
 
-            // Direct search mode
+            // Task Chat mode
             el.createEl("div", {
-                text: "Direct search mode:",
+                text: "Task Chat:",
                 cls: "task-chat-info-box-subtitle",
             });
-            const directList = el.createEl("ul");
-            directList.createEl("li", {
-                text: "Query parsing: Regex-based (free)",
+            const chatList = el.createEl("ul");
+            chatList.createEl("li", {
+                text: "Keyword matching: AI-expanded multilingual synonyms",
             });
-            directList.createEl("li", {
-                text: "Result delivery: Always direct (no AI analysis)",
+            chatList.createEl("li", {
+                text: "AI usage: Keyword expansion + Analysis + Recommendations",
             });
-            directList.createEl("li", {
-                text: "Cost: Always $0 (completely free)",
+            chatList.createEl("li", {
+                text: "Sorting: By user preference + Auto mode available (AI-driven)",
             });
-            directList.createEl("li", {
-                text: "Best for: Simple filters, quick searches, cost-free operation",
+            chatList.createEl("li", {
+                text: "Cost: ~$0.0021 per query",
+            });
+            chatList.createEl("li", {
+                text: "Best for: Complex queries, task prioritization, AI insights",
             });
         });
 
         new Setting(containerEl)
             .setName("Query languages for semantic search")
             .setDesc(
-                "Languages to use for semantic keyword expansion and AI response. Requires smart search mode to be enabled. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
+                "Languages to use for semantic keyword expansion and AI response. Used by Smart Search and Task Chat modes. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text
@@ -1199,30 +1227,29 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Render the "Sort tasks by" setting with appropriate options based on AI parsing state
+     * Render the "Sort tasks by" setting with appropriate options based on search mode
      */
     private renderSortBySetting(): void {
         if (!this.sortByContainerEl) return;
 
-        const aiParsingEnabled = this.plugin.settings.useAIQueryParsing;
+        const searchMode = this.plugin.settings.searchMode;
+        const isTaskChatMode = searchMode === "chat";
 
-        // Get the appropriate current value based on mode
-        const currentValue = aiParsingEnabled
-            ? this.plugin.settings.taskSortByAIEnabled
-            : this.plugin.settings.taskSortByAIDisabled;
+        // Get current value
+        const currentValue = this.plugin.settings.taskSortBy;
 
         // Create the setting
         this.sortBySetting = new Setting(this.sortByContainerEl)
             .setName("Sort tasks by")
             .setDesc(
-                aiParsingEnabled
-                    ? 'Display order for results (applied AFTER quality filtering). "Auto" = Relevance for keyword searches, Due Date otherwise. "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
-                    : 'Display order for results (applied AFTER quality filtering). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Enable "AI query understanding" above to unlock Auto mode. For keyword searches, low-quality tasks are filtered out before sorting.',
+                isTaskChatMode
+                    ? 'Display order for results (applied AFTER quality filtering). "Auto" = AI-driven sorting (Task Chat mode only). "Relevance" = best-match-first order. Other options = sort by that field. Note: For keyword searches, low-quality tasks are filtered out before sorting (see Relevance threshold above).'
+                    : 'Display order for results (applied AFTER quality filtering). "Relevance" = best-match-first order (keyword searches only). Other options work for all queries. Note: Switch to "Task Chat" mode to unlock Auto sorting. For keyword searches, low-quality tasks are filtered out before sorting.',
             )
             .addDropdown((dropdown) => {
-                // Conditionally add Auto option only if AI query parsing is enabled
-                if (aiParsingEnabled) {
-                    dropdown.addOption("auto", "Auto (AI context-aware)");
+                // Conditionally add Auto option only for Task Chat mode
+                if (isTaskChatMode) {
+                    dropdown.addOption("auto", "Auto (AI-driven)");
                 }
                 dropdown
                     .addOption("relevance", "Relevance")
@@ -1231,19 +1258,17 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("created", "Created date")
                     .addOption("alphabetical", "Alphabetical");
 
-                // Set current value
-                dropdown.setValue(currentValue);
+                // Set current value, fallback to relevance if auto is selected but not in chat mode
+                const valueToSet = !isTaskChatMode && currentValue === "auto" 
+                    ? "relevance" 
+                    : currentValue;
+                dropdown.setValue(valueToSet);
 
                 dropdown.onChange(async (value: any) => {
-                    // Save to the appropriate field based on current mode
-                    if (aiParsingEnabled) {
-                        this.plugin.settings.taskSortByAIEnabled = value;
-                    } else {
-                        this.plugin.settings.taskSortByAIDisabled = value;
-                    }
+                    this.plugin.settings.taskSortBy = value;
                     await this.plugin.saveSettings();
                     console.log(
-                        `[Task Chat] Sort preference saved for ${aiParsingEnabled ? "AI-enabled" : "AI-disabled"} mode: ${value}`,
+                        `[Task Chat] Sort preference saved: ${value}`,
                     );
                 });
 
@@ -1252,7 +1277,7 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Refresh the sort tasks by setting when AI parsing toggle changes
+     * Refresh the sort tasks by setting when search mode changes
      */
     refreshSortBySetting(): void {
         if (!this.sortByContainerEl) return;
@@ -1262,7 +1287,7 @@ export class SettingsTab extends PluginSettingTab {
         this.renderSortBySetting();
 
         console.log(
-            `[Task Chat] Sort settings refreshed: AI parsing ${this.plugin.settings.useAIQueryParsing ? "enabled" : "disabled"}`,
+            `[Task Chat] Sort settings refreshed: Search mode = ${this.plugin.settings.searchMode}`,
         );
     }
 }

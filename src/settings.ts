@@ -58,7 +58,10 @@ export interface PluginSettings {
     systemPrompt: string;
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
-    useAIQueryParsing: boolean; // Use AI to parse queries for better accuracy
+    
+    // Search Mode (three-mode system)
+    searchMode: "simple" | "smart" | "chat"; // Simple=free, Smart=AI expansion, Chat=full AI
+    useAIQueryParsing: boolean; // DEPRECATED: kept for migration only
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
     // Task Display Settings
@@ -67,27 +70,27 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
 
-    // Separate sort settings for AI-enabled and AI-disabled modes
+    // Sort settings (note: "auto" is only available in Task Chat mode)
     taskSortBy:
         | "auto"
         | "relevance"
         | "dueDate"
         | "priority"
         | "created"
-        | "alphabetical"; // Legacy field - kept for compatibility
+        | "alphabetical"; // Current sort setting
     taskSortByAIEnabled:
         | "auto"
         | "relevance"
         | "dueDate"
         | "priority"
         | "created"
-        | "alphabetical"; // Sorting when AI parsing is enabled
+        | "alphabetical"; // DEPRECATED: kept for migration
     taskSortByAIDisabled:
         | "relevance"
         | "dueDate"
         | "priority"
         | "created"
-        | "alphabetical"; // Sorting when AI parsing is disabled (no auto option)
+        | "alphabetical"; // DEPRECATED: kept for migration
     taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
 
     // Usage Tracking
@@ -172,7 +175,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         "You are a task assistant for Obsidian. Focus ONLY on existing tasks from the vault. Do not create new content or provide generic advice. Help users find, prioritize, and manage their actual tasks. Reference tasks using [TASK_X] IDs. Be concise and actionable.",
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
-    useAIQueryParsing: false, // Disabled by default (uses fast regex parsing)
+    
+    // Search Mode
+    searchMode: "simple", // Default to free mode
+    useAIQueryParsing: false, // DEPRECATED: will be migrated to searchMode
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Task Display Settings
@@ -180,9 +186,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 0, // 0 = adaptive (recommended), 1-100 = fixed threshold
-    taskSortBy: "dueDate", // Legacy field for backward compatibility
-    taskSortByAIEnabled: "auto", // Smart default when AI parsing is enabled
-    taskSortByAIDisabled: "relevance", // Smart default when AI parsing is disabled
+    taskSortBy: "dueDate", // Current sort setting
+    taskSortByAIEnabled: "auto", // DEPRECATED: kept for migration
+    taskSortByAIDisabled: "relevance", // DEPRECATED: kept for migration
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
 
     // Usage Tracking
