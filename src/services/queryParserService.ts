@@ -285,16 +285,26 @@ PART 3: EXECUTOR/ENVIRONMENT CONTEXT (Reserved for future)
 
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
+- Number of languages: ${queryLanguages.length}
 - Max expansions per keyword per language: ${maxExpansions}
 - Expansion enabled: ${expansionEnabled}
 - Max variations to generate PER core keyword: ${maxKeywordsPerCore}
   (Formula: ${maxExpansions} expansions/language × ${queryLanguages.length} languages)
 
-IMPORTANT: This means EACH core keyword should be expanded to approximately ${maxKeywordsPerCore} total variations.
-Example with 2 languages and max 5 expansions:
-  Core keyword "develop" → ~10 variations total:
-  ["develop", "build", "create", "code", "implement",  ← English variations
-   "开发", "构建", "创建", "编程", "实现"]              ← Chinese variations
+🚨 CRITICAL EXPANSION REQUIREMENT:
+You MUST expand EACH core keyword into ALL ${queryLanguages.length} configured languages: ${languageList}
+For EACH core keyword:
+- Generate ${maxExpansions} variations in ${queryLanguages[0] || "first language"}
+- Generate ${maxExpansions} variations in ${queryLanguages[1] || "second language"}
+${queryLanguages[2] ? `- Generate ${maxExpansions} variations in ${queryLanguages[2]}` : ""}
+${queryLanguages[3] ? `- Generate ${maxExpansions} variations in ${queryLanguages[3]}` : ""}
+- Total: ~${maxKeywordsPerCore} variations per core keyword
+
+⚠️ DO NOT skip any configured language! If you only expand into some languages, the system will reject your response.
+
+Example with ${queryLanguages.length} languages and max ${maxExpansions} expansions:
+  Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
+  ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
 ${priorityMapping}
 
@@ -328,6 +338,13 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "tags": [<hashtags from query, WITHOUT the # symbol>]
 }
 
+🚨 CRITICAL JSON FORMAT RULES:
+- JSON does NOT support comments (no // or /* */)
+- Do NOT add explanatory text inside JSON arrays
+- Do NOT use arrows (←) or other symbols in JSON
+- Return PURE, VALID JSON only - parseable by JSON.parse()
+- Any comments or explanations WILL cause parsing errors!
+
 ⚠️ CRITICAL FIELD USAGE RULES:
 1. "coreKeywords" field: ORIGINAL keywords extracted from query (BEFORE expansion)
    - Extract main concepts/nouns/verbs from the query
@@ -337,17 +354,44 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
 
 2. "keywords" field: FULLY EXPANDED keywords with ALL semantic variations
    - This should contain ALL variations for ALL core keywords combined
-   - For EACH core keyword, generate up to ${maxKeywordsPerCore} variations
-   - Include original + translations + synonyms across all languages
-   - Distribute evenly: ~${maxExpansions} variations per language in ${languageList}
-   - Example for ONE core keyword "develop":
-     ["develop", "build", "create", "code", "implement",
-      "开发", "构建", "创建", "编程", "实现"]
-   - Example for TWO core keywords "fix" + "bug":
-     ["fix", "repair", "solve", "correct", "debug",        ← fix variations
-      "修复", "解决", "处理", "纠正", "调试",             ← fix 中文
-      "bug", "error", "issue", "defect", "fault",        ← bug variations
-      "错误", "问题", "缺陷", "故障", "漏洞"]             ← bug 中文
+   - For EACH core keyword, generate EXACTLY ${maxExpansions} variations in EACH of the ${queryLanguages.length} languages: ${languageList}
+   - Total per core keyword: ~${maxKeywordsPerCore} variations
+   - Include original word + translations + synonyms + related terms
+   
+   🚨 MANDATORY: Expand into ALL ${queryLanguages.length} languages!
+   
+   Example for ONE core keyword "develop" with languages [${languageList}]:
+   
+   INSTRUCTION: Generate ${maxExpansions} variations in EACH language:
+   - ${queryLanguages[0] || "Language 1"}: ${maxExpansions} variations
+   ${queryLanguages[1] ? `- ${queryLanguages[1]}: ${maxExpansions} variations` : ""}
+   ${queryLanguages[2] ? `- ${queryLanguages[2]}: ${maxExpansions} variations` : ""}
+   
+   Return this as VALID JSON (NO comments allowed in JSON!):
+   [
+     "develop", "build", "create", "code", "implement",
+     ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "实现",` : ""}
+     ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "koda", "implementera",` : ""}
+     "develop"
+   ]
+   
+   Example for TWO core keywords "fix" + "bug" with ${queryLanguages.length} languages:
+   
+   INSTRUCTION: For EACH core keyword, generate ${maxExpansions} variations × ${queryLanguages.length} languages
+   - "fix": ${maxExpansions} in ${queryLanguages[0] || "lang1"}${queryLanguages[1] ? `, ${maxExpansions} in ${queryLanguages[1]}` : ""}${queryLanguages[2] ? `, ${maxExpansions} in ${queryLanguages[2]}` : ""}
+   - "bug": ${maxExpansions} in ${queryLanguages[0] || "lang1"}${queryLanguages[1] ? `, ${maxExpansions} in ${queryLanguages[1]}` : ""}${queryLanguages[2] ? `, ${maxExpansions} in ${queryLanguages[2]}` : ""}
+   
+   Return this as VALID JSON (NO comments, NO arrows, NO explanations in the array!):
+   [
+     "fix", "repair", "solve", "correct", "debug",
+     ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
+     ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
+     "bug", "error", "issue", "defect", "fault",
+     ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
+     ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+   ]
+   
+   - Do NOT skip any configured language!
    - Do NOT include hashtags in keywords
    
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
@@ -359,21 +403,40 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
 
 KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 
-Example 1: Basic expansion
+Example 1: Basic expansion with ${queryLanguages.length} languages
   Query: "如何开发 Task Chat"
   {
     "coreKeywords": ["开发", "Task", "Chat"],
-    "keywords": ["开发", "develop", "build", "create", "implement", "Task", "Chat"],
+    "keywords": [
+      "开发", "develop", "build", "create", "implement",
+      ${queryLanguages[1] ? `"开发", "构建", "创建", "制作", "编程",` : ""}
+      ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "programmera",` : ""}
+      "Task", "Chat"
+    ],
     "tags": []
   }
 
-Example 2: With multiple languages (max ${maxExpansions} per language)
+Example 2: Full expansion with ALL ${queryLanguages.length} languages
   Query: "Fix bug"
+  
+  INSTRUCTION: 
+  - "fix": ${maxExpansions} variations × ${queryLanguages.length} languages = ~${maxKeywordsPerCore} total
+  - "bug": ${maxExpansions} variations × ${queryLanguages.length} languages = ~${maxKeywordsPerCore} total
+  
   {
     "coreKeywords": ["fix", "bug"],
-    "keywords": ["fix", "修复", "repair", "解决", "solve", "处理", "bug", "错误", "error", "问题", "issue", "故障"],
+    "keywords": [
+      "fix", "repair", "solve", "correct", "debug",
+      ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
+      ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
+      "bug", "error", "issue", "defect", "fault",
+      ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
+      ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+    ],
     "tags": []
   }
+  
+⚠️ Notice: ALL keywords for ALL ${queryLanguages.length} languages - NO comments in JSON!
 
 Example 3: With task attributes
   Query: "tasks with #work priority 1"
@@ -524,18 +587,39 @@ CRITICAL RULES:
 
                 // Try to categorize keywords by language (approximate)
                 expandedKeywords.forEach((keyword) => {
-                    // Simple heuristic: Chinese characters vs others
+                    // Detect language based on character patterns
                     if (/[\u4e00-\u9fff]/.test(keyword)) {
+                        // Chinese characters
                         if (languageBreakdown["中文"]) {
                             languageBreakdown["中文"].push(keyword);
                         }
+                    } else if (
+                        /[\u00e4\u00e5\u00f6]/.test(keyword.toLowerCase())
+                    ) {
+                        // Swedish special characters (ä, å, ö)
+                        if (languageBreakdown["Svenska"]) {
+                            languageBreakdown["Svenska"].push(keyword);
+                        } else {
+                            // Fallback for Swedish if not in breakdown
+                            const swedishLang = queryLanguages.find(
+                                (l) =>
+                                    l.toLowerCase().includes("svenska") ||
+                                    l.toLowerCase().includes("swedish"),
+                            );
+                            if (swedishLang && languageBreakdown[swedishLang]) {
+                                languageBreakdown[swedishLang].push(keyword);
+                            }
+                        }
                     } else {
+                        // Default to English or first non-Chinese language
                         if (languageBreakdown["English"]) {
                             languageBreakdown["English"].push(keyword);
                         } else {
-                            // First non-Chinese language
                             const firstLang = queryLanguages.find(
-                                (l) => l !== "中文",
+                                (l) =>
+                                    l !== "中文" &&
+                                    !l.toLowerCase().includes("svenska") &&
+                                    !l.toLowerCase().includes("swedish"),
                             );
                             if (firstLang && languageBreakdown[firstLang]) {
                                 languageBreakdown[firstLang].push(keyword);
@@ -545,13 +629,45 @@ CRITICAL RULES:
                 });
 
                 console.log("[Task Chat] Language Distribution (estimated):");
+
+                // Check for missing languages
+                const missingLanguages: string[] = [];
+                const expectedMinPerLanguage = Math.floor(maxExpansions * 0.5); // At least 50% of expected
+
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
                         console.log(
                             `  ${lang}: ${words.length} keywords - [${words.slice(0, 5).join(", ")}${words.length > 5 ? "..." : ""}]`,
                         );
+                    } else {
+                        console.log(`  ${lang}: 0 keywords ⚠️ MISSING!`);
+                        missingLanguages.push(lang);
+                    }
+
+                    // Warn if language has very few keywords
+                    if (
+                        words.length > 0 &&
+                        words.length < expectedMinPerLanguage &&
+                        coreKeywords.length > 0
+                    ) {
+                        console.warn(
+                            `[Task Chat] Language "${lang}" has only ${words.length} keywords (expected at least ${expectedMinPerLanguage} per core keyword)`,
+                        );
                     }
                 });
+
+                // Critical warning if languages are completely missing
+                if (missingLanguages.length > 0) {
+                    console.error(
+                        `[Task Chat] 🚨 CRITICAL: AI failed to expand into ${missingLanguages.length} language(s): ${missingLanguages.join(", ")}`,
+                    );
+                    console.error(
+                        `[Task Chat] This will cause ${missingLanguages.join(", ")} tasks to be missed in search results!`,
+                    );
+                    console.error(
+                        `[Task Chat] AI may not understand the language configuration. Consider using well-known language names.`,
+                    );
+                }
             }
 
             console.log(
