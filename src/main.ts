@@ -145,6 +145,13 @@ export default class TaskChatPlugin extends Plugin {
             await this.saveSettings();
         }
 
+        // Migrate searchMode to defaultChatMode (renamed for clarity)
+        if (!this.settings.defaultChatMode && this.settings.searchMode) {
+            console.log("Migrating searchMode to defaultChatMode");
+            this.settings.defaultChatMode = this.settings.searchMode;
+            await this.saveSettings();
+        }
+
         // Auto-load models if not already cached
         this.loadModelsInBackground();
     }

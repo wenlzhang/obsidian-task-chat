@@ -93,23 +93,23 @@ export class ChatView extends ItemView {
         });
         sessionsBtn.addEventListener("click", () => this.openSessionModal());
 
-        // Group 2: Search mode (compact dropdown only)
-        const searchModeGroup = controlsEl.createDiv("task-chat-button-group");
-        const searchModeContainer = searchModeGroup.createDiv(
+        // Group 2: Chat mode (compact dropdown only)
+        const chatModeGroup = controlsEl.createDiv("task-chat-button-group");
+        const chatModeContainer = chatModeGroup.createDiv(
             "task-chat-search-mode",
         );
 
         // Just the dropdown with an icon prefix
-        searchModeContainer.createSpan({
-            text: "🔍",
+        chatModeContainer.createSpan({
+            text: "💬",
             cls: "task-chat-search-mode-icon",
         });
 
-        this.searchModeSelect = searchModeContainer.createEl("select", {
+        this.searchModeSelect = chatModeContainer.createEl("select", {
             cls: "task-chat-search-mode-select",
         });
 
-        // Populate options based on AI query parsing setting
+        // Populate options
         this.updateSearchModeOptions();
 
         this.searchModeSelect.addEventListener("change", () => {
@@ -118,7 +118,7 @@ export class ChatView extends ItemView {
                 | "smart"
                 | "chat";
             this.searchModeOverride = value;
-            console.log(`[Task Chat] Search mode changed to: ${value}`);
+            console.log(`[Task Chat] Chat mode changed to: ${value}`);
         });
 
         // Group 3: Task management
@@ -238,7 +238,7 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Update search mode dropdown options - always shows all three modes
+     * Update chat mode dropdown options - always shows all three modes
      * Public method so it can be called when settings change
      */
     public updateSearchModeOptions(): void {
@@ -262,10 +262,10 @@ export class ChatView extends ItemView {
 
         // Set to current setting (or override if one exists)
         const currentMode =
-            this.searchModeOverride || this.plugin.settings.searchMode;
+            this.searchModeOverride || this.plugin.settings.defaultChatMode;
         this.searchModeSelect.value = currentMode;
 
-        console.log(`[Task Chat] Search mode dropdown updated: ${currentMode}`);
+        console.log(`[Task Chat] Chat mode dropdown updated: ${currentMode}`);
     }
 
     /**
@@ -594,12 +594,12 @@ export class ChatView extends ItemView {
         this.showTypingIndicator();
 
         try {
-            // Apply search mode override if user selected different mode
+            // Apply chat mode override if user selected different mode
             const effectiveSettings = { ...this.plugin.settings };
             if (this.searchModeOverride !== null) {
-                effectiveSettings.searchMode = this.searchModeOverride;
+                effectiveSettings.defaultChatMode = this.searchModeOverride;
                 console.log(
-                    `[Task Chat] Using overridden search mode: ${this.searchModeOverride}`,
+                    `[Task Chat] Using overridden chat mode: ${this.searchModeOverride}`,
                 );
             }
 
@@ -623,14 +623,14 @@ export class ChatView extends ItemView {
             // Hide typing indicator
             this.hideTypingIndicator();
 
-            // Get the search mode that was used (from override or settings)
-            const usedSearchMode =
-                this.searchModeOverride || this.plugin.settings.searchMode;
+            // Get the chat mode that was used (from override or settings)
+            const usedChatMode =
+                this.searchModeOverride || this.plugin.settings.defaultChatMode;
 
             // Handle direct results (Simple Search or Smart Search)
             if (result.directResults) {
                 const directMessage: ChatMessage = {
-                    role: usedSearchMode as "simple" | "smart",
+                    role: usedChatMode as "simple" | "smart",
                     content: `Found ${result.directResults.length} matching task(s):`,
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,

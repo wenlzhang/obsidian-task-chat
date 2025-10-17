@@ -69,13 +69,13 @@ export class AIService {
             }
         }
 
-        // Parse query based on search mode (three-mode system)
-        const searchMode = settings.searchMode;
+        // Parse query based on chat mode (three-mode system)
+        const chatMode = settings.defaultChatMode;
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
         let usingAIParsing = false; // Track if AI parsing was actually used
 
-        if (searchMode === "simple") {
+        if (chatMode === "simple") {
             // Mode 1: Simple Search - Regex parsing only
             console.log("[Task Chat] Mode: Simple Search (regex parsing)");
             intent = TaskSearchService.analyzeQueryIntent(message);
@@ -83,7 +83,7 @@ export class AIService {
         } else {
             // Mode 2 & 3: Smart Search / Task Chat - AI parsing
             console.log(
-                `[Task Chat] Mode: ${searchMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
+                `[Task Chat] Mode: ${chatMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
             );
             try {
                 parsedQuery = await QueryParserService.parseQuery(
@@ -351,15 +351,15 @@ export class AIService {
             // Three-mode result delivery logic
             // Mode 1 (Simple Search) & Mode 2 (Smart Search) → Direct results
             // Mode 3 (Task Chat) → AI analysis
-            if (searchMode === "simple" || searchMode === "smart") {
+            if (chatMode === "simple" || chatMode === "smart") {
                 // Return direct results for Simple Search and Smart Search
                 console.log(
-                    `[Task Chat] Result delivery: Direct (${searchMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasks.length} results)`,
+                    `[Task Chat] Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasks.length} results)`,
                 );
 
                 // Build token usage based on mode
                 let tokenUsage: TokenUsage;
-                if (searchMode === "simple") {
+                if (chatMode === "simple") {
                     // Simple Search: No AI used at all
                     tokenUsage = {
                         promptTokens: 0,

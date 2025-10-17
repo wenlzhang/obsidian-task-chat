@@ -2,9 +2,9 @@
 
 An AI-powered Obsidian plugin that enables you to chat with your tasks. Filter tasks by text, folders, priority, due date, completion status, and more. Get AI recommendations and navigate directly to tasks in your notes.
 
-## ⚡ Three Search Modes
+## ⚡ Three Chat Modes
 
-Choose the mode that fits your needs:
+Choose the mode that fits your needs. Set your default in settings, override per-query in chat:
 
 | Mode | AI Usage | Cost | Best For |
 |------|----------|------|----------|
@@ -23,8 +23,8 @@ Choose the mode that fits your needs:
 - **Temperature Control**: Adjust AI creativity/consistency (0.0-2.0)
 - **Custom System Prompts**: Tailor AI assistant behavior to your needs
 
-### 🔍 Three Search Modes
-Choose the mode that fits your needs:
+### 🔍 Three Chat Modes
+Choose the mode that fits your needs. Set your default in settings, override per-query:
 
 - **Simple Search** (Default, Free): Fast regex-based keyword search
   - No AI usage, always $0
@@ -156,12 +156,12 @@ The chat interface has controls grouped into sections:
 - **+ New**: Create a new chat session
 - **Sessions**: View and switch between sessions
 
-**Group 2: Search Mode**
-- **Search mode dropdown**: Choose between three modes
+**Group 2: Chat Mode**
+- **Chat mode dropdown**: Override the default chat mode per-query
   - **Simple Search**: Free keyword search (no AI)
   - **Smart Search**: AI keyword expansion (~$0.0001/query)
   - **Task Chat**: Full AI assistant (~$0.0021/query)
-  - Allows per-query override of default setting
+  - Selection overrides your default for the current query only
 
 **Group 3: Task Management**
 - **Filter tasks**: Open filter modal to narrow down tasks
@@ -174,7 +174,8 @@ The chat interface has controls grouped into sections:
 
 **1. Start a Conversation**
 
-1. **Choose search mode** (always visible in controls bar):
+1. **Choose chat mode** (dropdown in controls bar):
+   - Uses your default from settings, or override for this query
    - **Simple Search**: Free, instant results
    - **Smart Search**: AI-enhanced keyword matching
    - **Task Chat**: Full AI analysis and recommendations
@@ -219,9 +220,9 @@ The chat interface has controls grouped into sections:
 - `"Help me plan my week"` → Comprehensive AI insights
 - `"What's blocking my progress?"` → Contextual analysis
 
-## How the Three Search Modes Work
+## How the Three Chat Modes Work
 
-Task Chat offers three distinct search modes, each with **predictable behavior and costs**:
+Task Chat offers three distinct chat modes, each with **predictable behavior and costs**. Set your default in settings, override per-query in chat:
 
 ### 🚀 Simple Search (Default, Free)
 
@@ -467,9 +468,9 @@ Every response shows which mode was used:
 
 ### Query & Search Settings
 
-**🔑 Three Search Modes**
+**🔑 Three Chat Modes (Default + Per-Query Override)**
 
-Task Chat offers three modes with **predictable behavior and costs**:
+Task Chat offers three modes with **predictable behavior and costs**. The **default chat mode** (configured in settings) is used for all new sessions. You can override it per-query using the dropdown in the chat interface:
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -500,10 +501,13 @@ Task Chat offers three modes with **predictable behavior and costs**:
 └──────────────────────────────────────────────────┘
 ```
 
-**How to Choose Your Default Mode:**
-- Go to Settings → Task Chat → **Search mode**
-- Select: Simple Search (free) | Smart Search (AI keywords) | Task Chat (full AI)
-- You can override per-query using the dropdown in chat interface
+**How to Configure:**
+- **Default mode**: Settings → Task Chat → **Default chat mode**
+  - Select: Simple Search (free) | Smart Search (AI keywords) | Task Chat (full AI)
+  - This applies to all new sessions
+- **Per-query override**: Use dropdown in chat interface (top controls)
+  - Changes mode for current query only
+  - Doesn't change your default setting
 
 **Mode-Specific Features:**
 - **Simple Search**: Free, instant, no AI
@@ -552,7 +556,7 @@ Task Chat offers three modes with **predictable behavior and costs**:
 **Sorting Options**
 - **Task Sort By**: Field to sort tasks by
   - **Auto (AI-driven)** - ⭐ Only available in Task Chat mode
-    - **Availability**: Only shown when search mode is set to "Task Chat"
+    - **Availability**: Only shown when default chat mode is set to "Task Chat"
     - AI intelligently chooses sorting based on query type
       - Keyword searches → Relevance sorting
       - Other queries → Due Date sorting
@@ -801,7 +805,7 @@ This plugin leverages code patterns from:
 2. Try refreshing tasks
 3. Check that line numbers are being captured correctly
 
-### Understanding search modes
+### Understanding chat modes
 
 **Which mode should I use?**
 - **Simple Search**: Quick searches, simple filters, free operation
@@ -809,8 +813,10 @@ This plugin leverages code patterns from:
 - **Task Chat**: Complex questions, AI recommendations, task prioritization
 
 **How do I switch modes?**
-- Default mode: Settings → Task Chat → Search mode dropdown
-- Per-query override: Use dropdown in chat interface (top controls)
+- **Set default**: Settings → Task Chat → Default chat mode dropdown
+  - This sets the default for all new sessions
+- **Override per-query**: Use dropdown in chat interface (top controls)
+  - Temporarily changes mode for current query only
 
 **Understanding costs:**
 - **Simple Search**: Always $0 (no AI)

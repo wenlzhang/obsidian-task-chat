@@ -59,8 +59,9 @@ export interface PluginSettings {
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
 
-    // Search Mode (three-mode system)
-    searchMode: "simple" | "smart" | "chat"; // Simple=free, Smart=AI expansion, Chat=full AI
+    // Default Chat Mode (three-mode system)
+    defaultChatMode: "simple" | "smart" | "chat"; // Default mode for new sessions. Simple=free, Smart=AI expansion, Chat=full AI
+    searchMode: "simple" | "smart" | "chat"; // DEPRECATED: renamed to defaultChatMode, kept for migration
     useAIQueryParsing: boolean; // DEPRECATED: kept for migration only
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
@@ -176,9 +177,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     responseLanguage: "auto",
     customLanguageInstruction: "Respond in the same language as the user query",
 
-    // Search Mode
-    searchMode: "simple", // Default to free mode
-    useAIQueryParsing: false, // DEPRECATED: will be migrated to searchMode
+    // Default Chat Mode
+    defaultChatMode: "simple", // Default to free mode for new sessions
+    searchMode: "simple", // DEPRECATED: renamed to defaultChatMode
+    useAIQueryParsing: false, // DEPRECATED: will be migrated to defaultChatMode
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Task Display Settings

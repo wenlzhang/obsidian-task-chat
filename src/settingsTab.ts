@@ -273,18 +273,18 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName("Search mode")
+            .setName("Default chat mode")
             .setDesc(
-                "Choose how Task Chat processes your queries. Simple Search is free and fast. Smart Search uses AI to expand keywords (very low cost). Task Chat provides full AI analysis and recommendations (higher cost).",
+                "Sets the default mode for new chat sessions. You can always override this per-query using the dropdown in the chat interface. Simple Search is free and fast. Smart Search uses AI to expand keywords (very low cost). Task Chat provides full AI analysis and recommendations (higher cost).",
             )
             .addDropdown((dropdown) =>
                 dropdown
                     .addOption("simple", "Simple Search - Free")
                     .addOption("smart", "Smart Search - AI keyword expansion")
                     .addOption("chat", "Task Chat - Full AI assistant")
-                    .setValue(this.plugin.settings.searchMode)
+                    .setValue(this.plugin.settings.defaultChatMode)
                     .onChange(async (value: "simple" | "smart" | "chat") => {
-                        this.plugin.settings.searchMode = value;
+                        this.plugin.settings.defaultChatMode = value;
                         await this.plugin.saveSettings();
 
                         // Update settings tab sort dropdown and description
@@ -298,7 +298,7 @@ export class SettingsTab extends PluginSettingTab {
         // Mode comparison section
         containerEl.createDiv("task-chat-info-box", (el) => {
             el.createEl("div", {
-                text: "ℹ️ Search mode comparison",
+                text: "ℹ️ Chat mode comparison",
                 cls: "task-chat-info-box-title",
             });
 
@@ -1232,8 +1232,8 @@ export class SettingsTab extends PluginSettingTab {
     private renderSortBySetting(): void {
         if (!this.sortByContainerEl) return;
 
-        const searchMode = this.plugin.settings.searchMode;
-        const isTaskChatMode = searchMode === "chat";
+        const defaultChatMode = this.plugin.settings.defaultChatMode;
+        const isTaskChatMode = defaultChatMode === "chat";
 
         // Get current value
         const currentValue = this.plugin.settings.taskSortBy;
@@ -1286,7 +1286,7 @@ export class SettingsTab extends PluginSettingTab {
         this.renderSortBySetting();
 
         console.log(
-            `[Task Chat] Sort settings refreshed: Search mode = ${this.plugin.settings.searchMode}`,
+            `[Task Chat] Sort settings refreshed: Default chat mode = ${this.plugin.settings.defaultChatMode}`,
         );
     }
 }
