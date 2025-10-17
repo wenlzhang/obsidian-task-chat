@@ -457,6 +457,7 @@ export class AIService {
                 chatHistory,
                 settings,
                 intent,
+                resolvedAIContextSortOrder, // Pass actual sort order to prompt
             );
 
             try {
@@ -696,6 +697,70 @@ export class AIService {
     }
 
     /**
+     * Build sort order explanation based on user's actual configuration
+     */
+    private static buildSortOrderExplanation(
+        sortOrder: SortCriterion[],
+    ): string {
+        // Convert criteria to human-readable names
+        const criteriaNames = sortOrder.map((criterion) => {
+            switch (criterion) {
+                case "relevance":
+                    return "keyword relevance";
+                case "dueDate":
+                    return "due date";
+                case "priority":
+                    return "priority level";
+                case "created":
+                    return "creation date";
+                case "alphabetical":
+                    return "alphabetical order";
+                default:
+                    return criterion;
+            }
+        });
+
+        // Build primary sort description
+        const primaryCriterion = sortOrder[0];
+        let primaryDescription = "";
+
+        switch (primaryCriterion) {
+            case "relevance":
+                primaryDescription = "keyword relevance (best matches first)";
+                break;
+            case "dueDate":
+                primaryDescription = "urgency (overdue → today → future)";
+                break;
+            case "priority":
+                primaryDescription = "priority (1=highest → 4=lowest)";
+                break;
+            case "created":
+                primaryDescription = "recency (newest → oldest)";
+                break;
+            case "alphabetical":
+                primaryDescription = "alphabetical order (A → Z)";
+                break;
+        }
+
+        // Build complete explanation
+        const sortChain = criteriaNames.join(" → ");
+
+        return `
+TASK ORDERING (User-Configured):
+- Tasks are sorted using multi-criteria sorting: ${sortChain}
+- Primary sort: ${primaryDescription}
+- Earlier tasks in the list are MORE important based on this sorting
+- [TASK_1] through [TASK_5] are typically the most critical
+- When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
+- Each criterion has smart defaults:
+  * Relevance: Higher scores first (100 → 0)
+  * Priority: Highest first (1 → 2 → 3 → 4, where 1 is highest)
+  * Due date: Most urgent first (overdue → today → future)
+  * Created: Newest first (recent → older)
+  * Alphabetical: A → Z`;
+    }
+
+    /**
      * Build messages array for AI API
      */
     private static buildMessages(
@@ -704,6 +769,7 @@ export class AIService {
         chatHistory: ChatMessage[],
         settings: PluginSettings,
         intent: any,
+        sortOrder: SortCriterion[],
     ): any[] {
         // Get language instruction based on settings
         let languageInstruction = "";
@@ -819,12 +885,7 @@ QUERY UNDERSTANDING:
 - If multiple filters were detected, tasks have been pre-filtered to match ALL criteria
 - Your job is to provide helpful context and prioritization for the filtered results${filterContext}
 
-TASK ORDERING:
-- Tasks are automatically sorted using multi-criteria sorting (relevance → due date → priority)
-- Earlier tasks in the list are MORE relevant/urgent than later ones
-- [TASK_1] through [TASK_5] are typically the most important
-- When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
-- The sorting respects: keyword relevance (best matches first), urgency (overdue → today → future), and priority (1=highest → 4=lowest)
+${this.buildSortOrderExplanation(sortOrder)}
 
 ${taskContext}`;
 
