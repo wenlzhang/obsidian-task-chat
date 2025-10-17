@@ -119,6 +119,34 @@ export default class TaskChatPlugin extends Plugin {
             const provider = this.settings.aiProvider;
             const cached = this.settings.availableModels[provider];
 
+            // Auto-refresh pricing if stale (older than 24 hours)
+            if (
+                PricingService.shouldRefreshPricing(
+                    this.settings.pricingCache.lastUpdated,
+                )
+            ) {
+                console.log(
+                    "[Task Chat] Pricing cache is stale, refreshing in background...",
+                );
+                try {
+                    const pricing =
+                        await PricingService.fetchPricingFromOpenRouter();
+                    if (Object.keys(pricing).length > 0) {
+                        this.settings.pricingCache.data = pricing;
+                        this.settings.pricingCache.lastUpdated = Date.now();
+                        await this.saveSettings();
+                        console.log(
+                            `[Task Chat] Updated pricing for ${Object.keys(pricing).length} models`,
+                        );
+                    }
+                } catch (error) {
+                    console.warn(
+                        "[Task Chat] Failed to refresh pricing, using cached/embedded rates",
+                        error,
+                    );
+                }
+            }
+
             // Only load models if cache is empty
             if (!cached || cached.length === 0) {
                 console.log(`Loading ${provider} models in background...`);
