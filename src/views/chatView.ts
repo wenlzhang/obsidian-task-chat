@@ -469,7 +469,9 @@ export class ChatView extends ItemView {
             if (isDirectSearch) {
                 // Direct search mode or direct results
                 if (message.tokenUsage.directSearchReason) {
-                    parts.push(`Results: ${message.tokenUsage.directSearchReason}`);
+                    parts.push(
+                        `Results: ${message.tokenUsage.directSearchReason}`,
+                    );
                 } else {
                     parts.push("Results: Direct");
                 }

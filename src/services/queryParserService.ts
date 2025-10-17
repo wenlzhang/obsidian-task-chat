@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
+import { StopWords } from "./stopWords";
 
 /**
  * Structured query result from AI parsing
@@ -276,16 +277,16 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
 KEYWORD EXTRACTION RULES:
 - Extract INDIVIDUAL WORDS and SHORT TERMS (not long phrases) in ALL configured languages (${languageList})
 - Examples for semantic keyword expansion:
-  * Query: "如何开发 Task Chat" → Extract: ["开发", "develop", "Task", "Chat", "如何", "how"]
-  * Query: "How to develop Obsidian AI plugin" → Extract: ["develop", "开发", "Obsidian", "AI", "plugin", "插件", "how"]
-  * Query: "如何开发 Obsidian AI 插件" → Extract: ["开发", "develop", "Obsidian", "AI", "插件", "plugin", "如何", "how"]
+  * Query: "如何开发 Task Chat" → Extract: ["开发", "develop", "Task", "Chat"] (removed "如何")
+  * Query: "How to develop Obsidian AI plugin" → Extract: ["develop", "开发", "Obsidian", "AI", "plugin", "插件"] (removed "how")
+  * Query: "如何开发 Obsidian AI 插件" → Extract: ["开发", "develop", "Obsidian", "AI", "插件", "plugin"] (removed "如何")
   * Query: "Fix bug" → Extract: ["fix", "修复", "bug", "错误", "问题"]
 - Examples with tags and keywords:
-  * Query: "如何开发 Task Chat" → {"keywords": ["开发", "develop", "Task", "Chat", "如何", "how"], "tags": []}
-  * Query: "tasks with #work priority 1" → {"keywords": ["tasks"], "tags": ["work"], "priority": 1}
-  * Query: "#personal high priority tasks" → {"keywords": ["tasks"], "tags": ["personal"], "priority": 1}
+  * Query: "如何开发 Task Chat" → {"keywords": ["开发", "develop", "Task", "Chat"], "tags": []} (removed "如何")
+  * Query: "tasks with #work priority 1" → {"keywords": [], "tags": ["work"], "priority": 1} (removed "tasks")
+  * Query: "#personal high priority tasks" → {"keywords": [], "tags": ["personal"], "priority": 1} (removed "tasks")
   * Query: "Fix bug #urgent #backend" → {"keywords": ["fix", "修复", "bug", "错误"], "tags": ["urgent", "backend"]}
-  * Query: "开发任务 #项目A" → {"keywords": ["开发", "develop", "任务", "task"], "tags": ["项目A"]}
+  * Query: "开发任务 #项目A" → {"keywords": ["开发", "develop"], "tags": ["项目A"]} (removed "任务", "task")
 
 CRITICAL RULES:
 - Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
@@ -294,6 +295,7 @@ CRITICAL RULES:
 - Keywords should be 1-2 words maximum, prefer single words for better substring matching
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
+- Remove common stop words (how, what, when, where, why, the, a, an, show, find, 如何, 什么, 怎么, etc.) from keywords
 - Tags and keywords serve DIFFERENT purposes - don't mix them!`;
 
         const messages = [
@@ -330,8 +332,22 @@ CRITICAL RULES:
                 console.log(
                     "[Task Chat] AI returned no filters or keywords, splitting query into words",
                 );
-                // Split by whitespace and filter out empty strings
-                keywords = query.split(/\s+/).filter((word) => word.length > 0);
+                // Split by whitespace and filter stop words
+                keywords = StopWords.filterStopWords(
+                    query.split(/\s+/).filter((word) => word.length > 0),
+                );
+            }
+
+            // Post-process keywords to remove stop words (ensures consistency)
+            const filteredKeywords = StopWords.filterStopWords(keywords);
+
+            console.log(
+                `[Task Chat] Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
+            );
+            if (keywords.length !== filteredKeywords.length) {
+                console.log(
+                    `[Task Chat] Removed stop words: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
+                );
             }
 
             const result = {
@@ -340,7 +356,7 @@ CRITICAL RULES:
                 status: parsed.status || undefined,
                 folder: parsed.folder || undefined,
                 tags: parsed.tags || [],
-                keywords: keywords,
+                keywords: filteredKeywords,
                 originalQuery: query,
             };
 

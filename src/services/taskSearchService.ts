@@ -1,6 +1,7 @@
 import { Task } from "../models/task";
 import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
+import { StopWords } from "./stopWords";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -129,58 +130,8 @@ export class TaskSearchService {
         // Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
-        // Remove common stop words
-        const stopWords = new Set([
-            "the",
-            "a",
-            "an",
-            "and",
-            "or",
-            "but",
-            "in",
-            "on",
-            "at",
-            "to",
-            "for",
-            "of",
-            "with",
-            "by",
-            "from",
-            "as",
-            "is",
-            "was",
-            "are",
-            "were",
-            "show",
-            "find",
-            "get",
-            "list",
-            "tell",
-            "give",
-            "me",
-            "my",
-            "all",
-            "task",
-            "tasks",
-            "给我",
-            "给",
-            "我",
-            "的",
-            "了",
-            "吗",
-            "呢",
-            "啊",
-            "如何",
-            "怎么",
-            "怎样",
-            "任务",
-        ]);
-
-        // Filter out stop words and short words
-        return words.filter((word) => {
-            const lowerWord = word.toLowerCase();
-            return word.length > 1 && !stopWords.has(lowerWord);
-        });
+        // Remove stop words using shared service (consistent with AI mode)
+        return StopWords.filterStopWords(words);
     }
 
     /**

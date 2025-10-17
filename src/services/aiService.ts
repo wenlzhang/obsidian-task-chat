@@ -75,7 +75,9 @@ export class AIService {
         let usingAIParsing = false; // Track if AI parsing was actually used
 
         if (settings.useAIQueryParsing) {
-            console.log("[Task Chat] Query parsing: AI-powered (smart search mode)");
+            console.log(
+                "[Task Chat] Query parsing: AI-powered (smart search mode)",
+            );
             // Use AI to parse query for better accuracy
             try {
                 parsedQuery = await QueryParserService.parseQuery(
@@ -139,7 +141,9 @@ export class AIService {
             }
         } else {
             // Use fast regex-based parsing (default)
-            console.log("[Task Chat] Query parsing: Regex-based (direct search mode)");
+            console.log(
+                "[Task Chat] Query parsing: Regex-based (direct search mode)",
+            );
             intent = TaskSearchService.analyzeQueryIntent(message);
         }
 
