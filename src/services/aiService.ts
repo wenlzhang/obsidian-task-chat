@@ -817,12 +817,13 @@ IMPORTANT RULES:
 2. DO NOT create new tasks or suggest tasks that don't exist
 3. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
 4. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
-5. If there are MULTIPLE relevant tasks, reference ALL of them using their [TASK_X] IDs
+5. ⚠️ CRITICAL: If there are MULTIPLE relevant tasks, reference ALL of them using their [TASK_X] IDs - be comprehensive!
 6. Do NOT invent task content - only use the exact task text provided
 7. Focus on helping users prioritize and execute existing tasks
-8. Help prioritize based on user's query, relevance, due dates, priority levels, and time context
+8. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted by relevance/due date/priority)
 9. If tasks are related, explain the relationships using only task IDs
-10. Keep your EXPLANATION concise, but DO reference all relevant tasks in the Recommended List
+10. Keep your EXPLANATION concise, but DO reference all relevant tasks - users prefer comprehensive lists over missing tasks
+11. When 10+ tasks match the query well, aim to recommend at least 10-15 tasks, not just 3-4
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1241,28 +1242,9 @@ ${taskContext}`;
             `[Task Chat] AI explicitly recommended ${recommended.length} tasks.`,
         );
 
-        // SAFETY: If AI recommended too few tasks (less than 10) and we have many available (30+),
-        // automatically expand to top 10 by relevance to ensure comprehensive results
-        const minRecommendations = 10;
-        if (recommended.length < minRecommendations && tasks.length >= 30) {
-            console.log(
-                `[Task Chat] AI only recommended ${recommended.length} tasks, but ${tasks.length} were analyzed.`,
-            );
-            console.log(
-                `[Task Chat] Auto-expanding to ${minRecommendations} tasks for comprehensive coverage.`,
-            );
-
-            // Add top tasks that AI didn't explicitly mention, up to minimum
-            const recommendedIds = new Set(recommended.map((t) => t.id));
-            const additionalTasks = tasks
-                .filter((t) => !recommendedIds.has(t.id))
-                .slice(0, minRecommendations - recommended.length);
-
-            recommended.push(...additionalTasks);
-            console.log(
-                `[Task Chat] Added ${additionalTasks.length} additional high-relevance tasks.`,
-            );
-        }
+        // Trust the AI's judgment on how many tasks to recommend
+        // The prompt emphasizes comprehensive recommendations, so if AI selects fewer tasks,
+        // it means the others aren't relevant enough to include
 
         // Limit final recommendations to user preference
         const finalRecommended = recommended.slice(

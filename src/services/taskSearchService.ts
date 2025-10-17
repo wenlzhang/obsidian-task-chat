@@ -724,8 +724,19 @@ export class TaskSearchService {
             let score = 0;
 
             // Penalize very short generic tasks (likely test/placeholder tasks)
-            if (task.text.trim().length < 10) {
-                score -= 50;
+            const trimmedText = task.text.trim();
+            if (trimmedText.length < 5) {
+                score -= 100; // Strong penalty for very short tasks
+            }
+
+            // Additional penalty for generic task names (case-insensitive)
+            const genericTaskNames = ["task", "todo", "item", "work"];
+            const firstWord = trimmedText.split(/\s+/)[0]?.toLowerCase() || "";
+            if (genericTaskNames.includes(firstWord)) {
+                // Only penalize if the task is JUST the generic word (or very short)
+                if (trimmedText.length < 5) {
+                    score -= 150; // Very strong penalty for generic placeholder tasks
+                }
             }
 
             deduplicatedKeywords.forEach((keyword) => {

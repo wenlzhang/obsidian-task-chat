@@ -125,10 +125,17 @@ Use these exact names when referring to task status.`;
     static buildRecommendationLimits(settings: PluginSettings): string {
         return `
 TASK RECOMMENDATION REQUIREMENTS:
-- You MUST recommend at least 10-15 tasks when there are many relevant matches
+⚠️ CRITICAL: You MUST be comprehensive in your recommendations!
+
+- Recommend ALL truly relevant tasks, not just a "top few"
+- When there are 20+ relevant matches, aim for at least 10-15 recommendations
 - Maximum allowed: ${settings.maxRecommendations} tasks
-- DO NOT be overly selective - if a task is relevant, include it in recommendations
-- Goal: Give user comprehensive view of ALL relevant work, not just the "top few"`;
+- DO NOT be overly selective - if a task matches the query and has reasonable relevance, INCLUDE IT
+- Users prefer comprehensive lists over missing relevant tasks
+- Goal: Give user complete view of ALL relevant work, not a curated subset
+- Only exclude tasks that are clearly NOT relevant to the query
+
+⚠️ Remember: It's better to recommend more relevant tasks than to exclude potentially useful ones!`;
     }
 
     /**
@@ -213,14 +220,23 @@ TASK RECOMMENDATION REQUIREMENTS:
 
         return `
 TASK ORDERING (User-Configured):
-- Tasks are sorted using multi-criteria sorting: ${sortChain}
+⚠️ CRITICAL: Tasks are PRE-SORTED based on user's criteria before reaching you!
+
+Multi-criteria sort order: ${sortChain}
 - Primary sort: ${primaryDescription}
-- Earlier tasks in the list are MORE important based on this sorting
-- Lower task IDs (e.g., [TASK_1], [TASK_2]) are typically more critical than higher IDs
-- When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
+- Secondary/tertiary sorts break ties when primary criteria are equal
+
+⚠️ IMPORTANT IMPLICATIONS FOR YOUR RECOMMENDATIONS:
+- [TASK_1], [TASK_2], [TASK_3] are at the TOP because they rank highest by these criteria
+- [TASK_90], [TASK_91], [TASK_92] are at the BOTTOM because they rank lowest
+- Earlier task IDs = MORE relevant/urgent/important (based on sort criteria)
+- When many tasks match the query, PRIORITIZE EARLIER TASK IDs (lower numbers)
+- The system already did the sorting - you should respect and leverage this ordering
 
 Sort criteria in use (in priority order):
-${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}`;
+${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
+
+⚠️ ACTION: When recommending tasks, start with lower task IDs and work your way up. Tasks near [TASK_1] are the most aligned with user's needs based on the sort criteria!`;
     }
 
     /**
