@@ -3,52 +3,6 @@ import { PluginSettings, SortCriterion } from "../settings";
 
 export class TaskSortService {
     /**
-     * Sort tasks based on sort preference and direction (LEGACY - single criterion)
-     */
-    static sortTasks(
-        tasks: Task[],
-        sortBy:
-            | "relevance"
-            | "dueDate"
-            | "priority"
-            | "created"
-            | "alphabetical",
-        sortDirection: "asc" | "desc" = "asc",
-    ): Task[] {
-        // "relevance" means don't sort - keep original order (from search/filter)
-        if (sortBy === "relevance") {
-            return tasks;
-        }
-
-        const sorted = [...tasks].sort((a, b) => {
-            let comparison = 0;
-
-            switch (sortBy) {
-                case "dueDate":
-                    comparison = this.compareDates(a.dueDate, b.dueDate);
-                    break;
-                case "priority":
-                    comparison = this.comparePriority(a.priority, b.priority);
-                    break;
-                case "created":
-                    comparison = this.compareDates(
-                        a.createdDate,
-                        b.createdDate,
-                    );
-                    break;
-                case "alphabetical":
-                    comparison = a.text.localeCompare(b.text);
-                    break;
-            }
-
-            // Apply sort direction
-            return sortDirection === "asc" ? comparison : -comparison;
-        });
-
-        return sorted;
-    }
-
-    /**
      * Sort tasks using multi-criteria sorting with smart internal defaults
      * Applies sort criteria in order: primary, secondary, tertiary, etc.
      * Each criterion is only used when previous criteria result in a tie

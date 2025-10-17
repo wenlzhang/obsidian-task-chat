@@ -78,29 +78,6 @@ export interface PluginSettings {
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
 
     // Sort settings - Multi-criteria sorting per mode
-    // LEGACY: Single-criterion sorting (kept for backward compatibility, but deprecated)
-    taskSortBySimple:
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical"; // Simple Search sort
-    taskSortBySmart:
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical"; // Smart Search sort
-    taskSortByChat:
-        | "auto"
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical"; // Task Chat sort (includes "auto")
-    taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
-
-    // NEW: Multi-criteria sorting (ordered array of sort criteria)
     // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
     // Example: ["relevance", "dueDate", "priority"] = sort by relevance first, then dueDate for ties, then priority
     taskSortOrderSimple: SortCriterion[]; // Simple Search multi-criteria sort order
@@ -201,13 +178,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 30, // Minimum relevance score (0-100). Lower = more results. 0 = adaptive.
 
-    // LEGACY: Single-criterion sorting (kept for backward compatibility)
-    taskSortBySimple: "relevance", // Simple Search: relevance (keyword-based)
-    taskSortBySmart: "relevance", // Smart Search: relevance (AI keywords)
-    taskSortByChat: "auto", // Task Chat: auto (AI-driven)
-    taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
-
-    // NEW: Multi-criteria sorting - Smart defaults for each mode
+    // Multi-criteria sorting - Smart defaults for each mode
     // Simple Search: relevance first (keyword matching), then due date (urgency), then priority
     taskSortOrderSimple: ["relevance", "dueDate", "priority"],
     // Smart Search: relevance first (AI-expanded keywords), then due date, then priority

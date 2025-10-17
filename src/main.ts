@@ -269,28 +269,6 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Get the sort setting for a specific chat mode
-     */
-    getSortByForMode(
-        mode: "simple" | "smart" | "chat",
-    ):
-        | "auto"
-        | "relevance"
-        | "dueDate"
-        | "priority"
-        | "created"
-        | "alphabetical" {
-        switch (mode) {
-            case "simple":
-                return this.settings.taskSortBySimple;
-            case "smart":
-                return this.settings.taskSortBySmart;
-            case "chat":
-                return this.settings.taskSortByChat;
-        }
-    }
-
-    /**
      * Refresh chat view chat mode dropdown when default chat mode changes
      */
     refreshChatViewChatMode(): void {

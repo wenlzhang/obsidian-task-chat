@@ -83,20 +83,6 @@ export class AIService {
                 break;
         }
 
-        // LEGACY: Get old single-criterion sort setting (for backward compatibility)
-        let modeSortBy: string;
-        switch (chatMode) {
-            case "simple":
-                modeSortBy = settings.taskSortBySimple;
-                break;
-            case "smart":
-                modeSortBy = settings.taskSortBySmart;
-                break;
-            case "chat":
-                modeSortBy = settings.taskSortByChat;
-                break;
-        }
-
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
         let usingAIParsing = false; // Track if AI parsing was actually used

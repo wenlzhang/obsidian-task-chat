@@ -466,22 +466,6 @@ export class SettingsTab extends PluginSettingTab {
         );
         this.renderSortBySetting();
 
-        new Setting(containerEl)
-            .setName("Sort direction")
-            .setDesc(
-                'Sort order: "Ascending" shows earliest dates/highest priorities first (good for overdue/urgent tasks). "Descending" shows latest dates/lowest priorities first.',
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("asc", "Ascending (Early→Late, 1→4, A→Z)")
-                    .addOption("desc", "Descending (Late→Early, 4→1, Z→A)")
-                    .setValue(this.plugin.settings.taskSortDirection)
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskSortDirection = value as any;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
         containerEl.createEl("h3", { text: "Advanced" });
 
         new Setting(containerEl)
