@@ -124,11 +124,11 @@ Use these exact names when referring to task status.`;
      */
     static buildRecommendationLimits(settings: PluginSettings): string {
         return `
-RECOMMENDATION LIMITS:
-- Recommend up to ${settings.maxRecommendations} tasks maximum
-- If more tasks are relevant, prioritize the most critical ones
-- It's okay to recommend fewer if only a few are truly relevant
-- Focus on quality over quantity`;
+TASK RECOMMENDATION REQUIREMENTS:
+- You MUST recommend at least 10-15 tasks when there are many relevant matches
+- Maximum allowed: ${settings.maxRecommendations} tasks
+- DO NOT be overly selective - if a task is relevant, include it in recommendations
+- Goal: Give user comprehensive view of ALL relevant work, not just the "top few"`;
     }
 
     /**

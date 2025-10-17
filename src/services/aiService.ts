@@ -822,7 +822,7 @@ IMPORTANT RULES:
 7. Focus on helping users prioritize and execute existing tasks
 8. Help prioritize based on user's query, relevance, due dates, priority levels, and time context
 9. If tasks are related, explain the relationships using only task IDs
-10. Be concise and actionable
+10. Keep your EXPLANATION concise, but DO reference all relevant tasks in the Recommended List
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1237,11 +1237,32 @@ ${taskContext}`;
             return topTasks;
         }
 
-        // Trust AI's recommendations - only show tasks that AI explicitly mentioned
-        // Do NOT automatically add extra tasks
         console.log(
-            `[Task Chat] AI explicitly recommended ${recommended.length} tasks. Using only those.`,
+            `[Task Chat] AI explicitly recommended ${recommended.length} tasks.`,
         );
+
+        // SAFETY: If AI recommended too few tasks (less than 10) and we have many available (30+),
+        // automatically expand to top 10 by relevance to ensure comprehensive results
+        const minRecommendations = 10;
+        if (recommended.length < minRecommendations && tasks.length >= 30) {
+            console.log(
+                `[Task Chat] AI only recommended ${recommended.length} tasks, but ${tasks.length} were analyzed.`,
+            );
+            console.log(
+                `[Task Chat] Auto-expanding to ${minRecommendations} tasks for comprehensive coverage.`,
+            );
+
+            // Add top tasks that AI didn't explicitly mention, up to minimum
+            const recommendedIds = new Set(recommended.map((t) => t.id));
+            const additionalTasks = tasks
+                .filter((t) => !recommendedIds.has(t.id))
+                .slice(0, minRecommendations - recommended.length);
+
+            recommended.push(...additionalTasks);
+            console.log(
+                `[Task Chat] Added ${additionalTasks.length} additional high-relevance tasks.`,
+            );
+        }
 
         // Limit final recommendations to user preference
         const finalRecommended = recommended.slice(
