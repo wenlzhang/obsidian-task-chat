@@ -6,13 +6,13 @@ import { StopWords } from "./stopWords";
 
 /**
  * Structured query result from AI parsing - Three-part system
- * 
+ *
  * PART 1: Task Content
  * - Core keywords and semantic expansions for matching task text
- * 
+ *
  * PART 2: Task Attributes
  * - Structured filters: priority, dueDate, status, folder, tags
- * 
+ *
  * PART 3: Executor/Environment Context (Future)
  * - Time context, energy state, user preferences, etc.
  * - Reserved for future implementation
@@ -21,19 +21,19 @@ export interface ParsedQuery {
     // PART 1: Task Content (Keywords & Semantic Search)
     keywords?: string[]; // Expanded keywords for semantic matching
     coreKeywords?: string[]; // Original extracted keywords before expansion
-    
+
     // PART 2: Task Attributes (Structured Filters)
     priority?: number; // 1, 2, 3, 4
     dueDate?: string; // "any" (has due date), "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
     status?: string; // "open", "completed", "inProgress"
     folder?: string;
     tags?: string[];
-    
+
     // PART 3: Executor/Environment Context (Future - Reserved)
     // timeContext?: string; // Current time, time of day, etc.
     // energyState?: string; // User's energy level, focus state
     // userPreferences?: Record<string, any>; // Custom user context
-    
+
     // Metadata
     originalQuery?: string;
     expansionMetadata?: {
@@ -249,12 +249,13 @@ export class QueryParserService {
                 ? settings.queryLanguages
                 : ["English", "中文"];
         const languageList = queryLanguages.join(", ");
-        
+
         // Get semantic expansion settings
         const maxExpansions = settings.maxKeywordExpansions || 5;
         const expansionEnabled = settings.enableSemanticExpansion !== false;
-        const totalMaxKeywords = expansionEnabled 
-            ? maxExpansions * queryLanguages.length 
+        // Max keywords to generate PER core keyword (not total for entire query)
+        const maxKeywordsPerCore = expansionEnabled
+            ? maxExpansions * queryLanguages.length
             : queryLanguages.length; // Just translations, no extra expansions
 
         // Build user-specific mappings (using shared PromptBuilderService)
@@ -284,9 +285,16 @@ PART 3: EXECUTOR/ENVIRONMENT CONTEXT (Reserved for future)
 
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
-- Max expansions per keyword: ${maxExpansions}
+- Max expansions per keyword per language: ${maxExpansions}
 - Expansion enabled: ${expansionEnabled}
-- Total max keywords per core keyword: ${totalMaxKeywords} (${maxExpansions} per language × ${queryLanguages.length} languages)
+- Max variations to generate PER core keyword: ${maxKeywordsPerCore}
+  (Formula: ${maxExpansions} expansions/language × ${queryLanguages.length} languages)
+
+IMPORTANT: This means EACH core keyword should be expanded to approximately ${maxKeywordsPerCore} total variations.
+Example with 2 languages and max 5 expansions:
+  Core keyword "develop" → ~10 variations total:
+  ["develop", "build", "create", "code", "implement",  ← English variations
+   "开发", "构建", "创建", "编程", "实现"]              ← Chinese variations
 
 ${priorityMapping}
 
@@ -327,12 +335,19 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
    - These are the BASE keywords before semantic expansion
    - Example: "How to develop plugin" → ["develop", "plugin"]
 
-2. "keywords" field: EXPANDED keywords with semantic variations
-   - Start with coreKeywords
-   - Add translations for each coreKeyword in ALL configured languages
-   - Add up to ${maxExpansions} semantic variations per language
-   - Total: up to ${totalMaxKeywords} keywords per core keyword
-   - Example: "develop" → ["develop", "开发", "build", "构建", "create", "创建", "implement", "实现", "code", "编程"]
+2. "keywords" field: FULLY EXPANDED keywords with ALL semantic variations
+   - This should contain ALL variations for ALL core keywords combined
+   - For EACH core keyword, generate up to ${maxKeywordsPerCore} variations
+   - Include original + translations + synonyms across all languages
+   - Distribute evenly: ~${maxExpansions} variations per language in ${languageList}
+   - Example for ONE core keyword "develop":
+     ["develop", "build", "create", "code", "implement",
+      "开发", "构建", "创建", "编程", "实现"]
+   - Example for TWO core keywords "fix" + "bug":
+     ["fix", "repair", "solve", "correct", "debug",        ← fix variations
+      "修复", "解决", "处理", "纠正", "调试",             ← fix 中文
+      "bug", "error", "issue", "defect", "fault",        ← bug variations
+      "错误", "问题", "缺陷", "故障", "漏洞"]             ← bug 中文
    - Do NOT include hashtags in keywords
    
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
@@ -442,7 +457,27 @@ CRITICAL RULES:
             // Extract core keywords (before expansion) and expanded keywords
             const coreKeywords = parsed.coreKeywords || [];
             const expandedKeywords = filteredKeywords;
-            
+
+            // Validate expansion worked correctly
+            if (expansionEnabled && coreKeywords.length > 0) {
+                const expectedMinKeywords = coreKeywords.length; // At minimum, should have core keywords
+                const expectedTargetKeywords =
+                    coreKeywords.length * maxKeywordsPerCore;
+
+                if (expandedKeywords.length < expectedMinKeywords) {
+                    console.warn(
+                        `[Task Chat] Expansion failed: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (expected at least ${expectedMinKeywords})`,
+                    );
+                } else if (
+                    expandedKeywords.length <
+                    expectedTargetKeywords * 0.3
+                ) {
+                    console.warn(
+                        `[Task Chat] Expansion under-performing: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (target: ~${expectedTargetKeywords})`,
+                    );
+                }
+            }
+
             // Build expansion metadata
             const expansionMetadata = {
                 enabled: expansionEnabled,
@@ -451,11 +486,89 @@ CRITICAL RULES:
                 coreKeywordsCount: coreKeywords.length,
                 totalKeywords: expandedKeywords.length,
             };
-            
-            console.log("[Task Chat] Semantic expansion:", {
+
+            // Detailed expansion logging
+            console.log(
+                "[Task Chat] ========== SEMANTIC EXPANSION DETAILS ==========",
+            );
+            console.log("[Task Chat] User Settings:", {
+                languages: queryLanguages,
+                maxExpansionsPerLanguage: maxExpansions,
+                targetPerCore: maxKeywordsPerCore,
+                expansionEnabled: expansionEnabled,
+            });
+
+            console.log("[Task Chat] Extraction Results:", {
+                coreKeywords: coreKeywords,
+                coreCount: coreKeywords.length,
+            });
+
+            console.log("[Task Chat] Expansion Results:", {
+                expandedKeywords: expandedKeywords,
+                totalExpanded: expandedKeywords.length,
+                averagePerCore:
+                    coreKeywords.length > 0
+                        ? (
+                              expandedKeywords.length / coreKeywords.length
+                          ).toFixed(1)
+                        : "N/A",
+                targetPerCore: maxKeywordsPerCore,
+            });
+
+            // Analyze language distribution (if possible)
+            if (coreKeywords.length > 0 && expandedKeywords.length > 0) {
+                const languageBreakdown: Record<string, string[]> = {};
+                queryLanguages.forEach((lang) => {
+                    languageBreakdown[lang] = [];
+                });
+
+                // Try to categorize keywords by language (approximate)
+                expandedKeywords.forEach((keyword) => {
+                    // Simple heuristic: Chinese characters vs others
+                    if (/[\u4e00-\u9fff]/.test(keyword)) {
+                        if (languageBreakdown["中文"]) {
+                            languageBreakdown["中文"].push(keyword);
+                        }
+                    } else {
+                        if (languageBreakdown["English"]) {
+                            languageBreakdown["English"].push(keyword);
+                        } else {
+                            // First non-Chinese language
+                            const firstLang = queryLanguages.find(
+                                (l) => l !== "中文",
+                            );
+                            if (firstLang && languageBreakdown[firstLang]) {
+                                languageBreakdown[firstLang].push(keyword);
+                            }
+                        }
+                    }
+                });
+
+                console.log("[Task Chat] Language Distribution (estimated):");
+                Object.entries(languageBreakdown).forEach(([lang, words]) => {
+                    if (words.length > 0) {
+                        console.log(
+                            `  ${lang}: ${words.length} keywords - [${words.slice(0, 5).join(", ")}${words.length > 5 ? "..." : ""}]`,
+                        );
+                    }
+                });
+            }
+
+            console.log(
+                "[Task Chat] ================================================",
+            );
+
+            // Summary
+            console.log("[Task Chat] Semantic expansion summary:", {
                 core: coreKeywords.length,
                 expanded: expandedKeywords.length,
-                ratio: expandedKeywords.length / Math.max(coreKeywords.length, 1),
+                perCore:
+                    coreKeywords.length > 0
+                        ? (
+                              expandedKeywords.length / coreKeywords.length
+                          ).toFixed(1)
+                        : "N/A",
+                target: maxKeywordsPerCore,
                 enabled: expansionEnabled,
             });
 
@@ -463,20 +576,23 @@ CRITICAL RULES:
                 // PART 1: Task Content
                 coreKeywords: coreKeywords,
                 keywords: expandedKeywords,
-                
+
                 // PART 2: Task Attributes
                 priority: parsed.priority || undefined,
                 dueDate: parsed.dueDate || undefined,
                 status: parsed.status || undefined,
                 folder: parsed.folder || undefined,
                 tags: parsed.tags || [],
-                
+
                 // Metadata
                 originalQuery: query,
                 expansionMetadata: expansionMetadata,
             };
 
-            console.log("[Task Chat] Query parser returning (three-part):", result);
+            console.log(
+                "[Task Chat] Query parser returning (three-part):",
+                result,
+            );
             return result;
         } catch (error) {
             console.error("Query parsing error:", error);

@@ -15,13 +15,49 @@ The three-part query parsing system is an advanced architecture that structures 
 
 - **Core Keywords:** Original keywords extracted from query before expansion
 - **Expanded Keywords:** Semantic variations and translations across all configured languages
-- **Expansion Formula:** `Total Keywords = Core Keywords × Max Expansions × Number of Languages`
+- **Expansion Formula:** `Keywords per Core = Max Expansions × Number of Languages`
+- **Total Final Keywords:** Sum of all expansions for all core keywords
+
+**Calculation:**
+```
+Settings:
+- Max expansions: 5 per language
+- Languages: 2 (English, 中文)
+- Keywords per core: 5 × 2 = 10 max
+
+Query: "Fix bug" → 2 core keywords
+
+Expansion:
+- "fix" → ~10 variations
+- "bug" → ~10 variations
+
+Total final keywords: ~20
+
+Query: "Develop Obsidian plugin" → 3 core keywords
+- "develop" → ~10 variations
+- "Obsidian" → ~2 variations (proper noun, fewer synonyms)
+- "plugin" → ~10 variations
+
+Total final keywords: ~22
+```
 
 **Example:**
 ```
 Query: "Fix bug"
+Settings: 5 expansions per language, 2 languages (English, 中文)
+
 Core Keywords: ["fix", "bug"]
-Expanded Keywords: ["fix", "修复", "repair", "解决", "solve", "处理", "bug", "错误", "error", "问题", "issue", "故障"]
+
+Expansion per core:
+- "fix" → up to 10 variations (5 English + 5 中文)
+  ["fix", "repair", "solve", "correct", "debug",
+   "修复", "解决", "处理", "纠正", "调试"]
+   
+- "bug" → up to 10 variations (5 English + 5 中文)
+  ["bug", "error", "issue", "defect", "fault",
+   "错误", "问题", "缺陷", "故障", "漏洞"]
+
+Total Expanded Keywords: ~20 keywords (2 core × ~10 per core)
 ```
 
 ### Part 2: Task Attributes (Structured Filters)
@@ -74,17 +110,28 @@ Query: "tasks with #work priority 1"
 
 **Calculation:**
 ```
-If expansion enabled:
-  Total keywords per core = maxKeywordExpansions × number of languages
+PER CORE KEYWORD:
+  If expansion enabled:
+    Keywords per core = maxKeywordExpansions × number of languages
   
-If expansion disabled:
-  Total keywords per core = number of languages (translations only)
+  If expansion disabled:
+    Keywords per core = number of languages (translations only)
 
-Example with 2 languages, max 5 expansions:
-  Core keyword "develop"
-  → Up to 10 expanded keywords (5 per language)
-  → ["develop", "build", "create", "implement", "code", 
-      "开发", "构建", "创建", "实现", "编程"]
+FOR ENTIRE QUERY:
+  Total keywords = Σ(keywords per each core keyword)
+
+Example with 2 languages, max 5 expansions per language:
+  Core keywords: ["develop", "plugin"] (2 core keywords)
+  
+  "develop" → up to 10 variations:
+    ["develop", "build", "create", "implement", "code",     ← 5 English
+     "开发", "构建", "创建", "实现", "编程"]         ← 5 Chinese
+  
+  "plugin" → up to 10 variations:
+    ["plugin", "extension", "addon", "module", "component",  ← 5 English
+     "插件", "扩展", "组件", "模块", "附加"]           ← 5 Chinese
+  
+  Total final keywords: ~20 (10 + 10)
 ```
 
 ### Expansion Process
@@ -95,10 +142,11 @@ Example with 2 languages, max 5 expansions:
    - Extract main concepts/nouns/verbs
 
 2. **Generate Semantic Variations**
-   - For each core keyword
-   - Generate up to `maxKeywordExpansions` variations per language
-   - Include translations in all configured languages
-   - Prioritize synonyms, related terms, common expressions
+   - For EACH core keyword independently
+   - Generate up to `maxKeywordExpansions` variations in EACH language
+   - Total per core = `maxKeywordExpansions × number of languages`
+   - Include original word + synonyms + related terms
+   - Prioritize common, high-quality synonyms
 
 3. **Filter and Deduplicate**
    - Remove stop words from expanded set
@@ -114,7 +162,8 @@ Example with 2 languages, max 5 expansions:
 
 2. **Semantic Recall**
    - Find tasks with related concepts
-   - Example: Search "fix" → finds tasks with "repair", "solve", "debug"
+   - Example: Search "fix" → expands to ["fix", "repair", "solve", "correct", "debug", "修复", "解决", "处理", "纠正", "调试"]
+   - Matches tasks containing ANY of these variations
 
 3. **User Control**
    - Adjust expansion level based on needs
