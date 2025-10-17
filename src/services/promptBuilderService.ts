@@ -179,18 +179,47 @@ RECOMMENDATION LIMITS:
         // Build complete explanation
         const sortChain = criteriaNames.join(" → ");
 
+        // Build criterion-specific explanations ONLY for criteria actually in use
+        const criteriaDetails: string[] = [];
+        sortOrder.forEach((criterion) => {
+            switch (criterion) {
+                case "relevance":
+                    criteriaDetails.push(
+                        "Relevance: Higher keyword match scores first (100 → 0, best matches at top)",
+                    );
+                    break;
+                case "priority":
+                    criteriaDetails.push(
+                        "Priority: Highest priority first (1=highest → 2 → 3 → 4=lowest, urgent tasks at top)",
+                    );
+                    break;
+                case "dueDate":
+                    criteriaDetails.push(
+                        "Due date: Most urgent first (overdue → today → future → no due date, earliest deadlines at top)",
+                    );
+                    break;
+                case "created":
+                    criteriaDetails.push(
+                        "Created date: Newest tasks first (recent → older, latest work at top)",
+                    );
+                    break;
+                case "alphabetical":
+                    criteriaDetails.push(
+                        "Alphabetical: Standard order (A → Z)",
+                    );
+                    break;
+            }
+        });
+
         return `
 TASK ORDERING (User-Configured):
 - Tasks are sorted using multi-criteria sorting: ${sortChain}
 - Primary sort: ${primaryDescription}
 - Earlier tasks in the list are MORE important based on this sorting
-- [TASK_1] through [TASK_5] are typically the most critical
+- Lower task IDs (e.g., [TASK_1], [TASK_2]) are typically more critical than higher IDs
 - When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
-- Each criterion has smart defaults:
-  * Relevance: Higher scores first (100 → 0)
-  * Priority: Highest first (1 → 2 → 3 → 4, where 1 is highest)
-  * Due date: Most urgent first (overdue → today → future)
-  * Created: Newest first (recent → older)
-  * Alphabetical: A → Z`;
+
+Sort criteria in use (in priority order):
+${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}`;
     }
 }

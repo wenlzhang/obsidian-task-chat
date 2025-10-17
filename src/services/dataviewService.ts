@@ -142,37 +142,116 @@ export class DataviewService {
     }
 
     /**
-     * Extract inline date from task text
+     * Get field value from DataView task using multiple strategies
+     * DataView stores metadata in multiple places:
+     * 1. Direct properties (from frontmatter or emoji shorthands): task.fieldName
+     * 2. Fields object (from inline fields): task.fields.fieldName
+     * 3. DataView standard emoji field names (due, completion, created, etc.)
+     * 4. Emoji shorthands extracted from text (fallback)
+     * 5. Inline field syntax in text: [fieldName::value]
+     *
+     * IMPORTANT: Respects user's configured field names while also checking
+     * DataView's standard emoji shorthand field names
      */
-    private static extractInlineDate(
+    private static getFieldValue(
+        dvTask: any,
+        fieldKey: string,
+        text: string,
+    ): any {
+        // Strategy 1: Check user's configured field name (direct property)
+        if (dvTask[fieldKey] !== undefined) {
+            return dvTask[fieldKey];
+        }
+
+        // Strategy 2: Check user's configured field name (fields object)
+        if (dvTask.fields && dvTask.fields[fieldKey] !== undefined) {
+            return dvTask.fields[fieldKey];
+        }
+
+        // Strategy 3: Check DataView's standard emoji shorthand field names
+        // These are FIXED by DataView and different from user's configured names
+        const standardFieldMap: { [key: string]: string[] } = {
+            // Map common user field names to DataView's standard emoji field names
+            due: ["due"], // User might configure as "due", "dueDate", etc.
+            dueDate: ["due"],
+            completion: ["completion"],
+            completed: ["completion"], // DataView uses "completion", not "completed"
+            completedDate: ["completion"],
+            created: ["created"],
+            createdDate: ["created"],
+            start: ["start"],
+            startDate: ["start"],
+            scheduled: ["scheduled"],
+            scheduledDate: ["scheduled"],
+        };
+
+        const standardFields = standardFieldMap[fieldKey] || [];
+        for (const standardField of standardFields) {
+            // Check direct property
+            if (dvTask[standardField] !== undefined) {
+                return dvTask[standardField];
+            }
+            // Check fields object
+            if (dvTask.fields && dvTask.fields[standardField] !== undefined) {
+                return dvTask.fields[standardField];
+            }
+        }
+
+        // Strategy 4: Extract emoji shorthands from text (fallback)
+        const emojiValue = this.extractEmojiShorthand(text, fieldKey);
+        if (emojiValue !== undefined) {
+            return emojiValue;
+        }
+
+        // Strategy 5: Extract from inline field syntax in text
+        const inlineValue = this.extractInlineField(text, fieldKey);
+        if (inlineValue !== undefined) {
+            return inlineValue;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Extract DataView emoji shorthands
+     * See: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
+     *
+     * IMPORTANT: DataView emoji shorthands use FIXED field names:
+     * 🗓️ → "due" (always this name in DataView, regardless of user settings)
+     * ✅ → "completion" (always this name, even if user configured "completed")
+     * ➕ → "created" (always this name)
+     * 🛫 → "start" (always this name)
+     * ⏳ → "scheduled" (always this name)
+     *
+     * This method extracts emoji dates from text as a fallback.
+     * The primary extraction happens in getFieldValue() using DataView's API.
+     */
+    private static extractEmojiShorthand(
         text: string,
         fieldKey: string,
     ): string | undefined {
         if (!text || typeof text !== "string") return undefined;
 
-        const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
-        const match = text.match(regex);
+        // Map of all possible emoji shorthands
+        // We check all emojis and let the caller decide which one to use
+        const emojiPatterns: { [key: string]: RegExp } = {
+            due: /🗓️\s*(\d{4}-\d{2}-\d{2})/,
+            completion: /✅\s*(\d{4}-\d{2}-\d{2})/,
+            created: /➕\s*(\d{4}-\d{2}-\d{2})/,
+            start: /🛫\s*(\d{4}-\d{2}-\d{2})/,
+            scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,
+        };
 
-        if (match && match[1]) {
-            const extractedDate = match[1].trim();
-            const momentDate = moment(extractedDate);
-            if (!momentDate.isValid()) {
-                return undefined;
-            }
-            return extractedDate;
-        }
-
-        if (fieldKey === "due") {
-            const calendarRegex = /📅\s*([^\s]+)/;
-            const calendarMatch = text.match(calendarRegex);
-
-            if (calendarMatch && calendarMatch[1]) {
-                const extractedDate = calendarMatch[1].trim();
-                const momentDate = moment(extractedDate);
-                if (!momentDate.isValid()) {
-                    return undefined;
+        // Check all emoji patterns and return the first match
+        // This allows the function to work regardless of field naming
+        for (const pattern of Object.values(emojiPatterns)) {
+            const match = text.match(pattern);
+            if (match && match[1]) {
+                const extractedDate = match[1].trim();
+                const momentDate = moment(extractedDate, "YYYY-MM-DD", true);
+                if (momentDate.isValid()) {
+                    return extractedDate;
                 }
-                return extractedDate;
             }
         }
 
@@ -180,18 +259,15 @@ export class DataviewService {
     }
 
     /**
-     * Extract inline priority from task text
-     * Supports formats like [p::1], [priority::high], etc.
+     * Extract inline field from task text using [key::value] syntax
      */
-    private static extractInlinePriority(
+    private static extractInlineField(
         text: string,
         fieldKey: string,
     ): string | undefined {
-        if (!text || typeof text !== "string") {
-            return undefined;
-        }
+        if (!text || typeof text !== "string") return undefined;
 
-        // Match inline field format: [key::value]
+        // Match [fieldKey::value] or [fieldKey:: value]
         const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
         const match = text.match(regex);
 
@@ -239,86 +315,59 @@ export class DataviewService {
             ? path.substring(0, path.lastIndexOf("/"))
             : "";
 
-        // Handle priority
+        // Handle priority using unified field extraction
         let priority;
         const priorityKey = settings.dataviewKeys.priority;
+        const priorityValue = this.getFieldValue(dvTask, priorityKey, text);
 
-        // Try direct property first
-        if (dvTask[priorityKey] !== undefined) {
-            priority = this.mapPriority(dvTask[priorityKey], settings);
-        }
-        // Try fields object
-        else if (dvTask.fields && dvTask.fields[priorityKey] !== undefined) {
-            priority = this.mapPriority(dvTask.fields[priorityKey], settings);
-        }
-        // Try extracting from inline field [p::1]
-        else if (text) {
-            const inlinePriority = this.extractInlinePriority(
-                text,
-                priorityKey,
-            );
-            if (inlinePriority) {
-                priority = this.mapPriority(inlinePriority, settings);
-            }
-            // Fallback to emoji-based priority
-            else if (text.includes("⏫"))
+        if (priorityValue !== undefined) {
+            priority = this.mapPriority(priorityValue, settings);
+        } else if (text) {
+            // Fallback to emoji-based priority (Tasks plugin format)
+            if (text.includes("⏫")) {
                 priority = 1; // high
-            else if (text.includes("🔼"))
+            } else if (text.includes("🔼")) {
                 priority = 2; // medium
-            else if (text.includes("🔽") || text.includes("⏬")) priority = 3; // low
+            } else if (text.includes("🔽") || text.includes("⏬")) {
+                priority = 3; // low
+            }
         }
 
-        // Handle dates
+        // Handle dates using unified field extraction
         let dueDate, createdDate, completedDate;
 
-        // Due date
-        dueDate = this.formatDate(
-            dvTask[settings.dataviewKeys.dueDate],
-            settings.dateFormats.due,
+        // Due date - check all DataView locations
+        const dueDateValue = this.getFieldValue(
+            dvTask,
+            settings.dataviewKeys.dueDate,
+            text,
         );
-
-        if (!dueDate && dvTask.fields) {
-            dueDate = this.formatDate(
-                dvTask.fields[settings.dataviewKeys.dueDate],
-                settings.dateFormats.due,
-            );
+        if (dueDateValue) {
+            dueDate = this.formatDate(dueDateValue, settings.dateFormats.due);
         }
 
-        if (!dueDate && text) {
-            const extractedDate = this.extractInlineDate(
-                text,
-                settings.dataviewKeys.dueDate,
-            );
-            if (extractedDate) {
-                dueDate = this.formatDate(
-                    extractedDate,
-                    settings.dateFormats.due,
-                );
-            }
-        }
-
-        // Created date
-        createdDate = this.formatDate(
-            dvTask[settings.dataviewKeys.createdDate],
-            settings.dateFormats.created,
+        // Created date - check all DataView locations
+        const createdDateValue = this.getFieldValue(
+            dvTask,
+            settings.dataviewKeys.createdDate,
+            text,
         );
-
-        if (!createdDate && dvTask.fields) {
+        if (createdDateValue) {
             createdDate = this.formatDate(
-                dvTask.fields[settings.dataviewKeys.createdDate],
+                createdDateValue,
                 settings.dateFormats.created,
             );
         }
 
-        // Completed date
-        completedDate = this.formatDate(
-            dvTask[settings.dataviewKeys.completedDate],
-            settings.dateFormats.completed,
+        // Completed date - check all DataView locations
+        const completedDateValue = this.getFieldValue(
+            dvTask,
+            settings.dataviewKeys.completedDate,
+            text,
         );
-
-        if (!completedDate && dvTask.fields) {
+        if (completedDateValue) {
             completedDate = this.formatDate(
-                dvTask.fields[settings.dataviewKeys.completedDate],
+                completedDateValue,
                 settings.dateFormats.completed,
             );
         }

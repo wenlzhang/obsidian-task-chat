@@ -124,7 +124,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     dataviewKeys: {
         dueDate: "due",
         createdDate: "created",
-        completedDate: "completed",
+        completedDate: "completion",
         priority: "p",
     },
 

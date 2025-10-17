@@ -261,25 +261,30 @@ export class AIService {
                 }
 
                 // Apply adaptive adjustments relative to base
-                // IMPORTANT: More keywords from semantic expansion = HIGHER threshold needed
-                // to filter out the noise from broad matching
+                // IMPORTANT: Semantic expansion generates many related keywords INTENTIONALLY
+                // We should NOT increase threshold - broad matching is the goal
+                // Only adjust for truly small or large keyword counts
                 let finalThreshold: number;
-                if (intent.keywords.length >= 6) {
-                    // Many keywords (semantic expansion) - INCREASE threshold significantly
-                    // This filters out noise from overly broad matching
-                    finalThreshold = Math.min(100, baseThreshold + 20);
+
+                // Check if this is likely semantic expansion (many keywords)
+                const likelySemanticExpansion = intent.keywords.length >= 20;
+
+                if (likelySemanticExpansion) {
+                    // Semantic expansion detected - use base threshold as-is
+                    // The keywords are semantically related, not noise
+                    finalThreshold = baseThreshold;
                     console.log(
-                        `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), increasing threshold to combat noise`,
+                        `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), using base threshold`,
                     );
                 } else if (intent.keywords.length >= 4) {
-                    // Several keywords - increase threshold moderately
-                    finalThreshold = Math.min(100, baseThreshold + 10);
+                    // Several keywords - use base threshold
+                    finalThreshold = baseThreshold;
                 } else if (intent.keywords.length >= 2) {
-                    // Moderate keywords - use base as-is
+                    // Few keywords - use base as-is
                     finalThreshold = baseThreshold;
                 } else {
-                    // Single keyword - slight increase for precision
-                    finalThreshold = Math.min(100, baseThreshold + 5);
+                    // Single keyword - keep base threshold
+                    finalThreshold = baseThreshold;
                 }
 
                 console.log(
@@ -297,16 +302,18 @@ export class AIService {
 
                 // Safety: If threshold filtered out too many, keep a minimum
                 // This prevents overly strict filtering from returning no results
-                if (
-                    qualityFilteredTasks.length <
-                    Math.min(5, filteredTasks.length)
-                ) {
+                // Keep at least enough tasks to give AI good context
+                const minTasksNeeded = Math.min(
+                    settings.maxTasksForAI,
+                    filteredTasks.length,
+                );
+                if (qualityFilteredTasks.length < minTasksNeeded) {
                     console.log(
-                        `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top scored tasks`,
+                        `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
                     );
                     qualityFilteredTasks = scoredTasks
                         .sort((a, b) => b.score - a.score)
-                        .slice(0, Math.min(20, filteredTasks.length))
+                        .slice(0, minTasksNeeded)
                         .map((st) => st.task);
                 }
             }
@@ -777,6 +784,17 @@ IMPORTANT RULES:
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
+IMPORTANT: UNDERSTANDING TASK METADATA
+- Each task is displayed with its text content AND structured metadata
+- Metadata format: "Status: X | Priority: Y | Due: Z | Folder: W | Tags: T1, T2"
+- ONLY use metadata shown explicitly - do NOT infer properties from task text
+- Priority ONLY comes from "Priority:" field in metadata
+- Due date ONLY comes from "Due:" field in metadata  
+- Status ONLY comes from "Status:" field in metadata
+- If a task has NO "Due:" field, it has NO due date (even if text contains dates/emojis)
+- Emojis in task text (📝, ⏰, etc.) are NOT due dates unless shown in "Due:" field
+- Text like "2025-10-17T20:40" is creation timestamp, NOT due date unless in "Due:" field
+
 ${PromptBuilderService.buildRecommendationLimits(settings)}
 
 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
@@ -1171,7 +1189,7 @@ ${taskContext}`;
                 "[Task Chat] AI response did not follow [TASK_X] format. Using top tasks as fallback.",
             );
 
-            // Use relevance scoring as fallback - return top 3-5 most relevant tasks
+            // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
             const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                 tasks,
                 keywords,
