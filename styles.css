@@ -207,11 +207,11 @@
 
 /* Copy button positioning */
 
-/* User messages: below the message box on the right */
+/* User messages: below the message box, aligned with response copy button */
 .task-chat-message-user .task-chat-copy-button {
     position: absolute;
     bottom: -24px;
-    right: 0;
+    right: 10px;
 }
 
 /* Assistant/System messages: inline with token usage */
