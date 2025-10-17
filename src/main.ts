@@ -299,12 +299,13 @@ export default class TaskChatPlugin extends Plugin {
     refreshChatViewSearchMode(): void {
         if (this.chatView) {
             // If user hasn't overridden (using default), sync currentChatMode to new default
-            const isUsingDefault = this.chatView.getSearchModeOverride() === null;
+            const isUsingDefault =
+                this.chatView.getSearchModeOverride() === null;
             if (isUsingDefault) {
                 this.settings.currentChatMode = this.settings.defaultChatMode;
                 this.saveSettings();
             }
-            
+
             this.chatView.updateSearchModeOptions();
         }
     }

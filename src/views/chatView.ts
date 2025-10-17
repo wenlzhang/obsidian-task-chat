@@ -49,8 +49,11 @@ export class ChatView extends ItemView {
         // Initialize chat mode from last used (stored in settings.currentChatMode in data.json)
         // If currentChatMode matches defaultChatMode, use null (meaning "use default")
         // Otherwise, it's an override from the current session
-        if (this.plugin.settings.currentChatMode && 
-            this.plugin.settings.currentChatMode !== this.plugin.settings.defaultChatMode) {
+        if (
+            this.plugin.settings.currentChatMode &&
+            this.plugin.settings.currentChatMode !==
+                this.plugin.settings.defaultChatMode
+        ) {
             this.searchModeOverride = this.plugin.settings.currentChatMode;
         } else {
             this.searchModeOverride = null; // Use default
@@ -127,18 +130,18 @@ export class ChatView extends ItemView {
                 | "simple"
                 | "smart"
                 | "chat";
-            
+
             // If user selects the default mode, clear the override
             if (value === this.plugin.settings.defaultChatMode) {
                 this.searchModeOverride = null;
             } else {
                 this.searchModeOverride = value;
             }
-            
+
             // Save to settings.currentChatMode (persists in data.json for current session)
             this.plugin.settings.currentChatMode = value;
             await this.plugin.saveSettings();
-            
+
             console.log(`[Task Chat] Chat mode changed to: ${value}`);
         });
 
@@ -792,20 +795,21 @@ export class ChatView extends ItemView {
 
         // Create new session only if current has actual conversation
         const newSession = this.plugin.sessionManager.createSession();
-        
+
         // Reset chat mode to default for new session
         this.searchModeOverride = null;
-        this.plugin.settings.currentChatMode = this.plugin.settings.defaultChatMode;
+        this.plugin.settings.currentChatMode =
+            this.plugin.settings.defaultChatMode;
         await this.plugin.saveSettings();
-        
+
         // Update dropdown to reflect default mode
         this.updateSearchModeOptions();
-        
+
         this.renderMessages();
         this.addSystemMessage(
             `New session created: ${newSession.name}. How can I help you?`,
         );
-        
+
         console.log(
             `[Task Chat] New session created, chat mode reset to default: ${this.plugin.settings.defaultChatMode}`,
         );
