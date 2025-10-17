@@ -1213,80 +1213,250 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Render per-mode sort settings (each mode remembers its own sort preference)
+     * Render per-mode sort settings with multi-criteria support
      */
     private renderSortBySetting(): void {
         if (!this.sortByContainerEl) return;
 
-        // Simple Search sort
-        new Setting(this.sortByContainerEl)
-            .setName("Sort for Simple Search")
-            .setDesc(
-                'How to sort results in Simple Search mode. Default: "Relevance" (best-match-first for keyword searches).',
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("relevance", "Relevance")
-                    .addOption("dueDate", "Due date")
-                    .addOption("priority", "Priority")
-                    .addOption("created", "Created date")
-                    .addOption("alphabetical", "Alphabetical")
-                    .setValue(this.plugin.settings.taskSortBySimple)
-                    .onChange(async (value: any) => {
-                        this.plugin.settings.taskSortBySimple = value;
-                        await this.plugin.saveSettings();
-                        console.log(
-                            `[Task Chat] Simple Search sort saved: ${value}`,
-                        );
-                    }),
+        // Header with explanation
+        this.sortByContainerEl.createEl("p", {
+            text: "Configure multi-criteria sorting for each mode. Tasks are sorted by the first criterion, then by the second for ties, and so on. Use ↑↓ to reorder, ✕ to remove, and + to add criteria.",
+            cls: "setting-item-description",
+        });
+
+        // Simple Search multi-criteria sort
+        this.renderMultiCriteriaSortSetting(
+            "Simple Search",
+            "Multi-criteria sort order for Simple Search mode. Default: Relevance → Due date → Priority.",
+            "taskSortOrderSimple",
+            false, // no "auto" option
+        );
+
+        // Smart Search multi-criteria sort
+        this.renderMultiCriteriaSortSetting(
+            "Smart Search",
+            "Multi-criteria sort order for Smart Search mode. Default: Relevance → Due date → Priority.",
+            "taskSortOrderSmart",
+            false, // no "auto" option
+        );
+
+        // Task Chat Display multi-criteria sort
+        this.renderMultiCriteriaSortSetting(
+            "Task Chat (Display)",
+            "Multi-criteria sort order for displaying results in Task Chat mode. Default: Auto → Due date → Priority.",
+            "taskSortOrderChat",
+            true, // has "auto" option
+        );
+
+        // Task Chat AI Context multi-criteria sort
+        this.renderMultiCriteriaSortSetting(
+            "Task Chat (AI Context)",
+            "Multi-criteria sort order for sending tasks to AI. This can differ from display order. Default: Relevance → Priority → Due date (shows AI the most relevant and urgent tasks first).",
+            "taskSortOrderChatAI",
+            false, // no "auto" option (will be resolved before sending to AI)
+        );
+    }
+
+    /**
+     * Render a multi-criteria sort setting with add/remove/reorder controls
+     */
+    private renderMultiCriteriaSortSetting(
+        name: string,
+        description: string,
+        settingKey: keyof import("./settings").PluginSettings,
+        allowAuto: boolean,
+    ): void {
+        const containerEl = this.sortByContainerEl;
+        if (!containerEl) return;
+
+        // Create setting container
+        const setting = new Setting(containerEl)
+            .setName(name)
+            .setDesc(description);
+
+        // Create a container for the sort criteria list
+        const criteriaContainer = containerEl.createDiv({
+            cls: "task-chat-sort-criteria-container",
+        });
+
+        const renderCriteria = () => {
+            criteriaContainer.empty();
+
+            const sortOrder = this.plugin.settings[
+                settingKey
+            ] as import("./settings").SortCriterion[];
+
+            // Render each criterion with controls
+            sortOrder.forEach((criterion, index) => {
+                const criterionDiv = criteriaContainer.createDiv({
+                    cls: "task-chat-sort-criterion",
+                });
+
+                // Order indicator
+                criterionDiv.createSpan({
+                    text: `${index + 1}.`,
+                    cls: "task-chat-sort-order",
+                });
+
+                // Criterion name
+                const displayName = this.getCriterionDisplayName(criterion);
+                criterionDiv.createSpan({
+                    text: displayName,
+                    cls: "task-chat-sort-name",
+                });
+
+                // Control buttons container
+                const buttonsDiv = criterionDiv.createDiv({
+                    cls: "task-chat-sort-buttons",
+                });
+
+                // Move up button
+                if (index > 0) {
+                    buttonsDiv
+                        .createEl("button", { text: "↑", cls: "mod-cta" })
+                        .addEventListener("click", async () => {
+                            const newOrder = [...sortOrder];
+                            [newOrder[index - 1], newOrder[index]] = [
+                                newOrder[index],
+                                newOrder[index - 1],
+                            ];
+                            (this.plugin.settings as any)[settingKey] =
+                                newOrder;
+                            await this.plugin.saveSettings();
+                            renderCriteria();
+                        });
+                }
+
+                // Move down button
+                if (index < sortOrder.length - 1) {
+                    buttonsDiv
+                        .createEl("button", { text: "↓", cls: "mod-cta" })
+                        .addEventListener("click", async () => {
+                            const newOrder = [...sortOrder];
+                            [newOrder[index], newOrder[index + 1]] = [
+                                newOrder[index + 1],
+                                newOrder[index],
+                            ];
+                            (this.plugin.settings as any)[settingKey] =
+                                newOrder;
+                            await this.plugin.saveSettings();
+                            renderCriteria();
+                        });
+                }
+
+                // Remove button (only if more than 1 criterion)
+                if (sortOrder.length > 1) {
+                    buttonsDiv
+                        .createEl("button", {
+                            text: "✕",
+                            cls: "mod-warning",
+                        })
+                        .addEventListener("click", async () => {
+                            const newOrder = sortOrder.filter(
+                                (_, i) => i !== index,
+                            );
+                            (this.plugin.settings as any)[settingKey] =
+                                newOrder;
+                            await this.plugin.saveSettings();
+                            renderCriteria();
+                        });
+                }
+            });
+
+            // Add criterion button and dropdown
+            const addContainer = criteriaContainer.createDiv({
+                cls: "task-chat-sort-add-container",
+            });
+
+            const availableCriteria = this.getAvailableCriteria(
+                sortOrder,
+                allowAuto,
             );
 
-        // Smart Search sort
-        new Setting(this.sortByContainerEl)
-            .setName("Sort for Smart Search")
-            .setDesc(
-                'How to sort results in Smart Search mode. Default: "Relevance" (best-match-first for AI-expanded keywords).',
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("relevance", "Relevance")
-                    .addOption("dueDate", "Due date")
-                    .addOption("priority", "Priority")
-                    .addOption("created", "Created date")
-                    .addOption("alphabetical", "Alphabetical")
-                    .setValue(this.plugin.settings.taskSortBySmart)
-                    .onChange(async (value: any) => {
-                        this.plugin.settings.taskSortBySmart = value;
-                        await this.plugin.saveSettings();
-                        console.log(
-                            `[Task Chat] Smart Search sort saved: ${value}`,
-                        );
-                    }),
-            );
+            if (availableCriteria.length > 0) {
+                const dropdown = addContainer.createEl("select", {
+                    cls: "dropdown",
+                });
 
-        // Task Chat sort
-        new Setting(this.sortByContainerEl)
-            .setName("Sort for Task Chat")
-            .setDesc(
-                'How to sort results in Task Chat mode. Default: "Auto" (AI-driven: relevance for keywords, due date otherwise).',
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("auto", "Auto (AI-driven)")
-                    .addOption("relevance", "Relevance")
-                    .addOption("dueDate", "Due date")
-                    .addOption("priority", "Priority")
-                    .addOption("created", "Created date")
-                    .addOption("alphabetical", "Alphabetical")
-                    .setValue(this.plugin.settings.taskSortByChat)
-                    .onChange(async (value: any) => {
-                        this.plugin.settings.taskSortByChat = value;
+                dropdown.createEl("option", {
+                    text: "Add criterion...",
+                    value: "",
+                });
+
+                availableCriteria.forEach((criterion) => {
+                    dropdown.createEl("option", {
+                        text: this.getCriterionDisplayName(criterion),
+                        value: criterion,
+                    });
+                });
+
+                const addButton = addContainer.createEl("button", {
+                    text: "+",
+                    cls: "mod-cta",
+                });
+
+                addButton.addEventListener("click", async () => {
+                    const selectedValue = dropdown.value;
+                    if (selectedValue && selectedValue !== "") {
+                        const newOrder = [
+                            ...sortOrder,
+                            selectedValue as import("./settings").SortCriterion,
+                        ];
+                        (this.plugin.settings as any)[settingKey] = newOrder;
                         await this.plugin.saveSettings();
-                        console.log(
-                            `[Task Chat] Task Chat sort saved: ${value}`,
-                        );
-                    }),
-            );
+                        renderCriteria();
+                    }
+                });
+            }
+        };
+
+        renderCriteria();
+    }
+
+    /**
+     * Get display name for a sort criterion
+     */
+    private getCriterionDisplayName(
+        criterion: import("./settings").SortCriterion,
+    ): string {
+        switch (criterion) {
+            case "auto":
+                return "Auto (AI-driven)";
+            case "relevance":
+                return "Relevance";
+            case "dueDate":
+                return "Due date";
+            case "priority":
+                return "Priority";
+            case "created":
+                return "Created date";
+            case "alphabetical":
+                return "Alphabetical";
+            default:
+                return criterion;
+        }
+    }
+
+    /**
+     * Get available criteria that aren't already in the sort order
+     */
+    private getAvailableCriteria(
+        currentOrder: import("./settings").SortCriterion[],
+        allowAuto: boolean,
+    ): import("./settings").SortCriterion[] {
+        const allCriteria: import("./settings").SortCriterion[] = [
+            "relevance",
+            "dueDate",
+            "priority",
+            "created",
+            "alphabetical",
+        ];
+
+        if (allowAuto) {
+            allCriteria.unshift("auto");
+        }
+
+        return allCriteria.filter((c) => !currentOrder.includes(c));
     }
 
     /**

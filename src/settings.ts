@@ -3,6 +3,15 @@ import { SessionData } from "./models/task";
 // Priority mapping type: Fixed numeric keys (1-4), customizable string values
 export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
 
+// Sort criterion type for multi-criteria sorting
+export type SortCriterion =
+    | "relevance"
+    | "dueDate"
+    | "priority"
+    | "created"
+    | "alphabetical"
+    | "auto";
+
 export interface PluginSettings {
     // AI Provider Settings
     aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
@@ -68,7 +77,8 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     relevanceThreshold: number; // Minimum relevance score (0-100) for keyword matching. Lower = more results. Use 0 for adaptive (recommended).
 
-    // Sort settings - Per-mode preferences (each mode remembers its own sort)
+    // Sort settings - Multi-criteria sorting per mode
+    // LEGACY: Single-criterion sorting (kept for backward compatibility, but deprecated)
     taskSortBySimple:
         | "relevance"
         | "dueDate"
@@ -89,6 +99,14 @@ export interface PluginSettings {
         | "created"
         | "alphabetical"; // Task Chat sort (includes "auto")
     taskSortDirection: "asc" | "desc"; // asc = low to high, desc = high to low
+
+    // NEW: Multi-criteria sorting (ordered array of sort criteria)
+    // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
+    // Example: ["relevance", "dueDate", "priority"] = sort by relevance first, then dueDate for ties, then priority
+    taskSortOrderSimple: SortCriterion[]; // Simple Search multi-criteria sort order
+    taskSortOrderSmart: SortCriterion[]; // Smart Search multi-criteria sort order
+    taskSortOrderChat: SortCriterion[]; // Task Chat display sort order
+    taskSortOrderChatAI: SortCriterion[]; // Task Chat AI context sort order (what order to send tasks to AI)
 
     // Usage Tracking
     totalTokensUsed: number;
@@ -182,10 +200,23 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 30, // More context helps AI give better recommendations
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 30, // Minimum relevance score (0-100). Lower = more results. 0 = adaptive.
+
+    // LEGACY: Single-criterion sorting (kept for backward compatibility)
     taskSortBySimple: "relevance", // Simple Search: relevance (keyword-based)
     taskSortBySmart: "relevance", // Smart Search: relevance (AI keywords)
     taskSortByChat: "auto", // Task Chat: auto (AI-driven)
     taskSortDirection: "asc", // asc = earliest/lowest first (good for overdue/high priority)
+
+    // NEW: Multi-criteria sorting - Smart defaults for each mode
+    // Simple Search: relevance first (keyword matching), then due date (urgency), then priority
+    taskSortOrderSimple: ["relevance", "dueDate", "priority"],
+    // Smart Search: relevance first (AI-expanded keywords), then due date, then priority
+    taskSortOrderSmart: ["relevance", "dueDate", "priority"],
+    // Task Chat Display: auto (AI-driven), then due date, then priority
+    taskSortOrderChat: ["auto", "relevance", "dueDate", "priority"],
+    // Task Chat AI Context: relevance first (most relevant to query), then priority (importance), then due date (urgency)
+    // This order helps AI understand what's most relevant AND urgent
+    taskSortOrderChatAI: ["relevance", "dueDate", "priority"],
 
     // Usage Tracking
     totalTokensUsed: 0,

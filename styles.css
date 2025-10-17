@@ -597,3 +597,81 @@
     color: var(--text-error);
     border: 1px solid var(--text-error);
 }
+
+/* Multi-Criteria Sort Settings */
+.task-chat-sort-container {
+    margin: 12px 0;
+}
+
+.task-chat-sort-criteria-container {
+    margin: 12px 0 20px 0;
+    padding: 12px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+}
+
+.task-chat-sort-criterion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.task-chat-sort-criterion:hover {
+    background: var(--background-modifier-hover);
+}
+
+.task-chat-sort-order {
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 20px;
+}
+
+.task-chat-sort-name {
+    flex: 1;
+    font-size: 14px;
+}
+
+.task-chat-sort-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.task-chat-sort-buttons button {
+    padding: 4px 8px;
+    font-size: 14px;
+    min-width: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-chat-sort-add-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-sort-add-container select {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 14px;
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.task-chat-sort-add-container button {
+    padding: 6px 12px;
+    font-size: 14px;
+    min-width: 40px;
+    border-radius: 4px;
+}

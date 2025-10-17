@@ -1,6 +1,6 @@
 import { App, Notice, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
-import { PluginSettings } from "../settings";
+import { PluginSettings, SortCriterion } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./queryParserService";
 import { PricingService } from "./pricingService";
@@ -63,7 +63,26 @@ export class AIService {
         // Parse query based on chat mode (three-mode system)
         const chatMode = settings.defaultChatMode;
 
-        // Get mode-specific sort setting
+        // Get mode-specific sort settings (NEW: multi-criteria)
+        let displaySortOrder: SortCriterion[];
+        let aiContextSortOrder: SortCriterion[];
+
+        switch (chatMode) {
+            case "simple":
+                displaySortOrder = settings.taskSortOrderSimple;
+                aiContextSortOrder = settings.taskSortOrderSimple; // Simple mode doesn't use AI, so same order
+                break;
+            case "smart":
+                displaySortOrder = settings.taskSortOrderSmart;
+                aiContextSortOrder = settings.taskSortOrderSmart; // Smart mode only uses AI for parsing, not analysis
+                break;
+            case "chat":
+                displaySortOrder = settings.taskSortOrderChat;
+                aiContextSortOrder = settings.taskSortOrderChatAI; // Chat mode: separate order for AI context
+                break;
+        }
+
+        // LEGACY: Get old single-criterion sort setting (for backward compatibility)
         let modeSortBy: string;
         switch (chatMode) {
             case "simple":
@@ -305,52 +324,44 @@ export class AIService {
                 }
             }
 
-            // PHASE 2: Sorting for Direct Search (user's display preference)
-            // For direct results: Sort by user preference for display
-            let sortedTasks: Task[];
-
-            if (modeSortBy === "auto") {
-                // Auto mode: Use relevance for keyword searches, dueDate otherwise
-                if (intent.keywords && intent.keywords.length > 0) {
-                    console.log(
-                        "[Task Chat] Sorting: By relevance (auto mode, keyword search)",
-                    );
-                    sortedTasks = TaskSearchService.sortByKeywordRelevance(
-                        qualityFilteredTasks,
-                        intent.keywords,
-                    );
-                } else {
-                    console.log(
-                        "[Task Chat] Sorting: By dueDate (auto mode, no keywords)",
-                    );
-                    sortedTasks = TaskSortService.sortTasks(
-                        qualityFilteredTasks,
-                        "dueDate",
-                        settings.taskSortDirection,
-                    );
-                }
-            } else if (
-                modeSortBy === "relevance" &&
-                intent.keywords &&
-                intent.keywords.length > 0
-            ) {
-                console.log(
-                    "[Task Chat] Sorting: By relevance (user preference)",
-                );
-                sortedTasks = TaskSearchService.sortByKeywordRelevance(
+            // PHASE 2: Sorting for Display (multi-criteria sorting)
+            // Build relevance scores map if keywords present (needed for relevance sorting)
+            let relevanceScores: Map<string, number> | undefined;
+            if (intent.keywords && intent.keywords.length > 0) {
+                const scoredTasks = TaskSearchService.scoreTasksByRelevance(
                     qualityFilteredTasks,
                     intent.keywords,
                 );
-            } else {
-                console.log(
-                    `[Task Chat] Sorting: By ${modeSortBy} (user preference)`,
-                );
-                sortedTasks = TaskSortService.sortTasks(
-                    qualityFilteredTasks,
-                    modeSortBy as any,
-                    settings.taskSortDirection,
+                relevanceScores = new Map(
+                    scoredTasks.map((st) => [st.task.id, st.score]),
                 );
             }
+
+            // Resolve "auto" in displaySortOrder
+            const resolvedDisplaySortOrder = displaySortOrder.map(
+                (criterion) => {
+                    if (criterion === "auto") {
+                        // Auto mode: Use relevance for keyword searches, dueDate otherwise
+                        return intent.keywords && intent.keywords.length > 0
+                            ? "relevance"
+                            : "dueDate";
+                    }
+                    return criterion;
+                },
+            ) as SortCriterion[];
+
+            console.log(
+                `[Task Chat] Display sort order: [${resolvedDisplaySortOrder.join(", ")}]`,
+            );
+
+            // Sort tasks for display using multi-criteria sorting
+            const sortedTasksForDisplay =
+                TaskSortService.sortTasksMultiCriteria(
+                    qualityFilteredTasks,
+                    resolvedDisplaySortOrder,
+                    settings.taskSortDirection,
+                    relevanceScores,
+                );
 
             // Three-mode result delivery logic
             // Mode 1 (Simple Search) & Mode 2 (Smart Search) → Direct results
@@ -358,7 +369,7 @@ export class AIService {
             if (chatMode === "simple" || chatMode === "smart") {
                 // Return direct results for Simple Search and Smart Search
                 console.log(
-                    `[Task Chat] Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasks.length} results)`,
+                    `[Task Chat] Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasksForDisplay.length} results)`,
                 );
 
                 // Calculate token usage based on mode
@@ -373,7 +384,7 @@ export class AIService {
                         model: "none",
                         provider: settings.aiProvider,
                         isEstimated: false,
-                        directSearchReason: `${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""}`,
+                        directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
                     };
                 } else {
                     // Smart Search: AI used for keyword expansion only
@@ -387,13 +398,13 @@ export class AIService {
                         model: settings.model,
                         provider: settings.aiProvider,
                         isEstimated: true,
-                        directSearchReason: `${sortedTasks.length} result${sortedTasks.length !== 1 ? "s" : ""}`,
+                        directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
                     };
                 }
 
                 return {
                     response: "",
-                    directResults: sortedTasks.slice(
+                    directResults: sortedTasksForDisplay.slice(
                         0,
                         settings.maxDirectResults,
                     ),
@@ -402,12 +413,40 @@ export class AIService {
             }
 
             // Mode 3: Task Chat - Continue to AI analysis
+            // For AI context, sort differently using aiContextSortOrder (optimized for AI understanding)
             console.log(
-                `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasks.length} tasks)`,
+                `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasksForDisplay.length} tasks)`,
+            );
+
+            // Resolve "auto" in aiContextSortOrder
+            const resolvedAIContextSortOrder = aiContextSortOrder.map(
+                (criterion) => {
+                    if (criterion === "auto") {
+                        return intent.keywords && intent.keywords.length > 0
+                            ? "relevance"
+                            : "dueDate";
+                    }
+                    return criterion;
+                },
+            ) as SortCriterion[];
+
+            console.log(
+                `[Task Chat] AI context sort order: [${resolvedAIContextSortOrder.join(", ")}]`,
+            );
+
+            // Sort tasks for AI context (what order to send to AI for analysis)
+            const sortedTasksForAI = TaskSortService.sortTasksMultiCriteria(
+                qualityFilteredTasks,
+                resolvedAIContextSortOrder,
+                settings.taskSortDirection,
+                relevanceScores,
             );
 
             // Select top tasks for AI analysis
-            const tasksToAnalyze = sortedTasks.slice(0, settings.maxTasksForAI);
+            const tasksToAnalyze = sortedTasksForAI.slice(
+                0,
+                settings.maxTasksForAI,
+            );
 
             console.log(
                 `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
