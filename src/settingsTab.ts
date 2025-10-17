@@ -1263,7 +1263,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Simple Search multi-criteria sort
         this.renderMultiCriteriaSortSetting(
-            "Simple Search",
+            "Simple Search (Filter & Display)",
             "Multi-criteria sort order for Simple Search mode. Default: Relevance → Due date → Priority.",
             "taskSortOrderSimple",
             false, // no "auto" option
@@ -1271,27 +1271,28 @@ export class SettingsTab extends PluginSettingTab {
 
         // Smart Search multi-criteria sort
         this.renderMultiCriteriaSortSetting(
-            "Smart Search",
+            "Smart Search (Filter & Display)",
             "Multi-criteria sort order for Smart Search mode. Default: Relevance → Due date → Priority.",
             "taskSortOrderSmart",
             false, // no "auto" option
         );
 
-        // Task Chat Display multi-criteria sort
-        this.renderMultiCriteriaSortSetting(
-            "Task Chat (Display)",
-            "Multi-criteria sort order for displaying results in Task Chat mode. Default: Auto → Due date → Priority.",
-            "taskSortOrderChat",
-            true, // has "auto" option
-        );
-
         // Task Chat AI Context multi-criteria sort
         this.renderMultiCriteriaSortSetting(
-            "Task Chat (AI Context)",
-            "Multi-criteria sort order for sending tasks to AI. This can differ from display order. Default: Relevance → Priority → Due date (shows AI the most relevant and urgent tasks first).",
+            "Task Chat (Filter & AI Context)",
+            "Multi-criteria sort order for sending tasks to AI. This can differ from display order. Default: Relevance → Due date → Priority (shows AI the most relevant and urgent tasks first).",
             "taskSortOrderChatAI",
             false, // no "auto" option (will be resolved before sending to AI)
         );
+
+        // Task Chat Display multi-criteria sort
+        this.renderMultiCriteriaSortSetting(
+            "Task Chat (Display)",
+            "Multi-criteria sort order for displaying results in Task Chat mode. Default: Auto → Relevance → Due date → Priority.",
+            "taskSortOrderChat",
+            true, // has "auto" option
+        );
+        
     }
 
     /**
