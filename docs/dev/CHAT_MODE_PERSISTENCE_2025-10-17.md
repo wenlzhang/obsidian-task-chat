@@ -26,9 +26,9 @@ Implemented a two-setting system:
    - Shown in Settings → Task Chat → Default chat mode
    - Never changes unless user modifies it in settings
 
-2. **`searchMode`** (internal, repurposed)
+2. **`currentChatMode`** (stored in data.json)
    - Last used chat mode in current session
-   - Persists across plugin reloads
+   - Persists in data.json across plugin reloads
    - Resets to `defaultChatMode` when creating new session
    - Not shown in settings UI (internal only)
 
@@ -44,12 +44,12 @@ When the chat view opens, restore the last used mode from the current session:
 async onOpen(): Promise<void> {
     // ...
     
-    // Initialize chat mode from last used (stored in settings.searchMode)
-    // If searchMode matches defaultChatMode, use null (meaning "use default")
+    // Initialize chat mode from last used (stored in settings.currentChatMode in data.json)
+    // If currentChatMode matches defaultChatMode, use null (meaning "use default")
     // Otherwise, it's an override from the current session
-    if (this.plugin.settings.searchMode && 
-        this.plugin.settings.searchMode !== this.plugin.settings.defaultChatMode) {
-        this.searchModeOverride = this.plugin.settings.searchMode;
+    if (this.plugin.settings.currentChatMode && 
+        this.plugin.settings.currentChatMode !== this.plugin.settings.defaultChatMode) {
+        this.searchModeOverride = this.plugin.settings.currentChatMode;
     } else {
         this.searchModeOverride = null; // Use default
     }
@@ -59,8 +59,8 @@ async onOpen(): Promise<void> {
 ```
 
 **Logic**:
-- If `searchMode` equals `defaultChatMode` → no override (use default)
-- If `searchMode` differs → user had overridden, restore that override
+- If `currentChatMode` equals `defaultChatMode` → no override (use default)
+- If `currentChatMode` differs → user had overridden, restore that override
 - `searchModeOverride` is used throughout to determine effective mode
 
 ---
@@ -80,8 +80,8 @@ this.searchModeSelect.addEventListener("change", async () => {
         this.searchModeOverride = value;
     }
     
-    // Save to settings.searchMode (last used mode for current session)
-    this.plugin.settings.searchMode = value;
+    // Save to settings.currentChatMode (persists in data.json for current session)
+    this.plugin.settings.currentChatMode = value;
     await this.plugin.saveSettings();
     
     console.log(`[Task Chat] Chat mode changed to: ${value}`);
@@ -92,7 +92,7 @@ this.searchModeSelect.addEventListener("change", async () => {
 - User selects mode in dropdown
 - If it matches default → clear override (use default)
 - Otherwise → set override to selected value
-- Save to `searchMode` for persistence across reloads
+- Save to `currentChatMode` in data.json for persistence across reloads
 
 ---
 
@@ -109,7 +109,7 @@ private async createNewSession(): Promise<void> {
     
     // Reset chat mode to default for new session
     this.searchModeOverride = null;
-    this.plugin.settings.searchMode = this.plugin.settings.defaultChatMode;
+    this.plugin.settings.currentChatMode = this.plugin.settings.defaultChatMode;
     await this.plugin.saveSettings();
     
     // Update dropdown to reflect default mode
@@ -125,7 +125,7 @@ private async createNewSession(): Promise<void> {
 
 **Logic**:
 - Clear override → will use default
-- Set `searchMode` to `defaultChatMode` → syncs state
+- Set `currentChatMode` to `defaultChatMode` → syncs state in data.json
 - Update dropdown → shows default mode
 - Log confirmation
 
@@ -161,9 +161,9 @@ public updateSearchModeOptions(): void {
 
 1. **User sets default**: Settings → Default chat mode: "Smart Search"
 2. **Opens plugin**: Dropdown shows "Smart Search" (from default)
-3. **Overrides to "Task Chat"**: Dropdown changes to "Task Chat", saved to `searchMode`
+3. **Overrides to "Task Chat"**: Dropdown changes to "Task Chat", saved to `currentChatMode` in data.json
 4. **Sends queries**: Uses "Task Chat" mode
-5. **Reloads plugin**: Dropdown shows "Task Chat" (restored from `searchMode`)
+5. **Reloads plugin**: Dropdown shows "Task Chat" (restored from `currentChatMode` in data.json)
 6. **Creates new session**: Dropdown resets to "Smart Search" (from default)
 7. **Sends queries**: Uses "Smart Search" mode
 
@@ -173,11 +173,11 @@ public updateSearchModeOptions(): void {
 
 1. **Default**: "Simple Search"
 2. **Session 1**: User overrides to "Task Chat"
-   - `searchMode` = "Task Chat"
+   - `currentChatMode` = "Task Chat" (saved in data.json)
    - Dropdown shows "Task Chat"
-3. **Reloads plugin**: Still shows "Task Chat" (restored)
+3. **Reloads plugin**: Still shows "Task Chat" (restored from data.json)
 4. **Creates new session**:
-   - `searchMode` = "Simple Search"
+   - `currentChatMode` = "Simple Search" (reset to default)
    - Dropdown resets to "Simple Search"
 5. **Session 2**: User keeps "Simple Search"
    - No override needed
@@ -191,10 +191,10 @@ public updateSearchModeOptions(): void {
    - `searchModeOverride` = null (no override needed)
 3. **Changes to "Simple Search"**: 
    - `searchModeOverride` = "Simple Search"
-   - `searchMode` = "Simple Search"
+   - `currentChatMode` = "Simple Search" (saved in data.json)
 4. **Changes back to "Task Chat"**:
    - `searchModeOverride` = null (matches default)
-   - `searchMode` = "Task Chat"
+   - `currentChatMode` = "Task Chat" (saved in data.json)
 
 ---
 
@@ -205,7 +205,7 @@ public updateSearchModeOptions(): void {
 ```
 ┌─────────────────────────────────────────┐
 │ defaultChatMode: "simple"               │ ← User's default preference
-│ searchMode: "chat"                      │ ← Last used in current session
+│ currentChatMode: "chat"                 │ ← Last used in current session (in data.json)
 └─────────────────────────────────────────┘
 ```
 
@@ -232,11 +232,11 @@ effectiveMode = searchModeOverride || defaultChatMode
 ```
 Plugin starts/View opens
     ↓
-Load searchMode from settings
+Load currentChatMode from data.json
     ↓
-searchMode == defaultChatMode?
+currentChatMode == defaultChatMode?
     ├─ Yes → searchModeOverride = null
-    └─ No → searchModeOverride = searchMode
+    └─ No → searchModeOverride = currentChatMode
     ↓
 Update dropdown (shows effective mode)
 ```
@@ -250,7 +250,7 @@ value == defaultChatMode?
     ├─ Yes → searchModeOverride = null
     └─ No → searchModeOverride = value
     ↓
-Save searchMode = value
+Save currentChatMode = value (to data.json)
     ↓
 Persist settings
 ```
@@ -263,7 +263,7 @@ User clicks "New Session"
 Create session
     ↓
 Reset: searchModeOverride = null
-Reset: searchMode = defaultChatMode
+Reset: currentChatMode = defaultChatMode (in data.json)
     ↓
 Save settings
     ↓
@@ -306,22 +306,22 @@ Update dropdown (shows default)
 
 **Option B** (chosen): Store global "last used" mode
 - Simple: One value for current session
-- Intuitive: Persists across reloads
+- Intuitive: Persists in data.json across reloads
 - Resets on new session
 
-### Why `searchMode` is Internal
+### Why `currentChatMode` is Internal
 
-`searchMode` is not shown in the settings UI because:
+`currentChatMode` is not shown in the settings UI because:
 1. **Automatic**: Managed by the chat interface
-2. **Transient**: Changes frequently during use
-3. **Not a preference**: Just tracks current state
+2. **Persists in data.json**: Survives plugin reloads
+3. **Not a preference**: Just tracks current session state
 4. **User-facing is `defaultChatMode`**: That's the preference
 
 ### Migration Compatibility
 
 Existing users have `searchMode` already set:
-1. First load: `searchMode` migrated to `defaultChatMode`
-2. Then: `searchMode` repurposed for persistence
+1. First load: `searchMode` migrated to both `defaultChatMode` and `currentChatMode`
+2. Then: `currentChatMode` stores current session state in data.json
 3. Works seamlessly with no data loss
 
 ---
@@ -377,12 +377,12 @@ Existing users have `searchMode` already set:
 
 **Problem**: New sessions inherited previous session's mode instead of using default
 
-**Solution**: Repurposed `searchMode` to track "last used mode in current session"
+**Solution**: Added `currentChatMode` to track "last used mode in current session" (stored in data.json)
 
 **Behavior**:
 - `defaultChatMode` = user's default preference (set in settings)
-- `searchMode` = last used mode (internal, persists across reloads)
+- `currentChatMode` = last used mode (stored in data.json, persists across reloads)
 - New session = reset to default
-- Reload = restore last used
+- Reload = restore last used from data.json
 
 **Result**: Intuitive, predictable behavior that respects both user preferences and current session state.

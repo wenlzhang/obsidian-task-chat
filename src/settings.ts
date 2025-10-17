@@ -61,7 +61,8 @@ export interface PluginSettings {
 
     // Default Chat Mode (three-mode system)
     defaultChatMode: "simple" | "smart" | "chat"; // Default mode for new sessions. Simple=free, Smart=AI expansion, Chat=full AI
-    searchMode: "simple" | "smart" | "chat"; // INTERNAL: Last used chat mode in current session (persists across reloads, resets on new session). Not shown in settings UI.
+    currentChatMode: "simple" | "smart" | "chat"; // Current session's chat mode (persists in data.json across reloads, resets on new session)
+    searchMode: "simple" | "smart" | "chat"; // DEPRECATED: renamed to currentChatMode, kept for migration
     useAIQueryParsing: boolean; // DEPRECATED: kept for migration only
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
@@ -179,7 +180,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Default Chat Mode
     defaultChatMode: "simple", // Default to free mode for new sessions
-    searchMode: "simple", // DEPRECATED: renamed to defaultChatMode
+    currentChatMode: "simple", // Current session's chat mode (stored in data.json)
+    searchMode: "simple", // DEPRECATED: renamed to currentChatMode
     useAIQueryParsing: false, // DEPRECATED: will be migrated to defaultChatMode
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 

@@ -152,6 +152,13 @@ export default class TaskChatPlugin extends Plugin {
             await this.saveSettings();
         }
 
+        // Migrate searchMode to currentChatMode (renamed for clarity)
+        if (!this.settings.currentChatMode && this.settings.searchMode) {
+            console.log("Migrating searchMode to currentChatMode");
+            this.settings.currentChatMode = this.settings.searchMode;
+            await this.saveSettings();
+        }
+
         // Auto-load models if not already cached
         this.loadModelsInBackground();
     }
@@ -287,14 +294,14 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Refresh chat view search mode dropdown when default chat mode changes
+     * Refresh chat view chat mode dropdown when default chat mode changes
      */
     refreshChatViewSearchMode(): void {
         if (this.chatView) {
-            // If user hasn't overridden (using default), sync searchMode to new default
+            // If user hasn't overridden (using default), sync currentChatMode to new default
             const isUsingDefault = this.chatView.getSearchModeOverride() === null;
             if (isUsingDefault) {
-                this.settings.searchMode = this.settings.defaultChatMode;
+                this.settings.currentChatMode = this.settings.defaultChatMode;
                 this.saveSettings();
             }
             

@@ -46,12 +46,12 @@ export class ChatView extends ItemView {
         // Load last session or create new
         const session = this.plugin.sessionManager.getOrCreateCurrentSession();
 
-        // Initialize chat mode from last used (stored in settings.searchMode)
-        // If searchMode matches defaultChatMode, use null (meaning "use default")
+        // Initialize chat mode from last used (stored in settings.currentChatMode in data.json)
+        // If currentChatMode matches defaultChatMode, use null (meaning "use default")
         // Otherwise, it's an override from the current session
-        if (this.plugin.settings.searchMode && 
-            this.plugin.settings.searchMode !== this.plugin.settings.defaultChatMode) {
-            this.searchModeOverride = this.plugin.settings.searchMode;
+        if (this.plugin.settings.currentChatMode && 
+            this.plugin.settings.currentChatMode !== this.plugin.settings.defaultChatMode) {
+            this.searchModeOverride = this.plugin.settings.currentChatMode;
         } else {
             this.searchModeOverride = null; // Use default
         }
@@ -135,8 +135,8 @@ export class ChatView extends ItemView {
                 this.searchModeOverride = value;
             }
             
-            // Save to settings.searchMode (last used mode for current session)
-            this.plugin.settings.searchMode = value;
+            // Save to settings.currentChatMode (persists in data.json for current session)
+            this.plugin.settings.currentChatMode = value;
             await this.plugin.saveSettings();
             
             console.log(`[Task Chat] Chat mode changed to: ${value}`);
@@ -795,7 +795,7 @@ export class ChatView extends ItemView {
         
         // Reset chat mode to default for new session
         this.searchModeOverride = null;
-        this.plugin.settings.searchMode = this.plugin.settings.defaultChatMode;
+        this.plugin.settings.currentChatMode = this.plugin.settings.defaultChatMode;
         await this.plugin.saveSettings();
         
         // Update dropdown to reflect default mode
