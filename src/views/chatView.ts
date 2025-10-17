@@ -46,6 +46,16 @@ export class ChatView extends ItemView {
         // Load last session or create new
         const session = this.plugin.sessionManager.getOrCreateCurrentSession();
 
+        // Initialize chat mode from last used (stored in settings.searchMode)
+        // If searchMode matches defaultChatMode, use null (meaning "use default")
+        // Otherwise, it's an override from the current session
+        if (this.plugin.settings.searchMode && 
+            this.plugin.settings.searchMode !== this.plugin.settings.defaultChatMode) {
+            this.searchModeOverride = this.plugin.settings.searchMode;
+        } else {
+            this.searchModeOverride = null; // Use default
+        }
+
         this.renderView();
         this.renderMessages();
     }
@@ -112,12 +122,23 @@ export class ChatView extends ItemView {
         // Populate options
         this.updateSearchModeOptions();
 
-        this.searchModeSelect.addEventListener("change", () => {
+        this.searchModeSelect.addEventListener("change", async () => {
             const value = this.searchModeSelect?.value as
                 | "simple"
                 | "smart"
                 | "chat";
-            this.searchModeOverride = value;
+            
+            // If user selects the default mode, clear the override
+            if (value === this.plugin.settings.defaultChatMode) {
+                this.searchModeOverride = null;
+            } else {
+                this.searchModeOverride = value;
+            }
+            
+            // Save to settings.searchMode (last used mode for current session)
+            this.plugin.settings.searchMode = value;
+            await this.plugin.saveSettings();
+            
             console.log(`[Task Chat] Chat mode changed to: ${value}`);
         });
 
@@ -235,6 +256,14 @@ export class ChatView extends ItemView {
                 text: `Showing all tasks (${this.currentTasks.length})`,
             });
         }
+    }
+
+    /**
+     * Get current search mode override value
+     * Returns null if using default, otherwise returns the override mode
+     */
+    public getSearchModeOverride(): "simple" | "smart" | "chat" | null {
+        return this.searchModeOverride;
     }
 
     /**
@@ -748,7 +777,7 @@ export class ChatView extends ItemView {
     /**
      * Create a new session
      */
-    private createNewSession(): void {
+    private async createNewSession(): Promise<void> {
         // Check if current session is empty (only has welcome message)
         const currentMessages = this.plugin.sessionManager.getCurrentMessages();
         const isEmptySession =
@@ -763,11 +792,23 @@ export class ChatView extends ItemView {
 
         // Create new session only if current has actual conversation
         const newSession = this.plugin.sessionManager.createSession();
+        
+        // Reset chat mode to default for new session
+        this.searchModeOverride = null;
+        this.plugin.settings.searchMode = this.plugin.settings.defaultChatMode;
+        await this.plugin.saveSettings();
+        
+        // Update dropdown to reflect default mode
+        this.updateSearchModeOptions();
+        
         this.renderMessages();
         this.addSystemMessage(
             `New session created: ${newSession.name}. How can I help you?`,
         );
-        this.plugin.saveSettings();
+        
+        console.log(
+            `[Task Chat] New session created, chat mode reset to default: ${this.plugin.settings.defaultChatMode}`,
+        );
     }
 
     /**

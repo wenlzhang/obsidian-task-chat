@@ -287,10 +287,17 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Refresh chat view search mode dropdown when AI query parsing setting changes
+     * Refresh chat view search mode dropdown when default chat mode changes
      */
     refreshChatViewSearchMode(): void {
         if (this.chatView) {
+            // If user hasn't overridden (using default), sync searchMode to new default
+            const isUsingDefault = this.chatView.getSearchModeOverride() === null;
+            if (isUsingDefault) {
+                this.settings.searchMode = this.settings.defaultChatMode;
+                this.saveSettings();
+            }
+            
             this.chatView.updateSearchModeOptions();
         }
     }
