@@ -36,7 +36,6 @@ import { TaskSortService } from "./taskSortService";
  *    - Empty results preferred over irrelevant results
  */
 export class AIService {
-
     /**
      * Send a message to AI and get a response with recommended tasks
      */
@@ -333,7 +332,10 @@ export class AIService {
                 console.log(
                     `[Task Chat] Sorting: By ${settings.taskSortBy} (user preference)`,
                 );
-                sortedTasks = TaskSortService.sortTasks(qualityFilteredTasks, settings);
+                sortedTasks = TaskSortService.sortTasks(
+                    qualityFilteredTasks,
+                    settings,
+                );
             }
 
             // Three-mode result delivery logic

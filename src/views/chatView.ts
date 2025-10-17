@@ -19,8 +19,8 @@ export class ChatView extends ItemView {
     private dataviewWarningEl: HTMLElement | null = null;
     private isProcessing: boolean = false;
     private typingIndicator: HTMLElement | null = null;
-    private searchModeSelect: HTMLSelectElement | null = null;
-    private searchModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
+    private chatModeSelect: HTMLSelectElement | null = null;
+    private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -54,9 +54,9 @@ export class ChatView extends ItemView {
             this.plugin.settings.currentChatMode !==
                 this.plugin.settings.defaultChatMode
         ) {
-            this.searchModeOverride = this.plugin.settings.currentChatMode;
+            this.chatModeOverride = this.plugin.settings.currentChatMode;
         } else {
-            this.searchModeOverride = null; // Use default
+            this.chatModeOverride = null; // Use default
         }
 
         this.renderView();
@@ -109,33 +109,33 @@ export class ChatView extends ItemView {
         // Group 2: Chat mode (compact dropdown only)
         const chatModeGroup = controlsEl.createDiv("task-chat-button-group");
         const chatModeContainer = chatModeGroup.createDiv(
-            "task-chat-search-mode",
+            "task-chat-chat-mode",
         );
 
         // Just the dropdown with an icon prefix
         chatModeContainer.createSpan({
             text: "💬",
-            cls: "task-chat-search-mode-icon",
+            cls: "task-chat-chat-mode-icon",
         });
 
-        this.searchModeSelect = chatModeContainer.createEl("select", {
-            cls: "task-chat-search-mode-select",
+        this.chatModeSelect = chatModeContainer.createEl("select", {
+            cls: "task-chat-chat-mode-select",
         });
 
         // Populate options
-        this.updateSearchModeOptions();
+        this.updateChatModeOptions();
 
-        this.searchModeSelect.addEventListener("change", async () => {
-            const value = this.searchModeSelect?.value as
+        this.chatModeSelect.addEventListener("change", async () => {
+            const value = this.chatModeSelect?.value as
                 | "simple"
                 | "smart"
                 | "chat";
 
             // If user selects the default mode, clear the override
             if (value === this.plugin.settings.defaultChatMode) {
-                this.searchModeOverride = null;
+                this.chatModeOverride = null;
             } else {
-                this.searchModeOverride = value;
+                this.chatModeOverride = value;
             }
 
             // Save to settings.currentChatMode (persists in data.json for current session)
@@ -262,40 +262,40 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Get current search mode override value
+     * Get current chat mode override value
      * Returns null if using default, otherwise returns the override mode
      */
-    public getSearchModeOverride(): "simple" | "smart" | "chat" | null {
-        return this.searchModeOverride;
+    public getChatModeOverride(): "simple" | "smart" | "chat" | null {
+        return this.chatModeOverride;
     }
 
     /**
      * Update chat mode dropdown options - always shows all three modes
      * Public method so it can be called when settings change
      */
-    public updateSearchModeOptions(): void {
-        if (!this.searchModeSelect) return;
+    public updateChatModeOptions(): void {
+        if (!this.chatModeSelect) return;
 
-        this.searchModeSelect.empty();
+        this.chatModeSelect.empty();
 
         // Create all three mode options
-        this.searchModeSelect.createEl("option", {
+        this.chatModeSelect.createEl("option", {
             value: "simple",
             text: "Simple Search",
         });
-        this.searchModeSelect.createEl("option", {
+        this.chatModeSelect.createEl("option", {
             value: "smart",
             text: "Smart Search",
         });
-        this.searchModeSelect.createEl("option", {
+        this.chatModeSelect.createEl("option", {
             value: "chat",
             text: "Task Chat",
         });
 
         // Set to current setting (or override if one exists)
         const currentMode =
-            this.searchModeOverride || this.plugin.settings.defaultChatMode;
-        this.searchModeSelect.value = currentMode;
+            this.chatModeOverride || this.plugin.settings.defaultChatMode;
+        this.chatModeSelect.value = currentMode;
 
         console.log(`[Task Chat] Chat mode dropdown updated: ${currentMode}`);
     }
@@ -366,7 +366,7 @@ export class ChatView extends ItemView {
 
         // Determine what text to show based on current mode
         const currentMode =
-            this.searchModeOverride || this.plugin.settings.currentChatMode;
+            this.chatModeOverride || this.plugin.settings.currentChatMode;
         let indicatorText: string;
 
         if (currentMode === "simple") {
@@ -628,10 +628,10 @@ export class ChatView extends ItemView {
         try {
             // Apply chat mode override if user selected different mode
             const effectiveSettings = { ...this.plugin.settings };
-            if (this.searchModeOverride !== null) {
-                effectiveSettings.defaultChatMode = this.searchModeOverride;
+            if (this.chatModeOverride !== null) {
+                effectiveSettings.defaultChatMode = this.chatModeOverride;
                 console.log(
-                    `[Task Chat] Using overridden chat mode: ${this.searchModeOverride}`,
+                    `[Task Chat] Using overridden chat mode: ${this.chatModeOverride}`,
                 );
             }
 
@@ -657,7 +657,7 @@ export class ChatView extends ItemView {
 
             // Get the chat mode that was used (from override or settings)
             const usedChatMode =
-                this.searchModeOverride || this.plugin.settings.defaultChatMode;
+                this.chatModeOverride || this.plugin.settings.defaultChatMode;
 
             // Handle direct results (Simple Search or Smart Search)
             if (result.directResults) {
@@ -797,13 +797,13 @@ export class ChatView extends ItemView {
         const newSession = this.plugin.sessionManager.createSession();
 
         // Reset chat mode to default for new session
-        this.searchModeOverride = null;
+        this.chatModeOverride = null;
         this.plugin.settings.currentChatMode =
             this.plugin.settings.defaultChatMode;
         await this.plugin.saveSettings();
 
         // Update dropdown to reflect default mode
-        this.updateSearchModeOptions();
+        this.updateChatModeOptions();
 
         this.renderMessages();
         this.addSystemMessage(

@@ -290,8 +290,8 @@ export class SettingsTab extends PluginSettingTab {
                         // Update settings tab sort dropdown and description
                         this.refreshSortBySetting();
 
-                        // Update chat view search mode dropdown
-                        this.plugin.refreshChatViewSearchMode();
+                        // Update chat view chat mode dropdown
+                        this.plugin.refreshChatViewChatMode();
                     }),
             );
 

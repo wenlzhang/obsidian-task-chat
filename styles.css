@@ -81,19 +81,19 @@
     cursor: pointer;
 }
 
-/* Search Mode Selector */
-.task-chat-search-mode {
+/* Chat Mode Selector */
+.task-chat-chat-mode {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.task-chat-search-mode-icon {
+.task-chat-chat-mode-icon {
     font-size: 14px;
     opacity: 0.7;
 }
 
-.task-chat-search-mode-select {
+.task-chat-chat-mode-select {
     padding: 6px 8px;
     font-size: 13px;
     border: 1px solid var(--background-modifier-border);
@@ -101,10 +101,11 @@
     background: var(--background-primary);
     color: var(--text-normal);
     cursor: pointer;
+    transition: background 0.2s;
     min-width: 120px;
 }
 
-.task-chat-search-mode-select:hover {
+.task-chat-chat-mode-select:hover {
     background: var(--background-modifier-hover);
 }
 

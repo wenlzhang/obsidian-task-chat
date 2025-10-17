@@ -196,11 +196,11 @@ export class ModelProviderService {
     ): string {
         switch (provider) {
             case "openai":
-                return settings.openaiApiKey || settings.apiKey || "";
+                return settings.openaiApiKey || "";
             case "anthropic":
-                return settings.anthropicApiKey || settings.apiKey || "";
+                return settings.anthropicApiKey || "";
             case "openrouter":
-                return settings.openrouterApiKey || settings.apiKey || "";
+                return settings.openrouterApiKey || "";
             case "ollama":
                 return ""; // No API key needed
         }
