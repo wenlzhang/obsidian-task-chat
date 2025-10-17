@@ -5,16 +5,44 @@ import { PromptBuilderService } from "./promptBuilderService";
 import { StopWords } from "./stopWords";
 
 /**
- * Structured query result from AI parsing
+ * Structured query result from AI parsing - Three-part system
+ * 
+ * PART 1: Task Content
+ * - Core keywords and semantic expansions for matching task text
+ * 
+ * PART 2: Task Attributes
+ * - Structured filters: priority, dueDate, status, folder, tags
+ * 
+ * PART 3: Executor/Environment Context (Future)
+ * - Time context, energy state, user preferences, etc.
+ * - Reserved for future implementation
  */
 export interface ParsedQuery {
+    // PART 1: Task Content (Keywords & Semantic Search)
+    keywords?: string[]; // Expanded keywords for semantic matching
+    coreKeywords?: string[]; // Original extracted keywords before expansion
+    
+    // PART 2: Task Attributes (Structured Filters)
     priority?: number; // 1, 2, 3, 4
     dueDate?: string; // "any" (has due date), "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
     status?: string; // "open", "completed", "inProgress"
     folder?: string;
     tags?: string[];
-    keywords?: string[];
+    
+    // PART 3: Executor/Environment Context (Future - Reserved)
+    // timeContext?: string; // Current time, time of day, etc.
+    // energyState?: string; // User's energy level, focus state
+    // userPreferences?: Record<string, any>; // Custom user context
+    
+    // Metadata
     originalQuery?: string;
+    expansionMetadata?: {
+        enabled: boolean;
+        maxExpansionsPerKeyword: number;
+        languagesUsed: string[];
+        totalKeywords: number; // Total after expansion
+        coreKeywordsCount: number; // Original count before expansion
+    };
 }
 
 /**
@@ -221,6 +249,13 @@ export class QueryParserService {
                 ? settings.queryLanguages
                 : ["English", "中文"];
         const languageList = queryLanguages.join(", ");
+        
+        // Get semantic expansion settings
+        const maxExpansions = settings.maxKeywordExpansions || 5;
+        const expansionEnabled = settings.enableSemanticExpansion !== false;
+        const totalMaxKeywords = expansionEnabled 
+            ? maxExpansions * queryLanguages.length 
+            : queryLanguages.length; // Just translations, no extra expansions
 
         // Build user-specific mappings (using shared PromptBuilderService)
         const priorityMapping =
@@ -232,9 +267,26 @@ export class QueryParserService {
 
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
 
-SEMANTIC KEYWORD EXPANSION:
-The user has configured the following languages for semantic search: ${languageList}
-When extracting keywords, provide translations and semantic variations in ALL configured languages to enable cross-language matching.
+THREE-PART QUERY PARSING SYSTEM:
+This system extracts queries into three distinct parts:
+
+PART 1: TASK CONTENT (Keywords)
+- Core search terms that match task content
+- Semantic expansions for better recall
+
+PART 2: TASK ATTRIBUTES (Structured Filters)  
+- Priority, due date, status, folder, tags
+- Used for precise filtering via DataView API
+
+PART 3: EXECUTOR/ENVIRONMENT CONTEXT (Reserved for future)
+- Time context, energy state, etc.
+- Not yet implemented
+
+SEMANTIC KEYWORD EXPANSION SETTINGS:
+- Languages configured: ${languageList}
+- Max expansions per keyword: ${maxExpansions}
+- Expansion enabled: ${expansionEnabled}
+- Total max keywords per core keyword: ${totalMaxKeywords} (${maxExpansions} per language × ${queryLanguages.length} languages)
 
 ${priorityMapping}
 
@@ -259,40 +311,71 @@ IMPORTANT for dueDate:
 
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
+  "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
+  "keywords": [<array of EXPANDED search terms with translations and semantic variations>],
   "priority": <number or null>,
   "dueDate": <string or null>,
   "status": <string or null>,
   "folder": <string or null>,
-  "tags": [<hashtags from query, WITHOUT the # symbol>],
-  "keywords": [<array of search terms>]
+  "tags": [<hashtags from query, WITHOUT the # symbol>]
 }
 
 ⚠️ CRITICAL FIELD USAGE RULES:
-1. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"], #personal → ["personal"])
+1. "coreKeywords" field: ORIGINAL keywords extracted from query (BEFORE expansion)
+   - Extract main concepts/nouns/verbs from the query
+   - Remove stop words and filter-related terms
+   - These are the BASE keywords before semantic expansion
+   - Example: "How to develop plugin" → ["develop", "plugin"]
+
+2. "keywords" field: EXPANDED keywords with semantic variations
+   - Start with coreKeywords
+   - Add translations for each coreKeyword in ALL configured languages
+   - Add up to ${maxExpansions} semantic variations per language
+   - Total: up to ${totalMaxKeywords} keywords per core keyword
+   - Example: "develop" → ["develop", "开发", "build", "构建", "create", "创建", "implement", "实现", "code", "编程"]
+   - Do NOT include hashtags in keywords
+   
+3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
    - ONLY extract tags that are explicitly marked with # in the query
    - Remove the # symbol when adding to the array
    - If no hashtags in query, leave empty []
    
-2. "keywords" field: Extract semantic search terms for matching task content
-   - These are the main search terms (nouns, verbs, concepts)
-   - Provide translations in ALL configured languages
-   - Do NOT include hashtags in keywords
-   
-3. Return ONLY valid JSON, no reasoning text, no <think> tags, just pure JSON
+4. Return ONLY valid JSON, no reasoning text, no <think> tags, just pure JSON
 
-KEYWORD EXTRACTION RULES:
-- Extract INDIVIDUAL WORDS and SHORT TERMS (not long phrases) in ALL configured languages (${languageList})
-- Examples for semantic keyword expansion:
-  * Query: "如何开发 Task Chat" → Extract: ["开发", "develop", "Task", "Chat"] (removed "如何")
-  * Query: "How to develop Obsidian AI plugin" → Extract: ["develop", "开发", "Obsidian", "AI", "plugin", "插件"] (removed "how")
-  * Query: "如何开发 Obsidian AI 插件" → Extract: ["开发", "develop", "Obsidian", "AI", "插件", "plugin"] (removed "如何")
-  * Query: "Fix bug" → Extract: ["fix", "修复", "bug", "错误", "问题"]
-- Examples with tags and keywords:
-  * Query: "如何开发 Task Chat" → {"keywords": ["开发", "develop", "Task", "Chat"], "tags": []} (removed "如何")
-  * Query: "tasks with #work priority 1" → {"keywords": [], "tags": ["work"], "priority": 1} (removed "tasks")
-  * Query: "#personal high priority tasks" → {"keywords": [], "tags": ["personal"], "priority": 1} (removed "tasks")
-  * Query: "Fix bug #urgent #backend" → {"keywords": ["fix", "修复", "bug", "错误"], "tags": ["urgent", "backend"]}
-  * Query: "开发任务 #项目A" → {"keywords": ["开发", "develop"], "tags": ["项目A"]} (removed "任务", "task")
+KEYWORD EXTRACTION & EXPANSION EXAMPLES:
+
+Example 1: Basic expansion
+  Query: "如何开发 Task Chat"
+  {
+    "coreKeywords": ["开发", "Task", "Chat"],
+    "keywords": ["开发", "develop", "build", "create", "implement", "Task", "Chat"],
+    "tags": []
+  }
+
+Example 2: With multiple languages (max ${maxExpansions} per language)
+  Query: "Fix bug"
+  {
+    "coreKeywords": ["fix", "bug"],
+    "keywords": ["fix", "修复", "repair", "解决", "solve", "处理", "bug", "错误", "error", "问题", "issue", "故障"],
+    "tags": []
+  }
+
+Example 3: With task attributes
+  Query: "tasks with #work priority 1"
+  {
+    "coreKeywords": [],
+    "keywords": [],
+    "tags": ["work"],
+    "priority": 1
+  }
+
+Example 4: Mixed content
+  Query: "Fix bug #urgent #backend"
+  {
+    "coreKeywords": ["fix", "bug"],
+    "keywords": ["fix", "修复", "repair", "solve", "bug", "错误", "error", "问题"],
+    "tags": ["urgent", "backend"]
+  }
 
 CRITICAL RULES:
 - Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
@@ -356,17 +439,44 @@ CRITICAL RULES:
                 );
             }
 
-            const result = {
+            // Extract core keywords (before expansion) and expanded keywords
+            const coreKeywords = parsed.coreKeywords || [];
+            const expandedKeywords = filteredKeywords;
+            
+            // Build expansion metadata
+            const expansionMetadata = {
+                enabled: expansionEnabled,
+                maxExpansionsPerKeyword: maxExpansions,
+                languagesUsed: queryLanguages,
+                coreKeywordsCount: coreKeywords.length,
+                totalKeywords: expandedKeywords.length,
+            };
+            
+            console.log("[Task Chat] Semantic expansion:", {
+                core: coreKeywords.length,
+                expanded: expandedKeywords.length,
+                ratio: expandedKeywords.length / Math.max(coreKeywords.length, 1),
+                enabled: expansionEnabled,
+            });
+
+            const result: ParsedQuery = {
+                // PART 1: Task Content
+                coreKeywords: coreKeywords,
+                keywords: expandedKeywords,
+                
+                // PART 2: Task Attributes
                 priority: parsed.priority || undefined,
                 dueDate: parsed.dueDate || undefined,
                 status: parsed.status || undefined,
                 folder: parsed.folder || undefined,
                 tags: parsed.tags || [],
-                keywords: filteredKeywords,
+                
+                // Metadata
                 originalQuery: query,
+                expansionMetadata: expansionMetadata,
             };
 
-            console.log("[Task Chat] Query parser returning:", result);
+            console.log("[Task Chat] Query parser returning (three-part):", result);
             return result;
         } catch (error) {
             console.error("Query parsing error:", error);

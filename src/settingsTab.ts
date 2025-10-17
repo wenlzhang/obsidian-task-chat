@@ -392,8 +392,45 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Semantic Expansion Settings
+        containerEl.createEl("h4", { text: "Semantic expansion" });
+        containerEl.createEl("p", {
+            text: "Control how AI expands keywords for better task matching in Smart Search and Task Chat modes. Expansion multiplies keywords across configured languages to find tasks written in any language.",
+            cls: "setting-item-description",
+        });
+
+        new Setting(containerEl)
+            .setName("Enable semantic expansion")
+            .setDesc(
+                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic variations and translations in all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', etc. Improves recall but may increase token usage.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableSemanticExpansion)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableSemanticExpansion = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Max keyword expansions per language")
+            .setDesc(
+                "Maximum semantic variations to generate per keyword per language. Default: 5. Total keywords = (max expansions × number of languages). Example: 5 expansions × 2 languages = 10 keywords per core keyword. Higher values improve recall but increase AI token usage.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 15, 1)
+                    .setValue(this.plugin.settings.maxKeywordExpansions)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxKeywordExpansions = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Task Display Settings Section
-        containerEl.createEl("h3", { text: "Task Display" });
+        containerEl.createEl("h3", { text: "Task display" });
 
         new Setting(containerEl)
             .setName("Max direct results")

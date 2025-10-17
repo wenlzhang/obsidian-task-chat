@@ -71,6 +71,10 @@ export interface PluginSettings {
     currentChatMode: "simple" | "smart" | "chat"; // Current session's chat mode (persists in data.json across reloads, resets on new session)
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
+    // Semantic Expansion Settings (Smart Search & Task Chat modes)
+    maxKeywordExpansions: number; // Max semantic variations per keyword (e.g., 10). Total = maxKeywordExpansions * number of languages
+    enableSemanticExpansion: boolean; // Enable/disable semantic keyword expansion
+
     // Task Display Settings
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
@@ -171,6 +175,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     defaultChatMode: "simple", // Default to free mode for new sessions
     currentChatMode: "simple", // Current session's chat mode (stored in data.json)
     queryLanguages: ["English", "中文"], // Default: English and Chinese
+
+    // Semantic Expansion Settings
+    maxKeywordExpansions: 5, // Max semantic variations per keyword per language (conservative default)
+    enableSemanticExpansion: true, // Enable semantic expansion by default
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher
