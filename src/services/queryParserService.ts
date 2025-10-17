@@ -254,9 +254,11 @@ export class QueryParserService {
         const maxExpansions = settings.maxKeywordExpansions || 5;
         const expansionEnabled = settings.enableSemanticExpansion !== false;
         // Max keywords to generate PER core keyword (not total for entire query)
+        // Formula: maxExpansions per language × number of languages
+        // Example: 5 expansions × 3 languages = 15 semantic equivalents per keyword
         const maxKeywordsPerCore = expansionEnabled
             ? maxExpansions * queryLanguages.length
-            : queryLanguages.length; // Just translations, no extra expansions
+            : queryLanguages.length; // Just original keywords in each language, no semantic expansion
 
         // Build user-specific mappings (using shared PromptBuilderService)
         const priorityMapping =
@@ -343,7 +345,7 @@ IMPORTANT for dueDate:
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
-  "keywords": [<array of EXPANDED search terms with translations and semantic variations>],
+  "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
   "priority": <number or null>,
   "dueDate": <string or null>,
   "status": <string or null>,
@@ -524,7 +526,7 @@ Example 4: Mixed content
 CRITICAL RULES:
 - Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
 - Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
-- For each meaningful keyword, provide translations in ALL configured languages
+- For each meaningful keyword, generate semantic equivalents in ALL configured languages
 - Keywords should be 1-2 words maximum, prefer single words for better substring matching
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords

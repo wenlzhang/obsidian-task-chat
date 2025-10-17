@@ -373,7 +373,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query languages for semantic search")
             .setDesc(
-                "Languages to use for semantic keyword expansion and AI response. Used by Smart Search and Task Chat modes. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, keywords are automatically translated to all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
+                "Languages to use for semantic keyword expansion and AI response. Used by Smart Search and Task Chat modes. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, semantic equivalents are automatically generated in all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text
@@ -402,7 +402,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable semantic expansion")
             .setDesc(
-                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic variations and translations in all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', etc. Improves recall but may increase token usage.",
+                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic equivalents across all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', 'utveckla', etc. This is NOT translation but direct cross-language semantic equivalence generation. Improves recall but may increase token usage.",
             )
             .addToggle((toggle) =>
                 toggle
