@@ -292,15 +292,28 @@ SEMANTIC KEYWORD EXPANSION SETTINGS:
   (Formula: ${maxExpansions} expansions/language × ${queryLanguages.length} languages)
 
 🚨 CRITICAL EXPANSION REQUIREMENT:
-You MUST expand EACH core keyword into ALL ${queryLanguages.length} configured languages: ${languageList}
-For EACH core keyword:
-- Generate ${maxExpansions} variations in ${queryLanguages[0] || "first language"}
-- Generate ${maxExpansions} variations in ${queryLanguages[1] || "second language"}
-${queryLanguages[2] ? `- Generate ${maxExpansions} variations in ${queryLanguages[2]}` : ""}
-${queryLanguages[3] ? `- Generate ${maxExpansions} variations in ${queryLanguages[3]}` : ""}
-- Total: ~${maxKeywordsPerCore} variations per core keyword
+You MUST expand EVERY SINGLE core keyword into ALL ${queryLanguages.length} configured languages: ${languageList}
 
-⚠️ DO NOT skip any configured language! If you only expand into some languages, the system will reject your response.
+⚠️ KEY CONCEPT: Direct Cross-Language Semantic Equivalence
+- This is NOT a translation task!
+- For EACH keyword, generate semantic equivalents DIRECTLY in each target language
+- Think: "What are different ways to express this CONCEPT in language X?"
+- Example: "开发" in English context = develop, build, create, code, implement
+- Example: "Task" in Chinese context = 任务, 工作, 事项, 项目, 作业
+
+For EACH core keyword (including proper nouns like "Task", "Chat", etc.):
+- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[0] || "first language"}
+- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[1] || "second language"}
+${queryLanguages[2] ? `- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[2]}` : ""}
+${queryLanguages[3] ? `- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[3]}` : ""}
+- Total: EXACTLY ${maxKeywordsPerCore} variations per core keyword
+
+⚠️ NO EXCEPTIONS:
+- Do NOT skip any language for ANY keyword (regardless of keyword's source language)
+- Do NOT treat proper nouns differently - expand them too!
+- Do NOT leave keywords unexpanded
+- Do NOT just translate - generate semantic equivalents!
+- EVERY core keyword MUST have ${maxKeywordsPerCore} total variations
 
 Example with ${queryLanguages.length} languages and max ${maxExpansions} expansions:
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
@@ -352,27 +365,40 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
    - These are the BASE keywords before semantic expansion
    - Example: "How to develop plugin" → ["develop", "plugin"]
 
-2. "keywords" field: FULLY EXPANDED keywords with ALL semantic variations
-   - This should contain ALL variations for ALL core keywords combined
-   - For EACH core keyword, generate EXACTLY ${maxExpansions} variations in EACH of the ${queryLanguages.length} languages: ${languageList}
-   - Total per core keyword: ~${maxKeywordsPerCore} variations
-   - Include original word + translations + synonyms + related terms
+2. "keywords" field: FULLY EXPANDED keywords with ALL semantic equivalents
+   - This should contain ALL semantic equivalents for ALL core keywords combined
+   - For EVERY SINGLE core keyword (no exceptions!), you MUST generate:
+     * ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[0] || "first language"}
+     * ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[1] || "second language"}
+     ${queryLanguages[2] ? `* ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[2]}` : ""}
+   - Total per core keyword: EXACTLY ${maxKeywordsPerCore} variations
    
-   🚨 MANDATORY: Expand into ALL ${queryLanguages.length} languages!
+   🚨 IMPORTANT: Direct Cross-Language Generation
+   - Do NOT translate! Generate semantic equivalents DIRECTLY in each language
+   - Think: "How would a native speaker express this concept in language X?"
+   - For Chinese keyword "开发": What English terms express 'development/building'?
+   - For English keyword "Task": What Chinese terms express 'task/work item'?
+   - Include: synonyms, related terms, alternative phrases, context-appropriate variants
+   
+   🚨 MANDATORY RULE: 
+   - EVERY core keyword needs ${maxKeywordsPerCore} total variations
+   - Proper nouns (like "Task", "Chat") MUST also be expanded
+   - Generate equivalents in ALL ${queryLanguages.length} languages (not just non-source languages)
+   - If you have 4 core keywords, you MUST return ~${maxKeywordsPerCore * 4} total keywords
    
    Example for ONE core keyword "develop" with languages [${languageList}]:
    
-   INSTRUCTION: Generate ${maxExpansions} variations in EACH language:
-   - ${queryLanguages[0] || "Language 1"}: ${maxExpansions} variations
-   ${queryLanguages[1] ? `- ${queryLanguages[1]}: ${maxExpansions} variations` : ""}
-   ${queryLanguages[2] ? `- ${queryLanguages[2]}: ${maxExpansions} variations` : ""}
+   INSTRUCTION: Generate EXACTLY ${maxExpansions} variations in EACH of the ${queryLanguages.length} languages:
+   - ${queryLanguages[0] || "Language 1"}: ${maxExpansions} variations (develop, build, create, code, implement)
+   ${queryLanguages[1] ? `- ${queryLanguages[1]}: ${maxExpansions} variations (开发, 构建, 创建, 编程, 实现)` : ""}
+   ${queryLanguages[2] ? `- ${queryLanguages[2]}: ${maxExpansions} variations (utveckla, bygga, skapa, koda, implementera)` : ""}
+   Total: ${maxKeywordsPerCore} keywords
    
-   Return this as VALID JSON (NO comments allowed in JSON!):
+   Return as VALID JSON:
    [
      "develop", "build", "create", "code", "implement",
      ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "实现",` : ""}
-     ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "koda", "implementera",` : ""}
-     "develop"
+     ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "koda", "implementera"` : ""}
    ]
    
    Example for TWO core keywords "fix" + "bug" with ${queryLanguages.length} languages:
@@ -403,25 +429,65 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
 
 KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 
-Example 1: Basic expansion with ${queryLanguages.length} languages
+Example 1: Mixed-language query - Direct cross-language semantic equivalence
   Query: "如何开发 Task Chat"
+  
+  THINKING PROCESS (for you to understand, not include in output):
+  - "开发" is Chinese → Generate English/Swedish equivalents for "development/building"
+  - "Task" is English → Generate Chinese/Swedish equivalents for "task/work item"
+  - "Chat" is English → Generate Chinese/Swedish equivalents for "chat/conversation"
+  
+  INSTRUCTION for EACH keyword:
+  - "开发": Think "What are ${maxExpansions} ways to express 'development' in each language?"
+    * English: develop, build, create, implement, code
+    * 中文: 开发, 构建, 创建, 编程, 制作
+    * Swedish: utveckla, bygga, skapa, programmera, implementera
+    
+  - "Task": Think "What are ${maxExpansions} ways to express 'task/work' in each language?"
+    * English: task, work, item, assignment, job
+    * 中文: 任务, 工作, 事项, 项目, 作业
+    * Swedish: uppgift, arbete, göra, uppdrag, ärende
+    
+  - "Chat": Think "What are ${maxExpansions} ways to express 'chat/conversation' in each language?"
+    * English: chat, conversation, talk, discussion, dialogue
+    * 中文: 聊天, 对话, 交流, 谈话, 沟通
+    * Swedish: chatt, konversation, prata, diskussion, samtal
+  
   {
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
       "开发", "develop", "build", "create", "implement",
-      ${queryLanguages[1] ? `"开发", "构建", "创建", "制作", "编程",` : ""}
-      ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "programmera",` : ""}
-      "Task", "Chat"
+      ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "制作",` : ""}
+      ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "programmera", "implementera",` : ""}
+      "task", "work", "item", "assignment", "job",
+      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
+      ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende",` : ""}
+      "chat", "conversation", "talk", "discussion", "dialogue",
+      ${queryLanguages[1] ? `"聊天", "对话", "交流", "谈话", "沟通",` : ""}
+      ${queryLanguages[2] ? `"chatt", "konversation", "prata", "diskussion", "samtal"` : ""}
     ],
     "tags": []
   }
+  
+  Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
 
-Example 2: Full expansion with ALL ${queryLanguages.length} languages
+Example 2: English query - Generate semantic equivalents in ALL languages
   Query: "Fix bug"
   
-  INSTRUCTION: 
-  - "fix": ${maxExpansions} variations × ${queryLanguages.length} languages = ~${maxKeywordsPerCore} total
-  - "bug": ${maxExpansions} variations × ${queryLanguages.length} languages = ~${maxKeywordsPerCore} total
+  THINKING PROCESS:
+  - "fix" is English → What are semantic equivalents in English/Chinese/Swedish?
+  - "bug" is English → What are semantic equivalents in English/Chinese/Swedish?
+  
+  INSTRUCTION:
+  - "fix": Think "How to express 'fixing/repairing' concept in each language?"
+    * English context: fix, repair, solve, correct, resolve
+    * Chinese context: 修复, 解决, 修正, 处理, 纠正
+    * Swedish context: fixa, reparera, lösa, korrigera, åtgärda
+    
+  - "bug": Think "How to express 'bug/error' concept in each language?"
+    * English context: bug, error, issue, defect, problem
+    * Chinese context: 错误, 问题, 缺陷, 故障, 漏洞
+    * Swedish context: bugg, fel, problem, defekt, felaktighet
   
   {
     "coreKeywords": ["fix", "bug"],
@@ -628,12 +694,13 @@ CRITICAL RULES:
                     }
                 });
 
-                console.log("[Task Chat] Language Distribution (estimated):");
-
+                console.log("[Task Chat] Language Distribution (estimated - for diagnostics only):");
+                console.log("[Task Chat] Note: This uses heuristics to estimate distribution. Actual functionality doesn't depend on detection.");
+                
                 // Check for missing languages
                 const missingLanguages: string[] = [];
                 const expectedMinPerLanguage = Math.floor(maxExpansions * 0.5); // At least 50% of expected
-
+                
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
                         console.log(
@@ -656,16 +723,19 @@ CRITICAL RULES:
                     }
                 });
 
-                // Critical warning if languages are completely missing
+                // Warning if languages appear to be missing (based on heuristic detection)
                 if (missingLanguages.length > 0) {
-                    console.error(
-                        `[Task Chat] 🚨 CRITICAL: AI failed to expand into ${missingLanguages.length} language(s): ${missingLanguages.join(", ")}`,
+                    console.warn(
+                        `[Task Chat] ⚠️ Language detection heuristic couldn't find ${missingLanguages.length} language(s): ${missingLanguages.join(", ")}`,
                     );
-                    console.error(
-                        `[Task Chat] This will cause ${missingLanguages.join(", ")} tasks to be missed in search results!`,
+                    console.warn(
+                        `[Task Chat] This may indicate AI under-expansion. Check if keywords are actually present for all languages.`,
                     );
-                    console.error(
-                        `[Task Chat] AI may not understand the language configuration. Consider using well-known language names.`,
+                    console.warn(
+                        `[Task Chat] Note: Detection is imperfect - some words without special characters may be miscategorized.`,
+                    );
+                    console.warn(
+                        `[Task Chat] Recommendation: If expansion count is low (${expandedKeywords.length} < ${coreKeywords.length * maxKeywordsPerCore}), AI may not understand language name "${missingLanguages.join(", ")}".`,
                     );
                 }
             }
