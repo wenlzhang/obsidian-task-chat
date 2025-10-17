@@ -222,4 +222,53 @@ TASK ORDERING (User-Configured):
 Sort criteria in use (in priority order):
 ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}`;
     }
+
+    /**
+     * Build metadata guidance explaining how task properties are structured
+     * Used in task analysis prompts to ensure AI correctly interprets task metadata
+     */
+    static buildMetadataGuidance(settings: PluginSettings): string {
+        // Get user's configured values
+        const statusNames = Object.values(settings.taskStatusDisplayNames).join(
+            ", ",
+        );
+        const priorityMappings = Object.entries(
+            settings.dataviewPriorityMapping,
+        )
+            .map(([k, v]) => `${v[0] || k}=${k}`)
+            .join(", ");
+
+        return `
+IMPORTANT: UNDERSTANDING TASK METADATA (User-Configured)
+- Each task is displayed with its text content AND structured metadata
+- Metadata format: "Status: X | Priority: Y | Due: Z | Created: C | Completed: D | Folder: W | Tags: T1, T2"
+- ONLY use metadata shown explicitly - do NOT infer properties from task text
+
+FIELD-SPECIFIC RULES:
+- **Status**: Uses your configured display names (${statusNames})
+  → ONLY trust "Status:" field, NOT text content
+  
+- **Priority**: Uses your configured values (${priorityMappings})
+  → ONLY trust "Priority:" field, NOT text content
+  → Lower numbers = higher priority (1=highest, 4=lowest)
+  
+- **Due date**: Field name "${settings.dataviewKeys.dueDate}" in user's vault
+  → ONLY trust "Due:" field, NOT text content
+  → If task has NO "Due:" field, it has NO due date
+  → Emojis in text (📝, ⏰) are NOT due dates
+  → Timestamps in text are NOT due dates
+  
+- **Created date**: Field name "${settings.dataviewKeys.createdDate}" in user's vault
+  → Shows when task was created
+  → Appears in "Created:" field
+  
+- **Completed date**: Field name "${settings.dataviewKeys.completedDate}" in user's vault
+  → Shows when task was finished
+  → Appears in "Completed:" field
+  
+- **Folder**: Task's location in vault hierarchy
+- **Tags**: Task's assigned tags from vault
+
+CRITICAL: Dates/emojis/timestamps in task TEXT are NOT metadata unless shown in structured fields!`;
+    }
 }

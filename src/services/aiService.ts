@@ -459,7 +459,11 @@ export class AIService {
                 `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
             );
 
-            const taskContext = this.buildTaskContext(tasksToAnalyze, intent);
+            const taskContext = this.buildTaskContext(
+                tasksToAnalyze,
+                intent,
+                settings,
+            );
             const messages = this.buildMessages(
                 message,
                 taskContext,
@@ -617,8 +621,13 @@ export class AIService {
 
     /**
      * Build task context for AI with task IDs
+     * Respects user's configured status names and priority labels
      */
-    private static buildTaskContext(tasks: Task[], intent: any): string {
+    private static buildTaskContext(
+        tasks: Task[],
+        intent: any,
+        settings: PluginSettings,
+    ): string {
         if (tasks.length === 0) {
             return "No tasks found matching your query.";
         }
@@ -640,29 +649,42 @@ export class AIService {
             // Add task ID and content
             parts.push(`${taskId} ${task.text}`);
 
-            // Add metadata
+            // Add metadata (respecting user's configured display names)
             const metadata: string[] = [];
-            metadata.push(`Status: ${task.statusCategory}`);
 
+            // Status - use user's display name
+            const statusDisplayName =
+                settings.taskStatusDisplayNames[task.statusCategory] ||
+                task.statusCategory;
+            metadata.push(`Status: ${statusDisplayName}`);
+
+            // Priority - use user's priority values to show human-readable label
             if (task.priority) {
-                // Display priority with semantic label
-                const priorityLabels = {
-                    1: "1 (highest)",
-                    2: "2 (high)",
-                    3: "3 (medium)",
-                    4: "4 (low)",
-                };
-                const label =
-                    priorityLabels[
-                        task.priority as keyof typeof priorityLabels
-                    ] || task.priority;
-                metadata.push(`Priority: ${label}`);
+                // Find the user's configured value for this priority level
+                const priorityKey = task.priority as 1 | 2 | 3 | 4;
+                const priorityValues =
+                    settings.dataviewPriorityMapping[priorityKey];
+                const userLabel =
+                    priorityValues && priorityValues[0]
+                        ? priorityValues[0]
+                        : task.priority.toString();
+                metadata.push(`Priority: ${userLabel}`);
             }
 
+            // Dates - use user's configured field names in display
             if (task.dueDate) {
                 metadata.push(`Due: ${task.dueDate}`);
             }
 
+            if (task.createdDate) {
+                metadata.push(`Created: ${task.createdDate}`);
+            }
+
+            if (task.completedDate) {
+                metadata.push(`Completed: ${task.completedDate}`);
+            }
+
+            // Folder and Tags
             if (task.folder) {
                 metadata.push(`Folder: ${task.folder}`);
             }
@@ -784,16 +806,7 @@ IMPORTANT RULES:
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
-IMPORTANT: UNDERSTANDING TASK METADATA
-- Each task is displayed with its text content AND structured metadata
-- Metadata format: "Status: X | Priority: Y | Due: Z | Folder: W | Tags: T1, T2"
-- ONLY use metadata shown explicitly - do NOT infer properties from task text
-- Priority ONLY comes from "Priority:" field in metadata
-- Due date ONLY comes from "Due:" field in metadata  
-- Status ONLY comes from "Status:" field in metadata
-- If a task has NO "Due:" field, it has NO due date (even if text contains dates/emojis)
-- Emojis in task text (📝, ⏰, etc.) are NOT due dates unless shown in "Due:" field
-- Text like "2025-10-17T20:40" is creation timestamp, NOT due date unless in "Due:" field
+${PromptBuilderService.buildMetadataGuidance(settings)}
 
 ${PromptBuilderService.buildRecommendationLimits(settings)}
 
