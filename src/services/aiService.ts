@@ -458,6 +458,26 @@ export class AIService {
             console.log(
                 `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
             );
+            console.log(
+                `[Task Chat] Total filtered tasks available: ${qualityFilteredTasks.length}`,
+            );
+
+            // DEBUG: Log first 10 tasks with their sort criteria values
+            console.log(
+                `[Task Chat] === TOP 10 TASKS DEBUG (sorted by ${resolvedAIContextSortOrder.join(" → ")}) ===`,
+            );
+            tasksToAnalyze.slice(0, 10).forEach((task, index) => {
+                const score = relevanceScores?.get(task.id) || 0;
+                const dueInfo = task.dueDate || "none";
+                const priorityInfo =
+                    task.priority !== undefined ? task.priority : "none";
+                console.log(
+                    `[Task Chat]   ${index + 1}. [score=${score}] [due=${dueInfo}] [p=${priorityInfo}] ${task.text.substring(0, 60)}...`,
+                );
+            });
+            console.log(
+                `[Task Chat] ===========================================`,
+            );
 
             const taskContext = this.buildTaskContext(
                 tasksToAnalyze,

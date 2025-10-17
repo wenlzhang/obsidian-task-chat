@@ -184,7 +184,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher
-    maxTasksForAI: 30, // More context helps AI give better recommendations
+    maxTasksForAI: 100, // Increased from 30 to 100: more context = better recommendations, especially with semantic expansion (small token cost increase)
     maxRecommendations: 20, // Keep final list manageable for user
     relevanceThreshold: 30, // Minimum relevance score (0-100). Lower = more results. 0 = adaptive.
 

@@ -467,11 +467,15 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
             .setDesc(
-                "Maximum tasks to send to AI for analysis. Default: 30. More context helps AI give better recommendations but increases token usage.",
+                "Maximum tasks to send to AI for analysis in Task Chat mode. " +
+                    "Default: 100 (increased from 30 to provide better context). " +
+                    "Higher values help AI see important tasks with due dates/priorities that may rank outside top 30. " +
+                    "Token cost impact: 30→$0.0006, 100→$0.0015 per query (gpt-4o-mini). " +
+                    "Recommended: 100 for comprehensive results, 50 for balanced, 30 for minimal cost.",
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(5, 100, 5)
+                    .setLimits(10, 500, 10)
                     .setValue(this.plugin.settings.maxTasksForAI)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
