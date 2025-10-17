@@ -834,7 +834,7 @@ CRITICAL RULES:
                 model: settings.model,
                 messages: messages,
                 temperature: 0.1, // Low temperature for consistent parsing
-                max_tokens: 200, // Short response for JSON
+                max_tokens: 1000, // Increased for full semantic expansion (60 keywords)
             }),
         });
 
@@ -879,7 +879,7 @@ CRITICAL RULES:
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
                 temperature: 0.1,
-                max_tokens: 200,
+                max_tokens: 1000, // Increased for full semantic expansion (60 keywords)
             }),
         });
 
