@@ -819,6 +819,13 @@ QUERY UNDERSTANDING:
 - If multiple filters were detected, tasks have been pre-filtered to match ALL criteria
 - Your job is to provide helpful context and prioritization for the filtered results${filterContext}
 
+TASK ORDERING:
+- Tasks are automatically sorted using multi-criteria sorting (relevance → due date → priority)
+- Earlier tasks in the list are MORE relevant/urgent than later ones
+- [TASK_1] through [TASK_5] are typically the most important
+- When recommending tasks, prioritize earlier task IDs unless there's a specific reason not to
+- The sorting respects: keyword relevance (best matches first), urgency (overdue → today → future), and priority (1=highest → 4=lowest)
+
 ${taskContext}`;
 
         const messages: any[] = [
