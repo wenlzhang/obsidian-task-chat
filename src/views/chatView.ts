@@ -332,6 +332,19 @@ export class ChatView extends ItemView {
             return;
         }
 
+        // Determine what text to show based on current mode
+        const currentMode =
+            this.searchModeOverride || this.plugin.settings.searchMode;
+        let indicatorText: string;
+
+        if (currentMode === "simple") {
+            indicatorText = "Simple Search";
+        } else if (currentMode === "smart") {
+            indicatorText = "Smart Search";
+        } else {
+            indicatorText = "Task Chat";
+        }
+
         this.typingIndicator = this.messagesEl.createDiv(
             "task-chat-message task-chat-message-assistant task-chat-typing",
         );
@@ -339,7 +352,9 @@ export class ChatView extends ItemView {
         const headerEl = this.typingIndicator.createDiv(
             "task-chat-message-header",
         );
-        headerEl.createEl("strong", { text: "AI" });
+
+        const headerLeft = headerEl.createDiv("task-chat-message-header-left");
+        headerLeft.createEl("strong", { text: indicatorText });
 
         const contentEl = this.typingIndicator.createDiv(
             "task-chat-message-content",
@@ -374,6 +389,9 @@ export class ChatView extends ItemView {
         // Message header
         const headerEl = messageEl.createDiv("task-chat-message-header");
 
+        // Left side: role name and timestamp
+        const headerLeft = headerEl.createDiv("task-chat-message-header-left");
+
         // Map message roles to display names
         let roleName: string;
         if (message.role === "user") {
@@ -388,10 +406,35 @@ export class ChatView extends ItemView {
             // Fallback for legacy messages
             roleName = message.role === "assistant" ? "Task Chat" : "System";
         }
-        headerEl.createEl("strong", { text: roleName });
-        headerEl.createEl("span", {
+        headerLeft.createEl("strong", { text: roleName });
+        headerLeft.createEl("span", {
             text: new Date(message.timestamp).toLocaleTimeString(),
             cls: "task-chat-message-time",
+        });
+
+        // Right side: copy button
+        const copyBtn = headerEl.createEl("button", {
+            cls: "task-chat-copy-button",
+            attr: {
+                "aria-label": "Copy message",
+            },
+        });
+        copyBtn.addEventListener("click", () => {
+            let textToCopy = message.content;
+
+            // Include recommended tasks if present
+            if (
+                message.recommendedTasks &&
+                message.recommendedTasks.length > 0
+            ) {
+                textToCopy += "\n\nRecommended tasks:\n";
+                message.recommendedTasks.forEach((task, index) => {
+                    textToCopy += `${index + 1}. ${task.text}\n`;
+                });
+            }
+
+            navigator.clipboard.writeText(textToCopy);
+            new Notice("Message copied to clipboard");
         });
 
         // Message content
@@ -509,31 +552,6 @@ export class ChatView extends ItemView {
                 text: "📊 " + parts.join(" • "),
             });
         }
-
-        // Add copy button at bottom of message
-        const copyBtn = messageEl.createEl("button", {
-            cls: "task-chat-copy-button",
-            attr: {
-                "aria-label": "Copy message",
-            },
-        });
-        copyBtn.addEventListener("click", () => {
-            let textToCopy = message.content;
-
-            // Include recommended tasks if they exist
-            if (
-                message.recommendedTasks &&
-                message.recommendedTasks.length > 0
-            ) {
-                textToCopy += "\n\nRecommended tasks:\n";
-                message.recommendedTasks.forEach((task, index) => {
-                    textToCopy += `${index + 1}. - [${task.status}] ${task.text}\n`;
-                });
-            }
-
-            navigator.clipboard.writeText(textToCopy);
-            new Notice("Message copied to clipboard");
-        });
     }
 
     /**

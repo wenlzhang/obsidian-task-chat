@@ -275,19 +275,13 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Search mode")
             .setDesc(
-                "Choose how Task Chat processes your queries. Simple Search is free and fast. Smart Search uses AI to expand keywords (~$0.0001/query). Task Chat provides full AI analysis and recommendations (~$0.0021/query).",
+                "Choose how Task Chat processes your queries. Simple Search is free and fast. Smart Search uses AI to expand keywords (very low cost). Task Chat provides full AI analysis and recommendations (higher cost).",
             )
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("simple", "Simple Search - Free keyword search")
-                    .addOption(
-                        "smart",
-                        "Smart Search - AI keyword expansion (~$0.0001)",
-                    )
-                    .addOption(
-                        "chat",
-                        "Task Chat - Full AI assistant (~$0.0021)",
-                    )
+                    .addOption("simple", "Simple Search - Free")
+                    .addOption("smart", "Smart Search - AI keyword expansion")
+                    .addOption("chat", "Task Chat - Full AI assistant")
                     .setValue(this.plugin.settings.searchMode)
                     .onChange(async (value: "simple" | "smart" | "chat") => {
                         this.plugin.settings.searchMode = value;
@@ -324,7 +318,7 @@ export class SettingsTab extends PluginSettingTab {
                 text: "Sorting: By user preference (relevance, due date, priority, etc.)",
             });
             simpleList.createEl("li", {
-                text: "Cost: $0 (completely free)",
+                text: "Cost: Free (no AI used)",
             });
             simpleList.createEl("li", {
                 text: "Best for: Quick searches, simple filters, cost-free operation",
@@ -346,7 +340,7 @@ export class SettingsTab extends PluginSettingTab {
                 text: "Sorting: By user preference (relevance, due date, priority, etc.)",
             });
             smartList.createEl("li", {
-                text: "Cost: ~$0.0001 per query",
+                text: "Cost: Very low (AI expands search keywords)",
             });
             smartList.createEl("li", {
                 text: "Best for: Multilingual searches, broader results, semantic matching",
@@ -368,7 +362,7 @@ export class SettingsTab extends PluginSettingTab {
                 text: "Sorting: By user preference + Auto mode available (AI-driven)",
             });
             chatList.createEl("li", {
-                text: "Cost: ~$0.0021 per query",
+                text: "Cost: Higher (AI analyzes tasks and provides insights)",
             });
             chatList.createEl("li", {
                 text: "Best for: Complex queries, task prioritization, AI insights",

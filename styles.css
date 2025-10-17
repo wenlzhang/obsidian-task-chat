@@ -122,38 +122,42 @@
 .task-chat-message {
     padding: 10px;
     border-radius: 6px;
-    background: var(--background-primary-alt);
     position: relative;
+    border-left: 2px solid transparent;
 }
 
 .task-chat-message-user {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
     align-self: flex-end;
     max-width: 80%;
-    margin-bottom: 32px;
+    border-left: 2px solid var(--interactive-accent);
 }
 
 .task-chat-message-assistant {
-    background: var(--background-secondary);
     align-self: flex-start;
     max-width: 90%;
+    border-left: 2px solid var(--text-muted);
 }
 
 .task-chat-message-system {
-    background: var(--background-secondary-alt);
-    text-align: center;
+    align-self: flex-start;
     max-width: 100%;
+    border-left: 2px solid var(--text-faint);
 }
 
 /* Message Header */
 .task-chat-message-header {
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 6px;
     font-size: 11px;
     opacity: 0.8;
+}
+
+.task-chat-message-header-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .task-chat-message-time {
@@ -194,33 +198,10 @@
     border-color: var(--background-modifier-border);
 }
 
-/* Copy button positioning - consistent bottom right for assistant and system messages */
-.task-chat-message-assistant .task-chat-copy-button,
-.task-chat-message-system .task-chat-copy-button {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-}
-
-/* Copy button positioning for user messages - centered below box */
-.task-chat-message-user .task-chat-copy-button {
-    position: absolute;
-    bottom: -28px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.task-chat-message-user .task-chat-copy-button::before {
-    filter: invert(0.5);
-}
-
-.task-chat-message-user .task-chat-copy-button:hover {
-    background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border);
-}
-
-.task-chat-message-user .task-chat-copy-button:hover::before {
-    filter: invert(0.7);
+/* Copy button positioning - in header for all message types */
+.task-chat-message .task-chat-copy-button {
+    position: static;
+    margin-left: auto;
 }
 
 /* Message Content */
