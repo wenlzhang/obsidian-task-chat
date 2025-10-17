@@ -985,9 +985,26 @@ ${taskContext}`;
         // Add recent chat history (limit to last 6 messages to save tokens)
         const recentHistory = chatHistory.slice(-6);
         recentHistory.forEach((msg) => {
-            if (msg.role !== "system") {
+            // Map our custom roles to valid AI API roles
+            let apiRole: "user" | "assistant" | "system";
+            if (msg.role === "user") {
+                apiRole = "user";
+            } else if (
+                msg.role === "simple" ||
+                msg.role === "smart" ||
+                msg.role === "chat" ||
+                msg.role === "assistant"
+            ) {
+                // All our response types (simple/smart/chat/legacy assistant) map to "assistant"
+                apiRole = "assistant";
+            } else {
+                // system role stays as system
+                apiRole = "system";
+            }
+
+            if (apiRole !== "system") {
                 messages.push({
-                    role: msg.role,
+                    role: apiRole,
                     content: msg.content,
                 });
             }
