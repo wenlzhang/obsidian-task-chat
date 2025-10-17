@@ -492,11 +492,35 @@ export class AIService {
                 throw error;
             }
         } else {
-            // No filters detected - return all tasks
-            console.log("[Task Chat] No filters detected, returning all tasks");
+            // No filters detected - return all tasks with default sorting
+            console.log(
+                "[Task Chat] No filters detected, returning all tasks with default sort order",
+            );
+
+            // Resolve "auto" in displaySortOrder (no keywords, so use dueDate)
+            const resolvedDisplaySortOrder = displaySortOrder.map(
+                (criterion) => {
+                    if (criterion === "auto") {
+                        return "dueDate"; // No keywords, default to dueDate
+                    }
+                    return criterion;
+                },
+            ) as SortCriterion[];
+
+            console.log(
+                `[Task Chat] Default sort order: [${resolvedDisplaySortOrder.join(", ")}]`,
+            );
+
+            // Sort all tasks using multi-criteria sorting
+            const sortedTasks = TaskSortService.sortTasksMultiCriteria(
+                tasks,
+                resolvedDisplaySortOrder,
+                undefined, // No relevance scores (no keyword search)
+            );
+
             return {
                 response: "",
-                directResults: tasks.slice(0, settings.maxDirectResults),
+                directResults: sortedTasks.slice(0, settings.maxDirectResults),
                 tokenUsage: {
                     promptTokens: 0,
                     completionTokens: 0,
@@ -505,7 +529,7 @@ export class AIService {
                     model: "none",
                     provider: settings.aiProvider,
                     isEstimated: true,
-                    directSearchReason: `${tasks.length} task${tasks.length !== 1 ? "s" : ""}`,
+                    directSearchReason: `${sortedTasks.length} task${sortedTasks.length !== 1 ? "s" : ""}`,
                 },
             };
         }

@@ -108,7 +108,7 @@ export class TaskSortService {
                         // Special: Tasks without due dates appear last
                         comparison = this.compareDates(a.dueDate, b.dueDate); // ASC
                         break;
-                    
+
                     case "priority":
                         // PRIORITY: Internal values 1-4 (1=highest, 4=lowest/none)
                         // Direction: ASC (1 before 2 before 3 before 4)
@@ -118,7 +118,7 @@ export class TaskSortService {
                             a.priority,
                             b.priority,
                         ); // ASC
-                        break;                    
+                        break;
 
                     case "created":
                         // CREATED DATE: Newer = more relevant
