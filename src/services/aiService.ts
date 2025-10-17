@@ -1195,11 +1195,11 @@ ${taskContext}`;
                 keywords,
             );
             const topTasks = scoredTasks
-                .slice(0, Math.min(5, settings.maxRecommendations))
+                .slice(0, settings.maxRecommendations)
                 .map((st: { score: number; task: Task }) => st.task);
 
             console.log(
-                `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance`,
+                `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
             return topTasks;
         }
@@ -1209,48 +1209,6 @@ ${taskContext}`;
         console.log(
             `[Task Chat] AI explicitly recommended ${recommended.length} tasks. Using only those.`,
         );
-
-        // Skip automatic task addition
-        if (false) {
-            // This code path is disabled - we trust AI's judgment
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                tasks,
-                keywords,
-            );
-
-            // Define quality threshold: only add tasks with decent relevance
-            // Score >= 40 means at least 4 keyword matches or good positioning
-            const RELEVANCE_THRESHOLD = 40;
-
-            // Add top tasks that meet quality threshold
-            const maxToAdd =
-                Math.min(settings.maxRecommendations, tasks.length) -
-                recommended.length;
-            let added = 0;
-            let skipped = 0;
-
-            for (const scoredTask of scoredTasks) {
-                if (added >= maxToAdd) break;
-
-                // Only add if task meets relevance threshold and not already recommended
-                if (
-                    scoredTask.score >= RELEVANCE_THRESHOLD &&
-                    !recommended.includes(scoredTask.task)
-                ) {
-                    recommended.push(scoredTask.task);
-                    added++;
-                    console.log(
-                        `[Task Chat] Added relevant task (score ${scoredTask.score}): "${scoredTask.task.text}"`,
-                    );
-                } else if (scoredTask.score < RELEVANCE_THRESHOLD) {
-                    skipped++;
-                }
-            }
-
-            console.log(
-                `[Task Chat] Added ${added} relevant tasks, skipped ${skipped} low-relevance tasks (threshold: ${RELEVANCE_THRESHOLD})`,
-            );
-        }
 
         // Limit final recommendations to user preference
         const finalRecommended = recommended.slice(
