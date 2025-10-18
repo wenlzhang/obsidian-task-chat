@@ -818,41 +818,6 @@ export class TaskSearchService {
     }
 
     /**
-     * Score tasks by relevance to keywords
-     * Returns array of {task, score} sorted by score (highest first)
-     * Used for both direct search and AI analysis
-     */
-    static scoreTasksByRelevance(
-        tasks: Task[],
-        keywords: string[],
-    ): Array<{ task: Task; score: number }> {
-        // Deduplicate overlapping keywords to avoid double-counting
-        // Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
-        const deduplicatedKeywords = this.deduplicateWithLogging(
-            keywords,
-            "keywords",
-        );
-
-        const scored = tasks.map((task) => {
-            const taskText = task.text.toLowerCase();
-
-            // Use the same relevance calculation as comprehensive scoring
-            // In Simple Search mode, treat all keywords as both core and expanded
-            // (no distinction since there's no semantic expansion)
-            const score = this.calculateRelevanceScore(
-                taskText,
-                deduplicatedKeywords, // All keywords are "core" in simple mode
-                deduplicatedKeywords, // No expansion in simple mode
-            );
-
-            return { task, score };
-        });
-
-        // Sort by score (highest first)
-        return scored.sort((a, b) => b.score - a.score);
-    }
-
-    /**
      * Comprehensive weighted scoring system for all search modes (Simple, Smart, Task Chat)
      * Combines keyword relevance, due date urgency, and priority importance
      *
