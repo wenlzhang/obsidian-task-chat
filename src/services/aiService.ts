@@ -952,15 +952,15 @@ CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 - DO NOT repeat any task content in your response
 
 🚨 CRITICAL: COMPREHENSIVE TASK RECOMMENDATIONS REQUIRED 🚨
-⚠️ Users want to see ALL relevant tasks, not a curated subset!
+⚠️ Users want to see MOST relevant tasks, not a small curated subset!
 ⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a substantial portion!
 
 RECOMMENDATION TARGETS (based on available tasks):
-- ${taskCount} tasks available → Aim for ${Math.max(Math.floor(taskCount * 0.8), 10)}-${Math.min(taskCount, settings.maxRecommendations)} recommendations
+- ${taskCount} tasks available, maximum limit: ${settings.maxRecommendations} tasks
+- Target: Recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
 - ONLY exclude tasks that are clearly NOT relevant to the query
 - These tasks have ALREADY been filtered to match the query - your job is to recommend MOST of them
 - Err on the side of inclusion - users prefer comprehensive lists over missing tasks
-- Maximum allowed: ${settings.maxRecommendations} tasks
 
 IMPORTANT RULES:
 1. 🚨 YOU MUST USE [TASK_X] FORMAT - This is not optional! Every task recommendation MUST use [TASK_1], [TASK_2], etc.
@@ -974,7 +974,7 @@ IMPORTANT RULES:
 9. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
 10. If tasks are related, explain the relationships using only task IDs
 11. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using [TASK_X] IDs
-12. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least 80% of them (${Math.floor(taskCount * 0.8)}+ tasks)
+12. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
