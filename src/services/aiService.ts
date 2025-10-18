@@ -415,19 +415,31 @@ export class AIService {
                 // Safety: If threshold filtered out too many, keep a minimum
                 // This prevents overly strict filtering from returning no results
                 // Keep at least enough tasks to give AI good context
-                const minTasksNeeded = Math.min(
-                    settings.maxTasksForAI,
-                    filteredTasks.length,
-                );
-                if (qualityFilteredTasks.length < minTasksNeeded) {
-                    console.log(
-                        `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
+                // ONLY apply this safety when using adaptive mode (qualityFilterStrength == 0)
+                // If user explicitly set filters, RESPECT their choice!
+                const userHasExplicitFilters =
+                    settings.qualityFilterStrength > 0 ||
+                    settings.minimumRelevanceScore > 0;
+
+                if (!userHasExplicitFilters) {
+                    const minTasksNeeded = Math.min(
+                        settings.maxTasksForAI,
+                        filteredTasks.length,
                     );
-                    qualityFilteredScored = scoredTasks
-                        .sort((a, b) => b.score - a.score)
-                        .slice(0, minTasksNeeded);
-                    qualityFilteredTasks = qualityFilteredScored.map(
-                        (st) => st.task,
+                    if (qualityFilteredTasks.length < minTasksNeeded) {
+                        console.log(
+                            `[Task Chat] Adaptive mode: quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
+                        );
+                        qualityFilteredScored = scoredTasks
+                            .sort((a, b) => b.score - a.score)
+                            .slice(0, minTasksNeeded);
+                        qualityFilteredTasks = qualityFilteredScored.map(
+                            (st) => st.task,
+                        );
+                    }
+                } else {
+                    console.log(
+                        `[Task Chat] User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
                     );
                 }
             }

@@ -502,17 +502,22 @@ Recommended values:
 
 💡 Tip: Leave at 0% unless you're getting urgent tasks with weak keyword relevance.`,
             )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 200, 1)
+            .addSlider((slider) => {
+                // Dynamic maximum based on actual max relevance score
+                const maxRelevanceScore =
+                    this.plugin.settings.relevanceCoreWeight + 1.0;
+                const sliderMax = Math.ceil(maxRelevanceScore * 100);
+
+                return slider
+                    .setLimits(0, sliderMax, 1)
                     .setValue(this.plugin.settings.minimumRelevanceScore * 100)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.plugin.settings.minimumRelevanceScore =
                             value / 100;
                         await this.plugin.saveSettings();
-                    }),
-            );
+                    });
+            });
 
         // Scoring Coefficients Section
         containerEl.createEl("h3", { text: "Scoring coefficients" });
