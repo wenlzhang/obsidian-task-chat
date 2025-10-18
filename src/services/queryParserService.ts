@@ -2,6 +2,7 @@ import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
 import { ModelProviderService } from "./modelProviderService";
 import { PromptBuilderService } from "./promptBuilderService";
+import { PropertyRecognitionService } from "./propertyRecognitionService";
 import { StopWords } from "./stopWords";
 
 /**
@@ -260,11 +261,18 @@ export class QueryParserService {
             ? maxExpansions * queryLanguages.length
             : queryLanguages.length; // Just original keywords in each language, no semantic expansion
 
-        // Build user-specific mappings (using shared PromptBuilderService)
-        const priorityMapping =
-            PromptBuilderService.buildPriorityMappingForParser(settings);
-        const statusMapping =
-            PromptBuilderService.buildStatusMappingForParser(settings);
+        // Build property term mappings (three-layer system: user + internal + semantic)
+        const propertyTermMappings =
+            PropertyRecognitionService.buildPropertyTermMappingsForParser(
+                settings,
+                queryLanguages,
+            );
+        const dueDateValueMapping =
+            PropertyRecognitionService.buildDueDateValueMapping();
+        const priorityValueMapping =
+            PropertyRecognitionService.buildPriorityValueMapping(settings);
+        const statusValueMapping =
+            PropertyRecognitionService.buildStatusValueMapping(settings);
         const dateFieldNames =
             PromptBuilderService.buildDateFieldNamesForParser(settings);
 
@@ -404,53 +412,61 @@ Example 3: Mixed language with specific priority
    - "高优先级的过期任务" = priority:1 + dueDate:"overdue"
    - "含有截止日期的重要工作" = dueDate:"any" + keywords:[重要, 工作]
 
-${priorityMapping}
+${propertyTermMappings}
 
-PRIORITY SEMANTIC EXPANSION:
-Recognize these terms as indicating PRIORITY filtering (in ANY language):
-- General priority: priority, important, urgent, 优先级, 优先, 重要, 紧急, prioritet, viktig, brådskande
-- High priority: high, highest, critical, top, 高, 最高, 关键, 首要, hög, högst, kritisk
-- Medium priority: medium, normal, 中, 中等, 普通, medel, normal
-- Low priority: low, minor, 低, 次要, 不重要, låg, mindre
+${priorityValueMapping}
 
-When you see these terms, extract the appropriate priority value (1-4) or null if asking for "any priority tasks".
-
-${statusMapping}
-
-STATUS SEMANTIC EXPANSION:
-Recognize these terms as indicating STATUS filtering (in ANY language):
-- Open/pending: open, pending, todo, incomplete, 未完成, 待办, 进行中, öppen, väntande
-- Completed: done, completed, finished, 完成, 已完成, 结束, klar, färdig, slutförd
-- In progress: working, in progress, ongoing, 进行中, 正在做, pågående, arbetar på
+${statusValueMapping}
 
 ${dateFieldNames}
 
-DUE DATE SEMANTIC EXPANSION (recognize in ANY language):
-Recognize these terms as indicating DUE DATE filtering:
-- General due date: due, deadline, scheduled, 截止日期, 到期, 期限, 计划, förfallodatum, deadline, schemalagd
-- Today: today, 今天, 今日, idag
-- Tomorrow: tomorrow, 明天, imorgon
-- Overdue: overdue, late, past due, 过期, 逾期, 延迟, försenad, sen
-- This week: this week, 本周, 这周, denna vecka
-- Future: future, upcoming, later, 未来, 将来, 以后, framtida, kommande
+${dueDateValueMapping}
 
-DUE DATE MAPPING (normalize to these values):
-- "any" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "scheduled tasks")
-- "today" = tasks due today ONLY (今天, today, due today, 今天到期, idag)
-- "tomorrow" = tasks due tomorrow ONLY (明天, tomorrow, imorgon)
-- "overdue" = past due tasks (过期, 逾期, 延迟, overdue, past due, försenad)
-- "future" = future tasks (未来, 将来, future, upcoming, framtida)
-- "week" = this week (本周, this week, denna vecka)
-- "next-week" = next week (下周, next week, nästa vecka)
-- Specific dates in YYYY-MM-DD format
+⚠️ CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
 
-IMPORTANT for property recognition:
-- When user asks for "tasks with X property", they want tasks WHERE that property EXISTS or has specific value
-- "优先级任务" = priority: null (asking for any tasks with priority field)
-- "高优先级" = priority: 1 (asking for high priority specifically)
-- "截止日期任务" = dueDate: "any" (asking for tasks with due dates)
-- "今天到期" = dueDate: "today" (asking for tasks due today specifically)
-- Understand semantic meaning across ALL languages, not just exact strings!
+When users mix keywords with property terms, handle them correctly:
+
+Example 1: "开发 Task Chat 插件，with due date"
+- Content keywords: "开发", "Task", "Chat", "插件" → expand normally
+- Property term: "with due date" → dueDate: "any"
+- Result:
+  {
+    "coreKeywords": ["开发", "Task", "Chat", "插件"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "dueDate": "any"
+  }
+
+Example 2: "urgent bug fix due today"
+- Property term: "urgent" → priority: 1
+- Property term: "due today" → dueDate: "today"
+- Content keywords: "bug", "fix" → expand normally
+- Result:
+  {
+    "coreKeywords": ["bug", "fix"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "priority": 1,
+    "dueDate": "today"
+  }
+
+Example 3: "高优先级的开发任务，next week"
+- Property term: "高优先级" → priority: 1
+- Property term: "next week" → dueDate: "next-week"
+- Content keywords: "开发", "任务" → expand normally
+- Result:
+  {
+    "coreKeywords": ["开发", "任务"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "priority": 1,
+    "dueDate": "next-week"
+  }
+
+🚨 KEY RULES FOR COMBINED QUERIES:
+1. Identify property terms FIRST (priority, due date, status)
+2. Extract property values to structured fields
+3. Remove property terms from content keywords
+4. Expand remaining content keywords normally
+5. Property terms should NEVER appear in keywords array
+6. Each query can have BOTH keywords AND properties
 
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
@@ -738,6 +754,48 @@ Example 7: Property + hashtags + keywords
     "dueDate": "today",
     "status": null,
     "tags": ["backend"]
+  }
+
+Example 8: Properties only with tag
+  Query: "tasks with #work priority 1"
+  
+  THINKING PROCESS:
+  - Property term: "priority 1" → priority: 1
+  - "#work" → tag
+  - "tasks" is stop word → remove
+  - No content keywords
+  
+  {
+    "coreKeywords": [],
+    "keywords": [],
+    "priority": 1,
+    "dueDate": null,
+    "status": null,
+    "tags": ["work"]
+  }
+
+Example 9: Keywords with tags
+  Query: "Fix bug #urgent #backend"
+  
+  THINKING PROCESS:
+  - "urgent" in tag context → just tag, not property (because of #)
+  - Content keywords: "Fix", "bug" → expand normally
+  - Tags: "#urgent", "#backend"
+  
+  {
+    "coreKeywords": ["fix", "bug"],
+    "keywords": [
+      "fix", "repair", "solve", "correct", "debug",
+      ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
+      ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
+      "bug", "error", "issue", "defect", "fault",
+      ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
+      ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+    ],
+    "priority": null,
+    "dueDate": null,
+    "status": null,
+    "tags": ["urgent", "backend"]
   }
 
 CRITICAL RULES:

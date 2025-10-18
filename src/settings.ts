@@ -77,6 +77,14 @@ export interface PluginSettings {
     maxKeywordExpansions: number; // Max semantic variations per keyword (e.g., 10). Total = maxKeywordExpansions * number of languages
     enableSemanticExpansion: boolean; // Enable/disable semantic keyword expansion
 
+    // User-Configurable Property Terms (used across all modes)
+    // These combine with internal mappings for enhanced recognition
+    userPropertyTerms: {
+        priority: string[]; // User's terms for priority (e.g., ["优先级", "重要", "urgent"])
+        dueDate: string[]; // User's terms for due date (e.g., ["截止日期", "期限", "deadline"])
+        status: string[]; // User's terms for status (e.g., ["状态", "进度", "完成"])
+    };
+
     // Task Display Settings
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
@@ -205,6 +213,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Semantic Expansion Settings
     maxKeywordExpansions: 5, // Max semantic variations per keyword per language (conservative default)
     enableSemanticExpansion: true, // Enable semantic expansion by default
+
+    // User-Configurable Property Terms
+    userPropertyTerms: {
+        priority: [], // User can add: ["优先级", "重要", "紧急"]
+        dueDate: [], // User can add: ["截止日期", "期限", "到期"]
+        status: [], // User can add: ["状态", "完成", "进度"]
+    },
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher

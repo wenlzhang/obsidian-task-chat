@@ -446,6 +446,104 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // User-Configurable Property Terms Section
+        containerEl.createEl("h4", { text: "Custom property terms" });
+
+        const propertyTermsInfo = containerEl.createEl("div", {
+            cls: "setting-item-description",
+        });
+        propertyTermsInfo.createEl("p", {
+            text: "Add your own terms for task properties (priority, due date, status). These combine with built-in terms for enhanced recognition across all search modes. The system uses a three-layer approach:",
+        });
+        const layersList = propertyTermsInfo.createEl("ol");
+        layersList.createEl("li", {
+            text: "Your custom terms (highest priority)",
+        });
+        layersList.createEl("li", {
+            text: "Built-in multi-language mappings (fallback)",
+        });
+        layersList.createEl("li", {
+            text: "AI semantic expansion (broadest coverage)",
+        });
+
+        new Setting(containerEl)
+            .setName("Priority terms")
+            .setDesc(
+                "Your custom terms for priority (e.g., 'priority, important, urgent'). These combine with built-in terms (priority, important, urgent, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("priority, important, urgent")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.priority.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.priority = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due date terms")
+            .setDesc(
+                "Your custom terms for due dates (e.g., 'due, deadline, scheduled'). These combine with built-in terms (due, deadline, scheduled, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("due, deadline, scheduled")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.dueDate.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.dueDate = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Status terms")
+            .setDesc(
+                "Your custom terms for task status (e.g., 'done, completed, in progress'). These combine with built-in terms (status, done, completed, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("done, completed, in progress")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.status.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.status = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
         // Task Display Settings Section
         containerEl.createEl("h3", { text: "Task display" });
 
