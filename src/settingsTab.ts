@@ -609,13 +609,34 @@ Examples:
 
         // Helper to update display
         this.updateMaxScoreDisplay = () => {
+            // Calculate dynamic maximums from user's sub-coefficient settings
+            const maxRelevanceScore =
+                this.plugin.settings.relevanceCoreWeight + 1.0;
+            const maxDueDateScore = Math.max(
+                this.plugin.settings.dueDateOverdueScore,
+                this.plugin.settings.dueDateWithin7DaysScore,
+                this.plugin.settings.dueDateWithin1MonthScore,
+                this.plugin.settings.dueDateLaterScore,
+                this.plugin.settings.dueDateNoneScore,
+            );
+            const maxPriorityScore = Math.max(
+                this.plugin.settings.priorityP1Score,
+                this.plugin.settings.priorityP2Score,
+                this.plugin.settings.priorityP3Score,
+                this.plugin.settings.priorityP4Score,
+                this.plugin.settings.priorityNoneScore,
+            );
+
             const maxScore =
-                1.2 * this.plugin.settings.relevanceCoefficient +
-                1.5 * this.plugin.settings.dueDateCoefficient +
-                1.0 * this.plugin.settings.priorityCoefficient;
-            const relevPart = 1.2 * this.plugin.settings.relevanceCoefficient;
-            const datePart = 1.5 * this.plugin.settings.dueDateCoefficient;
-            const priorPart = 1.0 * this.plugin.settings.priorityCoefficient;
+                maxRelevanceScore * this.plugin.settings.relevanceCoefficient +
+                maxDueDateScore * this.plugin.settings.dueDateCoefficient +
+                maxPriorityScore * this.plugin.settings.priorityCoefficient;
+            const relevPart =
+                maxRelevanceScore * this.plugin.settings.relevanceCoefficient;
+            const datePart =
+                maxDueDateScore * this.plugin.settings.dueDateCoefficient;
+            const priorPart =
+                maxPriorityScore * this.plugin.settings.priorityCoefficient;
 
             maxScoreValue.innerHTML = `
                 <strong>Max Score: ${maxScore.toFixed(1)} points</strong><br/>
