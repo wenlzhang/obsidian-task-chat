@@ -90,7 +90,6 @@ export interface PluginSettings {
     // Scoring Sub-Coefficients - Fine-grained Control
     // Relevance Sub-Coefficients
     relevanceCoreWeight: number; // Weight for core keyword matches (default: 0.2)
-    relevanceAllWeight: number; // Weight for all keyword matches (default: 1.0)
 
     // Due Date Sub-Coefficients
     dueDateOverdueScore: number; // Score for overdue tasks (default: 1.5)
@@ -220,7 +219,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Scoring Sub-Coefficients - Fine-grained Control
     // Relevance Sub-Coefficients
     relevanceCoreWeight: 0.2, // Core keyword bonus (0-1 range, default: 0.2)
-    relevanceAllWeight: 1.0, // All keywords weight (0-2 range, default: 1.0)
 
     // Due Date Sub-Coefficients (0-2 range)
     dueDateOverdueScore: 1.5, // Overdue tasks (most urgent)

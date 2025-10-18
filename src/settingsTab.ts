@@ -608,12 +608,13 @@ Examples:
         containerEl.createEl("h4", { text: "Relevance sub-coefficients" });
 
         new Setting(containerEl)
-            .setName("Core keyword weight")
+            .setName("Core keyword match bonus")
             .setDesc(
-                "Additional bonus weight for core keyword matches (0.0-1.0). Default: 0.2. " +
-                    "Core keywords are original extracted keywords before semantic expansion. " +
-                    "Set to 0 to disable the bonus and treat all keywords equally. " +
-                    "Higher values prioritize exact query matches over semantic equivalents.",
+                "Additional bonus for matching core keywords (0.0-1.0). Default: 0.2. " +
+                    "Core keywords are original extracted keywords from your query, before semantic expansion. " +
+                    "Set to 0 to treat all keywords equally (pure semantic search). " +
+                    "Higher values prioritize exact query matches over semantic equivalents. " +
+                    "Combined with the relevance coefficient above, this fine-tunes keyword matching.",
             )
             .addSlider((slider) =>
                 slider
@@ -622,25 +623,6 @@ Examples:
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.plugin.settings.relevanceCoreWeight = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("All keywords weight")
-            .setDesc(
-                "Base weight for all keyword matches (0.0-2.0). Default: 1.0. " +
-                    "This is the reference weight - the core keyword bonus is added on top of this. " +
-                    "Includes core keywords + semantic equivalents. " +
-                    "Typically keep at 1.0 and adjust core weight instead.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 2, 0.1)
-                    .setValue(this.plugin.settings.relevanceAllWeight)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.relevanceAllWeight = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -814,7 +796,7 @@ Examples:
         new Setting(containerEl)
             .setName("Reset all advanced coefficients")
             .setDesc(
-                "Reset all sub-coefficients to defaults: relevance (core: 0.2, all: 1.0), " +
+                "Reset all sub-coefficients to defaults: relevance (core bonus: 0.2), " +
                     "due date (overdue: 1.5, 7days: 1.0, month: 0.5, later: 0.2, none: 0.1), " +
                     "priority (P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, none: 0.1).",
             )
@@ -887,16 +869,18 @@ Examples:
 
         // Reset relevance sub-coefficients
         new Setting(containerEl)
-            .setName("Reset relevance sub-coefficients")
-            .setDesc("Reset core weight to 0.2 and all weight to 1.0.")
+            .setName("Reset relevance core bonus")
+            .setDesc("Reset core keyword match bonus to 0.2.")
             .addButton((button) =>
-                button.setButtonText("Reset Relevance").onClick(async () => {
+                button.setButtonText("Reset Core Bonus").onClick(async () => {
                     this.plugin.settings.relevanceCoreWeight =
                         DEFAULT_SETTINGS.relevanceCoreWeight;
                     this.plugin.settings.relevanceAllWeight =
                         DEFAULT_SETTINGS.relevanceAllWeight;
                     await this.plugin.saveSettings();
-                    new Notice("Relevance sub-coefficients reset to defaults");
+                    new Notice(
+                        "Core keyword match bonus reset to default (0.2)",
+                    );
                     this.display();
                 }),
             );

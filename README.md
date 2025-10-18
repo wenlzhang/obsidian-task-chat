@@ -353,18 +353,17 @@ Control how keyword matching is scored:
 
 | Sub-Coefficient | Default | Range | What It Does |
 |-----------------|---------|-------|--------------|
-| **Core keyword weight** | 0.2 | 0.0-1.0 | **Additional bonus** for exact query matches (before expansion) |
-| **All keywords weight** | 1.0 | 0.0-2.0 | **Base reference weight** for all matches (core + semantic equivalents) |
+| **Core keyword match bonus** | 0.2 | 0.0-1.0 | **Additional bonus** for matching original query keywords (before expansion) |
 
 **How it works:**
-- **All keywords weight** is the base reference (typically kept at 1.0)
-- **Core keyword weight** is an **additional bonus** added on top
-- Set core weight to **0** to disable the bonus and treat all keywords equally
-- The core bonus is **added to** the all keywords score (not multiplied)
+- Base scoring uses all keywords (core + semantic equivalents) with weight 1.0
+- **Core keyword match bonus** adds extra points for exact query matches
+- Set to **0** to treat all keywords equally (pure semantic search)
+- Higher values prioritize exact query matches over semantic equivalents
 
 **Example:**
 
-With defaults (core: 0.2, all: 1.0):
+With default (core bonus: 0.2):
 - Task matches 2 of 2 core keywords: `2/2 × 0.2 = 0.2 points` (bonus)
 - Task matches 15 of 20 expanded keywords: `15/20 × 1.0 = 0.75 points` (base)
 - **Relevance base score:** `0.2 + 0.75 = 0.95` (before main coefficient)
@@ -372,22 +371,22 @@ With defaults (core: 0.2, all: 1.0):
 
 **When to adjust:**
 
-*No Core Bonus (core: 0, all: 1.0):*
+*No Core Bonus (core: 0):*
 - All keywords treated equally
 - No preference for exact query matches
 - **Use for:** Pure semantic searches
 
-*Exact Match Focus (core: 0.5, all: 1.0):*
+*Moderate Bonus (core: 0.2 - default):*
+- Balanced approach
+- Slight preference for exact matches
+- **Use for:** General searches
+
+*Strong Exact Match Focus (core: 0.5-1.0):*
 - Strong bonus for original query terms
-- Semantic equivalents still important (base weight)
+- Prioritizes precision over semantic breadth
 - **Use for:** Precise, technical searches
 
-*Semantic Breadth (core: 0.1, all: 1.5):*
-- Emphasizes semantic coverage (higher base)
-- Small bonus for original terms
-- **Use for:** Exploratory, conceptual searches
-
-**Tip:** Keep all keywords weight at 1.0 and adjust core weight instead. This makes it easier to understand the relative importance.
+**Tip:** The main **Relevance coefficient** (default: 20) controls overall importance of keyword matching. This core bonus fine-tunes whether exact matches matter more than semantic equivalents.
 
 #### Due Date Sub-Coefficients
 
@@ -645,9 +644,9 @@ Task B ranks higher despite being overdue-less, because:
 The settings tab includes convenient reset buttons to restore default values:
 
 **Available Reset Options:**
-1. **Reset All Advanced** - Resets all 13 sub-coefficients (relevance, due date, priority)
+1. **Reset All Advanced** - Resets all 12 sub-coefficients (relevance, due date, priority)
 2. **Reset Main Coefficients** - Resets Relevance: 20, Due Date: 4, Priority: 1
-3. **Reset Relevance** - Resets core weight: 0.2, all weight: 1.0
+3. **Reset Core Bonus** - Resets core keyword match bonus: 0.2
 4. **Reset Due Date** - Resets all 5 time-range scores
 5. **Reset Priority** - Resets all 5 priority-level scores
 
@@ -658,9 +657,8 @@ The settings tab includes convenient reset buttons to restore default values:
 - Due Date: 4
 - Priority: 1
 
-*Relevance Sub-Coefficients:*
-- Core weight: 0.2
-- All keywords weight: 1.0
+*Relevance Sub-Coefficient:*
+- Core keyword match bonus: 0.2
 
 *Due Date Sub-Coefficients:*
 - Overdue: 1.5, Within 7 days: 1.0, Within month: 0.5, Later: 0.2, None: 0.1

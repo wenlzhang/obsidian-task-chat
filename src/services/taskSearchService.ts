@@ -750,10 +750,11 @@ export class TaskSearchService {
         const coreMatchRatio = coreKeywordsMatched / totalCore;
         const allKeywordsRatio = allKeywordsMatched / totalCore; // Also divided by totalCore!
 
-        // Apply user-configurable coefficients (defaults: core = 0.2, all = 1.0)
+        // Apply user-configurable core bonus + hardcoded base weight (1.0)
+        // Core bonus is configurable (default: 0.2), base weight is always 1.0
         return (
             coreMatchRatio * settings.relevanceCoreWeight +
-            allKeywordsRatio * settings.relevanceAllWeight
+            allKeywordsRatio * 1.0 // Hardcoded: all keywords base weight is always 1.0
         );
     }
 
