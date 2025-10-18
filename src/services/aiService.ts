@@ -284,18 +284,17 @@ export class AIService {
 
                 // Dynamic max score based on what will ACTUALLY be scored
                 // Must mirror the activation logic in scoreTasksComprehensive:
-                // - relevance active if: queryHasKeywords || relevanceInSort
+                // - relevance active ONLY if: queryHasKeywords (not sort order!)
                 // - dueDate active if: queryHasDueDate || dueDateInSort
                 // - priority active if: queryHasPriority || priorityInSort
-                const relevanceInSort =
-                    settings.taskSortOrder.includes("relevance");
+                // Note: Sort order should NOT activate relevance because without keywords,
+                // all relevance scores = 0 but maxScore inflates → threshold too high → filters all tasks
                 const dueDateInSort =
                     settings.taskSortOrder.includes("dueDate");
                 const priorityInSort =
                     settings.taskSortOrder.includes("priority");
 
-                const relevanceActive =
-                    queryType.hasKeywords || relevanceInSort;
+                const relevanceActive = queryType.hasKeywords; // Fixed: removed || relevanceInSort
                 const dueDateActive =
                     !!intent.extractedDueDateFilter || dueDateInSort;
                 const priorityActive =
@@ -371,8 +370,12 @@ export class AIService {
                     (st) => st.score >= finalThreshold,
                 );
 
-                // Apply optional minimum relevance score filter (if enabled)
-                if (settings.minimumRelevanceScore > 0) {
+                // Apply optional minimum relevance score filter (if enabled AND query has keywords)
+                // Note: Without keywords, all relevance scores = 0, so this filter would exclude everything
+                if (
+                    settings.minimumRelevanceScore > 0 &&
+                    queryType.hasKeywords
+                ) {
                     const beforeRelevanceFilter = qualityFilteredScored.length;
                     qualityFilteredScored = qualityFilteredScored.filter(
                         (st) =>

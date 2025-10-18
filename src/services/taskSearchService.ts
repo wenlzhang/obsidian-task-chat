@@ -898,13 +898,14 @@ export class TaskSearchService {
         );
 
         // Determine coefficients based on query and sort settings
-        const relevanceInSort = sortCriteria.includes("relevance");
         const dueDateInSort = sortCriteria.includes("dueDate");
         const priorityInSort = sortCriteria.includes("priority");
 
-        // Coefficient is 1.0 if property exists in query OR sort settings, 0.0 otherwise
-        const relevanceCoefficient =
-            queryHasKeywords || relevanceInSort ? 1.0 : 0.0;
+        // Coefficient activation logic:
+        // - Relevance: ONLY active when query has keywords (sort order doesn't activate it)
+        // - Due date/Priority: active if in query OR sort (these are task properties that always exist)
+        // Note: Without keywords, all relevance scores = 0, but activating coefficient inflates maxScore
+        const relevanceCoefficient = queryHasKeywords ? 1.0 : 0.0; // Fixed: removed || relevanceInSort
         const dueDateCoefficient = queryHasDueDate || dueDateInSort ? 1.0 : 0.0;
         const priorityCoefficient =
             queryHasPriority || priorityInSort ? 1.0 : 0.0;
