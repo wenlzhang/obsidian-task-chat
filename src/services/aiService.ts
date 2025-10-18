@@ -296,33 +296,42 @@ export class AIService {
                     settings.priorityNoneScore,
                 );
 
-                // Dynamic max score based on query type
-                let maxScore;
-                if (queryType.queryType === "keywords-only") {
-                    // Only include relevance
-                    maxScore =
+                // Dynamic max score based on what will ACTUALLY be scored
+                // Must mirror the activation logic in scoreTasksComprehensive:
+                // - relevance active if: queryHasKeywords || relevanceInSort
+                // - dueDate active if: queryHasDueDate || dueDateInSort
+                // - priority active if: queryHasPriority || priorityInSort
+                const relevanceInSort = displaySortOrder.includes("relevance");
+                const dueDateInSort = displaySortOrder.includes("dueDate");
+                const priorityInSort = displaySortOrder.includes("priority");
+
+                const relevanceActive =
+                    queryType.hasKeywords || relevanceInSort;
+                const dueDateActive =
+                    !!intent.extractedDueDateFilter || dueDateInSort;
+                const priorityActive =
+                    !!intent.extractedPriority || priorityInSort;
+
+                let maxScore = 0;
+                const activeComponents: string[] = [];
+
+                if (relevanceActive) {
+                    maxScore +=
                         maxRelevanceScore * settings.relevanceCoefficient;
-                    console.log(
-                        `[Task Chat] Keywords-only query: maxScore = ${maxScore.toFixed(1)} (relevance only)`,
-                    );
-                } else if (queryType.queryType === "properties-only") {
-                    // Only include task properties
-                    maxScore =
-                        maxDueDateScore * settings.dueDateCoefficient +
-                        maxPriorityScore * settings.priorityCoefficient;
-                    console.log(
-                        `[Task Chat] Properties-only query: maxScore = ${maxScore.toFixed(1)} (properties only)`,
-                    );
-                } else {
-                    // Mixed - include everything
-                    maxScore =
-                        maxRelevanceScore * settings.relevanceCoefficient +
-                        maxDueDateScore * settings.dueDateCoefficient +
-                        maxPriorityScore * settings.priorityCoefficient;
-                    console.log(
-                        `[Task Chat] Mixed query: maxScore = ${maxScore.toFixed(1)} (all components)`,
-                    );
+                    activeComponents.push("relevance");
                 }
+                if (dueDateActive) {
+                    maxScore += maxDueDateScore * settings.dueDateCoefficient;
+                    activeComponents.push("dueDate");
+                }
+                if (priorityActive) {
+                    maxScore += maxPriorityScore * settings.priorityCoefficient;
+                    activeComponents.push("priority");
+                }
+
+                console.log(
+                    `[Task Chat] Query type: ${queryType.queryType}, Active components: [${activeComponents.join(", ")}], maxScore = ${maxScore.toFixed(1)}`,
+                );
                 let baseThreshold: number;
 
                 if (settings.qualityFilterStrength === 0) {
