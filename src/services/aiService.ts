@@ -6,6 +6,7 @@ import { QueryParserService, ParsedQuery } from "./queryParserService";
 import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
 import { PromptBuilderService } from "./promptBuilderService";
+import { DataviewService } from "./dataviewService";
 
 /**
  * Service for AI chat functionality
@@ -39,8 +40,15 @@ import { PromptBuilderService } from "./promptBuilderService";
 export class AIService {
     /**
      * Send a message to AI and get a response with recommended tasks
+     *
+     * @param app Obsidian app instance (for DataView API access)
+     * @param message User's query message
+     * @param tasks Initial task list (may be reloaded with property filters)
+     * @param chatHistory Chat conversation history
+     * @param settings Plugin settings
      */
     static async sendMessage(
+        app: App,
         message: string,
         tasks: Task[],
         chatHistory: ChatMessage[],
@@ -148,7 +156,7 @@ export class AIService {
             }
         }
 
-        // Apply compound filters if any structured filters or keywords are detected
+        // Apply filters: Use DataView API for properties, JavaScript for keywords
         if (
             intent.extractedPriority ||
             intent.extractedDueDateFilter ||
@@ -172,12 +180,36 @@ export class AIService {
                 );
             }
 
+            // Step 1: Filter by properties at DataView API level (if any property filters)
+            let tasksAfterPropertyFilter = tasks;
+            const hasPropertyFilters = !!(
+                intent.extractedPriority ||
+                intent.extractedDueDateFilter ||
+                intent.extractedStatus
+            );
+
+            if (hasPropertyFilters) {
+                // Reload tasks from DataView API with property filters
+                tasksAfterPropertyFilter =
+                    await DataviewService.parseTasksFromDataview(
+                        app,
+                        settings,
+                        undefined, // No legacy date filter
+                        {
+                            priority: intent.extractedPriority,
+                            dueDate: intent.extractedDueDateFilter,
+                            status: intent.extractedStatus,
+                        },
+                    );
+            }
+
+            // Step 2: Apply remaining filters (folder, tags, keywords) in JavaScript
             const filteredTasks = TaskSearchService.applyCompoundFilters(
-                tasks,
+                tasksAfterPropertyFilter,
                 {
-                    priority: intent.extractedPriority,
-                    dueDate: intent.extractedDueDateFilter,
-                    status: intent.extractedStatus,
+                    priority: undefined, // Already filtered at DataView level
+                    dueDate: undefined, // Already filtered at DataView level
+                    status: undefined, // Already filtered at DataView level
                     folder: intent.extractedFolder,
                     tags: intent.extractedTags,
                     keywords:

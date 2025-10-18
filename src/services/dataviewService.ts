@@ -551,11 +551,129 @@ export class DataviewService {
     }
 
     /**
+     * Build DataView query filter based on extracted intent
+     * Converts user intent (priority, dueDate, status) to DataView field queries
+     *
+     * @param intent Extracted intent with property filters
+     * @param settings Plugin settings with user-configured field names
+     * @returns DataView query predicate function or null if no filters
+     */
+    private static buildDataviewFilter(
+        intent: {
+            priority?: number | null;
+            dueDate?: string | null;
+            status?: string | null;
+        },
+        settings: PluginSettings,
+    ): ((page: any) => boolean) | null {
+        const filters: ((page: any) => boolean)[] = [];
+
+        // Build priority filter
+        if (intent.priority) {
+            const priorityFields = [
+                settings.dataviewKeys.priority,
+                "priority",
+                "p",
+                "pri",
+            ];
+            const targetPriority = intent.priority;
+
+            filters.push((page: any) => {
+                for (const field of priorityFields) {
+                    const value = page[field];
+                    if (value !== undefined && value !== null) {
+                        const mapped = this.mapPriority(value, settings);
+                        if (mapped === targetPriority) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Build due date filter
+        if (intent.dueDate) {
+            const dueDateFields = [
+                settings.dataviewKeys.dueDate,
+                "due",
+                "deadline",
+                "dueDate",
+                "scheduled",
+            ];
+
+            if (intent.dueDate === "any") {
+                // Has any due date
+                filters.push((page: any) => {
+                    for (const field of dueDateFields) {
+                        const value = page[field];
+                        if (value !== undefined && value !== null) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            } else if (intent.dueDate === "today") {
+                const today = moment().format("YYYY-MM-DD");
+                filters.push((page: any) => {
+                    for (const field of dueDateFields) {
+                        const value = page[field];
+                        if (value) {
+                            const formatted = this.formatDate(value);
+                            if (formatted === today) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                });
+            } else if (intent.dueDate === "overdue") {
+                const today = moment();
+                filters.push((page: any) => {
+                    for (const field of dueDateFields) {
+                        const value = page[field];
+                        if (value) {
+                            const taskDate = moment(this.formatDate(value));
+                            if (taskDate.isBefore(today, "day")) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                });
+            }
+            // Add more due date filters as needed (tomorrow, week, etc.)
+        }
+
+        // Build status filter
+        if (intent.status) {
+            filters.push((page: any) => {
+                const status = page.status || page.task?.status;
+                if (status) {
+                    const mapped = this.mapStatusToCategory(status, settings);
+                    return mapped === intent.status;
+                }
+                return false;
+            });
+        }
+
+        // Combine all filters with AND logic
+        if (filters.length === 0) {
+            return null; // No filters
+        }
+
+        return (page: any) => {
+            return filters.every((f) => f(page));
+        };
+    }
+
+    /**
      * Parse all tasks from Dataview with optional date filtering
      *
      * @param app - Obsidian app instance
      * @param settings - Plugin settings
      * @param dateFilter - Optional date filter: "any", "today", "overdue", "future", "week", "next-week", "tomorrow", or specific date (YYYY-MM-DD)
+     * @param propertyFilters Optional property filters (priority, dueDate, status)
      *
      * When dateFilter is provided, tasks are filtered AT LOAD TIME (before adding to array),
      * which is more efficient than loading all tasks and filtering afterward.
@@ -565,6 +683,11 @@ export class DataviewService {
         app: App,
         settings: PluginSettings,
         dateFilter?: string,
+        propertyFilters?: {
+            priority?: number | null;
+            dueDate?: string | null;
+            status?: string | null;
+        },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
@@ -575,29 +698,35 @@ export class DataviewService {
         const tasks: Task[] = [];
         let foundTasks = false;
 
-        // Convert date filter to range if provided
-        const dateRange = dateFilter
-            ? this.convertDateFilterToRange(dateFilter)
+        // Build DataView filter from property filters
+        const dvFilter = propertyFilters
+            ? this.buildDataviewFilter(propertyFilters, settings)
             : null;
 
-        if (dateFilter) {
+        if (dvFilter) {
+            const filterDesc = [];
+            if (propertyFilters?.priority)
+                filterDesc.push(`priority=${propertyFilters.priority}`);
+            if (propertyFilters?.dueDate)
+                filterDesc.push(`dueDate=${propertyFilters.dueDate}`);
+            if (propertyFilters?.status)
+                filterDesc.push(`status=${propertyFilters.status}`);
             console.log(
-                `[Dataview] Query with date filter: "${dateFilter}" → range:`,
-                dateRange,
-            );
-            console.log(
-                `[Dataview] Filtering tasks at load time (before adding to array)`,
+                `[Task Chat] DataView API filtering: ${filterDesc.join(", ")}`,
             );
         }
 
-        // Try using pages method
+        // Try using pages method with optional filter
         if (
             !foundTasks &&
             dataviewApi.pages &&
             typeof dataviewApi.pages === "function"
         ) {
             try {
-                const pages = dataviewApi.pages();
+                // Apply DataView filter at API level if provided
+                const pages = dvFilter
+                    ? dataviewApi.pages().where(dvFilter)
+                    : dataviewApi.pages();
                 let taskIndex = 0;
 
                 if (pages && pages.length > 0) {
@@ -616,7 +745,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
-                                        dateRange,
+                                        null, // No date range filtering (done at API level)
                                     );
                                 }
                             } else if (
@@ -630,7 +759,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
-                                        dateRange,
+                                        null, // No date range filtering (done at API level)
                                     );
                                 }
                             }
@@ -650,9 +779,9 @@ export class DataviewService {
             }
         }
 
-        if (dateFilter) {
+        if (dvFilter) {
             console.log(
-                `[Dataview] Date filtering complete: ${tasks.length} tasks match filter "${dateFilter}"`,
+                `[Task Chat] DataView API filtering complete: ${tasks.length} tasks returned`,
             );
         }
 

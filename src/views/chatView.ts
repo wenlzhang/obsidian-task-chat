@@ -637,6 +637,7 @@ export class ChatView extends ItemView {
 
             // Get AI response or direct results
             const result = await AIService.sendMessage(
+                this.plugin.app,
                 message,
                 this.currentTasks,
                 this.plugin.sessionManager.getCurrentMessages(),
