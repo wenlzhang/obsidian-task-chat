@@ -8,6 +8,7 @@ export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
     private sortBySetting: Setting | null = null;
     private sortByContainerEl: HTMLElement | null = null;
+    private updateMaxScoreDisplay?: () => void;
 
     constructor(app: App, plugin: TaskChatPlugin) {
         super(app, plugin);
@@ -475,6 +476,122 @@ Filter levels:
                         await this.plugin.saveSettings();
                     }),
             );
+
+        // Scoring Coefficients Section
+        containerEl.createEl("h3", { text: "Scoring coefficients" });
+
+        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
+            <p><strong>📊 Control Scoring Weights</strong></p>
+            <p>Adjust how much each factor affects task scores. All search modes use these coefficients.</p>
+            <p><strong>Score Formula:</strong> (Relevance × R) + (Due Date × D) + (Priority × P)</p>
+        `;
+
+        new Setting(containerEl)
+            .setName("Relevance weight")
+            .setDesc(
+                `How much keyword matching affects score (1-50). Default: 20.
+                
+Higher value = keyword relevance matters more.
+
+Examples:
+• 10: Balanced with other factors
+• 20: Standard (recommended)
+• 30-50: Keyword matching very important`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 50, 1)
+                    .setValue(this.plugin.settings.relevanceCoefficient)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.relevanceCoefficient = value;
+                        await this.plugin.saveSettings();
+                        this.updateMaxScoreDisplay?.();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due date weight")
+            .setDesc(
+                `How much due date urgency affects score (1-20). Default: 4.
+                
+Higher value = urgency matters more.
+
+Examples:
+• 2: Due dates less important
+• 4: Standard (recommended)
+• 8-20: Urgent tasks heavily prioritized`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 20, 1)
+                    .setValue(this.plugin.settings.dueDateCoefficient)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateCoefficient = value;
+                        await this.plugin.saveSettings();
+                        this.updateMaxScoreDisplay?.();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority weight")
+            .setDesc(
+                `How much task priority affects score (1-20). Default: 1.
+                
+Higher value = priority matters more.
+
+Examples:
+• 1: Standard (recommended)
+• 5: Priority very important
+• 10-20: Priority dominates scoring`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 20, 1)
+                    .setValue(this.plugin.settings.priorityCoefficient)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityCoefficient = value;
+                        await this.plugin.saveSettings();
+                        this.updateMaxScoreDisplay?.();
+                    }),
+            );
+
+        // Max Score Display
+        const maxScoreDisplay = containerEl.createDiv({
+            cls: "task-chat-info-box",
+        });
+        const maxScoreTitle = maxScoreDisplay.createEl("p");
+        maxScoreTitle.innerHTML =
+            "<strong>📈 Maximum Possible Score (with current coefficients):</strong>";
+
+        const maxScoreValue = maxScoreDisplay.createEl("p", {
+            cls: "task-chat-max-score-value",
+        });
+
+        // Helper to update display
+        this.updateMaxScoreDisplay = () => {
+            const maxScore =
+                1.2 * this.plugin.settings.relevanceCoefficient +
+                1.5 * this.plugin.settings.dueDateCoefficient +
+                1.0 * this.plugin.settings.priorityCoefficient;
+            const relevPart = 1.2 * this.plugin.settings.relevanceCoefficient;
+            const datePart = 1.5 * this.plugin.settings.dueDateCoefficient;
+            const priorPart = 1.0 * this.plugin.settings.priorityCoefficient;
+
+            maxScoreValue.innerHTML = `
+                <strong>Max Score: ${maxScore.toFixed(1)} points</strong><br/>
+                <span style="font-size: 0.9em; opacity: 0.8;">
+                Relevance: ${relevPart.toFixed(1)} + 
+                Due Date: ${datePart.toFixed(1)} + 
+                Priority: ${priorPart.toFixed(1)}
+                </span>
+            `;
+        };
+
+        // Initial display
+        this.updateMaxScoreDisplay();
 
         new Setting(containerEl)
             .setName("Max direct results")

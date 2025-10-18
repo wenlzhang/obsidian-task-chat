@@ -232,40 +232,52 @@ export class AIService {
             // This ensures consistent quality regardless of sort/display preference
             let qualityFilteredTasks = filteredTasks;
             if (intent.keywords && intent.keywords.length > 0) {
-                // Use comprehensive scoring for Smart Search and Task Chat modes (when AI parsing is used)
-                // Use simple scoring for Simple Search mode (regex parsing)
+                // All modes now use comprehensive scoring (relevance + due date + priority)
+                // Simple Search: keywords = coreKeywords (no semantic expansion)
+                // Smart Search / Task Chat: keywords ≠ coreKeywords (with semantic expansion)
                 let scoredTasks;
                 if (usingAIParsing && parsedQuery?.coreKeywords) {
-                    // Comprehensive weighted scoring with core keywords, due date, and priority
+                    // Smart Search / Task Chat: with semantic expansion
                     console.log(
-                        `[Task Chat] Using comprehensive weighted scoring (core keywords: ${parsedQuery.coreKeywords.length})`,
+                        `[Task Chat] Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
                     );
                     scoredTasks = TaskSearchService.scoreTasksComprehensive(
                         filteredTasks,
-                        intent.keywords,
-                        parsedQuery.coreKeywords,
+                        intent.keywords, // Expanded keywords
+                        parsedQuery.coreKeywords, // Core keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
                         displaySortOrder,
+                        settings.relevanceCoefficient,
+                        settings.dueDateCoefficient,
+                        settings.priorityCoefficient,
                     );
                 } else {
-                    // Simple keyword-based scoring (for Simple Search mode or when AI parsing failed)
+                    // Simple Search: no semantic expansion (keywords = coreKeywords)
                     console.log(
-                        `[Task Chat] Using simple keyword scoring (no core keywords available)`,
+                        `[Task Chat] Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
                     );
-                    scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
                         filteredTasks,
-                        intent.keywords,
+                        intent.keywords, // All keywords are "core" (no expansion)
+                        intent.keywords, // Same as keywords (no distinction)
+                        !!intent.extractedDueDateFilter,
+                        !!intent.extractedPriority,
+                        displaySortOrder,
+                        settings.relevanceCoefficient,
+                        settings.dueDateCoefficient,
+                        settings.priorityCoefficient,
                     );
                 }
 
                 // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
-                // Max score depends on scoring method:
-                // - Simple Search (scoreTasksByRelevance): 0-1.2 (relevance only)
-                // - Comprehensive (scoreTasksComprehensive): 0-31 (relevance×20 + dueDate×4 + priority×1)
-                const isSimpleScoring =
-                    !usingAIParsing || !parsedQuery?.coreKeywords;
-                const maxScore = isSimpleScoring ? 1.2 : 31;
+                // Max score calculated dynamically based on user-configured coefficients
+                // Formula: (maxRelevance × relevCoeff) + (maxDueDate × dateCoeff) + (maxPriority × priorCoeff)
+                // With defaults (20, 4, 1): (1.2 × 20) + (1.5 × 4) + (1.0 × 1) = 31
+                const maxScore =
+                    1.2 * settings.relevanceCoefficient +
+                    1.5 * settings.dueDateCoefficient +
+                    1.0 * settings.priorityCoefficient;
                 let baseThreshold: number;
 
                 if (settings.qualityFilterStrength === 0) {
@@ -284,9 +296,13 @@ export class AIService {
                         // Single keyword - moderate (32%)
                         baseThreshold = maxScore * 0.32;
                     }
-                    const mode = isSimpleScoring ? "Simple" : "Comprehensive";
+                    const hasExpansion =
+                        usingAIParsing && parsedQuery?.coreKeywords;
+                    const mode = hasExpansion
+                        ? "with expansion"
+                        : "no expansion";
                     console.log(
-                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode} scoring] (${intent.keywords.length} keywords)`,
+                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}] (${intent.keywords.length} keywords)`,
                     );
                 } else {
                     // User-defined percentage - convert to actual threshold
@@ -294,9 +310,13 @@ export class AIService {
                     const percentage = (
                         settings.qualityFilterStrength * 100
                     ).toFixed(0);
-                    const mode = isSimpleScoring ? "Simple" : "Comprehensive";
+                    const hasExpansion =
+                        usingAIParsing && parsedQuery?.coreKeywords;
+                    const mode = hasExpansion
+                        ? "with expansion"
+                        : "no expansion";
                     console.log(
-                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode} scoring]`,
+                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}]`,
                     );
                 }
 
@@ -334,8 +354,7 @@ export class AIService {
             // Build relevance scores map if keywords present (needed for relevance sorting)
             let relevanceScores: Map<string, number> | undefined;
             if (intent.keywords && intent.keywords.length > 0) {
-                // Use comprehensive scoring if available (AI-parsed queries with core keywords)
-                // Otherwise fall back to simple keyword scoring
+                // All modes use comprehensive scoring (with or without expansion)
                 let scoredTasks;
                 if (usingAIParsing && parsedQuery?.coreKeywords) {
                     scoredTasks = TaskSearchService.scoreTasksComprehensive(
@@ -345,11 +364,21 @@ export class AIService {
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
                         displaySortOrder,
+                        settings.relevanceCoefficient,
+                        settings.dueDateCoefficient,
+                        settings.priorityCoefficient,
                     );
                 } else {
-                    scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
                         qualityFilteredTasks,
                         intent.keywords,
+                        intent.keywords,
+                        !!intent.extractedDueDateFilter,
+                        !!intent.extractedPriority,
+                        displaySortOrder,
+                        settings.relevanceCoefficient,
+                        settings.dueDateCoefficient,
+                        settings.priorityCoefficient,
                     );
                 }
                 relevanceScores = new Map(
@@ -1260,11 +1289,11 @@ ${taskContext}`;
             );
 
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
-            // Use comprehensive scoring if AI parsing was used with core keywords
+            // All modes use comprehensive scoring (with or without expansion)
             let scoredTasks;
             if (usingAIParsing && coreKeywords.length > 0) {
                 console.log(
-                    `[Task Chat] Fallback: Using comprehensive weighted scoring (core keywords: ${coreKeywords.length})`,
+                    `[Task Chat] Fallback: Using comprehensive scoring with expansion (core: ${coreKeywords.length})`,
                 );
                 scoredTasks = TaskSearchService.scoreTasksComprehensive(
                     tasks,
@@ -1273,14 +1302,24 @@ ${taskContext}`;
                     queryHasDueDate,
                     queryHasPriority,
                     sortCriteria,
+                    settings.relevanceCoefficient,
+                    settings.dueDateCoefficient,
+                    settings.priorityCoefficient,
                 );
             } else {
                 console.log(
-                    `[Task Chat] Fallback: Using simple keyword scoring`,
+                    `[Task Chat] Fallback: Using comprehensive scoring without expansion`,
                 );
-                scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                scoredTasks = TaskSearchService.scoreTasksComprehensive(
                     tasks,
                     keywords,
+                    keywords,
+                    queryHasDueDate,
+                    queryHasPriority,
+                    sortCriteria,
+                    settings.relevanceCoefficient,
+                    settings.dueDateCoefficient,
+                    settings.priorityCoefficient,
                 );
             }
             const topTasks = scoredTasks

@@ -94,16 +94,22 @@ Control how strictly tasks are filtered before display. Higher percentages = few
 #### What is Quality Filtering?
 
 After finding tasks that match your query, Task Chat scores each task based on:
-1. **Keyword relevance** (20× weight) - How well keywords match
-2. **Due date urgency** (4× weight) - How soon it's due  
-3. **Priority level** (1× weight) - Task importance
+1. **Keyword relevance** (default 20× weight) - How well keywords match
+2. **Due date urgency** (default 4× weight) - How soon it's due  
+3. **Priority level** (default 1× weight) - Task importance
+
+These weights are configurable in Settings → Scoring Coefficients.
 
 The Quality Filter removes low-scoring tasks, showing only results above your chosen threshold.
 
-**Score Calculation:**
+**Score Calculation (User-Configurable):**
 ```
-Final Score = (Relevance × 20) + (Due Date × 4) + (Priority × 1)
-Maximum: 31 points (Simple Search: 1.2 points)
+Final Score = (Relevance × R) + (Due Date × D) + (Priority × P)
+
+Default coefficients: R=20, D=4, P=1
+Maximum: 31 points (with defaults)
+
+Configure in Settings → Scoring Coefficients
 ```
 
 #### Configuration
@@ -211,6 +217,120 @@ Filter Strength (%) → Threshold (score)
 
 **Safety Net:**
 If threshold filters out too many tasks, the system keeps a minimum number to ensure you get results.
+
+### ⚙️ Scoring Coefficients
+
+**New in 2024-10-18:** Control how much each factor affects task scores. Configure in **Settings → Scoring Coefficients**.
+
+#### What Are Scoring Coefficients?
+
+Coefficients determine the weight of each scoring component. The final score formula:
+
+```
+Final Score = (Relevance × R) + (Due Date × D) + (Priority × P)
+```
+
+**Components:**
+- **Relevance (R)**: How well keywords match (max base score: 1.2)
+- **Due Date (D)**: How urgent (max base score: 1.5 for overdue)
+- **Priority (P)**: How important (max base score: 1.0 for priority 1)
+
+#### Default Coefficients
+
+| Coefficient | Default | Range | Result with Defaults |
+|-------------|---------|-------|----------------------|
+| **Relevance** | 20 | 1-50 | 1.2 × 20 = 24 points |
+| **Due Date** | 4 | 1-20 | 1.5 × 4 = 6 points |
+| **Priority** | 1 | 1-20 | 1.0 × 1 = 1 point |
+| **Max Score** | - | - | **31 points total** |
+
+#### Common Configurations
+
+**Keyword-Focused (R=30, D=2, P=1):**
+- Emphasizes keyword matching
+- Due dates less important
+- Max score: 37 points
+- **Use when:** Searching for specific content
+
+**Urgency-Focused (R=20, D=10, P=5):**
+- Emphasizes deadlines and priority
+- Keywords still important
+- Max score: 44 points
+- **Use when:** Managing time-sensitive tasks
+
+**Priority-Focused (R=15, D=3, P=10):**
+- Emphasizes task importance
+- Less weight on keywords
+- Max score: 34 points
+- **Use when:** Importance > urgency
+
+**Balanced (R=20, D=4, P=1) - Default:**
+- Good for most users
+- Keywords weighted heavily
+- Due date moderately important
+- Priority as tiebreaker
+- Max score: 31 points
+
+#### How to Configure
+
+1. Open **Settings → Task Display → Scoring Coefficients**
+2. Adjust sliders for each coefficient
+3. See max score update in real-time
+4. Changes apply immediately to all search modes
+
+#### When to Adjust
+
+**Increase Relevance (R) if:**
+- You do a lot of keyword searches
+- Content matching is most important
+- You want search-engine-like behavior
+
+**Increase Due Date (D) if:**
+- You're deadline-driven
+- Overdue tasks should always appear first
+- Time management is priority
+
+**Increase Priority (P) if:**
+- You use priority levels actively
+- High-priority tasks should dominate
+- Priority > due date in your workflow
+
+#### Real-Time Max Score Display
+
+The settings show your current maximum possible score:
+
+```
+📈 Maximum Possible Score: 31.0 points
+Relevance: 24.0 + Due Date: 6.0 + Priority: 1.0
+```
+
+This updates instantly as you adjust coefficients, helping you understand the impact of your changes.
+
+#### Impact on Quality Filter
+
+Your coefficients affect the Quality Filter's threshold calculation:
+
+```
+Example: Quality Filter set to 25%
+
+With defaults (R=20, D=4, P=1):
+Max Score = 31 points
+Threshold = 31 × 0.25 = 7.75 points
+
+With keyword-focus (R=30, D=2, P=1):
+Max Score = 37 points  
+Threshold = 37 × 0.25 = 9.25 points (stricter!)
+```
+
+Same percentage, different absolute threshold based on your coefficients.
+
+#### Tips
+
+1. **Start with defaults** - They work well for most users
+2. **Adjust gradually** - Change one coefficient at a time
+3. **Test with queries** - See how results change
+4. **Monitor max score** - Keep it reasonable (20-50 points)
+5. **Quality filter adapts** - Automatically scales to your coefficients
 
 ### 💬 Session Management
 - **Multiple Chat Sessions**: Create and switch between different conversations

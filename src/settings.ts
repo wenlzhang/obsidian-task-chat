@@ -82,6 +82,11 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
 
+    // Scoring Coefficients
+    relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
+    dueDateCoefficient: number; // Weight for due date urgency (default: 4)
+    priorityCoefficient: number; // Weight for task priority (default: 1)
+
     // Sort settings - Multi-criteria sorting per mode
     // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
     // Example: ["relevance", "dueDate", "priority"] = sort by relevance first, then dueDate for ties, then priority
@@ -187,6 +192,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 100, // Increased from 30 to 100: more context = better recommendations, especially with semantic expansion (small token cost increase)
     maxRecommendations: 20, // Keep final list manageable for user
     qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
+
+    // Scoring Coefficients
+    relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)
+    dueDateCoefficient: 4, // Due date urgency weight (due date score × 4)
+    priorityCoefficient: 1, // Task priority weight (priority score × 1)
 
     // Multi-criteria sorting - Smart defaults for each mode
     // Simple Search: relevance first (keyword matching), then due date (urgency), then priority
