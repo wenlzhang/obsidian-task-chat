@@ -696,6 +696,69 @@ export class TaskSearchService {
     }
 
     /**
+     * Calculate due date score based on time ranges
+     * Uses moment (from Obsidian) for reliable date comparisons
+     * @param dueDate - Task due date string (YYYY-MM-DD format)
+     * @returns Score: 2.0 (overdue), 1.0 (within 7 days), 0.5 (within 1 month), 0.2 (after 1 month), 0.1 (no due date)
+     */
+    private static calculateDueDateScore(dueDate: string | undefined): number {
+        // No due date = same as far future (0.1)
+        if (!dueDate) return 0.1;
+
+        // Use moment for reliable date comparisons (from Obsidian)
+        const { moment } = window as any;
+        if (!moment) {
+            console.warn(
+                "[Task Chat] moment not available, skipping due date score",
+            );
+            return 0.1;
+        }
+
+        const today = moment().startOf("day");
+        const taskDueDate = moment(dueDate).startOf("day");
+
+        // Calculate difference in days
+        const diffDays = taskDueDate.diff(today, "days");
+
+        // Score based on time ranges
+        if (diffDays < 0) {
+            return 2.0; // Past due (most urgent)
+        } else if (diffDays <= 7) {
+            return 1.0; // Due within 7 days
+        } else if (diffDays <= 30) {
+            return 0.5; // Due within 1 month
+        } else if (diffDays > 30) {
+            return 0.2; // Due after 1 month
+        } else {
+            return 0.1; // No due date
+        }
+    }
+
+    /**
+     * Calculate priority score
+     * @param priority - Task priority (1=highest, 2=high, 3=medium, 4=low)
+     * @returns Score: 1.0 (priority 1), 0.75 (priority 2), 0.5 (priority 3), 0.2 (priority 4), 0.1 (no priority)
+     */
+    private static calculatePriorityScore(
+        priority: number | undefined,
+    ): number {
+        if (!priority) return 0.1;
+
+        switch (priority) {
+            case 1:
+                return 1.0; // Highest priority
+            case 2:
+                return 0.75; // High priority
+            case 3:
+                return 0.5; // Medium priority
+            case 4:
+                return 0.2; // Low priority
+            default:
+                return 0.1;
+        }
+    }
+
+    /**
      * Score tasks by relevance to keywords
      * Returns array of {task, score} sorted by score (highest first)
      * Used for both direct search and AI analysis
@@ -773,6 +836,222 @@ export class TaskSearchService {
 
         // Sort by score (highest first)
         return scored.sort((a, b) => b.score - a.score);
+    }
+
+    /**
+     * Comprehensive weighted scoring system for Smart Search and Task Chat modes
+     * Combines keyword relevance, due date urgency, and priority importance
+     *
+     * SCORING COMPONENTS:
+     * 1. Keyword Relevance (coefficient: 10)
+     *    - Core keyword match percentage: 20% per matched core keyword
+     *    - Core keyword bonus: +20% if any core keyword matches
+     *    - Keyword text matching: points for contains/starts-with
+     *
+     * 2. Due Date Score (coefficient: 2, only if due date in query/settings)
+     *    - Past due: 2.0 (most urgent)
+     *    - Within 7 days: 1.0
+     *    - Within 1 month: 0.5
+     *    - After 1 month: 0.2
+     *
+     * 3. Priority Score (coefficient: 1, only if priority in query/settings)
+     *    - Priority 1: 1.0 (highest)
+     *    - Priority 2: 0.75
+     *    - Priority 3: 0.5
+     *    - Priority 4: 0.2
+     *
+     * WEIGHTED FORMULA:
+     * finalScore = (relevanceScore * 10) + (dueDateScore * 2 * dueDateCoeff) + (priorityScore * 1 * priorityCoeff)
+     *
+     * @param tasks - Tasks to score
+     * @param keywords - Expanded keywords for matching
+     * @param coreKeywords - Original core keywords (for match percentage and bonus)
+     * @param queryHasDueDate - Whether due date filter exists in query
+     * @param queryHasPriority - Whether priority filter exists in query
+     * @param sortCriteria - User's sort settings to detect which properties to weight
+     * @returns Array of {task, score, relevanceScore, dueDateScore, priorityScore} sorted by final weighted score
+     */
+    static scoreTasksComprehensive(
+        tasks: Task[],
+        keywords: string[],
+        coreKeywords: string[],
+        queryHasDueDate: boolean,
+        queryHasPriority: boolean,
+        sortCriteria: string[],
+    ): Array<{
+        task: Task;
+        score: number;
+        relevanceScore: number;
+        dueDateScore: number;
+        priorityScore: number;
+    }> {
+        // Deduplicate overlapping keywords
+        const deduplicatedKeywords =
+            this.deduplicateOverlappingKeywords(keywords);
+        const deduplicatedCoreKeywords =
+            this.deduplicateOverlappingKeywords(coreKeywords);
+
+        // Log deduplication
+        if (keywords.length !== deduplicatedKeywords.length) {
+            console.log(
+                `[Task Chat] Deduplicated keywords: ${keywords.length} → ${deduplicatedKeywords.length}`,
+            );
+        }
+        if (coreKeywords.length !== deduplicatedCoreKeywords.length) {
+            console.log(
+                `[Task Chat] Deduplicated core keywords: ${coreKeywords.length} → ${deduplicatedCoreKeywords.length}`,
+            );
+        }
+
+        // Determine coefficients based on query and sort settings
+        const dueDateInSort = sortCriteria.includes("dueDate");
+        const priorityInSort = sortCriteria.includes("priority");
+
+        // Coefficient is 1.0 if property exists in query OR sort settings, 0.0 otherwise
+        const dueDateCoefficient = queryHasDueDate || dueDateInSort ? 1.0 : 0.0;
+        const priorityCoefficient =
+            queryHasPriority || priorityInSort ? 1.0 : 0.0;
+
+        console.log(
+            `[Task Chat] ========== COMPREHENSIVE SCORING CONFIGURATION ==========`,
+        );
+        console.log(
+            `[Task Chat] Core keywords: ${deduplicatedCoreKeywords.length} [${deduplicatedCoreKeywords.join(", ")}]`,
+        );
+        console.log(
+            `[Task Chat] Expanded keywords: ${deduplicatedKeywords.length}`,
+        );
+        console.log(
+            `[Task Chat] Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}`,
+        );
+        console.log(
+            `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}`,
+        );
+        console.log(
+            `[Task Chat] Scoring coefficients - relevance: 10 (always), dueDate: ${dueDateCoefficient * 2}, priority: ${priorityCoefficient * 1}`,
+        );
+        console.log(
+            `[Task Chat] ============================================================`,
+        );
+
+        const scored = tasks.map((task) => {
+            const taskText = task.text.toLowerCase();
+
+            // ========== COMPONENT 1: KEYWORD RELEVANCE ==========
+            let relevanceScore = 0;
+
+            // 1.1: Core keyword match percentage
+            // Count how many core keywords match
+            const coreKeywordsMatched = deduplicatedCoreKeywords.filter(
+                (coreKw) => taskText.includes(coreKw.toLowerCase()),
+            ).length;
+            const coreKeywordMatchPercentage =
+                deduplicatedCoreKeywords.length > 0
+                    ? (coreKeywordsMatched / deduplicatedCoreKeywords.length) *
+                      100
+                    : 0;
+
+            // Each matched core keyword contributes 20%
+            relevanceScore += coreKeywordMatchPercentage;
+
+            // 1.2: Core keyword bonus (+20% if any core keyword matches)
+            if (coreKeywordsMatched > 0) {
+                relevanceScore += 20;
+            }
+
+            // 1.3: Keyword text matching (existing logic)
+            deduplicatedKeywords.forEach((keyword) => {
+                const keywordLower = keyword.toLowerCase();
+
+                if (taskText === keywordLower) {
+                    relevanceScore += 100; // Exact match
+                } else if (taskText.includes(keywordLower)) {
+                    if (taskText.startsWith(keywordLower)) {
+                        relevanceScore += 20; // Starts with keyword
+                    } else {
+                        relevanceScore += 15; // Contains keyword
+                    }
+                }
+            });
+
+            // Bonus for multiple keyword matches
+            const matchingKeywords = deduplicatedKeywords.filter((kw) =>
+                taskText.includes(kw.toLowerCase()),
+            ).length;
+            relevanceScore += matchingKeywords * 8;
+
+            // Bonus for medium-length descriptive tasks
+            if (task.text.length >= 20 && task.text.length < 100) {
+                relevanceScore += 5;
+            }
+
+            // Penalties for generic/short tasks
+            const trimmedText = task.text.trim();
+            if (trimmedText.length < 5) {
+                relevanceScore -= 100;
+            }
+            const genericTaskNames = ["task", "todo", "item", "work"];
+            const firstWord = trimmedText.split(/\s+/)[0]?.toLowerCase() || "";
+            if (
+                genericTaskNames.includes(firstWord) &&
+                trimmedText.length < 5
+            ) {
+                relevanceScore -= 150;
+            }
+
+            // ========== COMPONENT 2: DUE DATE SCORE ==========
+            const dueDateScore = this.calculateDueDateScore(task.dueDate);
+
+            // ========== COMPONENT 3: PRIORITY SCORE ==========
+            const priorityScore = this.calculatePriorityScore(task.priority);
+
+            // ========== WEIGHTED FINAL SCORE ==========
+            // Relevance: coefficient 10 (always applied)
+            // Due date: coefficient 2 (applied if exists in query/settings)
+            // Priority: coefficient 1 (applied if exists in query/settings)
+            const finalScore =
+                relevanceScore * 10 +
+                dueDateScore * 2 * dueDateCoefficient +
+                priorityScore * 1 * priorityCoefficient;
+
+            return {
+                task,
+                score: finalScore,
+                relevanceScore,
+                dueDateScore,
+                priorityScore,
+            };
+        });
+
+        // Sort by final weighted score (highest first)
+        const sorted = scored.sort((a, b) => b.score - a.score);
+
+        // Log top 5 scores for debugging
+        console.log(
+            `[Task Chat] ========== TOP 5 SCORED TASKS (Comprehensive) ==========`,
+        );
+        sorted.slice(0, 5).forEach((item, index) => {
+            console.log(
+                `[Task Chat] #${index + 1}: "${item.task.text.substring(0, 50)}${item.task.text.length > 50 ? "..." : ""}"`,
+            );
+            console.log(
+                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(1)} (× 10 = ${(item.relevanceScore * 10).toFixed(1)})`,
+            );
+            console.log(
+                `[Task Chat]   - Due Date: ${item.dueDateScore.toFixed(1)} (× ${dueDateCoefficient * 2} = ${(item.dueDateScore * 2 * dueDateCoefficient).toFixed(1)})`,
+            );
+            console.log(
+                `[Task Chat]   - Priority: ${item.priorityScore.toFixed(1)} (× ${priorityCoefficient * 1} = ${(item.priorityScore * 1 * priorityCoefficient).toFixed(1)})`,
+            );
+            console.log(
+                `[Task Chat]   - FINAL SCORE: ${item.score.toFixed(1)}`,
+            );
+        });
+        console.log(
+            `[Task Chat] ==============================================================`,
+        );
+
+        return sorted;
     }
 
     /**

@@ -232,10 +232,32 @@ export class AIService {
             // This ensures consistent quality regardless of sort/display preference
             let qualityFilteredTasks = filteredTasks;
             if (intent.keywords && intent.keywords.length > 0) {
-                const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                    filteredTasks,
-                    intent.keywords,
-                );
+                // Use comprehensive scoring for Smart Search and Task Chat modes (when AI parsing is used)
+                // Use simple scoring for Simple Search mode (regex parsing)
+                let scoredTasks;
+                if (usingAIParsing && parsedQuery?.coreKeywords) {
+                    // Comprehensive weighted scoring with core keywords, due date, and priority
+                    console.log(
+                        `[Task Chat] Using comprehensive weighted scoring (core keywords: ${parsedQuery.coreKeywords.length})`,
+                    );
+                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
+                        filteredTasks,
+                        intent.keywords,
+                        parsedQuery.coreKeywords,
+                        !!intent.extractedDueDateFilter,
+                        !!intent.extractedPriority,
+                        displaySortOrder,
+                    );
+                } else {
+                    // Simple keyword-based scoring (for Simple Search mode or when AI parsing failed)
+                    console.log(
+                        `[Task Chat] Using simple keyword scoring (no core keywords available)`,
+                    );
+                    scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                        filteredTasks,
+                        intent.keywords,
+                    );
+                }
 
                 // Determine adaptive relevance threshold
                 // User's setting is the BASE, then we apply intelligent adjustments
@@ -322,10 +344,24 @@ export class AIService {
             // Build relevance scores map if keywords present (needed for relevance sorting)
             let relevanceScores: Map<string, number> | undefined;
             if (intent.keywords && intent.keywords.length > 0) {
-                const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                    qualityFilteredTasks,
-                    intent.keywords,
-                );
+                // Use comprehensive scoring if available (AI-parsed queries with core keywords)
+                // Otherwise fall back to simple keyword scoring
+                let scoredTasks;
+                if (usingAIParsing && parsedQuery?.coreKeywords) {
+                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
+                        qualityFilteredTasks,
+                        intent.keywords,
+                        parsedQuery.coreKeywords,
+                        !!intent.extractedDueDateFilter,
+                        !!intent.extractedPriority,
+                        displaySortOrder,
+                    );
+                } else {
+                    scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                        qualityFilteredTasks,
+                        intent.keywords,
+                    );
+                }
                 relevanceScores = new Map(
                     scoredTasks.map((st) => [st.task.id, st.score]),
                 );
@@ -507,6 +543,11 @@ export class AIService {
                     tasksToAnalyze,
                     settings,
                     intent.keywords || [],
+                    parsedQuery?.coreKeywords || [],
+                    !!intent.extractedDueDateFilter,
+                    !!intent.extractedPriority,
+                    displaySortOrder,
+                    usingAIParsing,
                 );
 
                 // Replace [TASK_X] references with actual task numbers from recommended list
@@ -1166,6 +1207,11 @@ ${taskContext}`;
         tasks: Task[],
         settings: PluginSettings,
         keywords: string[],
+        coreKeywords: string[],
+        queryHasDueDate: boolean,
+        queryHasPriority: boolean,
+        sortCriteria: SortCriterion[],
+        usingAIParsing: boolean,
     ): Task[] {
         const recommended: Task[] = [];
 
@@ -1224,10 +1270,29 @@ ${taskContext}`;
             );
 
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
-            const scoredTasks = TaskSearchService.scoreTasksByRelevance(
-                tasks,
-                keywords,
-            );
+            // Use comprehensive scoring if AI parsing was used with core keywords
+            let scoredTasks;
+            if (usingAIParsing && coreKeywords.length > 0) {
+                console.log(
+                    `[Task Chat] Fallback: Using comprehensive weighted scoring (core keywords: ${coreKeywords.length})`,
+                );
+                scoredTasks = TaskSearchService.scoreTasksComprehensive(
+                    tasks,
+                    keywords,
+                    coreKeywords,
+                    queryHasDueDate,
+                    queryHasPriority,
+                    sortCriteria,
+                );
+            } else {
+                console.log(
+                    `[Task Chat] Fallback: Using simple keyword scoring`,
+                );
+                scoredTasks = TaskSearchService.scoreTasksByRelevance(
+                    tasks,
+                    keywords,
+                );
+            }
             const topTasks = scoredTasks
                 .slice(0, settings.maxRecommendations)
                 .map((st: { score: number; task: Task }) => st.task);
