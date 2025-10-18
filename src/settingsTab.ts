@@ -610,9 +610,10 @@ Examples:
         new Setting(containerEl)
             .setName("Core keyword weight")
             .setDesc(
-                "Bonus weight for core keyword matches (0.0-1.0). Default: 0.2. " +
+                "Additional bonus weight for core keyword matches (0.0-1.0). Default: 0.2. " +
                     "Core keywords are original extracted keywords before semantic expansion. " +
-                    "Higher values prioritize exact query matches.",
+                    "Set to 0 to disable the bonus and treat all keywords equally. " +
+                    "Higher values prioritize exact query matches over semantic equivalents.",
             )
             .addSlider((slider) =>
                 slider
@@ -628,9 +629,10 @@ Examples:
         new Setting(containerEl)
             .setName("All keywords weight")
             .setDesc(
-                "Weight for all keyword matches (0.0-2.0). Default: 1.0. " +
+                "Base weight for all keyword matches (0.0-2.0). Default: 1.0. " +
+                    "This is the reference weight - the core keyword bonus is added on top of this. " +
                     "Includes core keywords + semantic equivalents. " +
-                    "Higher values increase importance of semantic coverage.",
+                    "Typically keep at 1.0 and adjust core weight instead.",
             )
             .addSlider((slider) =>
                 slider
@@ -799,6 +801,148 @@ Examples:
                         this.plugin.settings.priorityNoneScore = value;
                         await this.plugin.saveSettings();
                     }),
+            );
+
+        // Reset Buttons Section
+        containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
+
+        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
+            <p>Use these buttons to quickly reset coefficient values to their recommended defaults.</p>
+        `;
+
+        // Reset all advanced coefficients
+        new Setting(containerEl)
+            .setName("Reset all advanced coefficients")
+            .setDesc(
+                "Reset all sub-coefficients to defaults: relevance (core: 0.2, all: 1.0), " +
+                    "due date (overdue: 1.5, 7days: 1.0, month: 0.5, later: 0.2, none: 0.1), " +
+                    "priority (P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, none: 0.1).",
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset All Advanced")
+                    .setWarning()
+                    .onClick(async () => {
+                        // Relevance
+                        this.plugin.settings.relevanceCoreWeight =
+                            DEFAULT_SETTINGS.relevanceCoreWeight;
+                        this.plugin.settings.relevanceAllWeight =
+                            DEFAULT_SETTINGS.relevanceAllWeight;
+                        // Due date
+                        this.plugin.settings.dueDateOverdueScore =
+                            DEFAULT_SETTINGS.dueDateOverdueScore;
+                        this.plugin.settings.dueDateWithin7DaysScore =
+                            DEFAULT_SETTINGS.dueDateWithin7DaysScore;
+                        this.plugin.settings.dueDateWithin1MonthScore =
+                            DEFAULT_SETTINGS.dueDateWithin1MonthScore;
+                        this.plugin.settings.dueDateLaterScore =
+                            DEFAULT_SETTINGS.dueDateLaterScore;
+                        this.plugin.settings.dueDateNoneScore =
+                            DEFAULT_SETTINGS.dueDateNoneScore;
+                        // Priority
+                        this.plugin.settings.priorityP1Score =
+                            DEFAULT_SETTINGS.priorityP1Score;
+                        this.plugin.settings.priorityP2Score =
+                            DEFAULT_SETTINGS.priorityP2Score;
+                        this.plugin.settings.priorityP3Score =
+                            DEFAULT_SETTINGS.priorityP3Score;
+                        this.plugin.settings.priorityP4Score =
+                            DEFAULT_SETTINGS.priorityP4Score;
+                        this.plugin.settings.priorityNoneScore =
+                            DEFAULT_SETTINGS.priorityNoneScore;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "All advanced coefficients reset to defaults",
+                        );
+                        this.display(); // Refresh UI
+                    }),
+            );
+
+        // Reset main coefficients
+        new Setting(containerEl)
+            .setName("Reset main coefficients")
+            .setDesc(
+                "Reset main coefficient weights to defaults: Relevance: 20, Due Date: 4, Priority: 1.",
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset Main Coefficients")
+                    .setWarning()
+                    .onClick(async () => {
+                        this.plugin.settings.relevanceCoefficient =
+                            DEFAULT_SETTINGS.relevanceCoefficient;
+                        this.plugin.settings.dueDateCoefficient =
+                            DEFAULT_SETTINGS.dueDateCoefficient;
+                        this.plugin.settings.priorityCoefficient =
+                            DEFAULT_SETTINGS.priorityCoefficient;
+                        await this.plugin.saveSettings();
+                        new Notice("Main coefficients reset to defaults");
+                        // Update max score display
+                        if (this.updateMaxScoreDisplay) {
+                            this.updateMaxScoreDisplay();
+                        }
+                        this.display(); // Refresh UI
+                    }),
+            );
+
+        // Reset relevance sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset relevance sub-coefficients")
+            .setDesc("Reset core weight to 0.2 and all weight to 1.0.")
+            .addButton((button) =>
+                button.setButtonText("Reset Relevance").onClick(async () => {
+                    this.plugin.settings.relevanceCoreWeight =
+                        DEFAULT_SETTINGS.relevanceCoreWeight;
+                    this.plugin.settings.relevanceAllWeight =
+                        DEFAULT_SETTINGS.relevanceAllWeight;
+                    await this.plugin.saveSettings();
+                    new Notice("Relevance sub-coefficients reset to defaults");
+                    this.display();
+                }),
+            );
+
+        // Reset due date sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset due date sub-coefficients")
+            .setDesc("Reset all time-range scores to defaults.")
+            .addButton((button) =>
+                button.setButtonText("Reset Due Date").onClick(async () => {
+                    this.plugin.settings.dueDateOverdueScore =
+                        DEFAULT_SETTINGS.dueDateOverdueScore;
+                    this.plugin.settings.dueDateWithin7DaysScore =
+                        DEFAULT_SETTINGS.dueDateWithin7DaysScore;
+                    this.plugin.settings.dueDateWithin1MonthScore =
+                        DEFAULT_SETTINGS.dueDateWithin1MonthScore;
+                    this.plugin.settings.dueDateLaterScore =
+                        DEFAULT_SETTINGS.dueDateLaterScore;
+                    this.plugin.settings.dueDateNoneScore =
+                        DEFAULT_SETTINGS.dueDateNoneScore;
+                    await this.plugin.saveSettings();
+                    new Notice("Due date sub-coefficients reset to defaults");
+                    this.display();
+                }),
+            );
+
+        // Reset priority sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset priority sub-coefficients")
+            .setDesc("Reset all priority level scores to defaults.")
+            .addButton((button) =>
+                button.setButtonText("Reset Priority").onClick(async () => {
+                    this.plugin.settings.priorityP1Score =
+                        DEFAULT_SETTINGS.priorityP1Score;
+                    this.plugin.settings.priorityP2Score =
+                        DEFAULT_SETTINGS.priorityP2Score;
+                    this.plugin.settings.priorityP3Score =
+                        DEFAULT_SETTINGS.priorityP3Score;
+                    this.plugin.settings.priorityP4Score =
+                        DEFAULT_SETTINGS.priorityP4Score;
+                    this.plugin.settings.priorityNoneScore =
+                        DEFAULT_SETTINGS.priorityNoneScore;
+                    await this.plugin.saveSettings();
+                    new Notice("Priority sub-coefficients reset to defaults");
+                    this.display();
+                }),
             );
 
         new Setting(containerEl)
