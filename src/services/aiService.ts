@@ -603,6 +603,7 @@ export class AIService {
                 settings,
                 intent,
                 sortOrder, // Pass unified sort order to prompt
+                tasksToAnalyze.length, // Pass task count for recommendation targets
             );
 
             try {
@@ -864,6 +865,7 @@ export class AIService {
         settings: PluginSettings,
         intent: any,
         sortOrder: SortCriterion[],
+        taskCount: number, // Number of tasks available for recommendation
     ): any[] {
         // Get language instruction based on settings
         let languageInstruction = "";
@@ -946,18 +948,29 @@ CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 - Use [TASK_X] IDs to reference tasks, but DO NOT list them with "- [TASK_1]: task text" format
 - DO NOT repeat any task content in your response
 
+🚨 CRITICAL: COMPREHENSIVE TASK RECOMMENDATIONS REQUIRED 🚨
+⚠️ Users want to see ALL relevant tasks, not a curated subset!
+⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a substantial portion!
+
+RECOMMENDATION TARGETS (based on available tasks):
+- ${taskCount} tasks available → Aim for ${Math.max(Math.floor(taskCount * 0.6), 10)}-${Math.min(taskCount, settings.maxRecommendations)} recommendations
+- ONLY exclude tasks that are clearly NOT relevant to the query
+- If a task matches keywords AND has reasonable due date/priority → INCLUDE IT
+- Err on the side of inclusion - users prefer comprehensive lists over missing tasks
+- Maximum allowed: ${settings.maxRecommendations} tasks
+
 IMPORTANT RULES:
 1. ONLY reference tasks from the provided task list using [TASK_X] IDs
 2. DO NOT create new tasks or suggest tasks that don't exist
 3. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
 4. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
-5. ⚠️ CRITICAL: If there are MULTIPLE relevant tasks, reference ALL of them using their [TASK_X] IDs - be comprehensive!
+5. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
 6. Do NOT invent task content - only use the exact task text provided
 7. Focus on helping users prioritize and execute existing tasks
-8. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted by relevance/due date/priority)
+8. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
 9. If tasks are related, explain the relationships using only task IDs
-10. Keep your EXPLANATION concise, but DO reference all relevant tasks - users prefer comprehensive lists over missing tasks
-11. When 10+ tasks match the query well, aim to recommend at least 10-15 tasks, not just 3-4
+10. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks in your recommendation
+11. 🚨 CRITICAL: With 10+ high-quality tasks, you MUST recommend at least 80% of them, not just 20-30%
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 

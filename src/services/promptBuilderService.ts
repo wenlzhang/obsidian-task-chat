@@ -124,18 +124,13 @@ Use these exact names when referring to task status.`;
      */
     static buildRecommendationLimits(settings: PluginSettings): string {
         return `
-TASK RECOMMENDATION REQUIREMENTS:
-⚠️ CRITICAL: You MUST be comprehensive in your recommendations!
+CORE RECOMMENDATION PHILOSOPHY:
+⚠️ Users prefer comprehensive task lists over curated subsets
+⚠️ Maximum allowed: ${settings.maxRecommendations} tasks
+⚠️ Goal: Show ALL relevant work, let users decide what to focus on
+⚠️ Only exclude tasks that are clearly irrelevant to the query
 
-- Recommend ALL truly relevant tasks, not just a "top few"
-- When there are 20+ relevant matches, aim for at least 10-15 recommendations
-- Maximum allowed: ${settings.maxRecommendations} tasks
-- DO NOT be overly selective - if a task matches the query and has reasonable relevance, INCLUDE IT
-- Users prefer comprehensive lists over missing relevant tasks
-- Goal: Give user complete view of ALL relevant work, not a curated subset
-- Only exclude tasks that are clearly NOT relevant to the query
-
-⚠️ Remember: It's better to recommend more relevant tasks than to exclude potentially useful ones!`;
+Remember: Inclusion > Exclusion. When in doubt, include the task!`;
     }
 
     /**
