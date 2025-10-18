@@ -953,7 +953,7 @@ CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 ⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a substantial portion!
 
 RECOMMENDATION TARGETS (based on available tasks):
-- ${taskCount} tasks available → Aim for ${Math.max(Math.floor(taskCount * 0.6), 10)}-${Math.min(taskCount, settings.maxRecommendations)} recommendations
+- ${taskCount} tasks available → Aim for ${Math.max(Math.floor(taskCount * 0.8), 10)}-${Math.min(taskCount, settings.maxRecommendations)} recommendations
 - ONLY exclude tasks that are clearly NOT relevant to the query
 - If a task matches keywords AND has reasonable due date/priority → INCLUDE IT
 - Err on the side of inclusion - users prefer comprehensive lists over missing tasks
@@ -970,7 +970,7 @@ IMPORTANT RULES:
 8. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
 9. If tasks are related, explain the relationships using only task IDs
 10. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks in your recommendation
-11. 🚨 CRITICAL: With 10+ high-quality tasks, you MUST recommend at least 80% of them, not just 20-30%
+11. 🚨 CRITICAL: For all the high-quality tasks, you MUST recommend at least 80% of them, not just 20-30%
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
