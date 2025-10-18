@@ -260,27 +260,33 @@ export class AIService {
                 }
 
                 // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
-                // Max score = 31 (relevance×20 + dueDate×4 + priority×1)
-                const maxScore = 31;
+                // Max score depends on scoring method:
+                // - Simple Search (scoreTasksByRelevance): 0-1.2 (relevance only)
+                // - Comprehensive (scoreTasksComprehensive): 0-31 (relevance×20 + dueDate×4 + priority×1)
+                const isSimpleScoring =
+                    !usingAIParsing || !parsedQuery?.coreKeywords;
+                const maxScore = isSimpleScoring ? 1.2 : 31;
                 let baseThreshold: number;
 
                 if (settings.qualityFilterStrength === 0) {
                     // Adaptive mode - auto-adjust based on query complexity
+                    // Scale thresholds to appropriate range
                     if (intent.keywords.length >= 20) {
                         // Semantic expansion - very permissive (10%)
-                        baseThreshold = 3;
+                        baseThreshold = maxScore * 0.1;
                     } else if (intent.keywords.length >= 4) {
                         // Several keywords - permissive (16%)
-                        baseThreshold = 5;
+                        baseThreshold = maxScore * 0.16;
                     } else if (intent.keywords.length >= 2) {
                         // Few keywords - balanced (26%)
-                        baseThreshold = 8;
+                        baseThreshold = maxScore * 0.26;
                     } else {
                         // Single keyword - moderate (32%)
-                        baseThreshold = 10;
+                        baseThreshold = maxScore * 0.32;
                     }
+                    const mode = isSimpleScoring ? "Simple" : "Comprehensive";
                     console.log(
-                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold}/${maxScore} (${intent.keywords.length} keywords)`,
+                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode} scoring] (${intent.keywords.length} keywords)`,
                     );
                 } else {
                     // User-defined percentage - convert to actual threshold
@@ -288,41 +294,14 @@ export class AIService {
                     const percentage = (
                         settings.qualityFilterStrength * 100
                     ).toFixed(0);
+                    const mode = isSimpleScoring ? "Simple" : "Comprehensive";
                     console.log(
-                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(1)}/${maxScore}`,
+                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode} scoring]`,
                     );
                 }
 
-                // Apply adaptive adjustments relative to base
-                // IMPORTANT: Semantic expansion generates many related keywords INTENTIONALLY
-                // We should NOT increase threshold - broad matching is the goal
-                // Only adjust for truly small or large keyword counts
-                let finalThreshold: number;
-
-                // Check if this is likely semantic expansion (many keywords)
-                const likelySemanticExpansion = intent.keywords.length >= 20;
-
-                if (likelySemanticExpansion) {
-                    // Semantic expansion detected - use base threshold as-is
-                    // The keywords are semantically related, not noise
-                    finalThreshold = baseThreshold;
-                    console.log(
-                        `[Task Chat] Semantic expansion detected (${intent.keywords.length} keywords), using base threshold`,
-                    );
-                } else if (intent.keywords.length >= 4) {
-                    // Several keywords - use base threshold
-                    finalThreshold = baseThreshold;
-                } else if (intent.keywords.length >= 2) {
-                    // Few keywords - use base as-is
-                    finalThreshold = baseThreshold;
-                } else {
-                    // Single keyword - keep base threshold
-                    finalThreshold = baseThreshold;
-                }
-
-                console.log(
-                    `[Task Chat] Quality filter threshold: ${finalThreshold} (base: ${baseThreshold}, keywords: ${intent.keywords.length})`,
-                );
+                // Use base threshold directly (already adjusted for keyword count in adaptive mode)
+                const finalThreshold = baseThreshold;
 
                 // Apply quality filter
                 qualityFilteredTasks = scoredTasks

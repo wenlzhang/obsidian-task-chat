@@ -87,6 +87,131 @@ Choose the mode that fits your needs. Set your default in settings, override per
   - Opens source file automatically
   - Works across all vault folders
 
+### 🎚️ Quality Filter
+
+Control how strictly tasks are filtered before display. Higher percentages = fewer but higher-quality results.
+
+#### What is Quality Filtering?
+
+After finding tasks that match your query, Task Chat scores each task based on:
+1. **Keyword relevance** (20× weight) - How well keywords match
+2. **Due date urgency** (4× weight) - How soon it's due  
+3. **Priority level** (1× weight) - Task importance
+
+The Quality Filter removes low-scoring tasks, showing only results above your chosen threshold.
+
+**Score Calculation:**
+```
+Final Score = (Relevance × 20) + (Due Date × 4) + (Priority × 1)
+Maximum: 31 points (Simple Search: 1.2 points)
+```
+
+#### Configuration
+
+**Settings → Task Display → Quality Filter**
+
+- **Slider:** 0-100%
+- **Default:** 0% (Adaptive - recommended)
+
+**Filter Levels:**
+
+| Level | Percentage | Description | Use When |
+|-------|-----------|-------------|-----------|
+| **Adaptive** | 0% | Auto-adjusts based on query | Recommended for most users |
+| **Permissive** | 1-25% | Broad matching, more results | Exploring, semantic expansion |
+| **Balanced** | 26-50% | Moderate quality filtering | Daily task management |
+| **Strict** | 51-75% | Only strong matches | Specific requirements |
+| **Very Strict** | 76-100% | Near-perfect matches only | Exact matching needed |
+
+#### How to Choose
+
+**Start with 0% (Adaptive)** - The system will automatically adjust based on:
+- Number of keywords (more keywords = lower threshold)
+- Semantic expansion detected (permissive threshold)
+- Query complexity (simpler = higher threshold)
+
+**Increase (30-50%)** if you're getting:
+- Too many results
+- Irrelevant tasks in results
+- Need more focused matches
+
+**Decrease (10-25%)** if you're getting:
+- Too few results
+- Missing relevant tasks
+- Want broader exploration
+
+#### Examples
+
+**Query:** "fix urgent bug"  
+**Semantic expansion:** 45 keywords total
+
+| Filter | Threshold | Tasks Returned | Quality |
+|--------|-----------|----------------|---------|
+| 0% (Adaptive) | Auto: ~10% | 12 tasks | All relevant matches |
+| 25% | 7.8/31 points | 8 tasks | Removed weak matches |
+| 50% | 15.5/31 points | 4 tasks | Strong relevance + metadata |
+| 75% | 23.3/31 points | 1 task | Near-perfect match only |
+
+**Query:** "overdue tasks" (Simple Search)  
+**Keywords:** 2 words
+
+| Filter | Threshold | Tasks Returned | Quality |
+|--------|-----------|----------------|---------|
+| 0% (Adaptive) | Auto: ~26% | 15 tasks | Balanced quality |
+| 50% | 0.6/1.2 points | 8 tasks | Moderate filtering |
+
+#### Mode-Specific Behavior
+
+**Simple Search:**
+- Filters based on keyword matching only
+- Score range: 0-1.2 points
+- No semantic expansion
+- Fast and straightforward
+
+**Smart Search & Task Chat:**
+- Filters on combined score (keywords + due date + priority)
+- Score range: 0-31 points
+- Uses semantic expansion
+- More intelligent matching
+
+**All modes:**
+- Same percentage setting applies
+- Automatically scales to appropriate score range
+- Consistent behavior across plugin
+
+#### Adaptive Mode Details
+
+When set to 0%, threshold auto-adjusts:
+
+| Keywords | Adaptive Threshold | Reason |
+|----------|-------------------|--------|
+| 20+ | ~10% | Semantic expansion - be permissive |
+| 4-19 | ~16% | Several keywords - balanced |
+| 2-3 | ~26% | Few keywords - moderate |
+| 1 | ~32% | Single keyword - stricter |
+
+#### Tips
+
+1. **Start with 0% (Adaptive)** - Works great for most users
+2. **Too many results?** Gradually increase to 30%, then 50%
+3. **Too few results?** Lower to 10-25% or return to 0%
+4. **Semantic expansion queries** work best with 10-25%
+5. **Exact queries** may need 50-75%
+6. **Check console logs** to see actual threshold values
+
+#### Technical Details
+
+**Percentage to Threshold Conversion:**
+```
+Filter Strength (%) → Threshold (score)
+25% → 7.75 points (keep tasks scoring ≥ 7.75)
+50% → 15.5 points (keep tasks scoring ≥ 15.5)
+75% → 23.25 points (keep tasks scoring ≥ 23.25)
+```
+
+**Safety Net:**
+If threshold filters out too many tasks, the system keeps a minimum number to ensure you get results.
+
 ### 💬 Session Management
 - **Multiple Chat Sessions**: Create and switch between different conversations
 - **Session History**: All messages preserved with timestamps
