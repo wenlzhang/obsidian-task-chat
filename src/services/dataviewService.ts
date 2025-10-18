@@ -437,7 +437,21 @@ export class DataviewService {
     }
 
     /**
-     * Process task recursively including children
+     * Process task recursively including ALL children
+     *
+     * CRITICAL BEHAVIOR:
+     * - Processes ALL child tasks regardless of parent match
+     * - Handles list items that aren't tasks but have task children
+     * - Applies filter to EACH task independently (parent and children separate)
+     * - Ensures no child tasks are missed even if parent doesn't match
+     *
+     * @param dvTask DataView task object (could be task or list item)
+     * @param settings Plugin settings
+     * @param tasks Array to collect matching tasks
+     * @param path File path
+     * @param taskIndex Current task index
+     * @param taskFilter Optional filter to apply to each task
+     * @returns Updated task index
      */
     private static processTaskRecursively(
         dvTask: any,
@@ -445,8 +459,9 @@ export class DataviewService {
         tasks: Task[],
         path: string,
         taskIndex: number,
-        dateRange?: { start?: string; end?: string } | null,
+        taskFilter?: ((dvTask: any) => boolean) | null,
     ): number {
+        // Try to process as a task (handles both tasks and list items)
         const task = this.processDataviewTask(
             dvTask,
             settings,
@@ -454,11 +469,17 @@ export class DataviewService {
             path,
         );
 
-        // Apply date range filtering at load time
-        if (task && this.matchesDateRange(task, dateRange || null)) {
-            tasks.push(task);
+        // Apply task-level filter if provided
+        // Add task if: (1) no filter OR (2) filter passes
+        if (task) {
+            const shouldInclude = !taskFilter || taskFilter(dvTask);
+            if (shouldInclude) {
+                tasks.push(task);
+            }
         }
 
+        // ALWAYS process children, regardless of parent match
+        // This ensures child tasks aren't missed even if parent doesn't match filter
         if (
             dvTask.children &&
             Array.isArray(dvTask.children) &&
@@ -471,7 +492,7 @@ export class DataviewService {
                     tasks,
                     path,
                     taskIndex,
-                    dateRange,
+                    taskFilter, // Pass filter to children
                 );
             }
         }
@@ -551,24 +572,30 @@ export class DataviewService {
     }
 
     /**
-     * Build DataView query filter based on extracted intent
-     * Converts user intent (priority, dueDate, status) to DataView field queries
+     * Build task-level filter based on extracted intent
+     * Applies to INDIVIDUAL TASKS (not pages) during recursive processing
+     * This ensures child tasks are evaluated independently of their parents
+     *
+     * CRITICAL: Filters at task level, not page level, so:
+     * - Child tasks with due dates match even if parent doesn't
+     * - List items without task markers are recursively processed
+     * - Each task/subtask is evaluated independently
      *
      * @param intent Extracted intent with property filters
      * @param settings Plugin settings with user-configured field names
-     * @returns DataView query predicate function or null if no filters
+     * @returns Task filter function or null if no filters
      */
-    private static buildDataviewFilter(
+    private static buildTaskFilter(
         intent: {
             priority?: number | null;
             dueDate?: string | null;
             status?: string | null;
         },
         settings: PluginSettings,
-    ): ((page: any) => boolean) | null {
-        const filters: ((page: any) => boolean)[] = [];
+    ): ((dvTask: any) => boolean) | null {
+        const filters: ((dvTask: any) => boolean)[] = [];
 
-        // Build priority filter
+        // Build priority filter (checks task metadata)
         if (intent.priority) {
             const priorityFields = [
                 settings.dataviewKeys.priority,
@@ -578,9 +605,10 @@ export class DataviewService {
             ];
             const targetPriority = intent.priority;
 
-            filters.push((page: any) => {
+            filters.push((dvTask: any) => {
+                // Check task's own fields
                 for (const field of priorityFields) {
-                    const value = page[field];
+                    const value = dvTask[field];
                     if (value !== undefined && value !== null) {
                         const mapped = this.mapPriority(value, settings);
                         if (mapped === targetPriority) {
@@ -592,7 +620,7 @@ export class DataviewService {
             });
         }
 
-        // Build due date filter
+        // Build due date filter (checks task metadata)
         if (intent.dueDate) {
             const dueDateFields = [
                 settings.dataviewKeys.dueDate,
@@ -604,9 +632,9 @@ export class DataviewService {
 
             if (intent.dueDate === "any") {
                 // Has any due date
-                filters.push((page: any) => {
+                filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
-                        const value = page[field];
+                        const value = dvTask[field];
                         if (value !== undefined && value !== null) {
                             return true;
                         }
@@ -615,9 +643,9 @@ export class DataviewService {
                 });
             } else if (intent.dueDate === "today") {
                 const today = moment().format("YYYY-MM-DD");
-                filters.push((page: any) => {
+                filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
-                        const value = page[field];
+                        const value = dvTask[field];
                         if (value) {
                             const formatted = this.formatDate(value);
                             if (formatted === today) {
@@ -629,9 +657,9 @@ export class DataviewService {
                 });
             } else if (intent.dueDate === "overdue") {
                 const today = moment();
-                filters.push((page: any) => {
+                filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
-                        const value = page[field];
+                        const value = dvTask[field];
                         if (value) {
                             const taskDate = moment(this.formatDate(value));
                             if (taskDate.isBefore(today, "day")) {
@@ -645,11 +673,11 @@ export class DataviewService {
             // Add more due date filters as needed (tomorrow, week, etc.)
         }
 
-        // Build status filter
+        // Build status filter (checks task status)
         if (intent.status) {
-            filters.push((page: any) => {
-                const status = page.status || page.task?.status;
-                if (status) {
+            filters.push((dvTask: any) => {
+                const status = dvTask.status;
+                if (status !== undefined) {
                     const mapped = this.mapStatusToCategory(status, settings);
                     return mapped === intent.status;
                 }
@@ -662,8 +690,8 @@ export class DataviewService {
             return null; // No filters
         }
 
-        return (page: any) => {
-            return filters.every((f) => f(page));
+        return (dvTask: any) => {
+            return filters.every((f) => f(dvTask));
         };
     }
 
@@ -698,12 +726,13 @@ export class DataviewService {
         const tasks: Task[] = [];
         let foundTasks = false;
 
-        // Build DataView filter from property filters
-        const dvFilter = propertyFilters
-            ? this.buildDataviewFilter(propertyFilters, settings)
+        // Build task-level filter from property filters
+        // CRITICAL: This filters TASKS, not PAGES, so child tasks are evaluated independently
+        const taskFilter = propertyFilters
+            ? this.buildTaskFilter(propertyFilters, settings)
             : null;
 
-        if (dvFilter) {
+        if (taskFilter) {
             const filterDesc = [];
             if (propertyFilters?.priority)
                 filterDesc.push(`priority=${propertyFilters.priority}`);
@@ -712,21 +741,26 @@ export class DataviewService {
             if (propertyFilters?.status)
                 filterDesc.push(`status=${propertyFilters.status}`);
             console.log(
-                `[Task Chat] DataView API filtering: ${filterDesc.join(", ")}`,
+                `[Task Chat] Task-level filtering: ${filterDesc.join(", ")}`,
+            );
+            console.log(
+                `[Task Chat] Child tasks will be evaluated independently of parents`,
             );
         }
 
-        // Try using pages method with optional filter
+        // Fetch ALL pages without filtering
+        // CRITICAL: We don't filter at page level because:
+        // - Would skip entire pages if page doesn't match
+        // - Would miss child tasks even if they match
+        // - Need to evaluate each task independently
         if (
             !foundTasks &&
             dataviewApi.pages &&
             typeof dataviewApi.pages === "function"
         ) {
             try {
-                // Apply DataView filter at API level if provided
-                const pages = dvFilter
-                    ? dataviewApi.pages().where(dvFilter)
-                    : dataviewApi.pages();
+                // Get ALL pages (no filtering at page level)
+                const pages = dataviewApi.pages();
                 let taskIndex = 0;
 
                 if (pages && pages.length > 0) {
@@ -745,7 +779,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
-                                        null, // No date range filtering (done at API level)
+                                        taskFilter, // Apply filter at task level
                                     );
                                 }
                             } else if (
@@ -759,7 +793,7 @@ export class DataviewService {
                                         tasks,
                                         page.file.path,
                                         taskIndex,
-                                        null, // No date range filtering (done at API level)
+                                        taskFilter, // Apply filter at task level
                                     );
                                 }
                             }
@@ -779,9 +813,9 @@ export class DataviewService {
             }
         }
 
-        if (dvFilter) {
+        if (taskFilter) {
             console.log(
-                `[Task Chat] DataView API filtering complete: ${tasks.length} tasks returned`,
+                `[Task Chat] Task-level filtering complete: ${tasks.length} tasks matched`,
             );
         }
 
