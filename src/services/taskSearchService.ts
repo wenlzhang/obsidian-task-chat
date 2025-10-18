@@ -274,43 +274,49 @@ export class TaskSearchService {
     }
 
     /**
-     * Extract due date filter from query
+     * Extract due date filter from query using PropertyRecognitionService
      * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', 'any', or specific date
+     *
+     * @param query User's search query
+     * @param settings Plugin settings (for user-configured terms)
      */
-    static extractDueDateFilter(query: string): string | null {
+    static extractDueDateFilter(
+        query: string,
+        settings: PluginSettings,
+    ): string | null {
         const lowerQuery = query.toLowerCase();
+        const combined =
+            PropertyRecognitionService.getCombinedPropertyTerms(settings);
 
-        // Check for overdue (highest priority) - comprehensive patterns
-        if (
-            /(overdue|过期|逾期|已过期|past\s+due|late|延期)/.test(lowerQuery)
-        ) {
+        // Helper to check if any term matches
+        const hasAnyTerm = (terms: string[]) => {
+            return terms.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            );
+        };
+
+        // Check for specific time periods (highest priority - most specific)
+        if (hasAnyTerm(combined.dueDate.overdue)) {
             return "overdue";
         }
 
-        // Check for future tasks
-        if (/(future|upcoming|未来|将来|以后)/.test(lowerQuery)) {
+        if (hasAnyTerm(combined.dueDate.future)) {
             return "future";
         }
 
-        // Check for today - comprehensive patterns
-        if (
-            /(today|今天|今日|due\s+today|today'?s?\s+tasks?)/.test(lowerQuery)
-        ) {
+        if (hasAnyTerm(combined.dueDate.today)) {
             return "today";
         }
 
-        // Check for tomorrow
-        if (/(tomorrow|明天|due\s+tomorrow)/.test(lowerQuery)) {
+        if (hasAnyTerm(combined.dueDate.tomorrow)) {
             return "tomorrow";
         }
 
-        // Check for this week
-        if (/(this\s+week|本周|本周内)/.test(lowerQuery)) {
+        if (hasAnyTerm(combined.dueDate.thisWeek)) {
             return "week";
         }
 
-        // Check for next week
-        if (/(next\s+week|下周|下周内)/.test(lowerQuery)) {
+        if (hasAnyTerm(combined.dueDate.nextWeek)) {
             return "next-week";
         }
 
@@ -329,12 +335,8 @@ export class TaskSearchService {
         }
 
         // Check for generic "due" or "has due date" (tasks WITH a due date)
-        // Match various forms: "due tasks", "tasks due", "with deadline", etc.
-        if (
-            /(^due$|^due\s+tasks?$|^tasks?\s+due$|^scheduled\s+tasks?$|^tasks?\s+with\s+due|^tasks?\s+with\s+deadline|^deadline\s+tasks?|^has\s+due|^有截止日期|^有期限|^带截止日期)/i.test(
-                lowerQuery,
-            )
-        ) {
+        // Uses general terms from PropertyRecognitionService (user + internal)
+        if (hasAnyTerm(combined.dueDate.general)) {
             return "any";
         }
 
@@ -520,38 +522,55 @@ export class TaskSearchService {
 
         // Apply priority filter
         if (filters.priority) {
+            const beforePriority = filteredTasks.length;
             filteredTasks = filteredTasks.filter(
                 (task) => task.priority === filters.priority,
+            );
+            console.log(
+                `[Task Chat] Priority filter (${filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
             );
         }
 
         // Apply due date filter
         if (filters.dueDate) {
+            const beforeDueDate = filteredTasks.length;
             filteredTasks = this.filterByDueDate(
                 filteredTasks,
                 filters.dueDate,
+            );
+            console.log(
+                `[Task Chat] Due date filter (${filters.dueDate}): ${beforeDueDate} → ${filteredTasks.length} tasks`,
             );
         }
 
         // Apply status filter
         if (filters.status) {
+            const beforeStatus = filteredTasks.length;
             filteredTasks = filteredTasks.filter(
                 (task) => task.statusCategory === filters.status,
+            );
+            console.log(
+                `[Task Chat] Status filter (${filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
             );
         }
 
         // Apply folder filter
         if (filters.folder) {
+            const beforeFolder = filteredTasks.length;
             const folderLower = filters.folder.toLowerCase();
             filteredTasks = filteredTasks.filter(
                 (task) =>
                     task.folder &&
                     task.folder.toLowerCase().includes(folderLower),
             );
+            console.log(
+                `[Task Chat] Folder filter (${filters.folder}): ${beforeFolder} → ${filteredTasks.length} tasks`,
+            );
         }
 
         // Apply tag filters
         if (filters.tags && filters.tags.length > 0) {
+            const beforeTags = filteredTasks.length;
             filteredTasks = filteredTasks.filter((task) => {
                 const taskTagsLower = task.tags.map((t) => t.toLowerCase());
                 return filters.tags!.some((filterTag) =>
@@ -560,6 +579,9 @@ export class TaskSearchService {
                     ),
                 );
             });
+            console.log(
+                `[Task Chat] Tag filter (${filters.tags.join(", ")}): ${beforeTags} → ${filteredTasks.length} tasks`,
+            );
         }
 
         // Apply keyword search (semantic matching - ANY keyword matches)
@@ -612,7 +634,10 @@ export class TaskSearchService {
         hasMultipleFilters: boolean;
     } {
         const extractedPriority = this.extractPriorityFromQuery(query);
-        const extractedDueDateFilter = this.extractDueDateFilter(query);
+        const extractedDueDateFilter = this.extractDueDateFilter(
+            query,
+            settings,
+        );
         const extractedStatus = this.extractStatusFromQuery(query);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
