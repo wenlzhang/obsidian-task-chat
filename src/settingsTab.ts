@@ -3,6 +3,7 @@ import TaskChatPlugin from "./main";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
 import { DEFAULT_SETTINGS } from "./settings";
+import { StopWords } from "./services/stopWords";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -540,6 +541,49 @@ export class SettingsTab extends PluginSettingTab {
                     })
                     .then((text) => {
                         text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        // Stop Words Section
+        containerEl.createEl("h3", { text: "Stop words" });
+
+        const stopWordsInfo = containerEl.createEl("div", {
+            cls: "setting-item-description",
+        });
+        stopWordsInfo.createEl("p", {
+            text: "Stop words are common words filtered out during search to improve relevance. Your custom stop words combine with ~100 built-in stop words (including 'the', 'a', 'task', 'work', etc.). Used in all modes: Simple Search, Smart Search, Task Chat.",
+        });
+
+        // Show count of internal stop words
+        const internalCount = StopWords.getInternalStopWords().length;
+        stopWordsInfo.createEl("p", {
+            text: `Built-in stop words: ${internalCount} words.`,
+            cls: "mod-muted",
+        });
+
+        new Setting(containerEl)
+            .setName("Custom stop words")
+            .setDesc(
+                "Additional stop words specific to your workflow or language. These combine with built-in stop words to filter out unwanted keywords. Example: 'project, task' for domain-specific or additional language terms. Comma-separated list.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("project, task")
+                    .setValue(this.plugin.settings.userStopWords.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.userStopWords = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        // Update StopWords class immediately
+                        StopWords.setUserStopWords(
+                            this.plugin.settings.userStopWords,
+                        );
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 3;
                         text.inputEl.cols = 50;
                     }),
             );

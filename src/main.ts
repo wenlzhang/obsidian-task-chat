@@ -9,6 +9,7 @@ import { FilterModal } from "./views/filterModal";
 import { SessionManager } from "./services/sessionManager";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
+import { StopWords } from "./services/stopWords";
 
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
@@ -105,6 +106,9 @@ export default class TaskChatPlugin extends Plugin {
             DEFAULT_SETTINGS,
             await this.loadData(),
         );
+
+        // Initialize user stop words (combines with internal stop words)
+        StopWords.setUserStopWords(this.settings.userStopWords || []);
 
         // Auto-load models if not already cached
         this.loadModelsInBackground();

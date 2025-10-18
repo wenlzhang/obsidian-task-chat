@@ -6,12 +6,15 @@
  * - Keyword relevance scoring
  * - Consistency between search modes
  * - Threshold calculations (fewer keywords = more appropriate thresholds)
+ *
+ * Supports user-configurable stop words that merge with internal stop words.
  */
 export class StopWords {
     /**
-     * Comprehensive stop word list covering multiple languages
+     * Internal stop word list covering multiple languages
+     * These are always active and cannot be disabled
      */
-    private static readonly STOP_WORDS = new Set([
+    private static readonly INTERNAL_STOP_WORDS = new Set([
         // English articles and prepositions
         "the",
         "a",
@@ -108,12 +111,39 @@ export class StopWords {
     ]);
 
     /**
-     * Check if a word is a stop word
+     * User-configurable stop words (set via settings)
+     * Combined with internal stop words for filtering
+     */
+    private static userStopWords: Set<string> = new Set();
+
+    /**
+     * Set user-configurable stop words
+     * These are combined with internal stop words
+     * @param words Array of user-defined stop words
+     */
+    static setUserStopWords(words: string[]): void {
+        this.userStopWords = new Set(words.map((w) => w.toLowerCase()));
+    }
+
+    /**
+     * Get combined stop words (internal + user)
+     * @returns Set of all stop words
+     */
+    private static getAllStopWords(): Set<string> {
+        return new Set([...this.INTERNAL_STOP_WORDS, ...this.userStopWords]);
+    }
+
+    /**
+     * Check if a word is a stop word (internal or user-defined)
      * @param word Word to check (case-insensitive)
      * @returns true if word is a stop word
      */
     static isStopWord(word: string): boolean {
-        return this.STOP_WORDS.has(word.toLowerCase());
+        const lowerWord = word.toLowerCase();
+        return (
+            this.INTERNAL_STOP_WORDS.has(lowerWord) ||
+            this.userStopWords.has(lowerWord)
+        );
     }
 
     /**
@@ -146,10 +176,26 @@ export class StopWords {
     }
 
     /**
-     * Get the full list of stop words (for debugging or display)
+     * Get the full list of stop words (internal + user, for AI prompt)
      * @returns Array of all stop words
      */
     static getStopWordsList(): string[] {
-        return Array.from(this.STOP_WORDS);
+        return Array.from(this.getAllStopWords());
+    }
+
+    /**
+     * Get only internal stop words (for reference)
+     * @returns Array of internal stop words
+     */
+    static getInternalStopWords(): string[] {
+        return Array.from(this.INTERNAL_STOP_WORDS);
+    }
+
+    /**
+     * Get only user stop words (for settings display)
+     * @returns Array of user stop words
+     */
+    static getUserStopWords(): string[] {
+        return Array.from(this.userStopWords);
     }
 }

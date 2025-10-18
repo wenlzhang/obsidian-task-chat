@@ -85,6 +85,11 @@ export interface PluginSettings {
         status: string[]; // User's terms for status (e.g., ["状态", "进度", "完成"])
     };
 
+    // User-Configurable Stop Words (used across all modes)
+    // These combine with internal stop words for enhanced filtering
+    // Used in: Simple Search, Smart Search, Task Chat, AI parsing, AI responses
+    userStopWords: string[]; // User's additional stop words (e.g., ["项目", "project", "mitt"])
+
     // Task Display Settings
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
@@ -220,6 +225,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         dueDate: [], // User can add: ["截止日期", "期限", "到期"]
         status: [], // User can add: ["状态", "完成", "进度"]
     },
+
+    // User-Configurable Stop Words
+    userStopWords: [], // User can add domain-specific or language-specific stop words
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher
