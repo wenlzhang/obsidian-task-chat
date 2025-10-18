@@ -76,7 +76,7 @@ export class AIService {
         if (chatMode === "simple") {
             // Mode 1: Simple Search - Regex parsing only
             console.log("[Task Chat] Mode: Simple Search (regex parsing)");
-            intent = TaskSearchService.analyzeQueryIntent(message);
+            intent = TaskSearchService.analyzeQueryIntent(message, settings);
             usingAIParsing = false;
         } else {
             // Mode 2 & 3: Smart Search / Task Chat - AI parsing
@@ -141,7 +141,10 @@ export class AIService {
                 };
             } else {
                 // AI parsing failed, fall back to regex
-                intent = TaskSearchService.analyzeQueryIntent(message);
+                intent = TaskSearchService.analyzeQueryIntent(
+                    message,
+                    settings,
+                );
             }
         }
 

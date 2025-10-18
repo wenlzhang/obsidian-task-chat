@@ -2,6 +2,8 @@ import { Task } from "../models/task";
 import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
+import { PropertyRecognitionService } from "./propertyRecognitionService";
+import { PluginSettings } from "../settings";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -176,31 +178,14 @@ export class TaskSearchService {
 
     /**
      * Check if query is asking about priorities/recommendations
+     * @deprecated Use PropertyRecognitionService.detectPropertiesSimple() instead
+     * Kept for backward compatibility but delegates to PropertyRecognitionService
      */
-    static isPriorityQuery(query: string): boolean {
-        const priorityKeywords = [
-            "priority",
-            "important",
-            "urgent",
-            "first",
-            "next",
-            "should",
-            "recommend",
-            "suggest",
-            "focus",
-            "优先",
-            "重要",
-            "紧急",
-            "先",
-            "下一个",
-            "应该",
-            "建议",
-            "推荐",
-            "专注",
-        ];
-
-        const lowerQuery = query.toLowerCase();
-        return priorityKeywords.some((keyword) => lowerQuery.includes(keyword));
+    static isPriorityQuery(query: string, settings: PluginSettings): boolean {
+        return PropertyRecognitionService.detectPropertiesSimple(
+            query,
+            settings,
+        ).hasPriority;
     }
 
     /**
@@ -278,31 +263,14 @@ export class TaskSearchService {
 
     /**
      * Check if query is asking about due dates
+     * @deprecated Use PropertyRecognitionService.detectPropertiesSimple() instead
+     * Kept for backward compatibility but delegates to PropertyRecognitionService
      */
-    static isDueDateQuery(query: string): boolean {
-        const dueDateKeywords = [
-            "due",
-            "deadline",
-            "overdue",
-            "future",
-            "upcoming",
-            "today",
-            "tomorrow",
-            "this week",
-            "next week",
-            "截止",
-            "到期",
-            "过期",
-            "未来",
-            "将来",
-            "今天",
-            "明天",
-            "本周",
-            "下周",
-        ];
-
-        const lowerQuery = query.toLowerCase();
-        return dueDateKeywords.some((keyword) => lowerQuery.includes(keyword));
+    static isDueDateQuery(query: string, settings: PluginSettings): boolean {
+        return PropertyRecognitionService.detectPropertiesSimple(
+            query,
+            settings,
+        ).hasDueDate;
     }
 
     /**
@@ -625,8 +593,13 @@ export class TaskSearchService {
 
     /**
      * Analyze query intent with comprehensive filter extraction
+     * @param query User's search query
+     * @param settings Plugin settings (for property term recognition)
      */
-    static analyzeQueryIntent(query: string): {
+    static analyzeQueryIntent(
+        query: string,
+        settings: PluginSettings,
+    ): {
         isSearch: boolean;
         isPriority: boolean;
         isDueDate: boolean;
@@ -654,10 +627,16 @@ export class TaskSearchService {
             (extractedTags.length > 0 ? 1 : 0) +
             (keywords.length > 0 ? 1 : 0);
 
+        // Use PropertyRecognitionService for property detection (eliminates hardcoded duplicates)
+        const propertyHints = PropertyRecognitionService.detectPropertiesSimple(
+            query,
+            settings,
+        );
+
         return {
             isSearch: this.isSearchQuery(query),
-            isPriority: this.isPriorityQuery(query),
-            isDueDate: this.isDueDateQuery(query),
+            isPriority: propertyHints.hasPriority,
+            isDueDate: propertyHints.hasDueDate,
             keywords,
             extractedPriority,
             extractedDueDateFilter,
