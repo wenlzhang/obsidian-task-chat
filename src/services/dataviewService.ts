@@ -748,68 +748,102 @@ export class DataviewService {
             );
         }
 
-        // Fetch ALL pages without filtering
-        // CRITICAL: We don't filter at page level because:
-        // - Would skip entire pages if page doesn't match
-        // - Would miss child tasks even if they match
-        // - Need to evaluate each task independently
+        // Fetch ALL pages and use DataView's expand() to flatten ALL tasks
+        // CRITICAL: expand("children") recursively flattens the entire task hierarchy
+        // This automatically handles:
+        // - Parent tasks, child tasks, grandchildren, etc. at any depth
+        // - List items with task children
+        // - Mixed hierarchies (list → task → list → task)
         if (
             !foundTasks &&
             dataviewApi.pages &&
             typeof dataviewApi.pages === "function"
         ) {
             try {
-                // Get ALL pages (no filtering at page level)
                 const pages = dataviewApi.pages();
-                let taskIndex = 0;
 
                 if (pages && pages.length > 0) {
-                    for (const page of pages) {
-                        try {
-                            if (!page.file || !page.file.path) continue;
+                    // Get ALL tasks from ALL pages using DataView's API
+                    // file.tasks returns task objects (may be hierarchical)
+                    const allPageTasks = pages.file.tasks;
 
-                            if (
-                                page.file.tasks &&
-                                Array.isArray(page.file.tasks)
-                            ) {
-                                for (const pageTask of page.file.tasks) {
-                                    taskIndex = this.processTaskRecursively(
-                                        pageTask,
-                                        settings,
-                                        tasks,
-                                        page.file.path,
-                                        taskIndex,
-                                        taskFilter, // Apply filter at task level
-                                    );
-                                }
-                            } else if (
-                                page.tasks &&
-                                Array.isArray(page.tasks)
-                            ) {
-                                for (const pageTask of page.tasks) {
-                                    taskIndex = this.processTaskRecursively(
-                                        pageTask,
-                                        settings,
-                                        tasks,
-                                        page.file.path,
-                                        taskIndex,
-                                        taskFilter, // Apply filter at task level
-                                    );
+                    if (allPageTasks && allPageTasks.length > 0) {
+                        // Use DataView's expand() to flatten ALL subtasks recursively
+                        // This handles unlimited nesting depth automatically
+                        const flattenedTasks = allPageTasks.expand
+                            ? allPageTasks.expand("children")
+                            : allPageTasks;
+
+                        let taskIndex = 0;
+
+                        // Process each flattened task
+                        for (const dvTask of flattenedTasks.array()) {
+                            const task = this.processDataviewTask(
+                                dvTask,
+                                settings,
+                                taskIndex++,
+                                dvTask.path || "",
+                            );
+
+                            // Apply task-level filter if provided
+                            if (task) {
+                                const shouldInclude =
+                                    !taskFilter || taskFilter(dvTask);
+                                if (shouldInclude) {
+                                    tasks.push(task);
                                 }
                             }
-                        } catch (pageError) {
-                            console.warn(
-                                `Error processing page: ${page.file?.path}`,
-                            );
                         }
-                    }
 
-                    if (tasks.length > 0) {
                         foundTasks = true;
                     }
                 }
             } catch (e) {
                 console.error("Error using DataView pages API:", e);
+
+                // Fallback to recursive processing if expand() fails
+                console.log("[Task Chat] Falling back to recursive processing");
+                try {
+                    const pages = dataviewApi.pages();
+                    let taskIndex = 0;
+
+                    if (pages && pages.length > 0) {
+                        for (const page of pages) {
+                            try {
+                                if (!page.file || !page.file.path) continue;
+
+                                if (
+                                    page.file.tasks &&
+                                    Array.isArray(page.file.tasks)
+                                ) {
+                                    for (const pageTask of page.file.tasks) {
+                                        taskIndex = this.processTaskRecursively(
+                                            pageTask,
+                                            settings,
+                                            tasks,
+                                            page.file.path,
+                                            taskIndex,
+                                            taskFilter,
+                                        );
+                                    }
+                                }
+                            } catch (pageError) {
+                                console.warn(
+                                    `Error processing page: ${page.file?.path}`,
+                                );
+                            }
+                        }
+
+                        if (tasks.length > 0) {
+                            foundTasks = true;
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.error(
+                        "Fallback processing also failed:",
+                        fallbackError,
+                    );
+                }
             }
         }
 
