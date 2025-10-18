@@ -593,6 +593,214 @@ Examples:
         // Initial display
         this.updateMaxScoreDisplay();
 
+        // Advanced Scoring Coefficients Section
+        containerEl.createEl("h3", { text: "Advanced scoring coefficients" });
+
+        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
+            <p><strong>🔧 Fine-Grained Scoring Control (Optional)</strong></p>
+            <p>These settings control scoring at a detailed level within each factor. 
+            <strong>Most users don't need to change these</strong> - the main coefficients above are sufficient.</p>
+            <p>Advanced users can fine-tune how each specific level (e.g., "overdue" vs "due within 7 days") 
+            affects scoring.</p>
+        `;
+
+        // Relevance Sub-Coefficients
+        containerEl.createEl("h4", { text: "Relevance sub-coefficients" });
+
+        new Setting(containerEl)
+            .setName("Core keyword weight")
+            .setDesc(
+                "Bonus weight for core keyword matches (0.0-1.0). Default: 0.2. " +
+                    "Core keywords are original extracted keywords before semantic expansion. " +
+                    "Higher values prioritize exact query matches.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.relevanceCoreWeight)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.relevanceCoreWeight = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("All keywords weight")
+            .setDesc(
+                "Weight for all keyword matches (0.0-2.0). Default: 1.0. " +
+                    "Includes core keywords + semantic equivalents. " +
+                    "Higher values increase importance of semantic coverage.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 2, 0.1)
+                    .setValue(this.plugin.settings.relevanceAllWeight)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.relevanceAllWeight = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        // Due Date Sub-Coefficients
+        containerEl.createEl("h4", { text: "Due date sub-coefficients" });
+
+        new Setting(containerEl)
+            .setName("Overdue tasks")
+            .setDesc(
+                "Score for overdue tasks (0.0-10.0). Default: 1.5 (most urgent).",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 10, 0.1)
+                    .setValue(this.plugin.settings.dueDateOverdueScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateOverdueScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due within 7 days")
+            .setDesc(
+                "Score for tasks due within 7 days (0.0-1.0). Default: 1.0.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.1)
+                    .setValue(this.plugin.settings.dueDateWithin7DaysScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateWithin7DaysScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due within 1 month")
+            .setDesc(
+                "Score for tasks due within 1 month (0.0-1.0). Default: 0.5.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.1)
+                    .setValue(this.plugin.settings.dueDateWithin1MonthScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateWithin1MonthScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due later (after 1 month)")
+            .setDesc(
+                "Score for tasks due after 1 month (0.0-1.0). Default: 0.2.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.1)
+                    .setValue(this.plugin.settings.dueDateLaterScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateLaterScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("No due date")
+            .setDesc(
+                "Score for tasks with no due date (0.0-1.0). Default: 0.1.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.1)
+                    .setValue(this.plugin.settings.dueDateNoneScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.dueDateNoneScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        // Priority Sub-Coefficients
+        containerEl.createEl("h4", { text: "Priority sub-coefficients" });
+
+        new Setting(containerEl)
+            .setName("Priority 1 (Highest)")
+            .setDesc("Score for priority 1 tasks (0.0-1.0). Default: 1.0.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.priorityP1Score)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityP1Score = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 2 (High)")
+            .setDesc("Score for priority 2 tasks (0.0-1.0). Default: 0.75.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.priorityP2Score)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityP2Score = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 3 (Medium)")
+            .setDesc("Score for priority 3 tasks (0.0-1.0). Default: 0.5.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.priorityP3Score)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityP3Score = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 4 (Low)")
+            .setDesc("Score for priority 4 tasks (0.0-1.0). Default: 0.2.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.priorityP4Score)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityP4Score = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("No priority")
+            .setDesc(
+                "Score for tasks with no priority set (0.0-1.0). Default: 0.1.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.priorityNoneScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.priorityNoneScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
@@ -1411,7 +1619,7 @@ Examples:
         });
 
         this.sortByContainerEl.createEl("p", {
-            text: "Configure how tasks are sorted for each mode. Tasks are sorted by the first criterion, then by the second criterion for ties, and so on. Use ↑↓ to reorder, ✕ to remove, and + to add criteria.",
+            text: "Select which properties to include in sorting. With user-configurable coefficients, weights determine importance (not order). Order only matters for breaking rare ties when tasks have identical final scores. Use ✕ to remove and + to add criteria.",
             cls: "setting-item-description",
         });
 
@@ -1447,10 +1655,29 @@ Examples:
             cls: "task-chat-info-box-description",
         });
 
+        // Important note about coefficients
+        this.sortByContainerEl.createDiv({
+            cls: "task-chat-info-box",
+        }).innerHTML = `
+            <p><strong>⚠️ Important: Multi-Criteria Sorting with User Coefficients</strong></p>
+            <p>Since you can now configure coefficient values (Relevance, Due Date, Priority), 
+            <strong>property ORDER is less important</strong>. The <strong>COEFFICIENT VALUES</strong> 
+            determine importance, not the sort order.</p>
+            <p><strong>Example:</strong></p>
+            <ul>
+                <li>Relevance coefficient: 20 → Gets 20× weight in final score</li>
+                <li>Due Date coefficient: 4 → Gets 4× weight in final score</li>
+                <li>Priority coefficient: 1 → Gets 1× weight in final score</li>
+            </ul>
+            <p>Tasks are scored as: <code>(Relevance × 20) + (Due Date × 4) + (Priority × 1)</code></p>
+            <p><strong>Below settings control:</strong> Which properties to INCLUDE in scoring (not their importance).
+            Use coefficient sliders above to control how much each property matters.</p>
+        `;
+
         // Simple Search multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Simple Search (Filter & Display)",
-            "Multi-criteria sort order for Simple Search mode. Default: Relevance → Due date → Priority.",
+            "Select properties to include. Coefficient values control importance; order is only for rare ties. Default: Relevance → Due date → Priority.",
             "taskSortOrderSimple",
             false, // no "auto" option
         );
@@ -1458,7 +1685,7 @@ Examples:
         // Smart Search multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Smart Search (Filter & Display)",
-            "Multi-criteria sort order for Smart Search mode. Relevance is always first and cannot be removed or moved. Default: Relevance → Due date → Priority.",
+            "Select properties to include. Relevance always included (controlled by coefficient). Order is only for rare ties. Default: Relevance → Due date → Priority.",
             "taskSortOrderSmart",
             false, // no "auto" option
             true, // relevance must be first
@@ -1467,7 +1694,7 @@ Examples:
         // Task Chat AI Context multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Task Chat (Filter & AI Context)",
-            "Multi-criteria sort order for sending tasks to AI. Relevance is always first and cannot be removed or moved. This can differ from display order. Default: Relevance → Due date → Priority (shows AI the most relevant and urgent tasks first).",
+            "Select properties for AI context. Relevance always included. Coefficients control importance; order is for ties. Default: Relevance → Due date → Priority.",
             "taskSortOrderChatAI",
             false, // no "auto" option (will be resolved before sending to AI)
             true, // relevance must be first
@@ -1476,7 +1703,7 @@ Examples:
         // Task Chat Display multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Task Chat (Display)",
-            "Multi-criteria sort order for displaying results in Task Chat mode. Default: Auto → Relevance → Due date → Priority.",
+            "Select properties to display. 'Auto' resolves based on query. Coefficients control importance. Default: Auto → Relevance → Due date → Priority.",
             "taskSortOrderChat",
             true, // has "auto" option
         );

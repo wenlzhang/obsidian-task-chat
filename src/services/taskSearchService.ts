@@ -721,18 +721,18 @@ export class TaskSearchService {
     }
 
     /**
-     * Calculate keyword relevance score
-     * Uses simplified formula: coreRatio × 0.2 + allKeywordsRatio × 1.0
-     * IMPORTANT: Both ratios are relative to totalCore (not totalKeywords)
-     * @param taskText - Task text (already lowercased)
-     * @param coreKeywords - Core keywords from query (deduplicated)
+     * Calculate relevance score based on keyword matching
+     * @param taskText - Lowercase task text
+     * @param coreKeywords - Core keywords from query (pre-expansion, deduplicated)
      * @param allKeywords - All keywords including core + semantic equivalents (deduplicated)
-     * @returns Score: 0-1.2 (max is 0.2 from core + 1 from all keywords ratio)
+     * @param settings - Plugin settings with user-configurable coefficients
+     * @returns Score: 0-1.4 typical (0.2 × coreWeight + 1.0 × allWeight, adjustable by user)
      */
     private static calculateRelevanceScore(
         taskText: string,
         coreKeywords: string[],
         allKeywords: string[],
+        settings: import("../settings").PluginSettings,
     ): number {
         // Count core keyword matches
         const coreKeywordsMatched = coreKeywords.filter((coreKw) =>
@@ -750,19 +750,26 @@ export class TaskSearchService {
         const coreMatchRatio = coreKeywordsMatched / totalCore;
         const allKeywordsRatio = allKeywordsMatched / totalCore; // Also divided by totalCore!
 
-        // Apply coefficients: core = 0.2 (small bonus), all keywords = 1.0 (main factor)
-        return coreMatchRatio * 0.2 + allKeywordsRatio * 1.0;
+        // Apply user-configurable coefficients (defaults: core = 0.2, all = 1.0)
+        return (
+            coreMatchRatio * settings.relevanceCoreWeight +
+            allKeywordsRatio * settings.relevanceAllWeight
+        );
     }
 
     /**
      * Calculate due date score based on time ranges
      * Uses moment (from Obsidian) for reliable date comparisons
      * @param dueDate - Task due date string (YYYY-MM-DD format)
-     * @returns Score: 1.5 (overdue), 1.0 (within 7 days), 0.5 (within 1 month), 0.2 (after 1 month), 0.1 (no due date)
+     * @param settings - Plugin settings with user-configurable coefficients
+     * @returns Score: User-configurable (defaults: 1.5 overdue, 1.0 within 7 days, 0.5 within month, 0.2 later, 0.1 none)
      */
-    private static calculateDueDateScore(dueDate: string | undefined): number {
-        // No due date = same as far future (0.1)
-        if (!dueDate) return 0.1;
+    private static calculateDueDateScore(
+        dueDate: string | undefined,
+        settings: import("../settings").PluginSettings,
+    ): number {
+        // No due date = user-configurable score (default: 0.1)
+        if (!dueDate) return settings.dueDateNoneScore;
 
         // Use moment for reliable date comparisons (from Obsidian)
         const { moment } = window as any;
@@ -770,7 +777,7 @@ export class TaskSearchService {
             console.warn(
                 "[Task Chat] moment not available, skipping due date score",
             );
-            return 0.1;
+            return settings.dueDateNoneScore;
         }
 
         const today = moment().startOf("day");
@@ -779,41 +786,43 @@ export class TaskSearchService {
         // Calculate difference in days
         const diffDays = taskDueDate.diff(today, "days");
 
-        // Score based on time ranges
+        // Score based on time ranges (all user-configurable)
         if (diffDays < 0) {
-            return 1.5; // Past due (most urgent)
+            return settings.dueDateOverdueScore; // Past due (most urgent)
         } else if (diffDays <= 7) {
-            return 1.0; // Due within 7 days
+            return settings.dueDateWithin7DaysScore; // Due within 7 days
         } else if (diffDays <= 30) {
-            return 0.5; // Due within 1 month
+            return settings.dueDateWithin1MonthScore; // Due within 1 month
         } else if (diffDays > 30) {
-            return 0.2; // Due after 1 month
+            return settings.dueDateLaterScore; // Due after 1 month
         } else {
-            return 0.1; // No due date
+            return settings.dueDateNoneScore; // Fallback
         }
     }
 
     /**
      * Calculate priority score
      * @param priority - Task priority (1=highest, 2=high, 3=medium, 4=low)
-     * @returns Score: 1.0 (priority 1), 0.75 (priority 2), 0.5 (priority 3), 0.2 (priority 4), 0.1 (no priority)
+     * @param settings - Plugin settings with user-configurable coefficients
+     * @returns Score: User-configurable (defaults: 1.0 for P1, 0.75 P2, 0.5 P3, 0.2 P4, 0.1 none)
      */
     private static calculatePriorityScore(
         priority: number | undefined,
+        settings: import("../settings").PluginSettings,
     ): number {
-        if (!priority) return 0.1;
+        if (!priority) return settings.priorityNoneScore;
 
         switch (priority) {
             case 1:
-                return 1.0; // Highest priority
+                return settings.priorityP1Score; // Highest priority
             case 2:
-                return 0.75; // High priority
+                return settings.priorityP2Score; // High priority
             case 3:
-                return 0.5; // Medium priority
+                return settings.priorityP3Score; // Medium priority
             case 4:
-                return 0.2; // Low priority
+                return settings.priorityP4Score; // Low priority
             default:
-                return 0.1;
+                return settings.priorityNoneScore;
         }
     }
 
@@ -854,6 +863,7 @@ export class TaskSearchService {
      * @param relevCoeff - Relevance coefficient (default: 20)
      * @param dateCoeff - Due date coefficient (default: 4)
      * @param priorCoeff - Priority coefficient (default: 1)
+     * @param settings - Plugin settings with user-configurable sub-coefficients
      * @returns Array of {task, score, relevanceScore, dueDateScore, priorityScore} sorted by final weighted score
      */
     static scoreTasksComprehensive(
@@ -866,6 +876,7 @@ export class TaskSearchService {
         relevCoeff: number = 20,
         dateCoeff: number = 4,
         priorCoeff: number = 1,
+        settings: import("../settings").PluginSettings,
     ): Array<{
         task: Task;
         score: number;
@@ -925,13 +936,20 @@ export class TaskSearchService {
                 taskText,
                 deduplicatedCoreKeywords,
                 deduplicatedKeywords,
+                settings,
             );
 
             // ========== COMPONENT 2: DUE DATE SCORE ==========
-            const dueDateScore = this.calculateDueDateScore(task.dueDate);
+            const dueDateScore = this.calculateDueDateScore(
+                task.dueDate,
+                settings,
+            );
 
             // ========== COMPONENT 3: PRIORITY SCORE ==========
-            const priorityScore = this.calculatePriorityScore(task.priority);
+            const priorityScore = this.calculatePriorityScore(
+                task.priority,
+                settings,
+            );
 
             // ========== WEIGHTED FINAL SCORE ==========
             // Use user-configurable coefficients (defaults: 20, 4, 1)

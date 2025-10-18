@@ -251,6 +251,7 @@ export class AIService {
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings,
                     );
                 } else {
                     // Simple Search: no semantic expansion (keywords = coreKeywords)
@@ -267,6 +268,7 @@ export class AIService {
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings,
                     );
                 }
 
@@ -367,6 +369,7 @@ export class AIService {
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings,
                     );
                 } else {
                     scoredTasks = TaskSearchService.scoreTasksComprehensive(
@@ -379,6 +382,7 @@ export class AIService {
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings,
                     );
                 }
                 relevanceScores = new Map(
@@ -1305,6 +1309,7 @@ ${taskContext}`;
                     settings.relevanceCoefficient,
                     settings.dueDateCoefficient,
                     settings.priorityCoefficient,
+                    settings,
                 );
             } else {
                 console.log(
@@ -1320,6 +1325,7 @@ ${taskContext}`;
                     settings.relevanceCoefficient,
                     settings.dueDateCoefficient,
                     settings.priorityCoefficient,
+                    settings,
                 );
             }
             const topTasks = scoredTasks

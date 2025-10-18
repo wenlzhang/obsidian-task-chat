@@ -332,6 +332,312 @@ Same percentage, different absolute threshold based on your coefficients.
 4. **Monitor max score** - Keep it reasonable (20-50 points)
 5. **Quality filter adapts** - Automatically scales to your coefficients
 
+---
+
+### 🔧 Advanced Scoring Coefficients
+
+**New in 2024-10-18:** For power users who want fine-grained control over every aspect of scoring.
+
+#### What Are Advanced Coefficients?
+
+Beyond the main coefficients (Relevance, Due Date, Priority), advanced coefficients let you control scoring at a detailed level **within each factor**.
+
+**Most users don't need these!** The main three coefficients are sufficient for 95% of workflows. Advanced coefficients are for:
+- Power users who want maximum control
+- Users with very specific workflow requirements
+- Users experimenting with scoring behavior
+
+#### Relevance Sub-Coefficients
+
+Control how keyword matching is scored:
+
+| Sub-Coefficient | Default | Range | What It Does |
+|-----------------|---------|-------|--------------|
+| **Core keyword weight** | 0.2 | 0.0-1.0 | Bonus for exact query matches (before expansion) |
+| **All keywords weight** | 1.0 | 0.0-2.0 | Weight for all matches (core + semantic equivalents) |
+
+**Example:**
+
+With defaults (core: 0.2, all: 1.0):
+- Task matches 2 of 2 core keywords: `2/2 × 0.2 = 0.2 points`
+- Task matches 15 of 20 expanded keywords: `15/2 × 1.0 = 7.5 points`
+- **Relevance base score:** `0.2 + 7.5 = 7.7` (before main coefficient)
+- **Final relevance:** `7.7 × 20 (main coeff) = 154 points`
+
+**When to adjust:**
+
+*Exact Match Focus (core: 0.5, all: 0.8):*
+- Prioritizes original query terms
+- Semantic equivalents matter less
+- **Use for:** Precise, technical searches
+
+*Semantic Breadth (core: 0.1, all: 1.5):*
+- Emphasizes semantic coverage
+- Original terms get small bonus
+- **Use for:** Exploratory, conceptual searches
+
+#### Due Date Sub-Coefficients
+
+Control scoring at each time range:
+
+| Time Range | Default | Range | Meaning |
+|------------|---------|-------|---------|
+| **Overdue** | 1.5 | 0.0-2.0 | Past due date (most urgent) |
+| **Within 7 days** | 1.0 | 0.0-2.0 | Due within a week |
+| **Within 1 month** | 0.5 | 0.0-2.0 | Due within 30 days |
+| **After 1 month** | 0.2 | 0.0-2.0 | Due later than 30 days |
+| **No due date** | 0.1 | 0.0-2.0 | No deadline set |
+
+**Example:**
+
+With defaults (overdue: 1.5, main coeff: 4):
+- Overdue task: `1.5 × 4 = 6 points`
+- Due in 3 days: `1.0 × 4 = 4 points`
+- Due in 2 weeks: `0.5 × 4 = 2 points`
+
+**Common Configurations:**
+
+*Aggressive Urgency (overdue: 2.0, 7days: 1.0, rest: 0.1):*
+- Overdue tasks heavily prioritized
+- Far-future tasks largely ignored
+- **Use for:** Deadline-driven, reactive workflow
+
+*Balanced Timeline (overdue: 1.2, 7days: 0.8, month: 0.5, later: 0.3):*
+- Smoother urgency curve
+- All dates considered fairly
+- **Use for:** Long-term planning, proactive workflow
+
+*Future Focus (overdue: 0.5, 7days: 1.0, month: 0.8, later: 0.5):*
+- Upcoming tasks prioritized over overdue
+- Forward-looking rather than reactive
+- **Use for:** Planning-focused workflow
+
+#### Priority Sub-Coefficients
+
+Control scoring at each priority level:
+
+| Priority Level | Default | Range | Typical Mapping |
+|----------------|---------|-------|-----------------|
+| **P1 (Highest)** | 1.0 | 0.0-1.0 | Urgent, critical, must-do |
+| **P2 (High)** | 0.75 | 0.0-1.0 | Important, should-do |
+| **P3 (Medium)** | 0.5 | 0.0-1.0 | Normal, regular tasks |
+| **P4 (Low)** | 0.2 | 0.0-1.0 | Nice-to-have, optional |
+| **No priority** | 0.1 | 0.0-1.0 | Unclassified tasks |
+
+**Example:**
+
+With defaults (P1: 1.0, main coeff: 1):
+- P1 task: `1.0 × 1 = 1 point`
+- P2 task: `0.75 × 1 = 0.75 points`
+- P3 task: `0.5 × 1 = 0.5 points`
+
+**Common Configurations:**
+
+*Binary Priority (P1: 1.0, P2: 0.9, P3-4: 0.1):*
+- Sharp distinction between high and low
+- P1/P2 treated similarly (both "important")
+- P3/P4 largely ignored
+- **Use for:** Simple high/low workflow
+
+*Graduated Priority (P1: 1.0, P2: 0.7, P3: 0.4, P4: 0.15):*
+- Smooth progression between levels
+- All levels clearly distinct
+- **Use for:** Detailed priority management
+
+*Flatten Priority (all: 0.5):*
+- Priority doesn't matter much
+- Focus on relevance and dates instead
+- **Use for:** Priority-agnostic workflow
+
+---
+
+### 🎯 Complete Scoring Examples
+
+#### Example 1: Keyword-Focused Power User
+
+**Scenario:** Content researcher doing specific keyword searches
+
+**Main Coefficients:**
+- Relevance: 30 (emphasize keywords)
+- Due Date: 2 (dates less important)
+- Priority: 1 (standard)
+
+**Sub-Coefficients:**
+- Core weight: 0.3 (emphasize exact matches)
+- All weight: 1.2 (but semantic still matters)
+- Due date: All defaults
+- Priority: All defaults
+
+**Result:**
+- Max score: `(1.2 × 30) + (1.5 × 2) + (1.0 × 1) = 40 points`
+- Tasks matching query keywords heavily prioritized
+- Dates/priority are secondary factors
+
+**Use for:** Research, content creation, knowledge work
+
+---
+
+#### Example 2: Deadline Warrior
+
+**Scenario:** Project manager juggling multiple deadlines
+
+**Main Coefficients:**
+- Relevance: 20 (standard)
+- Due Date: 10 (emphasize urgency)
+- Priority: 5 (moderate importance)
+
+**Sub-Coefficients:**
+- Relevance: All defaults
+- Overdue: 2.0 (critical!)
+- Within 7 days: 1.5 (very important)
+- Within month: 0.8 (moderate)
+- Later: 0.2 (minimal)
+- Priority: All elevated ×1.2
+
+**Result:**
+- Max score: `(1.2 × 20) + (2.0 × 10) + (1.2 × 5) = 50 points`
+- Overdue tasks dominate results
+- Priority reinforces urgency
+
+**Use for:** Project management, time-sensitive work
+
+---
+
+#### Example 3: Importance Over Urgency
+
+**Scenario:** Strategic thinker focusing on important work
+
+**Main Coefficients:**
+- Relevance: 15 (moderate)
+- Due Date: 3 (reduced emphasis)
+- Priority: 10 (heavily emphasize)
+
+**Sub-Coefficients:**
+- Relevance: All defaults
+- Due date: All defaults
+- P1: 1.0
+- P2: 0.6 (bigger drop from P1)
+- P3: 0.3
+- P4: 0.1
+- None: 0.05
+
+**Result:**
+- Max score: `(1.2 × 15) + (1.5 × 3) + (1.0 × 10) = 32.5 points`
+- High-priority tasks always on top
+- Dates are tiebreakers only
+
+**Use for:** Strategic planning, important vs urgent focus
+
+---
+
+### 📝 Tips for Advanced Users
+
+#### Starting Out
+
+1. **Use defaults first** - Test main coefficients before diving into advanced
+2. **One change at a time** - Easier to understand impact
+3. **Document your config** - Note why you chose values
+4. **Compare before/after** - Run same query with different settings
+
+#### When to Use Advanced Coefficients
+
+**DO use them if:**
+- Main coefficients aren't granular enough
+- You have very specific workflow needs
+- You understand the scoring system
+- You're willing to experiment
+
+**DON'T use them if:**
+- You're new to the plugin
+- Main coefficients work fine
+- You don't want complexity
+- You're unsure about impact
+
+#### Testing Your Configuration
+
+```
+Test Query: "urgent bug fix due tomorrow priority 1"
+
+Expected with defaults:
+- Relevance: High (matches multiple keywords)
+- Due Date: High (tomorrow = within 7 days)
+- Priority: High (P1)
+- Should appear at top of results
+
+Expected with your config:
+- Adjust expectations based on your coefficients
+- Verify tasks rank as you intend
+- Iterate if results don't match expectations
+```
+
+#### Common Pitfalls
+
+**❌ Setting everything to max:**
+- Makes all tasks score similarly
+- Defeats purpose of differential scoring
+- **Solution:** Vary coefficients to create meaningful differences
+
+**❌ Too aggressive thresholds:**
+- Overdue: 2.0, everything else: 0.1
+- Only overdue tasks show up
+- **Solution:** Smoother curves preserve more information
+
+**❌ Ignoring base scores:**
+- Sub-coefficients multiply with main coefficients
+- Small main coeff + high sub-coeff = still small
+- **Solution:** Adjust main coefficients first
+
+---
+
+### 💡 Advanced Tips
+
+#### Property ORDER vs WEIGHT
+
+**Important:** With user coefficients, **weight matters more than order!**
+
+**Before (without user coefficients):**
+- Sort order mattered: [relevance, dueDate, priority]
+- First criterion dominated, others were tiebreakers
+
+**Now (with user coefficients):**
+- Coefficients determine importance: R=30, D=4, P=1
+- Tasks scored as: `(R×30) + (D×4) + (P×1)`
+- Relevance gets 30× weight → dominates regardless of order
+- Order only matters for rare exact-score ties
+
+**What to configure:**
+- **Coefficients:** Control HOW MUCH each property matters
+- **Sort order:** Select WHICH properties to include (not their importance)
+
+**Example:**
+
+```
+Query: "fix bug"
+Task A: relevance=0.8, dueDate=1.5 (overdue), priority=1.0 (P1)
+Task B: relevance=1.0, dueDate=0.5 (month away), priority=0.75 (P2)
+
+With R=30, D=4, P=1:
+Task A: (0.8×30) + (1.5×4) + (1.0×1) = 24 + 6 + 1 = 31 points
+Task B: (1.0×30) + (0.5×4) + (0.75×1) = 30 + 2 + 0.75 = 32.75 points
+
+Task B ranks higher despite being overdue-less, because:
+- Perfect relevance match (1.0 vs 0.8)
+- Relevance weighted 30×, difference = 6 points
+- Due date weighted 4×, difference = 4 points
+- Relevance wins!
+```
+
+#### Resetting to Defaults
+
+If your customization isn't working, reset to defaults:
+
+- Relevance: 20
+- Due Date: 4
+- Priority: 1
+- All sub-coefficients: As listed in documentation
+
+Then adjust ONE main coefficient at a time until you find your ideal balance.
+
 ### 💬 Session Management
 - **Multiple Chat Sessions**: Create and switch between different conversations
 - **Session History**: All messages preserved with timestamps

@@ -82,10 +82,29 @@ export interface PluginSettings {
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
 
-    // Scoring Coefficients
+    // Scoring Coefficients - Main Weights
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
     dueDateCoefficient: number; // Weight for due date urgency (default: 4)
     priorityCoefficient: number; // Weight for task priority (default: 1)
+
+    // Scoring Sub-Coefficients - Fine-grained Control
+    // Relevance Sub-Coefficients
+    relevanceCoreWeight: number; // Weight for core keyword matches (default: 0.2)
+    relevanceAllWeight: number; // Weight for all keyword matches (default: 1.0)
+
+    // Due Date Sub-Coefficients
+    dueDateOverdueScore: number; // Score for overdue tasks (default: 1.5)
+    dueDateWithin7DaysScore: number; // Score for due within 7 days (default: 1.0)
+    dueDateWithin1MonthScore: number; // Score for due within 1 month (default: 0.5)
+    dueDateLaterScore: number; // Score for due after 1 month (default: 0.2)
+    dueDateNoneScore: number; // Score for no due date (default: 0.1)
+
+    // Priority Sub-Coefficients
+    priorityP1Score: number; // Score for priority 1 (highest) (default: 1.0)
+    priorityP2Score: number; // Score for priority 2 (high) (default: 0.75)
+    priorityP3Score: number; // Score for priority 3 (medium) (default: 0.5)
+    priorityP4Score: number; // Score for priority 4 (low) (default: 0.2)
+    priorityNoneScore: number; // Score for no priority (default: 0.1)
 
     // Sort settings - Multi-criteria sorting per mode
     // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
@@ -193,10 +212,29 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxRecommendations: 20, // Keep final list manageable for user
     qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
 
-    // Scoring Coefficients
+    // Scoring Coefficients - Main Weights
     relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)
     dueDateCoefficient: 4, // Due date urgency weight (due date score × 4)
     priorityCoefficient: 1, // Task priority weight (priority score × 1)
+
+    // Scoring Sub-Coefficients - Fine-grained Control
+    // Relevance Sub-Coefficients
+    relevanceCoreWeight: 0.2, // Core keyword bonus (0-1 range, default: 0.2)
+    relevanceAllWeight: 1.0, // All keywords weight (0-2 range, default: 1.0)
+
+    // Due Date Sub-Coefficients (0-2 range)
+    dueDateOverdueScore: 1.5, // Overdue tasks (most urgent)
+    dueDateWithin7DaysScore: 1.0, // Due within 7 days
+    dueDateWithin1MonthScore: 0.5, // Due within 1 month
+    dueDateLaterScore: 0.2, // Due after 1 month
+    dueDateNoneScore: 0.1, // No due date
+
+    // Priority Sub-Coefficients (0-1 range)
+    priorityP1Score: 1.0, // Priority 1 (highest)
+    priorityP2Score: 0.75, // Priority 2 (high)
+    priorityP3Score: 0.5, // Priority 3 (medium)
+    priorityP4Score: 0.2, // Priority 4 (low)
+    priorityNoneScore: 0.1, // No priority
 
     // Multi-criteria sorting - Smart defaults for each mode
     // Simple Search: relevance first (keyword matching), then due date (urgency), then priority
