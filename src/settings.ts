@@ -81,7 +81,7 @@ export interface PluginSettings {
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
-    minimumRelevanceScore: number; // Minimum relevance score required (0.0-1.0). 0 = disabled (default), higher = requires stronger keyword match.
+    minimumRelevanceScore: number; // Minimum relevance score required (0.0-2.0, shown as 0-200%). 0 = disabled (default). Max = relevanceCoreWeight + 1.0.
 
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)

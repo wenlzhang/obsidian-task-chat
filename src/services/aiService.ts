@@ -275,9 +275,11 @@ export class AIService {
                 // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
                 // Max score calculated dynamically based on user-configured coefficients
                 // Formula: (maxRelevance × relevCoeff) + (maxDueDate × dateCoeff) + (maxPriority × priorCoeff)
+                // Max relevance = coreWeight + 1.0 (e.g., 0.2 + 1.0 = 1.2 with defaults)
                 // With defaults (20, 4, 1): (1.2 × 20) + (1.5 × 4) + (1.0 × 1) = 31
+                const maxRelevanceScore = settings.relevanceCoreWeight + 1.0; // Dynamic based on user's core bonus
                 const maxScore =
-                    1.2 * settings.relevanceCoefficient +
+                    maxRelevanceScore * settings.relevanceCoefficient +
                     1.5 * settings.dueDateCoefficient +
                     1.0 * settings.priorityCoefficient;
                 let baseThreshold: number;

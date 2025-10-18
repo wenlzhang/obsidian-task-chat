@@ -480,7 +480,12 @@ Filter levels:
         new Setting(containerEl)
             .setName("Minimum relevance score")
             .setDesc(
-                `Requires tasks to have a minimum keyword relevance score (0-100%). Set to 0 to disable (default).
+                `Requires tasks to have a minimum keyword relevance score. Set to 0 to disable (default).
+
+📊 MAXIMUM VALUE: The theoretical maximum relevance score is (Core bonus + 1.0).
+• Current maximum: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}% (based on your core bonus of ${this.plugin.settings.relevanceCoreWeight.toFixed(2)})
+• With default core bonus (0.2): maximum is 120%
+• If you change "Core keyword match bonus" below, update this value accordingly
 
 ⚠️ This is an ADDITIONAL filter applied AFTER the quality filter above.
 
@@ -493,12 +498,13 @@ Recommended values:
 • 20-30%: Moderate - requires reasonable keyword match
 • 40-60%: Strict - requires strong keyword match
 • 70%+: Very strict - requires near-perfect keyword match
+• 100%+: Extremely strict - requires perfect match with core keyword bonus
 
 💡 Tip: Leave at 0% unless you're getting urgent tasks with weak keyword relevance.`,
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(0, 100, 1)
+                    .setLimits(0, 200, 1)
                     .setValue(this.plugin.settings.minimumRelevanceScore * 100)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
@@ -645,7 +651,11 @@ Examples:
                     "Core keywords are original extracted keywords from your query, before semantic expansion. " +
                     "Set to 0 to treat all keywords equally (pure semantic search). " +
                     "Higher values prioritize exact query matches over semantic equivalents. " +
-                    "Combined with the relevance coefficient above, this fine-tunes keyword matching.",
+                    "Combined with the relevance coefficient above, this fine-tunes keyword matching.\n\n" +
+                    "⚠️ IMPORTANT: Changing this value affects:\n" +
+                    "• Maximum relevance score: (This value + 1.0)\n" +
+                    "• Quality filter calculations (uses this + 1.0 for max score)\n" +
+                    "• Minimum relevance score maximum (update that setting if you change this)",
             )
             .addSlider((slider) =>
                 slider
