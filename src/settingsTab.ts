@@ -1861,49 +1861,111 @@ Examples:
         `;
 
         // Unified sort settings (tag-based UI)
-        new Setting(this.sortByContainerEl)
-            .setName("Sort tiebreaker order")
+        const sortSetting = new Setting(this.sortByContainerEl)
+            .setName("Task sort order")
             .setDesc(
-                "Relevance is always first. Additional criteria break ties for tasks with equal scores. Coefficients (R×20, D×4, P×1) determine importance, not order.",
-            )
-            .addText((text) => {
-                const updateDisplay = () => {
-                    const current = this.plugin.settings.taskSortOrder;
-                    // Show as tags with relevance always present
-                    text.setValue(current.join(", "));
-                };
+                "Relevance is always first and cannot be removed. Click ✕ to remove other criteria. Coefficients (R×20, D×4, P×1) determine importance, not order.",
+            );
 
-                text.setPlaceholder("relevance, dueDate, priority")
-                    .setValue(this.plugin.settings.taskSortOrder.join(", "))
-                    .onChange(async (value) => {
-                        const items = value
-                            .split(",")
-                            .map((s) => s.trim())
-                            .filter(
-                                (s) => s && s !== "relevance",
-                            ) as import("./settings").SortCriterion[];
+        // Create container for tag badges
+        const tagsContainer = sortSetting.controlEl.createDiv({
+            cls: "task-chat-sort-tags-container",
+        });
 
-                        // Always keep relevance first
-                        this.plugin.settings.taskSortOrder = [
-                            "relevance",
-                            ...items,
-                        ];
-                        await this.plugin.saveSettings();
+        const renderTags = () => {
+            tagsContainer.empty();
+
+            const sortOrder = this.plugin.settings.taskSortOrder;
+
+            // Render each criterion as a badge/tag
+            sortOrder.forEach((criterion, index) => {
+                const isRelevance = criterion === "relevance";
+                const tag = tagsContainer.createEl("span", {
+                    cls: isRelevance
+                        ? "task-chat-sort-tag task-chat-sort-tag-locked"
+                        : "task-chat-sort-tag",
+                });
+
+                // Criterion name
+                tag.createSpan({
+                    text: this.getCriterionDisplayName(criterion),
+                    cls: "task-chat-sort-tag-text",
+                });
+
+                // Lock icon for relevance, remove button for others
+                if (isRelevance) {
+                    tag.createSpan({
+                        text: "🔒",
+                        cls: "task-chat-sort-tag-icon",
                     });
-
-                updateDisplay();
-                return text;
-            })
-            .then((setting) => {
-                setting.descEl.createEl("div", {
-                    text: "💡 Default: relevance, dueDate, priority",
-                    cls: "setting-item-description",
-                });
-                setting.descEl.createEl("div", {
-                    text: "Note: Relevance cannot be removed (always first). Add/remove other criteria as needed.",
-                    cls: "setting-item-description",
-                });
+                } else {
+                    const removeBtn = tag.createEl("button", {
+                        text: "✕",
+                        cls: "task-chat-sort-tag-remove",
+                    });
+                    removeBtn.addEventListener("click", async (e) => {
+                        e.preventDefault();
+                        const newOrder = sortOrder.filter(
+                            (c) => c !== criterion,
+                        );
+                        this.plugin.settings.taskSortOrder = newOrder;
+                        await this.plugin.saveSettings();
+                        renderTags();
+                    });
+                }
             });
+
+            // Add dropdown for adding new criteria
+            const availableCriteria = this.getAvailableCriteria(sortOrder);
+            if (availableCriteria.length > 0) {
+                const addContainer = tagsContainer.createEl("span", {
+                    cls: "task-chat-sort-tag task-chat-sort-tag-add",
+                });
+
+                const dropdown = addContainer.createEl("select", {
+                    cls: "dropdown",
+                });
+
+                dropdown.createEl("option", {
+                    text: "+ Add criterion",
+                    value: "",
+                });
+
+                availableCriteria.forEach((criterion) => {
+                    dropdown.createEl("option", {
+                        text: this.getCriterionDisplayName(criterion),
+                        value: criterion,
+                    });
+                });
+
+                dropdown.addEventListener("change", async (e) => {
+                    const selected = (e.target as HTMLSelectElement).value;
+                    if (
+                        selected &&
+                        selected !== "" &&
+                        !sortOrder.includes(
+                            selected as import("./settings").SortCriterion,
+                        )
+                    ) {
+                        const newOrder = [
+                            ...sortOrder,
+                            selected as import("./settings").SortCriterion,
+                        ];
+                        this.plugin.settings.taskSortOrder = newOrder;
+                        await this.plugin.saveSettings();
+                        renderTags();
+                    }
+                });
+            }
+        };
+
+        renderTags();
+
+        // Add helpful note
+        sortSetting.descEl.createEl("div", {
+            text: "💡 Default: Relevance, Due date, Priority",
+            cls: "setting-item-description",
+        });
     }
 
     /**
