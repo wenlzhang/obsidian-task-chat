@@ -477,6 +477,37 @@ Filter levels:
                     }),
             );
 
+        new Setting(containerEl)
+            .setName("Minimum relevance score")
+            .setDesc(
+                `Requires tasks to have a minimum keyword relevance score (0-100%). Set to 0 to disable (default).
+
+⚠️ This is an ADDITIONAL filter applied AFTER the quality filter above.
+
+Use this when:
+• You want to exclude tasks with weak keyword matches, even if they have high urgency/priority
+• Example: Low relevance + overdue + P1 = might pass quality filter, but blocked by this
+
+Recommended values:
+• 0%: Disabled (default) - only comprehensive score filtering applies
+• 20-30%: Moderate - requires reasonable keyword match
+• 40-60%: Strict - requires strong keyword match
+• 70%+: Very strict - requires near-perfect keyword match
+
+💡 Tip: Leave at 0% unless you're getting urgent tasks with weak keyword relevance.`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 100, 1)
+                    .setValue(this.plugin.settings.minimumRelevanceScore * 100)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.minimumRelevanceScore =
+                            value / 100;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Scoring Coefficients Section
         containerEl.createEl("h3", { text: "Scoring coefficients" });
 
@@ -808,8 +839,6 @@ Examples:
                         // Relevance
                         this.plugin.settings.relevanceCoreWeight =
                             DEFAULT_SETTINGS.relevanceCoreWeight;
-                        this.plugin.settings.relevanceAllWeight =
-                            DEFAULT_SETTINGS.relevanceAllWeight;
                         // Due date
                         this.plugin.settings.dueDateOverdueScore =
                             DEFAULT_SETTINGS.dueDateOverdueScore;
@@ -875,8 +904,6 @@ Examples:
                 button.setButtonText("Reset Core Bonus").onClick(async () => {
                     this.plugin.settings.relevanceCoreWeight =
                         DEFAULT_SETTINGS.relevanceCoreWeight;
-                    this.plugin.settings.relevanceAllWeight =
-                        DEFAULT_SETTINGS.relevanceAllWeight;
                     await this.plugin.saveSettings();
                     new Notice(
                         "Core keyword match bonus reset to default (0.2)",

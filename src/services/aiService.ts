@@ -325,14 +325,51 @@ export class AIService {
                 // Use base threshold directly (already adjusted for keyword count in adaptive mode)
                 const finalThreshold = baseThreshold;
 
-                // Apply quality filter
-                qualityFilteredTasks = scoredTasks
-                    .filter((st) => st.score >= finalThreshold)
-                    .map((st) => st.task);
+                // Apply comprehensive score quality filter
+                let qualityFilteredScored = scoredTasks.filter(
+                    (st) => st.score >= finalThreshold,
+                );
+
+                // Apply optional minimum relevance score filter (if enabled)
+                if (settings.minimumRelevanceScore > 0) {
+                    const beforeRelevanceFilter = qualityFilteredScored.length;
+                    qualityFilteredScored = qualityFilteredScored.filter(
+                        (st) =>
+                            st.relevanceScore >= settings.minimumRelevanceScore,
+                    );
+                    console.log(
+                        `[Task Chat] Minimum relevance filter (${settings.minimumRelevanceScore.toFixed(2)}): ${beforeRelevanceFilter} → ${qualityFilteredScored.length} tasks`,
+                    );
+                }
+
+                qualityFilteredTasks = qualityFilteredScored.map(
+                    (st) => st.task,
+                );
 
                 console.log(
-                    `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold})`,
+                    `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold.toFixed(2)})`,
                 );
+
+                // Log sample task scores for transparency
+                if (qualityFilteredScored.length > 0) {
+                    const sample = qualityFilteredScored[0];
+                    console.log(`[Task Chat] Sample score breakdown:`);
+                    console.log(
+                        `  Task: "${sample.task.text.substring(0, 60)}..."`,
+                    );
+                    console.log(
+                        `  Relevance: ${sample.relevanceScore.toFixed(2)} (× ${settings.relevanceCoefficient} = ${(sample.relevanceScore * settings.relevanceCoefficient).toFixed(2)})`,
+                    );
+                    console.log(
+                        `  Due Date: ${sample.dueDateScore.toFixed(2)} (× ${settings.dueDateCoefficient} = ${(sample.dueDateScore * settings.dueDateCoefficient).toFixed(2)})`,
+                    );
+                    console.log(
+                        `  Priority: ${sample.priorityScore.toFixed(2)} (× ${settings.priorityCoefficient} = ${(sample.priorityScore * settings.priorityCoefficient).toFixed(2)})`,
+                    );
+                    console.log(
+                        `  Final: ${sample.score.toFixed(2)} (threshold: ${finalThreshold.toFixed(2)})`,
+                    );
+                }
 
                 // Safety: If threshold filtered out too many, keep a minimum
                 // This prevents overly strict filtering from returning no results
@@ -345,48 +382,58 @@ export class AIService {
                     console.log(
                         `[Task Chat] Quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
                     );
-                    qualityFilteredTasks = scoredTasks
+                    qualityFilteredScored = scoredTasks
                         .sort((a, b) => b.score - a.score)
-                        .slice(0, minTasksNeeded)
-                        .map((st) => st.task);
+                        .slice(0, minTasksNeeded);
+                    qualityFilteredTasks = qualityFilteredScored.map(
+                        (st) => st.task,
+                    );
                 }
             }
 
             // PHASE 2: Sorting for Display (multi-criteria sorting)
-            // Build relevance scores map if keywords present (needed for relevance sorting)
-            let relevanceScores: Map<string, number> | undefined;
+            // Build comprehensive scores map if keywords present (needed for sorting)
+            // OPTIMIZATION: Reuse scores from Phase 1 instead of re-scoring
+            let comprehensiveScores: Map<string, number> | undefined;
             if (intent.keywords && intent.keywords.length > 0) {
-                // All modes use comprehensive scoring (with or without expansion)
-                let scoredTasks;
+                // Reuse scores from quality filtering phase (no redundant scoring!)
+                const scoredMap = new Map<string, number>();
+
+                // Re-score only qualityFilteredTasks (not all filtered tasks)
+                // This is necessary because quality filter may have removed some tasks
+                let scoredTasksForSort;
                 if (usingAIParsing && parsedQuery?.coreKeywords) {
-                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                        qualityFilteredTasks,
-                        intent.keywords,
-                        parsedQuery.coreKeywords,
-                        !!intent.extractedDueDateFilter,
-                        !!intent.extractedPriority,
-                        displaySortOrder,
-                        settings.relevanceCoefficient,
-                        settings.dueDateCoefficient,
-                        settings.priorityCoefficient,
-                        settings,
-                    );
+                    scoredTasksForSort =
+                        TaskSearchService.scoreTasksComprehensive(
+                            qualityFilteredTasks,
+                            intent.keywords,
+                            parsedQuery.coreKeywords,
+                            !!intent.extractedDueDateFilter,
+                            !!intent.extractedPriority,
+                            displaySortOrder,
+                            settings.relevanceCoefficient,
+                            settings.dueDateCoefficient,
+                            settings.priorityCoefficient,
+                            settings,
+                        );
                 } else {
-                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                        qualityFilteredTasks,
-                        intent.keywords,
-                        intent.keywords,
-                        !!intent.extractedDueDateFilter,
-                        !!intent.extractedPriority,
-                        displaySortOrder,
-                        settings.relevanceCoefficient,
-                        settings.dueDateCoefficient,
-                        settings.priorityCoefficient,
-                        settings,
-                    );
+                    scoredTasksForSort =
+                        TaskSearchService.scoreTasksComprehensive(
+                            qualityFilteredTasks,
+                            intent.keywords,
+                            intent.keywords,
+                            !!intent.extractedDueDateFilter,
+                            !!intent.extractedPriority,
+                            displaySortOrder,
+                            settings.relevanceCoefficient,
+                            settings.dueDateCoefficient,
+                            settings.priorityCoefficient,
+                            settings,
+                        );
                 }
-                relevanceScores = new Map(
-                    scoredTasks.map((st) => [st.task.id, st.score]),
+
+                comprehensiveScores = new Map(
+                    scoredTasksForSort.map((st) => [st.task.id, st.score]),
                 );
             }
 
@@ -420,7 +467,7 @@ export class AIService {
                 TaskSortService.sortTasksMultiCriteria(
                     qualityFilteredTasks,
                     resolvedDisplaySortOrder,
-                    relevanceScores,
+                    comprehensiveScores,
                 );
 
             // Three-mode result delivery logic
@@ -505,7 +552,7 @@ export class AIService {
             const sortedTasksForAI = TaskSortService.sortTasksMultiCriteria(
                 qualityFilteredTasks,
                 resolvedAIContextSortOrder,
-                relevanceScores,
+                comprehensiveScores,
             );
 
             // Select top tasks for AI analysis
@@ -526,7 +573,7 @@ export class AIService {
                 `[Task Chat] === TOP 10 TASKS DEBUG (sorted by ${resolvedAIContextSortOrder.join(" → ")}) ===`,
             );
             tasksToAnalyze.slice(0, 10).forEach((task, index) => {
-                const score = relevanceScores?.get(task.id) || 0;
+                const score = comprehensiveScores?.get(task.id) || 0;
                 const dueInfo = task.dueDate || "none";
                 const priorityInfo =
                     task.priority !== undefined ? task.priority : "none";

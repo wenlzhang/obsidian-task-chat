@@ -81,6 +81,7 @@ export interface PluginSettings {
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
     qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
+    minimumRelevanceScore: number; // Minimum relevance score required (0.0-1.0). 0 = disabled (default), higher = requires stronger keyword match.
 
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
@@ -210,6 +211,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxTasksForAI: 100, // Increased from 30 to 100: more context = better recommendations, especially with semantic expansion (small token cost increase)
     maxRecommendations: 20, // Keep final list manageable for user
     qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
+    minimumRelevanceScore: 0.0, // Minimum relevance score (0.0-1.0). 0 = disabled (default), ensures keyword match quality.
 
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)
