@@ -4,13 +4,14 @@ import { SessionData } from "./models/task";
 export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
 
 // Sort criterion type for multi-criteria sorting
+// "relevance" is always first and cannot be removed (primary sort)
+// Other criteria serve as tiebreakers for tasks with equal scores
 export type SortCriterion =
     | "relevance"
     | "dueDate"
     | "priority"
     | "created"
-    | "alphabetical"
-    | "auto";
+    | "alphabetical";
 
 export interface PluginSettings {
     // AI Provider Settings
@@ -106,13 +107,12 @@ export interface PluginSettings {
     priorityP4Score: number; // Score for priority 4 (low) (default: 0.2)
     priorityNoneScore: number; // Score for no priority (default: 0.1)
 
-    // Sort settings - Multi-criteria sorting per mode
-    // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
-    // Example: ["relevance", "dueDate", "priority"] = sort by relevance first, then dueDate for ties, then priority
-    taskSortOrderSimple: SortCriterion[]; // Simple Search multi-criteria sort order
-    taskSortOrderSmart: SortCriterion[]; // Smart Search multi-criteria sort order
-    taskSortOrderChat: SortCriterion[]; // Task Chat display sort order
-    taskSortOrderChatAI: SortCriterion[]; // Task Chat AI context sort order (what order to send tasks to AI)
+    // Sort settings - Unified multi-criteria sorting for all modes
+    // Relevance is always first (weighted by coefficients)
+    // Additional criteria serve as tiebreakers for tasks with identical scores
+    // Default: ["relevance", "dueDate", "priority"] works for all use cases
+    // Note: Coefficients (R×20, D×4, P×1) determine importance, not order!
+    taskSortOrder: SortCriterion[];
 
     // Usage Tracking
     totalTokensUsed: number;
@@ -236,16 +236,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     priorityP4Score: 0.2, // Priority 4 (low)
     priorityNoneScore: 0.1, // No priority
 
-    // Multi-criteria sorting - Smart defaults for each mode
-    // Simple Search: relevance first (keyword matching), then due date (urgency), then priority
-    taskSortOrderSimple: ["relevance", "dueDate", "priority"],
-    // Smart Search: relevance first (AI-expanded keywords), then due date, then priority
-    taskSortOrderSmart: ["relevance", "dueDate", "priority"],
-    // Task Chat Display: auto (AI-driven), then due date, then priority
-    taskSortOrderChat: ["auto", "relevance", "dueDate", "priority"],
-    // Task Chat AI Context: relevance first (most relevant to query), then priority (importance), then due date (urgency)
-    // This order helps AI understand what's most relevant AND urgent
-    taskSortOrderChatAI: ["relevance", "dueDate", "priority"],
+    // Unified multi-criteria sorting for all modes
+    // Relevance always first (weighted by coefficients: R×20, D×4, P×1)
+    // Due date and priority serve as tiebreakers for tasks with equal weighted scores
+    // This single setting works perfectly for Simple Search, Smart Search, and Task Chat
+    taskSortOrder: ["relevance", "dueDate", "priority"],
 
     // Usage Tracking
     totalTokensUsed: 0,

@@ -64,24 +64,10 @@ export class AIService {
         // Parse query based on chat mode (three-mode system)
         const chatMode = settings.defaultChatMode;
 
-        // Get mode-specific sort settings (NEW: multi-criteria)
-        let displaySortOrder: SortCriterion[];
-        let aiContextSortOrder: SortCriterion[];
-
-        switch (chatMode) {
-            case "simple":
-                displaySortOrder = settings.taskSortOrderSimple;
-                aiContextSortOrder = settings.taskSortOrderSimple; // Simple mode doesn't use AI, so same order
-                break;
-            case "smart":
-                displaySortOrder = settings.taskSortOrderSmart;
-                aiContextSortOrder = settings.taskSortOrderSmart; // Smart mode only uses AI for parsing, not analysis
-                break;
-            case "chat":
-                displaySortOrder = settings.taskSortOrderChat;
-                aiContextSortOrder = settings.taskSortOrderChatAI; // Chat mode: separate order for AI context
-                break;
-        }
+        // Use unified sort order for all modes
+        // Coefficients (R×20, D×4, P×1) determine importance, not order
+        // Sort order only matters for tiebreaking tasks with identical scores
+        const sortOrder = settings.taskSortOrder;
 
         let intent: any;
         let parsedQuery: ParsedQuery | null = null;
@@ -251,7 +237,7 @@ export class AIService {
                         queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
-                        displaySortOrder,
+                        sortOrder,
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
@@ -269,7 +255,7 @@ export class AIService {
                         queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
-                        displaySortOrder,
+                        sortOrder,
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
@@ -301,9 +287,12 @@ export class AIService {
                 // - relevance active if: queryHasKeywords || relevanceInSort
                 // - dueDate active if: queryHasDueDate || dueDateInSort
                 // - priority active if: queryHasPriority || priorityInSort
-                const relevanceInSort = displaySortOrder.includes("relevance");
-                const dueDateInSort = displaySortOrder.includes("dueDate");
-                const priorityInSort = displaySortOrder.includes("priority");
+                const relevanceInSort =
+                    settings.taskSortOrder.includes("relevance");
+                const dueDateInSort =
+                    settings.taskSortOrder.includes("dueDate");
+                const priorityInSort =
+                    settings.taskSortOrder.includes("priority");
 
                 const relevanceActive =
                     queryType.hasKeywords || relevanceInSort;
@@ -463,7 +452,7 @@ export class AIService {
                             queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
-                            displaySortOrder,
+                            sortOrder,
                             settings.relevanceCoefficient,
                             settings.dueDateCoefficient,
                             settings.priorityCoefficient,
@@ -478,7 +467,7 @@ export class AIService {
                             queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
-                            displaySortOrder,
+                            sortOrder,
                             settings.relevanceCoefficient,
                             settings.dueDateCoefficient,
                             settings.priorityCoefficient,
@@ -491,45 +480,13 @@ export class AIService {
                 );
             }
 
-            // Resolve "auto" in displaySortOrder based on query type
-            const resolvedDisplaySortOrderWithDupes = displaySortOrder.map(
-                (criterion) => {
-                    if (criterion === "auto") {
-                        // Smarter auto resolution based on query content
-                        if (queryType.queryType === "keywords-only") {
-                            return "relevance";
-                        } else if (queryType.queryType === "properties-only") {
-                            // Prioritize based on which property exists
-                            if (intent.extractedDueDateFilter) return "dueDate";
-                            if (intent.extractedPriority) return "priority";
-                            return "dueDate"; // Default fallback
-                        } else if (queryType.queryType === "mixed") {
-                            return "relevance"; // Keywords take precedence in mixed
-                        } else {
-                            return "dueDate"; // Empty query fallback
-                        }
-                    }
-                    return criterion;
-                },
-            ) as SortCriterion[];
-
-            // Deduplicate sort criteria (e.g., if "auto" resolved to "relevance" and "relevance" already exists)
-            // Keep first occurrence, remove subsequent duplicates
-            const resolvedDisplaySortOrder =
-                resolvedDisplaySortOrderWithDupes.filter(
-                    (criterion, index, array) =>
-                        array.indexOf(criterion) === index,
-                );
-
-            console.log(
-                `[Task Chat] Display sort order: [${resolvedDisplaySortOrder.join(", ")}]`,
-            );
+            console.log(`[Task Chat] Sort order: [${sortOrder.join(", ")}]`);
 
             // Sort tasks for display using multi-criteria sorting
             const sortedTasksForDisplay =
                 TaskSortService.sortTasksMultiCriteria(
                     qualityFilteredTasks,
-                    resolvedDisplaySortOrder,
+                    sortOrder,
                     comprehensiveScores,
                 );
 
@@ -588,45 +545,9 @@ export class AIService {
                 `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasksForDisplay.length} tasks)`,
             );
 
-            // Resolve "auto" in aiContextSortOrder based on query type
-            const resolvedAIContextSortOrderWithDupes = aiContextSortOrder.map(
-                (criterion) => {
-                    if (criterion === "auto") {
-                        // Smarter auto resolution based on query content
-                        if (queryType.queryType === "keywords-only") {
-                            return "relevance";
-                        } else if (queryType.queryType === "properties-only") {
-                            // Prioritize based on which property exists
-                            if (intent.extractedDueDateFilter) return "dueDate";
-                            if (intent.extractedPriority) return "priority";
-                            return "dueDate"; // Default fallback
-                        } else if (queryType.queryType === "mixed") {
-                            return "relevance"; // Keywords take precedence in mixed
-                        } else {
-                            return "dueDate"; // Empty query fallback
-                        }
-                    }
-                    return criterion;
-                },
-            ) as SortCriterion[];
-
-            // Deduplicate sort criteria (e.g., if "auto" resolved to "relevance" and "relevance" already exists)
-            const resolvedAIContextSortOrder =
-                resolvedAIContextSortOrderWithDupes.filter(
-                    (criterion, index, array) =>
-                        array.indexOf(criterion) === index,
-                );
-
-            console.log(
-                `[Task Chat] AI context sort order: [${resolvedAIContextSortOrder.join(", ")}]`,
-            );
-
-            // Sort tasks for AI context (what order to send to AI for analysis)
-            const sortedTasksForAI = TaskSortService.sortTasksMultiCriteria(
-                qualityFilteredTasks,
-                resolvedAIContextSortOrder,
-                comprehensiveScores,
-            );
+            // Use same sort order for AI context
+            // Coefficients already determine importance, order is just for tiebreaking
+            const sortedTasksForAI = sortedTasksForDisplay; // Same as display
 
             // Select top tasks for AI analysis
             const tasksToAnalyze = sortedTasksForAI.slice(
@@ -643,7 +564,7 @@ export class AIService {
 
             // DEBUG: Log first 10 tasks with their sort criteria values
             console.log(
-                `[Task Chat] === TOP 10 TASKS DEBUG (sorted by ${resolvedAIContextSortOrder.join(" → ")}) ===`,
+                `[Task Chat] === TOP 10 TASKS DEBUG (sorted by ${sortOrder.join(" → ")}) ===`,
             );
             tasksToAnalyze.slice(0, 10).forEach((task, index) => {
                 const score = comprehensiveScores?.get(task.id) || 0;
@@ -669,7 +590,7 @@ export class AIService {
                 chatHistory,
                 settings,
                 intent,
-                resolvedAIContextSortOrder, // Pass actual sort order to prompt
+                sortOrder, // Pass unified sort order to prompt
             );
 
             try {
@@ -689,7 +610,7 @@ export class AIService {
                     parsedQuery?.coreKeywords || [],
                     !!intent.extractedDueDateFilter,
                     !!intent.extractedPriority,
-                    displaySortOrder,
+                    sortOrder,
                     usingAIParsing,
                 );
 
@@ -715,31 +636,12 @@ export class AIService {
                 "[Task Chat] No filters detected, returning all tasks with default sort order",
             );
 
-            // Resolve "auto" in displaySortOrder (no keywords, so use dueDate)
-            const resolvedDisplaySortOrderWithDupes = displaySortOrder.map(
-                (criterion) => {
-                    if (criterion === "auto") {
-                        return "dueDate"; // No keywords, default to dueDate
-                    }
-                    return criterion;
-                },
-            ) as SortCriterion[];
-
-            // Deduplicate sort criteria
-            const resolvedDisplaySortOrder =
-                resolvedDisplaySortOrderWithDupes.filter(
-                    (criterion, index, array) =>
-                        array.indexOf(criterion) === index,
-                );
-
-            console.log(
-                `[Task Chat] Default sort order: [${resolvedDisplaySortOrder.join(", ")}]`,
-            );
+            console.log(`[Task Chat] Sort order: [${sortOrder.join(", ")}]`);
 
             // Sort all tasks using multi-criteria sorting
             const sortedTasks = TaskSortService.sortTasksMultiCriteria(
                 tasks,
-                resolvedDisplaySortOrder,
+                sortOrder,
                 undefined, // No relevance scores (no keyword search)
             );
 
