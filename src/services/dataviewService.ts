@@ -304,7 +304,9 @@ export class DataviewService {
             return null;
         }
 
-        const text = dvTask.text || dvTask.content || "";
+        // Use 'visual' field if available (task text without children)
+        // Fall back to 'text' if visual not available
+        const text = dvTask.visual || dvTask.text || dvTask.content || "";
         const status = dvTask.status || dvTask.symbol || "";
         const path = filePath || dvTask.path || "";
         const line = dvTask.line || 0;

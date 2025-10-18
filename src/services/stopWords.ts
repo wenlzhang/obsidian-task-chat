@@ -65,6 +65,30 @@ export class StopWords {
         "has",
         "had",
 
+        // Generic task-related words (too broad, match everything)
+        "task",
+        "tasks",
+        "work",
+        "item",
+        "items",
+        "thing",
+        "things",
+        "stuff",
+        "assignment",
+        "assignments",
+        "job",
+        "jobs",
+        "任务", // "task" in Chinese
+        "工作", // "work" in Chinese
+        "事项", // "item" in Chinese
+        "项目", // "item/project" in Chinese (too generic)
+        "作业", // "assignment" in Chinese
+        "uppgift", // "task" in Swedish
+        "arbete", // "work" in Swedish
+        "göra", // "do" in Swedish (way too generic!)
+        "uppdrag", // "assignment" in Swedish
+        "ärende", // "matter/item" in Swedish
+
         // Chinese stop words (common particles and question words)
         "给", // "give"
         "我", // "me/I"

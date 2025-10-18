@@ -806,6 +806,12 @@ CRITICAL RULES:
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
 - Remove common stop words (how, what, when, where, why, the, a, an, show, find, 如何, 什么, 怎么, etc.) from keywords
+- 🚨 CRITICAL: Do NOT expand to OVERLY GENERIC terms that match almost everything:
+  * Avoid: "task", "tasks", "work", "item", "items", "thing", "things", "assignment", "job"
+  * Avoid: "任务", "工作", "事项", "项目", "作业" (Chinese generics)
+  * Avoid: "uppgift", "arbete", "göra", "uppdrag", "ärende" (Swedish generics)
+  * These terms are TOO BROAD and inflate relevance scores incorrectly
+  * Instead, use SPECIFIC synonyms related to the actual concept (e.g., for "开发" use "develop", "build", "create", "implement", "code", not "work" or "task")
 - Tags and keywords serve DIFFERENT purposes - don't mix them!`;
 
         const messages = [
