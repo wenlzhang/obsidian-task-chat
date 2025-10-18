@@ -276,6 +276,10 @@ export class QueryParserService {
         const dateFieldNames =
             PromptBuilderService.buildDateFieldNamesForParser(settings);
 
+        // Get COMPLETE stop words list dynamically from StopWords class
+        const stopWordsList = StopWords.getStopWordsList();
+        const stopWordsDisplay = stopWordsList.join('", "');
+
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
 
 THREE-PART QUERY PARSING SYSTEM:
@@ -805,13 +809,19 @@ CRITICAL RULES:
 - Keywords should be 1-2 words maximum, prefer single words for better substring matching
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
-- Remove common stop words (how, what, when, where, why, the, a, an, show, find, 如何, 什么, 怎么, etc.) from keywords
-- 🚨 CRITICAL: Do NOT expand to OVERLY GENERIC terms that match almost everything:
-  * Avoid: "task", "tasks", "work", "item", "items", "thing", "things", "assignment", "job"
-  * Avoid: "任务", "工作", "事项", "项目", "作业" (Chinese generics)
-  * Avoid: "uppgift", "arbete", "göra", "uppdrag", "ärende" (Swedish generics)
-  * These terms are TOO BROAD and inflate relevance scores incorrectly
-  * Instead, use SPECIFIC synonyms related to the actual concept (e.g., for "开发" use "develop", "build", "create", "implement", "code", not "work" or "task")
+
+🚨 STOP WORDS - DO NOT EXTRACT OR EXPAND TO THESE:
+The following ${stopWordsList.length} words are STOP WORDS. You MUST:
+1. NOT extract them as core keywords (skip them during extraction)
+2. NOT expand to them during semantic expansion (avoid generating them)
+3. These are TOO GENERIC and match almost everything, inflating scores incorrectly
+
+COMPLETE STOP WORDS LIST:
+"${stopWordsDisplay}"
+
+⚠️ IMPORTANT: Instead of these generic terms, use SPECIFIC synonyms related to the actual concept.
+Example: For "开发" (develop), use "develop", "build", "create", "implement", "code" - NOT "work" or "task"
+
 - Tags and keywords serve DIFFERENT purposes - don't mix them!`;
 
         const messages = [
@@ -854,7 +864,8 @@ CRITICAL RULES:
                 );
             }
 
-            // Post-process keywords to remove stop words (ensures consistency)
+            // Post-process keywords to remove stop words (safety net - AI should already avoid these)
+            // This catches any stop words that slipped through AI's filters
             const filteredKeywords = StopWords.filterStopWords(keywords);
 
             console.log(
@@ -866,8 +877,19 @@ CRITICAL RULES:
                 );
             }
 
-            // Extract core keywords (before expansion) and expanded keywords
-            const coreKeywords = parsed.coreKeywords || [];
+            // Extract core keywords and filter stop words (before expansion)
+            // This prevents wasting tokens expanding stop words
+            const rawCoreKeywords = parsed.coreKeywords || [];
+            const coreKeywords = StopWords.filterStopWords(rawCoreKeywords);
+
+            if (rawCoreKeywords.length !== coreKeywords.length) {
+                console.log(
+                    `[Task Chat] Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${coreKeywords.length}`,
+                );
+                console.log(
+                    `[Task Chat] Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
+                );
+            }
             const expandedKeywords = filteredKeywords;
 
             // Validate expansion worked correctly
