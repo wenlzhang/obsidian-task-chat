@@ -285,62 +285,6 @@ Be smart about implied meanings:
     }
 
     /**
-     * Build PRIORITY VALUE MAPPING for AI parser
-     */
-    static buildPriorityValueMapping(settings: PluginSettings): string {
-        const mapping = settings.dataviewPriorityMapping;
-        const lines: string[] = [];
-
-        if (mapping[1] && mapping[1].length > 0) {
-            lines.push(
-                `- 1 = highest/high priority (${mapping[1].join(", ")})`,
-            );
-        }
-        if (mapping[2] && mapping[2].length > 0) {
-            lines.push(`- 2 = medium priority (${mapping[2].join(", ")})`);
-        }
-        if (mapping[3] && mapping[3].length > 0) {
-            lines.push(`- 3 = low priority (${mapping[3].join(", ")})`);
-        }
-        if (mapping[4] && mapping[4].length > 0) {
-            lines.push(`- 4 = none/no priority (${mapping[4].join(", ")})`);
-        }
-
-        return `
-PRIORITY VALUE MAPPING (User-Configured DataView values):
-${lines.join("\n")}
-
-IMPORTANT: Similar to due dates, there's a difference:
-1. Asking for tasks WITH priority (any value) → priority: null
-2. Asking for tasks with SPECIFIC priority → priority: 1, 2, 3, or 4
-
-KEY DISTINCTION:
-- "priority tasks" or "important tasks" → null (has any priority) ✅
-- "high priority" or "urgent" → 1 (specific value) ✅
-- "medium priority" → 2 (specific value) ✅
-- "low priority" → 3 (specific value) ✅
-`;
-    }
-
-    /**
-     * Build STATUS VALUE MAPPING for AI parser
-     */
-    static buildStatusValueMapping(settings: PluginSettings): string {
-        const names = settings.taskStatusDisplayNames;
-
-        return `
-STATUS VALUE MAPPING (User-Configured):
-- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo, 未完成, 待办, öppen)
-- "completed" = ${names.completed || "Completed"} tasks (done, finished, 完成, 已完成, klar, färdig)
-- "inProgress" = ${names.inProgress || "In progress"} tasks (working on, ongoing, 进行中, 正在做, pågående)
-
-STATUS DISTINCTION:
-- Query about status → extract "open", "completed", or "inProgress"
-- General task queries → no status filter needed
-`;
-    }
-
-    /**
      * Simple regex-based property recognition for Simple Search mode
      * Uses combined terms (user + internal) for regex matching
      *

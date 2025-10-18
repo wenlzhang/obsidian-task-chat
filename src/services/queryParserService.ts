@@ -270,9 +270,9 @@ export class QueryParserService {
         const dueDateValueMapping =
             PropertyRecognitionService.buildDueDateValueMapping();
         const priorityValueMapping =
-            PropertyRecognitionService.buildPriorityValueMapping(settings);
+            PromptBuilderService.buildPriorityMappingForParser(settings);
         const statusValueMapping =
-            PropertyRecognitionService.buildStatusValueMapping(settings);
+            PromptBuilderService.buildStatusMappingForParser(settings);
         const dateFieldNames =
             PromptBuilderService.buildDateFieldNamesForParser(settings);
 

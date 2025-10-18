@@ -58,9 +58,22 @@ export class PromptBuilderService {
             lines.push(`- 4 = none/no priority (${mapping[4].join(", ")})`);
         }
 
-        return lines.length > 0
-            ? `PRIORITY MAPPING (User-Configured):\n${lines.join("\n")}`
-            : `PRIORITY MAPPING:\n- 1 = highest/high priority\n- 2 = medium priority\n- 3 = low priority\n- 4 = none/no priority`;
+        const baseMapping =
+            lines.length > 0
+                ? `PRIORITY MAPPING (User-Configured):\n${lines.join("\n")}`
+                : `PRIORITY MAPPING:\n- 1 = highest/high priority\n- 2 = medium priority\n- 3 = low priority\n- 4 = none/no priority`;
+
+        return `${baseMapping}
+
+IMPORTANT DISTINCTION:
+1. Asking for tasks WITH priority (any value) → priority: null
+2. Asking for tasks with SPECIFIC priority → priority: 1, 2, 3, or 4
+
+EXAMPLES:
+- "priority tasks" or "important tasks" → null (has any priority) ✅
+- "high priority" or "urgent" → 1 (specific value) ✅
+- "medium priority" → 2 (specific value) ✅
+- "low priority" → 3 (specific value) ✅`;
     }
 
     /**
@@ -113,9 +126,13 @@ Use these exact names when referring to task status.`;
     static buildStatusMappingForParser(settings: PluginSettings): string {
         const names = settings.taskStatusDisplayNames;
         return `STATUS MAPPING (User-Configured):
-- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo)
-- "completed" = ${names.completed || "Completed"} tasks (done, finished)
-- "inProgress" = ${names.inProgress || "In progress"} tasks (working on)`;
+- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo, 未完成, 待办, öppen)
+- "completed" = ${names.completed || "Completed"} tasks (done, finished, 完成, 已完成, klar, färdig)
+- "inProgress" = ${names.inProgress || "In progress"} tasks (working on, ongoing, 进行中, 正在做, pågående)
+
+STATUS DISTINCTION:
+- Query about status → extract "open", "completed", or "inProgress"
+- General task queries → no status filter needed`;
     }
 
     /**
