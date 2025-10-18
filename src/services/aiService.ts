@@ -958,22 +958,23 @@ CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 RECOMMENDATION TARGETS (based on available tasks):
 - ${taskCount} tasks available → Aim for ${Math.max(Math.floor(taskCount * 0.8), 10)}-${Math.min(taskCount, settings.maxRecommendations)} recommendations
 - ONLY exclude tasks that are clearly NOT relevant to the query
-- If a task matches keywords AND has reasonable due date/priority → INCLUDE IT
+- These tasks have ALREADY been filtered to match the query - your job is to recommend MOST of them
 - Err on the side of inclusion - users prefer comprehensive lists over missing tasks
 - Maximum allowed: ${settings.maxRecommendations} tasks
 
 IMPORTANT RULES:
-1. ONLY reference tasks from the provided task list using [TASK_X] IDs
-2. DO NOT create new tasks or suggest tasks that don't exist
-3. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
-4. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
-5. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
-6. Do NOT invent task content - only use the exact task text provided
-7. Focus on helping users prioritize and execute existing tasks
-8. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
-9. If tasks are related, explain the relationships using only task IDs
-10. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks in your recommendation
-11. 🚨 CRITICAL: For all the high-quality tasks, you MUST recommend at least 80% of them, not just 20-30%
+1. 🚨 YOU MUST USE [TASK_X] FORMAT - This is not optional! Every task recommendation MUST use [TASK_1], [TASK_2], etc.
+2. ONLY reference tasks from the provided task list using [TASK_X] IDs
+3. DO NOT create new tasks or suggest tasks that don't exist
+4. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
+5. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
+6. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
+7. Do NOT invent task content - only use the exact task text provided
+8. Focus on helping users prioritize and execute existing tasks
+9. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
+10. If tasks are related, explain the relationships using only task IDs
+11. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using [TASK_X] IDs
+12. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least 80% of them (${Math.floor(taskCount * 0.8)}+ tasks)
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1002,9 +1003,10 @@ RESPONSE FORMAT:
 MUST: (1) Reference tasks using [TASK_X] IDs, (2) Explain strategy
 
 QUERY UNDERSTANDING:
-- The system has already extracted and applied filters from the user's query
-- If multiple filters were detected, tasks have been pre-filtered to match ALL criteria
-- Your job is to provide helpful context and prioritization for the filtered results${filterContext}
+- The system has ALREADY extracted and applied ALL filters from the user's query
+- Tasks below have been PRE-FILTERED to match the query (keywords, due dates, priorities, etc.)
+- You are seeing ONLY tasks that match - don't second-guess the filtering
+- Your job is to recommend MOST of these pre-filtered tasks (80%+) with helpful prioritization${filterContext}
 
 ${PromptBuilderService.buildSortOrderExplanation(sortOrder)}
 
