@@ -449,6 +449,30 @@ export class SettingsTab extends PluginSettingTab {
         containerEl.createEl("h3", { text: "Task display" });
 
         new Setting(containerEl)
+            .setName("Relevance threshold")
+            .setDesc(
+                `Minimum combined score (0-31) for including tasks. Score = relevance×20 + dueDate×4 + priority×1. Lower = more results, higher = stricter filtering.
+                
+Set to 0 for adaptive (recommended - automatically adjusts based on query).
+
+Examples:
+• 0: Adaptive (adjusts based on query complexity)
+• 3-5: Permissive (semantic expansion, many keywords)
+• 8-10: Balanced (moderate filtering)
+• 15+: Strict (only strong matches)`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 31, 1)
+                    .setValue(this.plugin.settings.relevanceThreshold)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.relevanceThreshold = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
                 "Maximum tasks to show without using AI (no token cost). Default: 20. Simple queries like 'overdue tasks' show results directly.",

@@ -836,14 +836,14 @@ export class TaskSearchService {
         const scored = tasks.map((task) => {
             const taskText = task.text.toLowerCase();
 
-            // Simple scoring: count how many keywords match
-            // Used for Simple Search mode (fallback without core keywords)
-            const matchingKeywords = deduplicatedKeywords.filter((kw) =>
-                taskText.includes(kw.toLowerCase()),
-            ).length;
-
-            // Score is just the number of matching keywords
-            const score = matchingKeywords;
+            // Use the same relevance calculation as comprehensive scoring
+            // In Simple Search mode, treat all keywords as both core and expanded
+            // (no distinction since there's no semantic expansion)
+            const score = this.calculateRelevanceScore(
+                taskText,
+                deduplicatedKeywords, // All keywords are "core" in simple mode
+                deduplicatedKeywords, // No expansion in simple mode
+            );
 
             return { task, score };
         });
@@ -989,13 +989,13 @@ export class TaskSearchService {
                 `[Task Chat] #${index + 1}: "${item.task.text.substring(0, 50)}${item.task.text.length > 50 ? "..." : ""}"`,
             );
             console.log(
-                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(1)} (× 10 = ${(item.relevanceScore * 10).toFixed(1)})`,
+                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(2)} (× 20 = ${(item.relevanceScore * 20).toFixed(1)})`,
             );
             console.log(
-                `[Task Chat]   - Due Date: ${item.dueDateScore.toFixed(1)} (× ${dueDateCoefficient * 2} = ${(item.dueDateScore * 2 * dueDateCoefficient).toFixed(1)})`,
+                `[Task Chat]   - Due Date: ${item.dueDateScore.toFixed(2)} (× ${dueDateCoefficient * 4} = ${(item.dueDateScore * 4 * dueDateCoefficient).toFixed(1)})`,
             );
             console.log(
-                `[Task Chat]   - Priority: ${item.priorityScore.toFixed(1)} (× ${priorityCoefficient * 1} = ${(item.priorityScore * 1 * priorityCoefficient).toFixed(1)})`,
+                `[Task Chat]   - Priority: ${item.priorityScore.toFixed(2)} (× ${priorityCoefficient * 1} = ${(item.priorityScore * 1 * priorityCoefficient).toFixed(1)})`,
             );
             console.log(
                 `[Task Chat]   - FINAL SCORE: ${item.score.toFixed(1)}`,
@@ -1006,14 +1006,5 @@ export class TaskSearchService {
         );
 
         return sorted;
-    }
-
-    /**
-     * Sort tasks by keyword relevance
-     * Used when user explicitly selects "Relevance" sorting
-     */
-    static sortByKeywordRelevance(tasks: Task[], keywords: string[]): Task[] {
-        const sorted = this.scoreTasksByRelevance(tasks, keywords);
-        return sorted.map((item) => item.task);
     }
 }

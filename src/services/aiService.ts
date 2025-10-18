@@ -261,15 +261,19 @@ export class AIService {
 
                 // Determine adaptive relevance threshold
                 // User's setting is the BASE, then we apply intelligent adjustments
+                // NEW SCALE: 0-31 (max score = relevance×20 + dueDate×4 + priority×1)
                 let baseThreshold: number;
                 if (settings.relevanceThreshold === 0) {
-                    // Use system defaults as base
-                    if (intent.keywords.length >= 4) {
-                        baseThreshold = 20;
+                    // Use system defaults as base (scaled to new 0-31 range)
+                    if (intent.keywords.length >= 20) {
+                        // Semantic expansion - very permissive
+                        baseThreshold = 3;
+                    } else if (intent.keywords.length >= 4) {
+                        baseThreshold = 5;
                     } else if (intent.keywords.length >= 2) {
-                        baseThreshold = 30;
+                        baseThreshold = 8;
                     } else {
-                        baseThreshold = 40;
+                        baseThreshold = 10;
                     }
                     console.log(
                         `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
