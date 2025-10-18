@@ -47,47 +47,35 @@ The scoring system integrates with the three-part query parsing system:
 
 **Formula:**
 ```
-relevanceScore = 
-  coreKeywordMatchPercentage +     // 20% per matched core keyword
-  coreKeywordBonus +                // +20% if any core keyword matches
-  keywordTextMatching +             // Points for exact/start/contains matches
-  multipleKeywordBonus +            // +8 per matching keyword
-  mediumLengthBonus                 // +5 for descriptive tasks
-  - penalties                        // Penalties for generic/short tasks
+relevanceScore = (coreRatio × 0.2 + allKeywordsRatio × 1.0) × 100
+
+Where:
+- coreRatio = coreMatched / totalCore
+- allKeywordsRatio = allMatched / totalKeywords
+- Core coefficient = 0.2 (small bonus for core keyword matches)
+- All keywords coefficient = 1.0 (main factor - overall coverage)
 ```
 
-**Components:**
+**Example:**
+```
+Query: "develop Task Chat plugin"
+Core keywords: ["develop", "Task", "Chat", "plugin"] (4 total)
+All keywords: 60 total (core + semantic equivalents)
 
-**1.1 Core Keyword Match Percentage:**
-- Count how many core keywords match the task text
-- Each matched core keyword contributes 20%
-- Formula: `(matchedCoreKeywords / totalCoreKeywords) × 100`
-- Examples:
-  - 5/5 core keywords match → 100%
-  - 4/5 core keywords match → 80%
-  - 3/5 core keywords match → 60%
-  - 2/5 core keywords match → 40%
-  - 1/5 core keywords match → 20%
+Task: "Develop new chat feature for plugin"
+- Core matches: 3 out of 4 ("develop", "chat", "plugin")
+- All keyword matches: 15 out of 60 (includes "build", "create", etc.)
+- coreRatio = 3/4 = 0.75
+- allKeywordsRatio = 15/60 = 0.25
+- relevanceScore = (0.75 × 0.2 + 0.25 × 1.0) × 100 = 40
+```
 
-**1.2 Core Keyword Bonus:**
-- If ANY core keyword matches → +20%
-- Ensures tasks with at least one core match get priority
-
-**1.3 Keyword Text Matching:**
-- Exact match: +100 points
-- Starts with keyword: +20 points
-- Contains keyword: +15 points
-
-**1.4 Multiple Keyword Bonus:**
-- +8 points per matching keyword (deduplicated)
-
-**1.5 Medium Length Bonus:**
-- Tasks with 20-100 characters: +5 points
-- Favors descriptive but not verbose tasks
-
-**1.6 Penalties:**
-- Very short tasks (<5 characters): -100 points
-- Generic placeholder tasks ("task", "todo", etc.): -150 points
+**Key Features:**
+- **Simple and clean**: Two independent ratios, no complex exclusions
+- **Core bonus**: Small 0.2 coefficient rewards direct query matches
+- **Coverage-focused**: 1.0 coefficient on all keywords is the main factor
+- **No double counting needed**: All keywords naturally includes core keywords
+- **Stop words already filtered**: No need for additional penalties
 
 #### 2. Due Date Score (Coefficient: 2)
 

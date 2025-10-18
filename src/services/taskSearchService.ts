@@ -669,9 +669,34 @@ export class TaskSearchService {
     }
 
     /**
+     * Deduplicate keywords with optional logging
+     * Helper to avoid code duplication across scoring methods
+     */
+    private static deduplicateWithLogging(
+        keywords: string[],
+        label: string,
+    ): string[] {
+        const deduplicated = this.deduplicateOverlappingKeywords(keywords);
+
+        if (keywords.length !== deduplicated.length) {
+            console.log(
+                `[Task Chat] Deduplicated ${label}: ${keywords.length} → ${deduplicated.length}`,
+            );
+            const removed = keywords.filter((k) => !deduplicated.includes(k));
+            if (removed.length > 0 && removed.length <= 10) {
+                // Only show removed keywords if not too many
+                console.log(
+                    `[Task Chat] Removed overlaps: [${removed.join(", ")}]`,
+                );
+            }
+        }
+
+        return deduplicated;
+    }
+
+    /**
      * Remove overlapping/substring keywords to avoid double-counting
      * Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
-     * This prevents scoring "开" and "发" separately when "开发" already matches
      */
     private static deduplicateOverlappingKeywords(
         keywords: string[],
@@ -696,10 +721,44 @@ export class TaskSearchService {
     }
 
     /**
+     * Calculate keyword relevance score
+     * Uses simplified formula: coreRatio × 0.2 + allKeywordsRatio × 1.0
+     * IMPORTANT: Both ratios are relative to totalCore (not totalKeywords)
+     * @param taskText - Task text (already lowercased)
+     * @param coreKeywords - Core keywords from query (deduplicated)
+     * @param allKeywords - All keywords including core + semantic equivalents (deduplicated)
+     * @returns Score: 0-1.2 (max is 0.2 from core + 1 from all keywords ratio)
+     */
+    private static calculateRelevanceScore(
+        taskText: string,
+        coreKeywords: string[],
+        allKeywords: string[],
+    ): number {
+        // Count core keyword matches
+        const coreKeywordsMatched = coreKeywords.filter((coreKw) =>
+            taskText.includes(coreKw.toLowerCase()),
+        ).length;
+
+        // Count ALL keyword matches (including core keywords)
+        const allKeywordsMatched = allKeywords.filter((kw) =>
+            taskText.includes(kw.toLowerCase()),
+        ).length;
+
+        // Calculate ratios - BOTH relative to totalCore
+        const totalCore = Math.max(coreKeywords.length, 1); // Avoid division by zero
+
+        const coreMatchRatio = coreKeywordsMatched / totalCore;
+        const allKeywordsRatio = allKeywordsMatched / totalCore; // Also divided by totalCore!
+
+        // Apply coefficients: core = 0.2 (small bonus), all keywords = 1.0 (main factor)
+        return coreMatchRatio * 0.2 + allKeywordsRatio * 1.0;
+    }
+
+    /**
      * Calculate due date score based on time ranges
      * Uses moment (from Obsidian) for reliable date comparisons
      * @param dueDate - Task due date string (YYYY-MM-DD format)
-     * @returns Score: 2.0 (overdue), 1.0 (within 7 days), 0.5 (within 1 month), 0.2 (after 1 month), 0.1 (no due date)
+     * @returns Score: 1.5 (overdue), 1.0 (within 7 days), 0.5 (within 1 month), 0.2 (after 1 month), 0.1 (no due date)
      */
     private static calculateDueDateScore(dueDate: string | undefined): number {
         // No due date = same as far future (0.1)
@@ -722,7 +781,7 @@ export class TaskSearchService {
 
         // Score based on time ranges
         if (diffDays < 0) {
-            return 2.0; // Past due (most urgent)
+            return 1.5; // Past due (most urgent)
         } else if (diffDays <= 7) {
             return 1.0; // Due within 7 days
         } else if (diffDays <= 30) {
@@ -769,67 +828,22 @@ export class TaskSearchService {
     ): Array<{ task: Task; score: number }> {
         // Deduplicate overlapping keywords to avoid double-counting
         // Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
-        const deduplicatedKeywords =
-            this.deduplicateOverlappingKeywords(keywords);
-
-        // Log deduplication if any keywords were removed
-        if (keywords.length !== deduplicatedKeywords.length) {
-            console.log(
-                `[Task Chat] Deduplicated overlapping keywords: ${keywords.length} → ${deduplicatedKeywords.length}`,
-            );
-            console.log(
-                `[Task Chat] Removed overlaps: [${keywords.filter((k) => !deduplicatedKeywords.includes(k)).join(", ")}]`,
-            );
-        }
+        const deduplicatedKeywords = this.deduplicateWithLogging(
+            keywords,
+            "keywords",
+        );
 
         const scored = tasks.map((task) => {
             const taskText = task.text.toLowerCase();
-            let score = 0;
 
-            // Penalize very short generic tasks (likely test/placeholder tasks)
-            const trimmedText = task.text.trim();
-            if (trimmedText.length < 5) {
-                score -= 100; // Strong penalty for very short tasks
-            }
-
-            // Additional penalty for generic task names (case-insensitive)
-            const genericTaskNames = ["task", "todo", "item", "work"];
-            const firstWord = trimmedText.split(/\s+/)[0]?.toLowerCase() || "";
-            if (genericTaskNames.includes(firstWord)) {
-                // Only penalize if the task is JUST the generic word (or very short)
-                if (trimmedText.length < 5) {
-                    score -= 150; // Very strong penalty for generic placeholder tasks
-                }
-            }
-
-            deduplicatedKeywords.forEach((keyword) => {
-                const keywordLower = keyword.toLowerCase();
-
-                // Exact match gets highest score
-                if (taskText === keywordLower) {
-                    score += 100;
-                }
-                // Task contains the exact keyword
-                else if (taskText.includes(keywordLower)) {
-                    // Higher bonus for keyword at start of task
-                    if (taskText.startsWith(keywordLower)) {
-                        score += 20;
-                    } else {
-                        score += 15;
-                    }
-                }
-            });
-
-            // More generous bonus for matching multiple keywords (using deduplicated keywords)
+            // Simple scoring: count how many keywords match
+            // Used for Simple Search mode (fallback without core keywords)
             const matchingKeywords = deduplicatedKeywords.filter((kw) =>
                 taskText.includes(kw.toLowerCase()),
             ).length;
-            score += matchingKeywords * 8;
 
-            // Slight bonus for medium-length tasks (more descriptive, not too verbose)
-            if (task.text.length >= 20 && task.text.length < 100) {
-                score += 5;
-            }
+            // Score is just the number of matching keywords
+            const score = matchingKeywords;
 
             return { task, score };
         });
@@ -844,28 +858,31 @@ export class TaskSearchService {
      *
      * SCORING COMPONENTS:
      * 1. Keyword Relevance (coefficient: 10)
-     *    - Core keyword match percentage: 20% per matched core keyword
-     *    - Core keyword bonus: +20% if any core keyword matches
-     *    - Keyword text matching: points for contains/starts-with
+     *    Formula: coreRatio × 0.2 + allKeywordsRatio × 1.0
+     *    Where BOTH ratios are divided by totalCore:
+     *    - coreRatio = coreMatched / totalCore
+     *    - allKeywordsRatio = allMatched / totalCore
      *
      * 2. Due Date Score (coefficient: 2, only if due date in query/settings)
-     *    - Past due: 2.0 (most urgent)
+     *    - Past due: 1.5 (most urgent)
      *    - Within 7 days: 1.0
      *    - Within 1 month: 0.5
      *    - After 1 month: 0.2
+     *    - No due date: 0.1
      *
      * 3. Priority Score (coefficient: 1, only if priority in query/settings)
      *    - Priority 1: 1.0 (highest)
      *    - Priority 2: 0.75
      *    - Priority 3: 0.5
      *    - Priority 4: 0.2
+     *    - No priority: 0.1
      *
      * WEIGHTED FORMULA:
-     * finalScore = (relevanceScore * 10) + (dueDateScore * 2 * dueDateCoeff) + (priorityScore * 1 * priorityCoeff)
+     * finalScore = (relevanceScore × 20) + (dueDateScore × 4 × dueDateCoeff) + (priorityScore × 1 × priorityCoeff)
      *
      * @param tasks - Tasks to score
-     * @param keywords - Expanded keywords for matching
-     * @param coreKeywords - Original core keywords (for match percentage and bonus)
+     * @param keywords - All keywords (core + semantic equivalents) for matching
+     * @param coreKeywords - Original core keywords from query
      * @param queryHasDueDate - Whether due date filter exists in query
      * @param queryHasPriority - Whether priority filter exists in query
      * @param sortCriteria - User's sort settings to detect which properties to weight
@@ -886,22 +903,14 @@ export class TaskSearchService {
         priorityScore: number;
     }> {
         // Deduplicate overlapping keywords
-        const deduplicatedKeywords =
-            this.deduplicateOverlappingKeywords(keywords);
-        const deduplicatedCoreKeywords =
-            this.deduplicateOverlappingKeywords(coreKeywords);
-
-        // Log deduplication
-        if (keywords.length !== deduplicatedKeywords.length) {
-            console.log(
-                `[Task Chat] Deduplicated keywords: ${keywords.length} → ${deduplicatedKeywords.length}`,
-            );
-        }
-        if (coreKeywords.length !== deduplicatedCoreKeywords.length) {
-            console.log(
-                `[Task Chat] Deduplicated core keywords: ${coreKeywords.length} → ${deduplicatedCoreKeywords.length}`,
-            );
-        }
+        const deduplicatedKeywords = this.deduplicateWithLogging(
+            keywords,
+            "keywords",
+        );
+        const deduplicatedCoreKeywords = this.deduplicateWithLogging(
+            coreKeywords,
+            "core keywords",
+        );
 
         // Determine coefficients based on query and sort settings
         const dueDateInSort = sortCriteria.includes("dueDate");
@@ -938,66 +947,11 @@ export class TaskSearchService {
             const taskText = task.text.toLowerCase();
 
             // ========== COMPONENT 1: KEYWORD RELEVANCE ==========
-            let relevanceScore = 0;
-
-            // 1.1: Core keyword match percentage
-            // Count how many core keywords match
-            const coreKeywordsMatched = deduplicatedCoreKeywords.filter(
-                (coreKw) => taskText.includes(coreKw.toLowerCase()),
-            ).length;
-            const coreKeywordMatchPercentage =
-                deduplicatedCoreKeywords.length > 0
-                    ? (coreKeywordsMatched / deduplicatedCoreKeywords.length) *
-                      100
-                    : 0;
-
-            // Each matched core keyword contributes 20%
-            relevanceScore += coreKeywordMatchPercentage;
-
-            // 1.2: Core keyword bonus (+20% if any core keyword matches)
-            if (coreKeywordsMatched > 0) {
-                relevanceScore += 20;
-            }
-
-            // 1.3: Keyword text matching (existing logic)
-            deduplicatedKeywords.forEach((keyword) => {
-                const keywordLower = keyword.toLowerCase();
-
-                if (taskText === keywordLower) {
-                    relevanceScore += 100; // Exact match
-                } else if (taskText.includes(keywordLower)) {
-                    if (taskText.startsWith(keywordLower)) {
-                        relevanceScore += 20; // Starts with keyword
-                    } else {
-                        relevanceScore += 15; // Contains keyword
-                    }
-                }
-            });
-
-            // Bonus for multiple keyword matches
-            const matchingKeywords = deduplicatedKeywords.filter((kw) =>
-                taskText.includes(kw.toLowerCase()),
-            ).length;
-            relevanceScore += matchingKeywords * 8;
-
-            // Bonus for medium-length descriptive tasks
-            if (task.text.length >= 20 && task.text.length < 100) {
-                relevanceScore += 5;
-            }
-
-            // Penalties for generic/short tasks
-            const trimmedText = task.text.trim();
-            if (trimmedText.length < 5) {
-                relevanceScore -= 100;
-            }
-            const genericTaskNames = ["task", "todo", "item", "work"];
-            const firstWord = trimmedText.split(/\s+/)[0]?.toLowerCase() || "";
-            if (
-                genericTaskNames.includes(firstWord) &&
-                trimmedText.length < 5
-            ) {
-                relevanceScore -= 150;
-            }
+            const relevanceScore = this.calculateRelevanceScore(
+                taskText,
+                deduplicatedCoreKeywords,
+                deduplicatedKeywords,
+            );
 
             // ========== COMPONENT 2: DUE DATE SCORE ==========
             const dueDateScore = this.calculateDueDateScore(task.dueDate);
@@ -1010,8 +964,8 @@ export class TaskSearchService {
             // Due date: coefficient 2 (applied if exists in query/settings)
             // Priority: coefficient 1 (applied if exists in query/settings)
             const finalScore =
-                relevanceScore * 10 +
-                dueDateScore * 2 * dueDateCoefficient +
+                relevanceScore * 20 +
+                dueDateScore * 4 * dueDateCoefficient +
                 priorityScore * 1 * priorityCoefficient;
 
             return {

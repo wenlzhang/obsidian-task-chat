@@ -1329,17 +1329,19 @@ export class SettingsTab extends PluginSettingTab {
         // Smart Search multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Smart Search (Filter & Display)",
-            "Multi-criteria sort order for Smart Search mode. Default: Relevance → Due date → Priority.",
+            "Multi-criteria sort order for Smart Search mode. Relevance is always first and cannot be removed or moved. Default: Relevance → Due date → Priority.",
             "taskSortOrderSmart",
             false, // no "auto" option
+            true, // relevance must be first
         );
 
         // Task Chat AI Context multi-criteria sort
         this.renderMultiCriteriaSortSetting(
             "Task Chat (Filter & AI Context)",
-            "Multi-criteria sort order for sending tasks to AI. This can differ from display order. Default: Relevance → Due date → Priority (shows AI the most relevant and urgent tasks first).",
+            "Multi-criteria sort order for sending tasks to AI. Relevance is always first and cannot be removed or moved. This can differ from display order. Default: Relevance → Due date → Priority (shows AI the most relevant and urgent tasks first).",
             "taskSortOrderChatAI",
             false, // no "auto" option (will be resolved before sending to AI)
+            true, // relevance must be first
         );
 
         // Task Chat Display multi-criteria sort
@@ -1359,6 +1361,7 @@ export class SettingsTab extends PluginSettingTab {
         description: string,
         settingKey: keyof import("./settings").PluginSettings,
         allowAuto: boolean,
+        requireRelevanceFirst = false, // NEW: Make relevance always first and non-removable
     ): void {
         const containerEl = this.sortByContainerEl;
         if (!containerEl) return;
@@ -1376,9 +1379,28 @@ export class SettingsTab extends PluginSettingTab {
         const renderCriteria = () => {
             criteriaContainer.empty();
 
-            const sortOrder = this.plugin.settings[
+            let sortOrder = this.plugin.settings[
                 settingKey
             ] as import("./settings").SortCriterion[];
+
+            // Ensure relevance is first if required
+            if (requireRelevanceFirst) {
+                const relevanceIndex = sortOrder.indexOf("relevance");
+                if (relevanceIndex === -1) {
+                    // Add relevance at the beginning if it doesn't exist
+                    sortOrder = ["relevance", ...sortOrder];
+                    (this.plugin.settings as any)[settingKey] = sortOrder;
+                    this.plugin.saveSettings();
+                } else if (relevanceIndex !== 0) {
+                    // Move relevance to the beginning if it's not already there
+                    sortOrder = [
+                        "relevance",
+                        ...sortOrder.filter((c) => c !== "relevance"),
+                    ];
+                    (this.plugin.settings as any)[settingKey] = sortOrder;
+                    this.plugin.saveSettings();
+                }
+            }
 
             // Render each criterion with controls
             sortOrder.forEach((criterion, index) => {
@@ -1404,8 +1426,12 @@ export class SettingsTab extends PluginSettingTab {
                     cls: "task-chat-sort-buttons",
                 });
 
-                // Move up button
-                if (index > 0) {
+                // Move up button (disabled for relevance when it must be first)
+                const isRelevanceFirst =
+                    requireRelevanceFirst &&
+                    criterion === "relevance" &&
+                    index === 0;
+                if (index > 0 && !isRelevanceFirst) {
                     buttonsDiv
                         .createEl("button", { text: "↑", cls: "mod-cta" })
                         .addEventListener("click", async () => {
@@ -1438,8 +1464,9 @@ export class SettingsTab extends PluginSettingTab {
                         });
                 }
 
-                // Remove button (only if more than 1 criterion)
-                if (sortOrder.length > 1) {
+                // Remove button (only if more than 1 criterion, and not relevance when required first)
+                const canRemove = sortOrder.length > 1 && !isRelevanceFirst;
+                if (canRemove) {
                     buttonsDiv
                         .createEl("button", {
                             text: "✕",
