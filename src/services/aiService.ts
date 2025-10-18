@@ -259,30 +259,37 @@ export class AIService {
                     );
                 }
 
-                // Determine adaptive relevance threshold
-                // User's setting is the BASE, then we apply intelligent adjustments
-                // NEW SCALE: 0-31 (max score = relevance×20 + dueDate×4 + priority×1)
+                // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
+                // Max score = 31 (relevance×20 + dueDate×4 + priority×1)
+                const maxScore = 31;
                 let baseThreshold: number;
-                if (settings.relevanceThreshold === 0) {
-                    // Use system defaults as base (scaled to new 0-31 range)
+
+                if (settings.qualityFilterStrength === 0) {
+                    // Adaptive mode - auto-adjust based on query complexity
                     if (intent.keywords.length >= 20) {
-                        // Semantic expansion - very permissive
+                        // Semantic expansion - very permissive (10%)
                         baseThreshold = 3;
                     } else if (intent.keywords.length >= 4) {
+                        // Several keywords - permissive (16%)
                         baseThreshold = 5;
                     } else if (intent.keywords.length >= 2) {
+                        // Few keywords - balanced (26%)
                         baseThreshold = 8;
                     } else {
+                        // Single keyword - moderate (32%)
                         baseThreshold = 10;
                     }
                     console.log(
-                        `[Task Chat] Using default adaptive base: ${baseThreshold} (${intent.keywords.length} keywords)`,
+                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold}/${maxScore} (${intent.keywords.length} keywords)`,
                     );
                 } else {
-                    // User has set a custom base - respect it
-                    baseThreshold = settings.relevanceThreshold;
+                    // User-defined percentage - convert to actual threshold
+                    baseThreshold = settings.qualityFilterStrength * maxScore;
+                    const percentage = (
+                        settings.qualityFilterStrength * 100
+                    ).toFixed(0);
                     console.log(
-                        `[Task Chat] Using user-defined base threshold: ${baseThreshold}`,
+                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(1)}/${maxScore}`,
                     );
                 }
 

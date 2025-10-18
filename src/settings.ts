@@ -80,7 +80,7 @@ export interface PluginSettings {
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
-    relevanceThreshold: number; // Minimum combined score (0-31). Score = relevance×20 + dueDate×4 + priority×1. Use 0 for adaptive (recommended).
+    qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
 
     // Sort settings - Multi-criteria sorting per mode
     // Each mode can have multiple sort criteria applied in order (primary, secondary, tertiary, etc.)
@@ -186,7 +186,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxDirectResults: 20, // Direct results have no token cost, can be higher
     maxTasksForAI: 100, // Increased from 30 to 100: more context = better recommendations, especially with semantic expansion (small token cost increase)
     maxRecommendations: 20, // Keep final list manageable for user
-    relevanceThreshold: 0, // Minimum combined score (0-31). 0 = adaptive (recommended). Higher = stricter filtering.
+    qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
 
     // Multi-criteria sorting - Smart defaults for each mode
     // Simple Search: relevance first (keyword matching), then due date (urgency), then priority

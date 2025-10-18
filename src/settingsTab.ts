@@ -449,25 +449,29 @@ export class SettingsTab extends PluginSettingTab {
         containerEl.createEl("h3", { text: "Task display" });
 
         new Setting(containerEl)
-            .setName("Relevance threshold")
+            .setName("Quality filter")
             .setDesc(
-                `Minimum combined score (0-31) for including tasks. Score = relevance×20 + dueDate×4 + priority×1. Lower = more results, higher = stricter filtering.
-                
-Set to 0 for adaptive (recommended - automatically adjusts based on query).
+                `Controls task filtering strictness (0-100%). Higher = fewer but higher-quality results.
 
-Examples:
-• 0: Adaptive (adjusts based on query complexity)
-• 3-5: Permissive (semantic expansion, many keywords)
-• 8-10: Balanced (moderate filtering)
-• 15+: Strict (only strong matches)`,
+Score calculation: relevance×20 + dueDate×4 + priority×1 (max: 31 points)
+
+Filter levels:
+• 0%: Adaptive (recommended) - auto-adjusts based on query complexity
+• 1-25%: Permissive - broad matching, more results
+• 26-50%: Balanced - moderate quality filtering
+• 51-75%: Strict - only strong matches
+• 76-100%: Very strict - near-perfect matches only
+
+💡 Tip: Start with 0% (adaptive) and increase if you get too many results.`,
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(0, 31, 1)
-                    .setValue(this.plugin.settings.relevanceThreshold)
+                    .setLimits(0, 100, 1)
+                    .setValue(this.plugin.settings.qualityFilterStrength * 100)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.relevanceThreshold = value;
+                        this.plugin.settings.qualityFilterStrength =
+                            value / 100;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -520,22 +524,6 @@ Examples:
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.plugin.settings.maxRecommendations = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Relevance threshold (quality filter)")
-            .setDesc(
-                "Quality filter for keyword searches (0-100). Filters out low-quality matches in all modes. Default: 30 (balanced). Set to 0 for adaptive thresholds (4+ keywords=20, 2-3 keywords=30, 1 keyword=40). Lower = more results (lenient), Higher = fewer results (strict). Fine-tune based on your needs to get the right balance between quantity and quality.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 100, 5)
-                    .setValue(this.plugin.settings.relevanceThreshold)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.relevanceThreshold = value;
                         await this.plugin.saveSettings();
                     }),
             );
