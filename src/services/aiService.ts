@@ -202,6 +202,9 @@ export class AIService {
                 `[Task Chat] After filtering: ${filteredTasks.length} tasks found`,
             );
 
+            // Detect query type for adaptive scoring
+            const queryType = this.detectQueryType(intent);
+
             // No tasks found matching the filters
             if (filteredTasks.length === 0) {
                 const filterDesc = this.buildFilterDescription(intent);
@@ -227,11 +230,11 @@ export class AIService {
                 };
             }
 
-            // PHASE 1: Quality filtering (always for keyword searches)
-            // Apply relevance filtering to remove low-quality matches
-            // This ensures consistent quality regardless of sort/display preference
+            // PHASE 1: Quality filtering (for ALL query types)
+            // Apply scoring and filtering to remove low-quality matches
+            // Adapts to query type: keywords-only, properties-only, or mixed
             let qualityFilteredTasks = filteredTasks;
-            if (intent.keywords && intent.keywords.length > 0) {
+            if (queryType.hasKeywords || queryType.hasTaskProperties) {
                 // All modes now use comprehensive scoring (relevance + due date + priority)
                 // Simple Search: keywords = coreKeywords (no semantic expansion)
                 // Smart Search / Task Chat: keywords ≠ coreKeywords (with semantic expansion)
@@ -245,6 +248,7 @@ export class AIService {
                         filteredTasks,
                         intent.keywords, // Expanded keywords
                         parsedQuery.coreKeywords, // Core keywords
+                        queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
                         displaySortOrder,
@@ -262,6 +266,7 @@ export class AIService {
                         filteredTasks,
                         intent.keywords, // All keywords are "core" (no expansion)
                         intent.keywords, // Same as keywords (no distinction)
+                        queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
                         displaySortOrder,
@@ -273,28 +278,51 @@ export class AIService {
                 }
 
                 // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
-                // Max score calculated dynamically based on user-configured coefficients
-                // Formula: (maxRelevance × relevCoeff) + (maxDueDate × dateCoeff) + (maxPriority × priorCoeff)
-                // All maximums calculated from user's sub-coefficient settings
-                const maxRelevanceScore = settings.relevanceCoreWeight + 1.0; // Dynamic: core bonus + base weight
+                // Max score calculated dynamically based on query type and user settings
+                // Adapts to include only relevant components
+                const maxRelevanceScore = settings.relevanceCoreWeight + 1.0;
                 const maxDueDateScore = Math.max(
                     settings.dueDateOverdueScore,
                     settings.dueDateWithin7DaysScore,
                     settings.dueDateWithin1MonthScore,
                     settings.dueDateLaterScore,
                     settings.dueDateNoneScore,
-                ); // Dynamic: highest due date sub-coefficient
+                );
                 const maxPriorityScore = Math.max(
                     settings.priorityP1Score,
                     settings.priorityP2Score,
                     settings.priorityP3Score,
                     settings.priorityP4Score,
                     settings.priorityNoneScore,
-                ); // Dynamic: highest priority sub-coefficient
-                const maxScore =
-                    maxRelevanceScore * settings.relevanceCoefficient +
-                    maxDueDateScore * settings.dueDateCoefficient +
-                    maxPriorityScore * settings.priorityCoefficient;
+                );
+
+                // Dynamic max score based on query type
+                let maxScore;
+                if (queryType.queryType === "keywords-only") {
+                    // Only include relevance
+                    maxScore =
+                        maxRelevanceScore * settings.relevanceCoefficient;
+                    console.log(
+                        `[Task Chat] Keywords-only query: maxScore = ${maxScore.toFixed(1)} (relevance only)`,
+                    );
+                } else if (queryType.queryType === "properties-only") {
+                    // Only include task properties
+                    maxScore =
+                        maxDueDateScore * settings.dueDateCoefficient +
+                        maxPriorityScore * settings.priorityCoefficient;
+                    console.log(
+                        `[Task Chat] Properties-only query: maxScore = ${maxScore.toFixed(1)} (properties only)`,
+                    );
+                } else {
+                    // Mixed - include everything
+                    maxScore =
+                        maxRelevanceScore * settings.relevanceCoefficient +
+                        maxDueDateScore * settings.dueDateCoefficient +
+                        maxPriorityScore * settings.priorityCoefficient;
+                    console.log(
+                        `[Task Chat] Mixed query: maxScore = ${maxScore.toFixed(1)} (all components)`,
+                    );
+                }
                 let baseThreshold: number;
 
                 if (settings.qualityFilterStrength === 0) {
@@ -423,6 +451,7 @@ export class AIService {
                             qualityFilteredTasks,
                             intent.keywords,
                             parsedQuery.coreKeywords,
+                            queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
                             displaySortOrder,
@@ -437,6 +466,7 @@ export class AIService {
                             qualityFilteredTasks,
                             intent.keywords,
                             intent.keywords,
+                            queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
                             displaySortOrder,
@@ -452,14 +482,23 @@ export class AIService {
                 );
             }
 
-            // Resolve "auto" in displaySortOrder
+            // Resolve "auto" in displaySortOrder based on query type
             const resolvedDisplaySortOrderWithDupes = displaySortOrder.map(
                 (criterion) => {
                     if (criterion === "auto") {
-                        // Auto mode: Use relevance for keyword searches, dueDate otherwise
-                        return intent.keywords && intent.keywords.length > 0
-                            ? "relevance"
-                            : "dueDate";
+                        // Smarter auto resolution based on query content
+                        if (queryType.queryType === "keywords-only") {
+                            return "relevance";
+                        } else if (queryType.queryType === "properties-only") {
+                            // Prioritize based on which property exists
+                            if (intent.extractedDueDateFilter) return "dueDate";
+                            if (intent.extractedPriority) return "priority";
+                            return "dueDate"; // Default fallback
+                        } else if (queryType.queryType === "mixed") {
+                            return "relevance"; // Keywords take precedence in mixed
+                        } else {
+                            return "dueDate"; // Empty query fallback
+                        }
                     }
                     return criterion;
                 },
@@ -540,13 +579,23 @@ export class AIService {
                 `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasksForDisplay.length} tasks)`,
             );
 
-            // Resolve "auto" in aiContextSortOrder
+            // Resolve "auto" in aiContextSortOrder based on query type
             const resolvedAIContextSortOrderWithDupes = aiContextSortOrder.map(
                 (criterion) => {
                     if (criterion === "auto") {
-                        return intent.keywords && intent.keywords.length > 0
-                            ? "relevance"
-                            : "dueDate";
+                        // Smarter auto resolution based on query content
+                        if (queryType.queryType === "keywords-only") {
+                            return "relevance";
+                        } else if (queryType.queryType === "properties-only") {
+                            // Prioritize based on which property exists
+                            if (intent.extractedDueDateFilter) return "dueDate";
+                            if (intent.extractedPriority) return "priority";
+                            return "dueDate"; // Default fallback
+                        } else if (queryType.queryType === "mixed") {
+                            return "relevance"; // Keywords take precedence in mixed
+                        } else {
+                            return "dueDate"; // Empty query fallback
+                        }
                     }
                     return criterion;
                 },
@@ -700,6 +749,42 @@ export class AIService {
                 },
             };
         }
+    }
+
+    /**
+     * Detect query type based on content (Part 1 vs Part 2 vs both)
+     * Used to dynamically adapt scoring and filtering
+     */
+    private static detectQueryType(intent: any): {
+        hasKeywords: boolean;
+        hasTaskProperties: boolean;
+        queryType: "keywords-only" | "properties-only" | "mixed" | "empty";
+    } {
+        const hasKeywords = intent.keywords && intent.keywords.length > 0;
+        const hasTaskProperties = !!(
+            intent.extractedPriority ||
+            intent.extractedDueDateFilter ||
+            intent.extractedStatus ||
+            intent.extractedFolder ||
+            (intent.extractedTags && intent.extractedTags.length > 0)
+        );
+
+        let queryType: "keywords-only" | "properties-only" | "mixed" | "empty";
+        if (hasKeywords && hasTaskProperties) {
+            queryType = "mixed";
+        } else if (hasKeywords) {
+            queryType = "keywords-only";
+        } else if (hasTaskProperties) {
+            queryType = "properties-only";
+        } else {
+            queryType = "empty";
+        }
+
+        console.log(
+            `[Task Chat] Query type: ${queryType} (keywords: ${hasKeywords}, properties: ${hasTaskProperties})`,
+        );
+
+        return { hasKeywords, hasTaskProperties, queryType };
     }
 
     /**
@@ -1365,6 +1450,7 @@ ${taskContext}`;
                     tasks,
                     keywords,
                     coreKeywords,
+                    keywords.length > 0, // queryHasKeywords
                     queryHasDueDate,
                     queryHasPriority,
                     sortCriteria,
@@ -1381,6 +1467,7 @@ ${taskContext}`;
                     tasks,
                     keywords,
                     keywords,
+                    keywords.length > 0, // queryHasKeywords
                     queryHasDueDate,
                     queryHasPriority,
                     sortCriteria,

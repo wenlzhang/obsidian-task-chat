@@ -858,6 +858,7 @@ export class TaskSearchService {
      * @param tasks - Tasks to score
      * @param keywords - All keywords (core + semantic equivalents for Smart/Chat, same as core for Simple)
      * @param coreKeywords - Original core keywords from query
+     * @param queryHasKeywords - Whether keywords exist in query
      * @param queryHasDueDate - Whether due date filter exists in query
      * @param queryHasPriority - Whether priority filter exists in query
      * @param sortCriteria - User's sort settings to detect which properties to weight
@@ -871,6 +872,7 @@ export class TaskSearchService {
         tasks: Task[],
         keywords: string[],
         coreKeywords: string[],
+        queryHasKeywords: boolean,
         queryHasDueDate: boolean,
         queryHasPriority: boolean,
         sortCriteria: string[],
@@ -896,10 +898,13 @@ export class TaskSearchService {
         );
 
         // Determine coefficients based on query and sort settings
+        const relevanceInSort = sortCriteria.includes("relevance");
         const dueDateInSort = sortCriteria.includes("dueDate");
         const priorityInSort = sortCriteria.includes("priority");
 
         // Coefficient is 1.0 if property exists in query OR sort settings, 0.0 otherwise
+        const relevanceCoefficient =
+            queryHasKeywords || relevanceInSort ? 1.0 : 0.0;
         const dueDateCoefficient = queryHasDueDate || dueDateInSort ? 1.0 : 0.0;
         const priorityCoefficient =
             queryHasPriority || priorityInSort ? 1.0 : 0.0;
@@ -923,7 +928,7 @@ export class TaskSearchService {
             `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}`,
         );
         console.log(
-            `[Task Chat] Active coefficients - relevance: ${relevCoeff} (always), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}`,
+            `[Task Chat] Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}`,
         );
         console.log(
             `[Task Chat] ============================================================`,
@@ -954,11 +959,12 @@ export class TaskSearchService {
 
             // ========== WEIGHTED FINAL SCORE ==========
             // Use user-configurable coefficients (defaults: 20, 4, 1)
-            // Relevance: always applied with relevCoeff
+            // All components now conditional based on query content:
+            // Relevance: applied with relevCoeff if keywords exist in query/settings
             // Due date: applied with dateCoeff if exists in query/settings
             // Priority: applied with priorCoeff if exists in query/settings
             const finalScore =
-                relevanceScore * relevCoeff +
+                relevanceScore * relevCoeff * relevanceCoefficient +
                 dueDateScore * dateCoeff * dueDateCoefficient +
                 priorityScore * priorCoeff * priorityCoefficient;
 
