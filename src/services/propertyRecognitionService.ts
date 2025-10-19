@@ -274,10 +274,8 @@ Step 1: Identify Core Property Terms
 Step 2: Apply Semantic Expansion
 - Expand EACH core property term into ALL ${queryLanguages.length} languages: ${languageList}
 - Generate semantic equivalents DIRECTLY in each language
-- Example: "优先级" (Chinese) → 
-  * English: priority, important, urgent, critical, high-priority
-  * 中文: 优先级, 优先, 重要, 紧急, 关键
-  * Swedish: prioritet, viktig, brådskande, kritisk, hög-prioritet
+- Example expansion for PRIORITY concept across YOUR configured languages:
+${queryLanguages.map((lang, idx) => `  * ${lang}: [generate 5-10 semantic equivalents for "priority" in ${lang}]`).join("\n")}
 
 Step 3: Match Against Combined Terms (Layer 1 + Layer 2)
 - Check expanded terms against user-configured terms (Layer 1)

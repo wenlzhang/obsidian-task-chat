@@ -272,9 +272,14 @@ export class QueryParserService {
         const statusValueMapping =
             PropertyRecognitionService.buildStatusValueMapping();
         const priorityValueMapping =
-            PromptBuilderService.buildPriorityMappingForParser(settings);
-        const statusMapping =
-            PromptBuilderService.buildStatusMappingForParser(settings);
+            PromptBuilderService.buildPriorityMappingForParser(
+                settings,
+                queryLanguages,
+            );
+        const statusMapping = PromptBuilderService.buildStatusMappingForParser(
+            settings,
+            queryLanguages,
+        );
         const dateFieldNames =
             PromptBuilderService.buildDateFieldNamesForParser(settings);
 
@@ -347,10 +352,38 @@ Stage 1: Identify property-related terms in query
 
 Stage 2: Semantically expand property terms to recognize them
 - When you see a property-related term, think: "What concept is this expressing?"
-- Property concepts to recognize:
-  * PRIORITY concept: priority, important, urgent, 优先级, 优先, 重要, prioritet, viktig
-  * DUE DATE concept: due, deadline, scheduled, 截止日期, 到期, 期限, förfallodatum, deadline
-  * STATUS concept: status, state, open, done, completed, cancelled, 状态, 完成, 已完成, 取消, status, färdig, avbruten
+- YOU MUST expand property concepts into ALL ${queryLanguages.length} configured languages: ${languageList}
+- Property concepts to recognize and expand:
+  * PRIORITY concept: Generate equivalents in EACH language (${languageList})
+  * DUE DATE concept: Generate equivalents in EACH language (${languageList})
+  * STATUS concept: Generate equivalents in EACH language (${languageList})
+
+🚨 PROPERTY TERM EXPANSION RULES (Same as Keywords):
+
+For EACH property concept (priority, dueDate, status):
+1. Recognize the base concept (e.g., user says "优先级" = PRIORITY concept)
+2. Generate 5-10 semantic equivalents DIRECTLY in EACH configured language
+3. Total variations: ~${10 * queryLanguages.length} terms per property concept
+4. Use these expanded terms to identify property filters in the query
+
+Example for PRIORITY concept across ${languageList}:
+- Base terms provided in Layer 1 (user-configured) + Layer 2 (internal mappings)
+- You expand further into ALL languages:
+${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: priority, important, urgent, critical, high, essential, vital, key, crucial, top`).join("\n")}
+(Total: ~${10 * queryLanguages.length} priority-related terms across all languages)
+
+Example for DUE DATE concept across ${languageList}:
+${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: due, deadline, scheduled, target, expire, finish by, complete by, time limit, cutoff, end date`).join("\n")}
+(Total: ~${10 * queryLanguages.length} due date-related terms across all languages)
+
+Example for STATUS concept across ${languageList}:
+${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: status, state, open, completed, done, cancelled, in progress, finished, abandoned, active`).join("\n")}
+(Total: ~${10 * queryLanguages.length} status-related terms across all languages)
+
+⚠️ CRITICAL: Just like keywords, property terms MUST be expanded across ALL ${queryLanguages.length} languages!
+- No language should be skipped
+- Generate semantic equivalents DIRECTLY in each target language
+- This enables cross-language property recognition
 
 🚨 CRITICAL PROPERTY EXPANSION EXAMPLES:
 

@@ -39,7 +39,11 @@ export class PromptBuilderService {
      * Build priority mapping for query parser (more concise format)
      * Used specifically in QueryParserService for parsing natural language
      */
-    static buildPriorityMappingForParser(settings: PluginSettings): string {
+    static buildPriorityMappingForParser(
+        settings: PluginSettings,
+        queryLanguages: string[],
+    ): string {
+        const languageList = queryLanguages.join(", ");
         const mapping = settings.dataviewPriorityMapping;
         const lines: string[] = [];
 
@@ -64,6 +68,9 @@ export class PromptBuilderService {
                 : `PRIORITY MAPPING:\n- 1 = highest/high priority\n- 2 = medium priority\n- 3 = low priority\n- 4 = none/no priority`;
 
         return `${baseMapping}
+
+⚠️ EXPAND PRIORITY TERMS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
+Generate semantic equivalents for priority levels in EACH configured language.
 
 IMPORTANT DISTINCTION:
 1. Asking for tasks WITH priority (any value) → priority: null
@@ -123,30 +130,26 @@ Use these exact names when referring to task status.`;
      * Build status mapping for query parser (comprehensive format with all 4 statuses)
      * Used in QueryParserService for parsing natural language
      */
-    static buildStatusMappingForParser(settings: PluginSettings): string {
+    static buildStatusMappingForParser(
+        settings: PluginSettings,
+        queryLanguages: string[],
+    ): string {
         const names = settings.taskStatusDisplayNames;
+        const languageList = queryLanguages.join(", ");
+
         return `STATUS MAPPING (User-Configured):
 Status values must be EXACTLY one of: "open", "inProgress", "completed", "cancelled"
 
-- "open" = ${names.open || "Open"} tasks
-  English: open, pending, todo, incomplete, new, unstarted
-  中文: 未完成, 待办, 待处理, 新建
-  Svenska: öppen, väntande, att göra
+⚠️ EXPAND STATUS TERMS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
+You MUST generate semantic equivalents for EACH status in EVERY configured language.
 
-- "inProgress" = ${names.inProgress || "In progress"} tasks
-  English: in progress, working, ongoing, active, doing
-  中文: 进行中, 正在做, 处理中, 进行
-  Svenska: pågående, arbetar på, aktiv
+Example base terms (Layer 2 - Internal):
+- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo, new, unstarted)
+- "inProgress" = ${names.inProgress || "In progress"} tasks (working, ongoing, active, doing)
+- "completed" = ${names.completed || "Completed"} tasks (done, finished, closed, resolved)
+- "cancelled" = ${names.cancelled || "Cancelled"} tasks (abandoned, dropped, discarded)
 
-- "completed" = ${names.completed || "Completed"} tasks
-  English: done, completed, finished, closed, resolved
-  中文: 完成, 已完成, 结束, 已结束
-  Svenska: klar, färdig, slutförd, stängd
-
-- "cancelled" = ${names.cancelled || "Cancelled"} tasks
-  English: cancelled, canceled, abandoned, dropped, discarded
-  中文: 取消, 已取消, 放弃, 废弃
-  Svenska: avbruten, inställd, övergjven
+Your task: Generate semantic equivalents in ${languageList} for recognizing these status values.
 
 STATUS DISTINCTION:
 1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
