@@ -60,7 +60,7 @@ export class ChatView extends ItemView {
         }
 
         this.renderView();
-        this.renderMessages();
+        await this.renderMessages();
     }
 
     async onClose(): Promise<void> {
@@ -160,6 +160,8 @@ export class ChatView extends ItemView {
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
+        // Note: renderMessages is async but we don't await here as it's called from constructor
+        // Messages will render asynchronously
         this.renderMessages();
 
         // Input area
@@ -191,6 +193,8 @@ export class ChatView extends ItemView {
         // Initial welcome message
         const messages = this.plugin.sessionManager.getCurrentMessages();
         if (messages.length === 0) {
+            // Note: addSystemMessage is async but we don't await here as it's called from constructor
+            // Message will render asynchronously
             this.addSystemMessage(
                 "Welcome to Task Chat! I can help you manage and analyze your tasks. Ask me anything about your tasks, and I'll provide recommendations.",
             );
@@ -391,13 +395,15 @@ export class ChatView extends ItemView {
     /**
      * Render all chat messages
      */
-    private renderMessages(): void {
+    private async renderMessages(): Promise<void> {
         this.messagesEl.empty();
 
         const messages = this.plugin.sessionManager.getCurrentMessages();
-        messages.forEach((message: ChatMessage) => {
-            this.renderMessage(message);
-        });
+
+        // Render messages sequentially to ensure proper async handling
+        for (const message of messages) {
+            await this.renderMessage(message);
+        }
 
         // Auto-scroll to bottom
         this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
@@ -459,7 +465,7 @@ export class ChatView extends ItemView {
     /**
      * Render a single message
      */
-    private renderMessage(message: ChatMessage): void {
+    private async renderMessage(message: ChatMessage): Promise<void> {
         const messageEl = this.messagesEl.createDiv(
             `task-chat-message task-chat-message-${message.role}`,
         );
@@ -490,13 +496,55 @@ export class ChatView extends ItemView {
         // Message content
         const contentEl = messageEl.createDiv("task-chat-message-content");
 
-        // Simple markdown rendering for bold and code
-        let html = message.content;
-        html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-        html = html.replace(/`(.*?)`/g, "<code>$1</code>");
-        html = html.replace(/\n/g, "<br>");
+        // Use MarkdownRenderer to enable internal links, tags, and proper markdown in AI responses
+        // Use the source path of the first recommended task if available for context
+        // Otherwise use empty string (still enables external URLs and tags)
+        const contextPath =
+            message.recommendedTasks && message.recommendedTasks.length > 0
+                ? message.recommendedTasks[0].sourcePath
+                : "";
 
-        contentEl.innerHTML = html;
+        console.log(
+            `[Task Chat] Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
+        );
+
+        await MarkdownRenderer.renderMarkdown(
+            message.content,
+            contentEl,
+            contextPath,
+            this,
+        );
+
+        console.log(
+            `[Task Chat] Message content rendered, checking for links...`,
+        );
+        const messageLinks = contentEl.querySelectorAll("a");
+        console.log(
+            `[Task Chat] - Found ${messageLinks.length} link elements in message content`,
+        );
+        messageLinks.forEach((link, i) => {
+            console.log(
+                `[Task Chat]   Message link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
+            );
+        });
+
+        // Add click tracking for message content
+        contentEl.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement;
+            console.log(`[Task Chat] Click in message content:`, {
+                tagName: target.tagName,
+                className: target.className,
+                textContent: target.textContent?.substring(0, 50),
+                href: target.getAttribute("href"),
+                dataHref: target.getAttribute("data-href"),
+            });
+
+            // Handle clicks on links
+            if (target.tagName === "A") {
+                e.preventDefault();
+                this.handleLinkClick(target as HTMLAnchorElement, contextPath);
+            }
+        });
 
         // Recommended tasks
         if (message.recommendedTasks && message.recommendedTasks.length > 0) {
@@ -505,7 +553,13 @@ export class ChatView extends ItemView {
 
             const taskListEl = tasksEl.createDiv("task-chat-task-list");
 
-            message.recommendedTasks.forEach((task, index) => {
+            // Use for...of instead of forEach to properly handle async rendering
+            for (
+                let index = 0;
+                index < message.recommendedTasks.length;
+                index++
+            ) {
+                const task = message.recommendedTasks[index];
                 const taskItemEl = taskListEl.createDiv("task-chat-task-item");
 
                 // Add task number as separate element
@@ -519,13 +573,61 @@ export class ChatView extends ItemView {
                 );
 
                 // Render task with markdown task syntax for theme support
+                // Pass task.sourcePath to enable internal links, block links, tags, and hover preview
+                // MUST await to ensure links are properly registered by Obsidian
                 const taskMarkdown = `- [${task.status}] ${task.text}`;
-                MarkdownRenderer.renderMarkdown(
+
+                console.log(
+                    `[Task Chat] Rendering task ${taskNumber}: ${task.text.substring(0, 50)}...`,
+                );
+                console.log(`[Task Chat] - Source path: ${task.sourcePath}`);
+                console.log(
+                    `[Task Chat] - Task markdown: ${taskMarkdown.substring(0, 100)}...`,
+                );
+
+                await MarkdownRenderer.renderMarkdown(
                     taskMarkdown,
                     taskContentEl,
-                    "",
+                    task.sourcePath,
                     this,
                 );
+
+                console.log(
+                    `[Task Chat] - Rendering complete, checking for links...`,
+                );
+                const links = taskContentEl.querySelectorAll("a");
+                console.log(
+                    `[Task Chat] - Found ${links.length} link elements`,
+                );
+                links.forEach((link, i) => {
+                    console.log(
+                        `[Task Chat]   Link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
+                    );
+                });
+
+                // Add click handlers for links in task content
+                taskContentEl.addEventListener("click", (e) => {
+                    const target = e.target as HTMLElement;
+                    console.log(
+                        `[Task Chat] Click detected in task ${taskNumber}:`,
+                        {
+                            tagName: target.tagName,
+                            className: target.className,
+                            textContent: target.textContent,
+                            href: target.getAttribute("href"),
+                            dataHref: target.getAttribute("data-href"),
+                        },
+                    );
+
+                    // Handle clicks on links
+                    if (target.tagName === "A") {
+                        e.preventDefault();
+                        this.handleLinkClick(
+                            target as HTMLAnchorElement,
+                            task.sourcePath,
+                        );
+                    }
+                });
 
                 const navBtn = taskItemEl.createEl("button", {
                     text: "→",
@@ -535,7 +637,7 @@ export class ChatView extends ItemView {
                 navBtn.addEventListener("click", () => {
                     NavigationService.navigateToTask(this.app, task);
                 });
-            });
+            }
         }
 
         // Token usage display
@@ -644,6 +746,61 @@ export class ChatView extends ItemView {
     }
 
     /**
+     * Handle link clicks for internal links, tags, and external URLs
+     */
+    private handleLinkClick(link: HTMLAnchorElement, sourcePath: string): void {
+        const href =
+            link.getAttribute("href") || link.getAttribute("data-href");
+        const linkClass = link.className;
+
+        console.log(`[Task Chat] handleLinkClick called:`, {
+            href,
+            class: linkClass,
+            sourcePath,
+        });
+
+        if (!href) {
+            console.log(`[Task Chat] No href found, ignoring click`);
+            return;
+        }
+
+        // Handle tags (#tag)
+        if (linkClass.contains("tag")) {
+            console.log(`[Task Chat] Opening tag search for: ${href}`);
+            // Use Obsidian's search for tags
+            (this.app as any).internalPlugins
+                .getPluginById("global-search")
+                .instance.openGlobalSearch(`tag:${href.replace("#", "")}`);
+            return;
+        }
+
+        // Handle internal links ([[Note]])
+        if (linkClass.contains("internal-link")) {
+            console.log(`[Task Chat] Opening internal link: ${href}`);
+            // Use Obsidian's built-in method to open links
+            this.app.workspace.openLinkText(href, sourcePath, false);
+            return;
+        }
+
+        // Handle external links (https://...)
+        if (
+            linkClass.contains("external-link") ||
+            href.startsWith("http://") ||
+            href.startsWith("https://")
+        ) {
+            console.log(`[Task Chat] Opening external link: ${href}`);
+            window.open(href, "_blank");
+            return;
+        }
+
+        // Fallback: try to open as internal link
+        console.log(
+            `[Task Chat] Fallback: attempting to open as internal link: ${href}`,
+        );
+        this.app.workspace.openLinkText(href, sourcePath, false);
+    }
+
+    /**
      * Send a message to AI
      */
     private async sendMessage(): Promise<void> {
@@ -666,7 +823,7 @@ export class ChatView extends ItemView {
         };
 
         this.plugin.sessionManager.addMessage(userMessage);
-        this.renderMessages();
+        await this.renderMessages();
         await this.plugin.saveSettings();
 
         // Show typing indicator
@@ -718,7 +875,7 @@ export class ChatView extends ItemView {
                 };
 
                 this.plugin.sessionManager.addMessage(directMessage);
-                this.renderMessages();
+                await this.renderMessages();
                 await this.plugin.saveSettings();
             } else {
                 // Add AI analysis response (Task Chat mode)
@@ -731,7 +888,7 @@ export class ChatView extends ItemView {
                 };
 
                 this.plugin.sessionManager.addMessage(aiMessage);
-                this.renderMessages();
+                await this.renderMessages();
                 await this.plugin.saveSettings();
             }
         } catch (error) {
@@ -747,7 +904,7 @@ export class ChatView extends ItemView {
             };
 
             this.plugin.sessionManager.addMessage(errorMessage);
-            this.renderMessages();
+            await this.renderMessages();
             await this.plugin.saveSettings();
         } finally {
             this.isProcessing = false;
@@ -760,7 +917,7 @@ export class ChatView extends ItemView {
     /**
      * Add a system message
      */
-    addSystemMessage(content: string): void {
+    async addSystemMessage(content: string): Promise<void> {
         const message: ChatMessage = {
             role: "system",
             content: content,
@@ -768,17 +925,17 @@ export class ChatView extends ItemView {
         };
 
         this.plugin.sessionManager.addMessage(message);
-        this.renderMessages();
+        await this.renderMessages();
         this.plugin.saveSettings();
     }
 
     /**
      * Clear chat history
      */
-    private clearChat(): void {
+    private async clearChat(): Promise<void> {
         this.plugin.sessionManager.clearCurrentSession();
-        this.renderMessages();
-        this.addSystemMessage(
+        await this.renderMessages();
+        await this.addSystemMessage(
             "Chat cleared. How can I help you with your tasks?",
         );
         this.plugin.saveSettings();
@@ -815,12 +972,12 @@ export class ChatView extends ItemView {
     /**
      * Set filter and update tasks
      */
-    setFilter(filter: TaskFilter): void {
+    async setFilter(filter: TaskFilter): Promise<void> {
         this.currentFilter = filter;
         const filteredTasks = this.plugin.getFilteredTasks(filter);
         this.updateTasks(filteredTasks, filter);
 
-        this.addSystemMessage(
+        await this.addSystemMessage(
             `Filter applied. Now showing ${filteredTasks.length} task(s).`,
         );
     }
@@ -853,8 +1010,8 @@ export class ChatView extends ItemView {
         // Update dropdown to reflect default mode
         this.updateChatModeOptions();
 
-        this.renderMessages();
-        this.addSystemMessage(
+        await this.renderMessages();
+        await this.addSystemMessage(
             `New session created: ${newSession.name}. How can I help you?`,
         );
 
@@ -870,9 +1027,9 @@ export class ChatView extends ItemView {
         const modal = new SessionModal(
             this.app,
             this.plugin,
-            (sessionId: string) => {
+            async (sessionId: string) => {
                 this.plugin.sessionManager.switchSession(sessionId);
-                this.renderMessages();
+                await this.renderMessages();
                 this.plugin.saveSettings();
             },
         );
