@@ -22,6 +22,73 @@ export class SettingsTab extends PluginSettingTab {
 
         containerEl.createEl("h2", { text: "Task Chat settings" });
 
+        // ========================================
+        // UNDERSTANDING SETTINGS OVERVIEW
+        // ========================================
+        const overviewBox = containerEl.createDiv({
+            cls: "task-chat-info-box",
+        });
+        overviewBox.innerHTML = `
+            <h3 style="margin-top: 0;">📚 Understanding Settings</h3>
+            <p><strong>👉 Start with Defaults:</strong> All settings are pre-configured with recommended values. Most users don't need to change anything!</p>
+            
+            <h4>How Settings Affect Your Results:</h4>
+            <ol style="margin-left: 20px;">
+                <li><strong>Filtering:</strong> Determines which tasks appear in results
+                    <ul>
+                        <li>Stop words: Removes generic keywords (the, task, work, etc.)</li>
+                        <li>Quality filter: Keeps tasks above a comprehensive score threshold</li>
+                        <li>Minimum relevance: Requires keyword match quality (optional)</li>
+                    </ul>
+                </li>
+                <li><strong>Scoring:</strong> Calculates task importance
+                    <ul>
+                        <li>Relevance coefficient (R×20): Keyword match weight</li>
+                        <li>Due date coefficient (D×4): Urgency weight</li>
+                        <li>Priority coefficient (P×1): Importance weight</li>
+                        <li>Sub-coefficients: Fine-tune specific scores</li>
+                    </ul>
+                </li>
+                <li><strong>Sorting:</strong> Orders tasks for display
+                    <ul>
+                        <li>Primary: Comprehensive score (R + D + P)</li>
+                        <li>Tiebreakers: Additional criteria for equal scores</li>
+                    </ul>
+                </li>
+                <li><strong>Display:</strong> How many tasks to show
+                    <ul>
+                        <li>Simple/Smart Search: Direct display (fast, free)</li>
+                        <li>Task Chat: AI analysis (comprehensive, uses tokens)</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h4>The Processing Pipeline:</h4>
+            <p style="margin-left: 20px; font-family: monospace; font-size: 12px;">
+                Query → Parse → DataView Filter → Quality Filter → Minimum Relevance → Score → Sort → Display/AI Analysis
+            </p>
+            
+            <h4>Key Settings Groups:</h4>
+            <ul style="margin-left: 20px;">
+                <li><strong>Property Terms & Stop Words:</strong> Improve keyword recognition</li>
+                <li><strong>Quality Filter:</strong> Balance result count vs quality</li>
+                <li><strong>Scoring Coefficients:</strong> Weight importance of different factors</li>
+                <li><strong>Sort Order:</strong> Prioritize criteria for equal scores</li>
+                <li><strong>Task Display:</strong> Control result count per mode</li>
+            </ul>
+            
+            <h4>Recommended Workflow:</h4>
+            <ol style="margin-left: 20px;">
+                <li>✅ <strong>Start with defaults</strong> - Try queries first!</li>
+                <li>🔍 If results are too broad → Increase quality filter (10-30%)</li>
+                <li>🎯 If urgent tasks overwhelm keywords → Add minimum relevance (20-40%)</li>
+                <li>⚖️ If urgency/priority doesn't match expectations → Adjust coefficients</li>
+                <li>🛑 If generic words match everything → Add custom stop words</li>
+            </ol>
+            
+            <p style="margin-top: 10px;"><strong>💡 Tip:</strong> Each setting shows its impact in the description. Check the README for detailed explanations and examples!</p>
+        `;
+
         // AI Provider Settings
         containerEl.createEl("h3", { text: "AI provider" });
 
@@ -823,7 +890,7 @@ Examples:
                     "⚠️ IMPORTANT: Changing this value affects:\n" +
                     "• Maximum relevance score: (This value + 1.0)\n" +
                     "• Quality filter calculations (uses this + 1.0 for max score)\n" +
-                    "• Minimum relevance score maximum (update that setting if you change this)",
+                    "• Minimum relevance score maximum (auto-updates when you change this)",
             )
             .addSlider((slider) =>
                 slider
@@ -833,6 +900,8 @@ Examples:
                     .onChange(async (value) => {
                         this.plugin.settings.relevanceCoreWeight = value;
                         await this.plugin.saveSettings();
+                        // Refresh settings tab to update minimum relevance slider max value
+                        this.display();
                     }),
             );
 
