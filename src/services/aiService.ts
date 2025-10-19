@@ -672,23 +672,23 @@ export class AIService {
                 console.log("[Task Chat] AI response:", response);
 
                 // Extract task IDs that AI referenced
-                const recommendedTasks = this.extractRecommendedTasks(
-                    response,
-                    tasksToAnalyze,
-                    settings,
-                    intent.keywords || [],
-                    parsedQuery?.coreKeywords || [],
-                    !!intent.extractedDueDateFilter,
-                    !!intent.extractedPriority,
-                    sortOrder,
-                    usingAIParsing,
-                );
+                const { tasks: recommendedTasks, indices: recommendedIndices } =
+                    this.extractRecommendedTasks(
+                        response,
+                        tasksToAnalyze,
+                        settings,
+                        intent.keywords || [],
+                        parsedQuery?.coreKeywords || [],
+                        !!intent.extractedDueDateFilter,
+                        !!intent.extractedPriority,
+                        sortOrder,
+                        usingAIParsing,
+                    );
 
                 // Replace [TASK_X] references with task numbers matching recommended list (1, 2, 3...)
                 const processedResponse = this.replaceTaskReferences(
                     response,
-                    recommendedTasks,
-                    tasksToAnalyze,
+                    recommendedIndices,
                 );
 
                 return {
@@ -1378,6 +1378,7 @@ ${taskContext}`;
 
     /**
      * Extract recommended tasks from AI response using task IDs
+     * @returns Object containing recommended tasks and their original indices
      */
     private static extractRecommendedTasks(
         response: string,
@@ -1389,8 +1390,9 @@ ${taskContext}`;
         queryHasPriority: boolean,
         sortCriteria: SortCriterion[],
         usingAIParsing: boolean,
-    ): Task[] {
+    ): { tasks: Task[]; indices: number[] } {
         const recommended: Task[] = [];
+        const recommendedIndices: number[] = [];
 
         console.log(
             `[Task Chat] Extracting recommended tasks from ${tasks.length} available tasks`,
@@ -1435,6 +1437,7 @@ ${taskContext}`;
         // Add tasks in the exact order they were mentioned in the AI response
         referencedIndices.forEach((index) => {
             recommended.push(tasks[index]);
+            recommendedIndices.push(index); // Track original indices
         });
 
         // If no task IDs were found, use fallback: return top relevant tasks
@@ -1491,7 +1494,7 @@ ${taskContext}`;
             console.log(
                 `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
-            return topTasks;
+            return { tasks: topTasks, indices: [] };
         }
 
         console.log(
@@ -1507,13 +1510,17 @@ ${taskContext}`;
             0,
             settings.maxRecommendations,
         );
+        const finalIndices = recommendedIndices.slice(
+            0,
+            settings.maxRecommendations,
+        );
         console.log(
             `[Task Chat] Returning ${finalRecommended.length} recommended tasks:`,
         );
         finalRecommended.forEach((task, i) => {
             console.log(`[Task Chat]   Recommended [${i + 1}]: ${task.text}`);
         });
-        return finalRecommended;
+        return { tasks: finalRecommended, indices: finalIndices };
     }
 
     /**
@@ -1522,27 +1529,23 @@ ${taskContext}`;
      *
      * This ensures AI summary references ("task 1", "task 2") match the visual
      * numbering users see in the recommended tasks list (1, 2, 3...)
+     *
+     * @param response The AI response containing [TASK_X] references
+     * @param recommendedIndices The original indices of recommended tasks in allTasks array
      */
     private static replaceTaskReferences(
         response: string,
-        recommendedTasks: Task[],
-        allTasks: Task[],
+        recommendedIndices: number[],
     ): string {
-        // Build a map of task ID to position in recommended list
+        // Build a map of task ID (1-based) to display position (1-based)
+        // Using original indices avoids issues with duplicate tasks
         const taskIdToPosition = new Map<number, number>();
 
-        recommendedTasks.forEach((recommendedTask, index) => {
-            // Find this task in the allTasks array to get its original ID
-            const taskIndex = allTasks.findIndex(
-                (t) =>
-                    t.text === recommendedTask.text &&
-                    t.sourcePath === recommendedTask.sourcePath &&
-                    t.lineNumber === recommendedTask.lineNumber,
-            );
-            if (taskIndex >= 0) {
-                // Map from 1-based task ID to 1-based position in recommended list
-                taskIdToPosition.set(taskIndex + 1, index + 1);
-            }
+        recommendedIndices.forEach((originalIndex, displayPosition) => {
+            // Map from 1-based task ID to 1-based display position
+            const taskId = originalIndex + 1;
+            const position = displayPosition + 1;
+            taskIdToPosition.set(taskId, position);
         });
 
         console.log(
