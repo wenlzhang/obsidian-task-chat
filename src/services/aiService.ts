@@ -1527,7 +1527,7 @@ ${taskContext}`;
      * Replace [TASK_X] references in the response with actual task numbers
      * from the recommended list
      *
-     * This ensures AI summary references ("task 1", "task 2") match the visual
+     * This ensures AI summary references ("**Task 1**", "**Task 2**") match the visual
      * numbering users see in the recommended tasks list (1, 2, 3...)
      *
      * @param response The AI response containing [TASK_X] references
@@ -1551,11 +1551,11 @@ ${taskContext}`;
         console.log(
             `[Task Chat] Task ID to position mapping:`,
             Array.from(taskIdToPosition.entries()).map(
-                ([id, pos]) => `[TASK_${id}] -> task ${pos}`,
+                ([id, pos]) => `[TASK_${id}] -> **Task ${pos}**`,
             ),
         );
 
-        // Replace all [TASK_X] references with "task N" where N is the position
+        // Replace all [TASK_X] references with "**Task N**" where N is the position
         let processedResponse = response;
         const taskIdPattern = /\[TASK_(\d+)\]/g;
 
@@ -1567,9 +1567,9 @@ ${taskContext}`;
 
                 if (position !== undefined) {
                     console.log(
-                        `[Task Chat] Replacing ${match} with "task ${position}"`,
+                        `[Task Chat] Replacing ${match} with "**Task ${position}**"`,
                     );
-                    return `task ${position}`;
+                    return `**Task ${position}**`;
                 } else {
                     // Task was referenced but not in recommended list (shouldn't happen)
                     console.warn(
