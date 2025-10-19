@@ -428,23 +428,53 @@ export class TaskSearchService {
 
     /**
      * Extract status filter from query
+     * Supports: open, inProgress, completed, cancelled
      */
     static extractStatusFromQuery(query: string): string | null {
         const lowerQuery = query.toLowerCase();
 
-        // Check for completed/done tasks - no word boundaries for Chinese
-        if (/(completed|done|finished|完成|已完成)/i.test(query)) {
+        // Check for completed/done tasks
+        // English: completed, done, finished, closed, resolved
+        // Chinese: 完成, 已完成, 已结束
+        if (
+            /(completed?|done|finished|closed|resolved|完成|已完成|已结束)/i.test(
+                query,
+            )
+        ) {
             return "completed";
         }
 
-        // Check for open/incomplete tasks
-        if (/(open|incomplete|pending|todo|未完成|待办)/i.test(query)) {
-            return "open";
+        // Check for in-progress tasks
+        // English: in-progress, in progress, ongoing, active, working, doing
+        // Chinese: 进行中, 正在做, 进行, 处理中
+        if (
+            /(in[\s-]?progress|ongoing|active|working|doing|进行中|正在做|进行|处理中)/i.test(
+                query,
+            )
+        ) {
+            return "inProgress";
         }
 
-        // Check for in-progress tasks
-        if (/(in[\s-]?progress|ongoing|进行中|正在做)/i.test(query)) {
-            return "inProgress";
+        // Check for cancelled/abandoned tasks
+        // English: cancelled, canceled, abandoned, dropped, discarded
+        // Chinese: 取消, 已取消, 放弃
+        if (
+            /(cancell?ed|abandoned|dropped|discarded|取消|已取消|放弃)/i.test(
+                query,
+            )
+        ) {
+            return "cancelled";
+        }
+
+        // Check for open/incomplete tasks
+        // English: open, incomplete, pending, todo, new, unstarted
+        // Chinese: 未完成, 待办, 待处理, 新建
+        if (
+            /(open|incomplete|pending|todo|new|unstarted|未完成|待办|待处理|新建)/i.test(
+                query,
+            )
+        ) {
+            return "open";
         }
 
         return null;

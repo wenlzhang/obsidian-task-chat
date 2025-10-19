@@ -359,16 +359,14 @@ export class AIService {
                     settings.taskSortOrder.includes("dueDate");
                 const priorityInSort =
                     settings.taskSortOrder.includes("priority");
-                const statusInSort =
-                    settings.taskSortOrder.includes("status");
+                const statusInSort = settings.taskSortOrder.includes("status");
 
                 const relevanceActive = queryType.hasKeywords; // Fixed: removed || relevanceInSort
                 const dueDateActive =
                     !!intent.extractedDueDateFilter || dueDateInSort;
                 const priorityActive =
                     !!intent.extractedPriority || priorityInSort;
-                const statusActive =
-                    !!intent.extractedStatus || statusInSort;
+                const statusActive = !!intent.extractedStatus || statusInSort;
 
                 let maxScore = 0;
                 const activeComponents: string[] = [];
@@ -483,6 +481,9 @@ export class AIService {
                     );
                     console.log(
                         `  Priority: ${sample.priorityScore.toFixed(2)} (× ${settings.priorityCoefficient} = ${(sample.priorityScore * settings.priorityCoefficient).toFixed(2)})`,
+                    );
+                    console.log(
+                        `  Status: ${sample.statusScore.toFixed(2)} (× ${settings.statusCoefficient} = ${(sample.statusScore * settings.statusCoefficient).toFixed(2)})`,
                     );
                     console.log(
                         `  Final: ${sample.score.toFixed(2)} (threshold: ${finalThreshold.toFixed(2)})`,

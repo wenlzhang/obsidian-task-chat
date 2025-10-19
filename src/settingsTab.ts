@@ -1101,7 +1101,7 @@ Examples:
 
         // Status Sub-Coefficients
         containerEl.createEl("h4", { text: "Status sub-coefficients" });
-        
+
         new Setting(containerEl)
             .setName("Open")
             .setDesc("Score for open tasks (0.0-1.0). Default: 1.0.")
@@ -1115,7 +1115,7 @@ Examples:
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("In progress")
             .setDesc("Score for in-progress tasks (0.0-1.0). Default: 0.75.")
@@ -1129,7 +1129,7 @@ Examples:
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("Other status")
             .setDesc(
@@ -1159,7 +1159,7 @@ Examples:
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("Cancelled")
             .setDesc("Score for cancelled tasks (0.0-1.0). Default: 0.1.")
@@ -1173,8 +1173,6 @@ Examples:
                         await this.plugin.saveSettings();
                     }),
             );
-
-        
 
         // Reset Buttons Section
         containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
@@ -2395,6 +2393,8 @@ Examples:
                 return "Due date";
             case "priority":
                 return "Priority";
+            case "status":
+                return "Status";
             case "created":
                 return "Created date";
             case "alphabetical":
@@ -2414,6 +2414,7 @@ Examples:
             "relevance",
             "dueDate",
             "priority",
+            "status",
             "created",
             "alphabetical",
         ];

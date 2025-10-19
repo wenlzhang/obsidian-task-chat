@@ -11,6 +11,7 @@ export class TaskSortService {
      * - Relevance: DESC (higher scores = more relevant, shown first)
      * - Priority: ASC (1=highest priority shown first, then 2, 3, 4)
      * - Due Date: ASC (overdue/earliest = most urgent, shown first)
+     * - Status: Smart order (open > inProgress > completed > cancelled)
      * - Created: DESC (newest tasks shown first)
      * - Alphabetical: ASC (A → Z natural order)
      *
@@ -29,18 +30,9 @@ export class TaskSortService {
             return tasks;
         }
 
-        // Filter out "auto" from sortOrder - it's a placeholder that should be resolved before calling this
-        const effectiveSortOrder = sortOrder.filter(
-            (criterion) => criterion !== "auto",
-        );
-
-        if (effectiveSortOrder.length === 0) {
-            return tasks;
-        }
-
         const sorted = [...tasks].sort((a, b) => {
             // Try each criterion in order until we find a difference
-            for (const criterion of effectiveSortOrder) {
+            for (const criterion of sortOrder) {
                 let comparison = 0;
 
                 switch (criterion) {
@@ -72,6 +64,16 @@ export class TaskSortService {
                             a.priority,
                             b.priority,
                         ); // ASC
+                        break;
+
+                    case "status":
+                        // STATUS: Smart ordering for task workflow
+                        // Direction: open > inProgress > completed > cancelled
+                        // Rationale: Active tasks (open/inProgress) should appear before finished tasks
+                        comparison = this.compareStatus(
+                            a.statusCategory,
+                            b.statusCategory,
+                        );
                         break;
 
                     case "created":
@@ -134,5 +136,40 @@ export class TaskSortService {
         const bPriority = b ?? 5;
 
         return aPriority - bPriority;
+    }
+
+    /**
+     * Compare status with smart workflow ordering
+     * Order: open (1) > inProgress (2) > completed (3) > cancelled (4) > other (5)
+     * Rationale: Active work appears before finished work
+     */
+    private static compareStatus(
+        a: string | undefined,
+        b: string | undefined,
+    ): number {
+        const getStatusOrder = (status: string | undefined): number => {
+            if (!status) return 5; // Unknown/other goes last
+            switch (status.toLowerCase()) {
+                case "open":
+                    return 1; // Highest priority - new work
+                case "inprogress":
+                case "in-progress":
+                case "in progress":
+                    return 2; // Active work
+                case "completed":
+                case "done":
+                    return 3; // Finished work
+                case "cancelled":
+                case "canceled":
+                    return 4; // Abandoned work
+                default:
+                    return 5; // Other/unknown
+            }
+        };
+
+        const aOrder = getStatusOrder(a);
+        const bOrder = getStatusOrder(b);
+
+        return aOrder - bOrder;
     }
 }
