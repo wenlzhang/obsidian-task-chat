@@ -10,6 +10,7 @@ export type SortCriterion =
     | "relevance"
     | "dueDate"
     | "priority"
+    | "status"
     | "created"
     | "alphabetical";
 
@@ -101,6 +102,7 @@ export interface PluginSettings {
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
     dueDateCoefficient: number; // Weight for due date urgency (default: 4)
     priorityCoefficient: number; // Weight for task priority (default: 1)
+    statusCoefficient: number; // Weight for task status (default: 1)
 
     // Scoring Sub-Coefficients - Fine-grained Control
     // Relevance Sub-Coefficients
@@ -119,6 +121,13 @@ export interface PluginSettings {
     priorityP3Score: number; // Score for priority 3 (medium) (default: 0.5)
     priorityP4Score: number; // Score for priority 4 (low) (default: 0.2)
     priorityNoneScore: number; // Score for no priority (default: 0.1)
+
+    // Status Sub-Coefficients
+    statusOpenScore: number; // Score for open tasks (default: 1.0)
+    statusInProgressScore: number; // Score for in-progress tasks (default: 0.75)
+    statusOtherScore: number; // Score for other status tasks (default: 0.5)
+    statusCompletedScore: number; // Score for completed tasks (default: 0.2)
+    statusCancelledScore: number; // Score for cancelled tasks (default: 0.1)
 
     // Sort settings - Unified multi-criteria sorting for all modes
     // Relevance is always first (weighted by coefficients)
@@ -240,6 +249,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)
     dueDateCoefficient: 4, // Due date urgency weight (due date score × 4)
     priorityCoefficient: 1, // Task priority weight (priority score × 1)
+    statusCoefficient: 1, // Task status weight (status score × 1)
 
     // Scoring Sub-Coefficients - Fine-grained Control
     // Relevance Sub-Coefficients
@@ -258,6 +268,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     priorityP3Score: 0.5, // Priority 3 (medium)
     priorityP4Score: 0.2, // Priority 4 (low)
     priorityNoneScore: 0.1, // No priority
+
+    // Status Sub-Coefficients (0-1 range)
+    statusOpenScore: 1.0, // Open tasks
+    statusInProgressScore: 0.75, // In-progress tasks
+    statusOtherScore: 0.5, // Other status tasks
+    statusCompletedScore: 0.2, // Completed tasks
+    statusCancelledScore: 0.1, // Cancelled tasks
 
     // Unified multi-criteria sorting for all modes
     // Relevance always first (weighted by coefficients: R×20, D×4, P×1)

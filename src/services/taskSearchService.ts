@@ -832,8 +832,36 @@ export class TaskSearchService {
     }
 
     /**
+     * Calculate status score
+     * @param statusCategory - Task status category (open, completed, inProgress, cancelled, other)
+     * @param settings - Plugin settings with user-configurable coefficients
+     * @returns Score: User-configurable (defaults: 1.0 open, 0.75 inProgress, 0.2 completed, 0.1 cancelled, 0.5 other)
+     */
+    private static calculateStatusScore(
+        statusCategory: string | undefined,
+        settings: import("../settings").PluginSettings,
+    ): number {
+        if (!statusCategory) return settings.statusOpenScore; // Default to open
+
+        switch (statusCategory.toLowerCase()) {
+            case "completed":
+                return settings.statusCompletedScore;
+            case "inprogress":
+            case "in-progress":
+                return settings.statusInProgressScore;
+            case "open":
+                return settings.statusOpenScore;
+            case "cancelled":
+                return settings.statusCancelledScore;
+            case "other":
+            default:
+                return settings.statusOtherScore;
+        }
+    }
+
+    /**
      * Comprehensive weighted scoring system for all search modes (Simple, Smart, Task Chat)
-     * Combines keyword relevance, due date urgency, and priority importance
+     * Combines keyword relevance, due date urgency, priority importance, and status
      *
      * SCORING COMPONENTS:
      * 1. Keyword Relevance (user-configurable coefficient, default: 20)
@@ -856,8 +884,15 @@ export class TaskSearchService {
      *    - Priority 4: 0.2
      *    - No priority: 0.1
      *
+     * 4. Status Score (user-configurable coefficient, default: 1)
+     *    - Completed: 0.2
+     *    - In Progress: 0.75
+     *    - Open: 1.0
+     *    - Cancelled: 0.1
+     *    - Other: 0.5
+     *
      * WEIGHTED FORMULA:
-     * finalScore = (relevanceScore × relevCoeff) + (dueDateScore × dateCoeff × activation) + (priorityScore × priorCoeff × activation)
+     * finalScore = (relevanceScore × relevCoeff) + (dueDateScore × dateCoeff × activation) + (priorityScore × priorCoeff × activation) + (statusScore × statusCoeff × activation)
      *
      * @param tasks - Tasks to score
      * @param keywords - All keywords (core + semantic equivalents for Smart/Chat, same as core for Simple)
@@ -865,12 +900,14 @@ export class TaskSearchService {
      * @param queryHasKeywords - Whether keywords exist in query
      * @param queryHasDueDate - Whether due date filter exists in query
      * @param queryHasPriority - Whether priority filter exists in query
+     * @param queryHasStatus - Whether status filter exists in query
      * @param sortCriteria - User's sort settings to detect which properties to weight
      * @param relevCoeff - Relevance coefficient (default: 20)
      * @param dateCoeff - Due date coefficient (default: 4)
      * @param priorCoeff - Priority coefficient (default: 1)
+     * @param statusCoeff - Status coefficient (default: 1)
      * @param settings - Plugin settings with user-configurable sub-coefficients
-     * @returns Array of {task, score, relevanceScore, dueDateScore, priorityScore} sorted by final weighted score
+     * @returns Array of {task, score, relevanceScore, dueDateScore, priorityScore, statusScore} sorted by final weighted score
      */
     static scoreTasksComprehensive(
         tasks: Task[],
@@ -879,10 +916,12 @@ export class TaskSearchService {
         queryHasKeywords: boolean,
         queryHasDueDate: boolean,
         queryHasPriority: boolean,
+        queryHasStatus: boolean,
         sortCriteria: string[],
         relevCoeff: number = 20,
         dateCoeff: number = 4,
         priorCoeff: number = 1,
+        statusCoeff: number = 1,
         settings: import("../settings").PluginSettings,
     ): Array<{
         task: Task;
@@ -890,6 +929,7 @@ export class TaskSearchService {
         relevanceScore: number;
         dueDateScore: number;
         priorityScore: number;
+        statusScore: number;
     }> {
         // Deduplicate overlapping keywords
         const deduplicatedKeywords = this.deduplicateWithLogging(
@@ -904,21 +944,23 @@ export class TaskSearchService {
         // Determine coefficients based on query and sort settings
         const dueDateInSort = sortCriteria.includes("dueDate");
         const priorityInSort = sortCriteria.includes("priority");
+        const statusInSort = sortCriteria.includes("status");
 
         // Coefficient activation logic:
         // - Relevance: ONLY active when query has keywords (sort order doesn't activate it)
-        // - Due date/Priority: active if in query OR sort (these are task properties that always exist)
+        // - Due date/Priority/Status: active if in query OR sort (these are task properties that always exist)
         // Note: Without keywords, all relevance scores = 0, but activating coefficient inflates maxScore
         const relevanceCoefficient = queryHasKeywords ? 1.0 : 0.0; // Fixed: removed || relevanceInSort
         const dueDateCoefficient = queryHasDueDate || dueDateInSort ? 1.0 : 0.0;
         const priorityCoefficient =
             queryHasPriority || priorityInSort ? 1.0 : 0.0;
+        const statusCoefficient = queryHasStatus || statusInSort ? 1.0 : 0.0;
 
         console.log(
             `[Task Chat] ========== COMPREHENSIVE SCORING CONFIGURATION ==========`,
         );
         console.log(
-            `[Task Chat] User coefficients - relevance: ${relevCoeff}, dueDate: ${dateCoeff}, priority: ${priorCoeff}`,
+            `[Task Chat] User coefficients - relevance: ${relevCoeff}, dueDate: ${dateCoeff}, priority: ${priorCoeff}, status: ${statusCoeff}`,
         );
         console.log(
             `[Task Chat] Core keywords: ${deduplicatedCoreKeywords.length} [${deduplicatedCoreKeywords.join(", ")}]`,
@@ -927,13 +969,13 @@ export class TaskSearchService {
             `[Task Chat] Expanded keywords: ${deduplicatedKeywords.length}`,
         );
         console.log(
-            `[Task Chat] Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}`,
+            `[Task Chat] Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}, status: ${queryHasStatus}`,
         );
         console.log(
-            `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}`,
+            `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}, status: ${statusInSort}`,
         );
         console.log(
-            `[Task Chat] Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}`,
+            `[Task Chat] Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}, status: ${statusCoefficient * statusCoeff}`,
         );
         console.log(
             `[Task Chat] ============================================================`,
@@ -962,16 +1004,24 @@ export class TaskSearchService {
                 settings,
             );
 
+            // ========== COMPONENT 4: STATUS SCORE ==========
+            const statusScore = this.calculateStatusScore(
+                task.statusCategory,
+                settings,
+            );
+
             // ========== WEIGHTED FINAL SCORE ==========
-            // Use user-configurable coefficients (defaults: 20, 4, 1)
+            // Use user-configurable coefficients (defaults: 20, 4, 1, 1)
             // All components now conditional based on query content:
             // Relevance: applied with relevCoeff if keywords exist in query/settings
             // Due date: applied with dateCoeff if exists in query/settings
             // Priority: applied with priorCoeff if exists in query/settings
+            // Status: applied with statusCoeff if exists in query/settings
             const finalScore =
                 relevanceScore * relevCoeff * relevanceCoefficient +
                 dueDateScore * dateCoeff * dueDateCoefficient +
-                priorityScore * priorCoeff * priorityCoefficient;
+                priorityScore * priorCoeff * priorityCoefficient +
+                statusScore * statusCoeff * statusCoefficient;
 
             return {
                 task,
@@ -979,6 +1029,7 @@ export class TaskSearchService {
                 relevanceScore,
                 dueDateScore,
                 priorityScore,
+                statusScore,
             };
         });
 
@@ -994,13 +1045,16 @@ export class TaskSearchService {
                 `[Task Chat] #${index + 1}: "${item.task.text.substring(0, 50)}${item.task.text.length > 50 ? "..." : ""}"`,
             );
             console.log(
-                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(2)} (× ${relevCoeff} = ${(item.relevanceScore * relevCoeff).toFixed(1)})`,
+                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(2)} (× ${relevCoeff * relevanceCoefficient} = ${(item.relevanceScore * relevCoeff * relevanceCoefficient).toFixed(1)})`,
             );
             console.log(
                 `[Task Chat]   - Due Date: ${item.dueDateScore.toFixed(2)} (× ${dateCoeff * dueDateCoefficient} = ${(item.dueDateScore * dateCoeff * dueDateCoefficient).toFixed(1)})`,
             );
             console.log(
                 `[Task Chat]   - Priority: ${item.priorityScore.toFixed(2)} (× ${priorCoeff * priorityCoefficient} = ${(item.priorityScore * priorCoeff * priorityCoefficient).toFixed(1)})`,
+            );
+            console.log(
+                `[Task Chat]   - Status: ${item.statusScore.toFixed(2)} (× ${statusCoeff * statusCoefficient} = ${(item.statusScore * statusCoeff * statusCoefficient).toFixed(1)})`,
             );
             console.log(
                 `[Task Chat]   - FINAL SCORE: ${item.score.toFixed(1)}`,

@@ -291,10 +291,12 @@ export class AIService {
                         queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
+                        !!intent.extractedStatus,
                         sortOrder,
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings.statusCoefficient,
                         settings,
                     );
                 } else {
@@ -309,10 +311,12 @@ export class AIService {
                         queryType.hasKeywords, // NEW: Query has keywords
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
+                        !!intent.extractedStatus,
                         sortOrder,
                         settings.relevanceCoefficient,
                         settings.dueDateCoefficient,
                         settings.priorityCoefficient,
+                        settings.statusCoefficient,
                         settings,
                     );
                 }
@@ -335,24 +339,36 @@ export class AIService {
                     settings.priorityP4Score,
                     settings.priorityNoneScore,
                 );
+                const maxStatusScore = Math.max(
+                    settings.statusOpenScore,
+                    settings.statusInProgressScore,
+                    settings.statusOtherScore,
+                    settings.statusCompletedScore,
+                    settings.statusCancelledScore,
+                );
 
                 // Dynamic max score based on what will ACTUALLY be scored
                 // Must mirror the activation logic in scoreTasksComprehensive:
                 // - relevance active ONLY if: queryHasKeywords (not sort order!)
                 // - dueDate active if: queryHasDueDate || dueDateInSort
                 // - priority active if: queryHasPriority || priorityInSort
+                // - status active if: queryHasStatus || statusInSort
                 // Note: Sort order should NOT activate relevance because without keywords,
                 // all relevance scores = 0 but maxScore inflates → threshold too high → filters all tasks
                 const dueDateInSort =
                     settings.taskSortOrder.includes("dueDate");
                 const priorityInSort =
                     settings.taskSortOrder.includes("priority");
+                const statusInSort =
+                    settings.taskSortOrder.includes("status");
 
                 const relevanceActive = queryType.hasKeywords; // Fixed: removed || relevanceInSort
                 const dueDateActive =
                     !!intent.extractedDueDateFilter || dueDateInSort;
                 const priorityActive =
                     !!intent.extractedPriority || priorityInSort;
+                const statusActive =
+                    !!intent.extractedStatus || statusInSort;
 
                 let maxScore = 0;
                 const activeComponents: string[] = [];
@@ -369,6 +385,10 @@ export class AIService {
                 if (priorityActive) {
                     maxScore += maxPriorityScore * settings.priorityCoefficient;
                     activeComponents.push("priority");
+                }
+                if (statusActive) {
+                    maxScore += maxStatusScore * settings.statusCoefficient;
+                    activeComponents.push("status");
                 }
 
                 console.log(
@@ -521,10 +541,12 @@ export class AIService {
                             queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
+                            !!intent.extractedStatus,
                             sortOrder,
                             settings.relevanceCoefficient,
                             settings.dueDateCoefficient,
                             settings.priorityCoefficient,
+                            settings.statusCoefficient,
                             settings,
                         );
                 } else {
@@ -536,10 +558,12 @@ export class AIService {
                             queryType.hasKeywords,
                             !!intent.extractedDueDateFilter,
                             !!intent.extractedPriority,
+                            !!intent.extractedStatus,
                             sortOrder,
                             settings.relevanceCoefficient,
                             settings.dueDateCoefficient,
                             settings.priorityCoefficient,
+                            settings.statusCoefficient,
                             settings,
                         );
                 }
@@ -681,6 +705,7 @@ export class AIService {
                         parsedQuery?.coreKeywords || [],
                         !!intent.extractedDueDateFilter,
                         !!intent.extractedPriority,
+                        !!intent.extractedStatus,
                         sortOrder,
                         usingAIParsing,
                     );
@@ -1388,6 +1413,7 @@ ${taskContext}`;
         coreKeywords: string[],
         queryHasDueDate: boolean,
         queryHasPriority: boolean,
+        queryHasStatus: boolean,
         sortCriteria: SortCriterion[],
         usingAIParsing: boolean,
     ): { tasks: Task[]; indices: number[] } {
@@ -1452,6 +1478,7 @@ ${taskContext}`;
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
             // All modes use comprehensive scoring (with or without expansion)
             let scoredTasks;
+            const queryHasKeywords = keywords.length > 0;
             if (usingAIParsing && coreKeywords.length > 0) {
                 console.log(
                     `[Task Chat] Fallback: Using comprehensive scoring with expansion (core: ${coreKeywords.length})`,
@@ -1460,13 +1487,15 @@ ${taskContext}`;
                     tasks,
                     keywords,
                     coreKeywords,
-                    keywords.length > 0, // queryHasKeywords
+                    queryHasKeywords,
                     queryHasDueDate,
                     queryHasPriority,
+                    queryHasStatus,
                     sortCriteria,
                     settings.relevanceCoefficient,
                     settings.dueDateCoefficient,
                     settings.priorityCoefficient,
+                    settings.statusCoefficient,
                     settings,
                 );
             } else {
@@ -1477,24 +1506,31 @@ ${taskContext}`;
                     tasks,
                     keywords,
                     keywords,
-                    keywords.length > 0, // queryHasKeywords
+                    queryHasKeywords,
                     queryHasDueDate,
                     queryHasPriority,
+                    queryHasStatus,
                     sortCriteria,
                     settings.relevanceCoefficient,
                     settings.dueDateCoefficient,
                     settings.priorityCoefficient,
+                    settings.statusCoefficient,
                     settings,
                 );
             }
+
             const topTasks = scoredTasks
                 .slice(0, settings.maxRecommendations)
-                .map((st: { score: number; task: Task }) => st.task);
+                .map((st) => st.task);
+            const topIndices = Array.from(
+                { length: topTasks.length },
+                (_, i) => i,
+            );
 
             console.log(
                 `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
-            return { tasks: topTasks, indices: [] };
+            return { tasks: topTasks, indices: topIndices };
         }
 
         console.log(

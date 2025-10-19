@@ -46,12 +46,13 @@ export class SettingsTab extends PluginSettingTab {
                         <li>Relevance coefficient (R×20): Keyword match weight</li>
                         <li>Due date coefficient (D×4): Urgency weight</li>
                         <li>Priority coefficient (P×1): Importance weight</li>
+                        <li>Status coefficient (S×1): Status weight</li>
                         <li>Sub-coefficients: Fine-tune specific scores</li>
                     </ul>
                 </li>
                 <li><strong>Sorting:</strong> Orders tasks for display
                     <ul>
-                        <li>Primary: Comprehensive score (R + D + P)</li>
+                        <li>Primary: Comprehensive score (R + D + P + S)</li>
                         <li>Tiebreakers: Additional criteria for equal scores</li>
                     </ul>
                 </li>
@@ -809,6 +810,30 @@ Examples:
                     }),
             );
 
+        new Setting(containerEl)
+            .setName("Status weight")
+            .setDesc(
+                `How much task status affects score (1-20). Default: 1.
+                
+Higher value = status matters more.
+
+Examples:
+• 1: Standard (recommended)
+• 5: Status very important
+• 10-20: Status dominates scoring`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 20, 1)
+                    .setValue(this.plugin.settings.statusCoefficient)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusCoefficient = value;
+                        await this.plugin.saveSettings();
+                        this.updateMaxScoreDisplay?.();
+                    }),
+            );
+
         // Max Score Display
         const maxScoreDisplay = containerEl.createDiv({
             cls: "task-chat-info-box",
@@ -840,24 +865,35 @@ Examples:
                 this.plugin.settings.priorityP4Score,
                 this.plugin.settings.priorityNoneScore,
             );
+            const maxStatusScore = Math.max(
+                this.plugin.settings.statusCompletedScore,
+                this.plugin.settings.statusInProgressScore,
+                this.plugin.settings.statusOpenScore,
+                this.plugin.settings.statusCancelledScore,
+                this.plugin.settings.statusOtherScore,
+            );
 
             const maxScore =
                 maxRelevanceScore * this.plugin.settings.relevanceCoefficient +
                 maxDueDateScore * this.plugin.settings.dueDateCoefficient +
-                maxPriorityScore * this.plugin.settings.priorityCoefficient;
+                maxPriorityScore * this.plugin.settings.priorityCoefficient +
+                maxStatusScore * this.plugin.settings.statusCoefficient;
             const relevPart =
                 maxRelevanceScore * this.plugin.settings.relevanceCoefficient;
             const datePart =
                 maxDueDateScore * this.plugin.settings.dueDateCoefficient;
             const priorPart =
                 maxPriorityScore * this.plugin.settings.priorityCoefficient;
+            const statusPart =
+                maxStatusScore * this.plugin.settings.statusCoefficient;
 
             maxScoreValue.innerHTML = `
                 <strong>Max Score: ${maxScore.toFixed(1)} points</strong><br/>
                 <span style="font-size: 0.9em; opacity: 0.8;">
                 Relevance: ${relevPart.toFixed(1)} + 
                 Due Date: ${datePart.toFixed(1)} + 
-                Priority: ${priorPart.toFixed(1)}
+                Priority: ${priorPart.toFixed(1)} + 
+                Status: ${statusPart.toFixed(1)}
                 </span>
             `;
         };
@@ -1063,6 +1099,83 @@ Examples:
                     }),
             );
 
+        // Status Sub-Coefficients
+        containerEl.createEl("h4", { text: "Status sub-coefficients" });
+        
+        new Setting(containerEl)
+            .setName("Open")
+            .setDesc("Score for open tasks (0.0-1.0). Default: 1.0.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.statusOpenScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusOpenScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        new Setting(containerEl)
+            .setName("In progress")
+            .setDesc("Score for in-progress tasks (0.0-1.0). Default: 0.75.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.statusInProgressScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusInProgressScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        new Setting(containerEl)
+            .setName("Other status")
+            .setDesc(
+                "Score for tasks with other/unknown status (0.0-1.0). Default: 0.5.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.statusOtherScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusOtherScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Completed")
+            .setDesc("Score for completed tasks (0.0-1.0). Default: 0.2.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.statusCompletedScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusCompletedScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        new Setting(containerEl)
+            .setName("Cancelled")
+            .setDesc("Score for cancelled tasks (0.0-1.0). Default: 0.1.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 1, 0.05)
+                    .setValue(this.plugin.settings.statusCancelledScore)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.statusCancelledScore = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        
+
         // Reset Buttons Section
         containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
 
@@ -1076,7 +1189,8 @@ Examples:
             .setDesc(
                 "Reset all sub-coefficients to defaults: relevance (core bonus: 0.2), " +
                     "due date (overdue: 1.5, 7days: 1.0, month: 0.5, later: 0.2, none: 0.1), " +
-                    "priority (P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, none: 0.1).",
+                    "priority (P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, none: 0.1), " +
+                    "status (completed: 1.0, in-progress: 0.75, open: 0.5, cancelled: 0.2, other: 0.1).",
             )
             .addButton((button) =>
                 button
@@ -1108,6 +1222,17 @@ Examples:
                             DEFAULT_SETTINGS.priorityP4Score;
                         this.plugin.settings.priorityNoneScore =
                             DEFAULT_SETTINGS.priorityNoneScore;
+                        // Status
+                        this.plugin.settings.statusCompletedScore =
+                            DEFAULT_SETTINGS.statusCompletedScore;
+                        this.plugin.settings.statusInProgressScore =
+                            DEFAULT_SETTINGS.statusInProgressScore;
+                        this.plugin.settings.statusOpenScore =
+                            DEFAULT_SETTINGS.statusOpenScore;
+                        this.plugin.settings.statusCancelledScore =
+                            DEFAULT_SETTINGS.statusCancelledScore;
+                        this.plugin.settings.statusOtherScore =
+                            DEFAULT_SETTINGS.statusOtherScore;
                         await this.plugin.saveSettings();
                         new Notice(
                             "All advanced coefficients reset to defaults",
@@ -1120,7 +1245,7 @@ Examples:
         new Setting(containerEl)
             .setName("Reset main coefficients")
             .setDesc(
-                "Reset main coefficient weights to defaults: Relevance: 20, Due Date: 4, Priority: 1.",
+                "Reset main coefficient weights to defaults: Relevance: 20, Due Date: 4, Priority: 1, Status: 1.",
             )
             .addButton((button) =>
                 button
@@ -1133,6 +1258,8 @@ Examples:
                             DEFAULT_SETTINGS.dueDateCoefficient;
                         this.plugin.settings.priorityCoefficient =
                             DEFAULT_SETTINGS.priorityCoefficient;
+                        this.plugin.settings.statusCoefficient =
+                            DEFAULT_SETTINGS.statusCoefficient;
                         await this.plugin.saveSettings();
                         new Notice("Main coefficients reset to defaults");
                         // Update max score display
@@ -1199,6 +1326,28 @@ Examples:
                         DEFAULT_SETTINGS.priorityNoneScore;
                     await this.plugin.saveSettings();
                     new Notice("Priority sub-coefficients reset to defaults");
+                    this.display();
+                }),
+            );
+
+        // Reset status sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset status sub-coefficients")
+            .setDesc("Reset all status level scores to defaults.")
+            .addButton((button) =>
+                button.setButtonText("Reset Status").onClick(async () => {
+                    this.plugin.settings.statusCompletedScore =
+                        DEFAULT_SETTINGS.statusCompletedScore;
+                    this.plugin.settings.statusInProgressScore =
+                        DEFAULT_SETTINGS.statusInProgressScore;
+                    this.plugin.settings.statusOpenScore =
+                        DEFAULT_SETTINGS.statusOpenScore;
+                    this.plugin.settings.statusCancelledScore =
+                        DEFAULT_SETTINGS.statusCancelledScore;
+                    this.plugin.settings.statusOtherScore =
+                        DEFAULT_SETTINGS.statusOtherScore;
+                    await this.plugin.saveSettings();
+                    new Notice("Status sub-coefficients reset to defaults");
                     this.display();
                 }),
             );
@@ -2103,8 +2252,9 @@ Examples:
                 <li>Relevance coefficient: 20 → Gets 20× weight in final score</li>
                 <li>Due Date coefficient: 4 → Gets 4× weight in final score</li>
                 <li>Priority coefficient: 1 → Gets 1× weight in final score</li>
+                <li>Status coefficient: 1 → Gets 1× weight in final score</li>
             </ul>
-            <p>Tasks are scored as: <code>(Relevance × 20) + (Due Date × 4) + (Priority × 1)</code></p>
+            <p>Tasks are scored as: <code>(Relevance × 20) + (Due Date × 4) + (Priority × 1) + (Status × 1)</code></p>
             <p><strong>Below settings control:</strong> Which properties to INCLUDE in scoring (not their importance).
             Use coefficient sliders above to control how much each property matters.</p>
         `;
