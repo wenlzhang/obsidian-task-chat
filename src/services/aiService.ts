@@ -684,7 +684,7 @@ export class AIService {
                     usingAIParsing,
                 );
 
-                // Replace [TASK_X] references with actual task numbers from recommended list
+                // Replace [TASK_X] references with task numbers matching recommended list (1, 2, 3...)
                 const processedResponse = this.replaceTaskReferences(
                     response,
                     recommendedTasks,
@@ -1017,18 +1017,20 @@ RECOMMENDATION TARGETS (based on available tasks):
 - Err on the side of inclusion - users prefer comprehensive lists over missing tasks
 
 IMPORTANT RULES:
-1. 🚨 YOU MUST USE [TASK_X] FORMAT - This is not optional! Every task recommendation MUST use [TASK_1], [TASK_2], etc.
-2. ONLY reference tasks from the provided task list using [TASK_X] IDs
-3. DO NOT create new tasks or suggest tasks that don't exist
-4. When recommending tasks, reference them ONLY by [TASK_X] ID (e.g., "Start with [TASK_3]")
-5. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_1]: task description")
-6. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
-7. Do NOT invent task content - only use the exact task text provided
-8. Focus on helping users prioritize and execute existing tasks
-9. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
-10. If tasks are related, explain the relationships using only task IDs
-11. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using [TASK_X] IDs
-12. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
+1. 🚨 YOU MUST USE [TASK_X] FORMAT - This is not optional! Every task recommendation MUST use the EXACT [TASK_X] IDs (e.g., [TASK_1], [TASK_2], etc.) from the task list below
+2. ⚠️ CRITICAL: Use the EXACT [TASK_X] IDs you see in the context (e.g., if you see [TASK_15], [TASK_42], [TASK_3] in the list, use those exact numbers)
+3. DO NOT invent sequential IDs like [TASK_1], [TASK_2], [TASK_3] - use the actual IDs from the provided list
+4. ONLY reference tasks from the provided task list using their original [TASK_X] IDs
+5. DO NOT create new tasks or suggest tasks that don't exist
+6. When recommending tasks, reference them ONLY by their original [TASK_X] ID from the list below
+7. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_15]: task description")
+8. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
+9. Do NOT invent task content - only use the exact task text provided
+10. Focus on helping users prioritize and execute existing tasks
+11. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
+12. If tasks are related, explain the relationships using only their original task IDs
+13. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using their original [TASK_X] IDs
+14. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1036,21 +1038,31 @@ ${PromptBuilderService.buildMetadataGuidance(settings)}
 
 ${PromptBuilderService.buildRecommendationLimits(settings)}
 
-CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
-- Use [TASK_X] IDs to reference specific tasks you're recommending
-- The system will AUTOMATICALLY replace [TASK_X] with "Task N" based on the order you mention them
-- Example: You write "[TASK_5] is highest priority, then [TASK_1], then [TASK_4]"
-  → User sees: "Task 1 is the most relevant/due soonest/highest priority, then Task 2, then Task 3"
-- The tasks appear in the recommended list in the same order you mentioned them
+🚨 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
 
-METHODS TO REFERENCE TASKS:
+⚠️ YOU MUST USE THE EXACT [TASK_X] IDs FROM THE TASK LIST BELOW!
 
-Use [TASK_X] IDs (will be auto-converted to task numbers):
-✅ "Focus on [TASK_5], [TASK_1], and [TASK_4]. Start with [TASK_5]."
-  → Becomes: "Focus on Task 1, Task 2, and Task 3. Start with Task 1."
+- The task list below shows tasks labeled [TASK_1], [TASK_2], [TASK_15], [TASK_42], etc.
+- Use THOSE EXACT IDs when referencing tasks - DO NOT make up sequential IDs!
+- The system will AUTOMATICALLY convert [TASK_X] to "Task N" where N matches the visual list (1, 2, 3...)
 
-WHAT USER SEES:
-Your response text appears (with [TASK_X] auto-converted to task numbers).
+EXAMPLES (assuming task list has [TASK_1], [TASK_15], [TASK_42], [TASK_3], etc.):
+
+✅ CORRECT: "Start with [TASK_15] (the most relevant/due soonest/highest priority), then [TASK_42], then [TASK_3]"
+  → User sees: "Start with Task 1 (the most relevant/due soonest/highest priority), then Task 2, then Task 3"
+  → Tasks appear in recommended list as: 1, 2, 3
+
+✅ CORRECT: "Focus on [TASK_42] and [TASK_15]. The most relevant/due soonest/highest priority is [TASK_42]."
+  → User sees: "Focus on Task 1 and Task 2. The most relevant/due soonest/highest priority is Task 1."
+
+❌ WRONG: "Start with [TASK_1], then [TASK_2], then [TASK_3]" (unless those exact IDs exist in the list)
+❌ WRONG: Making up IDs not in the task list
+
+KEY POINTS:
+- IDs you use: The actual [TASK_X] numbers from the context (may be high numbers like TASK_42)
+- IDs user sees: Sequential "Task 1", "Task 2", "Task 3" based on recommended list order
+- Your mention order determines the visual numbering: first mentioned = Task 1
+- ALWAYS copy the exact [TASK_X] IDs you see in the task list below
 
 RESPONSE FORMAT:
 
@@ -1507,6 +1519,9 @@ ${taskContext}`;
     /**
      * Replace [TASK_X] references in the response with actual task numbers
      * from the recommended list
+     *
+     * This ensures AI summary references ("task 1", "task 2") match the visual
+     * numbering users see in the recommended tasks list (1, 2, 3...)
      */
     private static replaceTaskReferences(
         response: string,
