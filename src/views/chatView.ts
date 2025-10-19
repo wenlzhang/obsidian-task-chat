@@ -498,11 +498,11 @@ export class ChatView extends ItemView {
 
         // Use MarkdownRenderer to enable internal links, tags, and proper markdown in AI responses
         // Use the source path of the first recommended task if available for context
-        // Otherwise use empty string (still enables external URLs and tags)
+        // Otherwise use the active file's path for proper link resolution
         const contextPath =
             message.recommendedTasks && message.recommendedTasks.length > 0
                 ? message.recommendedTasks[0].sourcePath
-                : "";
+                : this.app.workspace.getActiveFile()?.path || "";
 
         console.log(
             `[Task Chat] Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
@@ -514,6 +514,9 @@ export class ChatView extends ItemView {
             contextPath,
             this,
         );
+
+        // Enable hover preview for internal links in message content
+        this.enableHoverPreview(contentEl, contextPath);
 
         console.log(
             `[Task Chat] Message content rendered, checking for links...`,
@@ -591,6 +594,9 @@ export class ChatView extends ItemView {
                     task.sourcePath,
                     this,
                 );
+
+                // Enable hover preview for internal links in task content
+                this.enableHoverPreview(taskContentEl, task.sourcePath);
 
                 console.log(
                     `[Task Chat] - Rendering complete, checking for links...`,
@@ -1021,9 +1027,9 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Open session list modal
+     * Open the session management modal
      */
-    private openSessionModal(): void {
+    openSessionModal(): void {
         const modal = new SessionModal(
             this.app,
             this.plugin,
@@ -1034,5 +1040,43 @@ export class ChatView extends ItemView {
             },
         );
         modal.open();
+    }
+
+    /**
+     * Enable Obsidian's native hover preview for internal links
+     * This works with both the core Page Preview plugin and third-party plugins like Hover Editor
+     * @param containerEl - The container element containing rendered links
+     * @param sourcePath - The source file path for link resolution context
+     */
+    private enableHoverPreview(
+        containerEl: HTMLElement,
+        sourcePath: string,
+    ): void {
+        // Find all internal links (not tags or external links)
+        const internalLinks = containerEl.querySelectorAll("a.internal-link");
+
+        internalLinks.forEach((link) => {
+            const linkEl = link as HTMLAnchorElement;
+
+            // Add mouseover event listener to trigger Obsidian's hover preview
+            linkEl.addEventListener("mouseover", (event: MouseEvent) => {
+                // Get the link target from data-href attribute (preferred) or href
+                const linktext =
+                    linkEl.getAttribute("data-href") ||
+                    linkEl.getAttribute("href") ||
+                    "";
+
+                // Trigger Obsidian's native hover-link event
+                // This enables integration with Page Preview (Cmd/Ctrl+hover) and Hover Editor plugins
+                this.app.workspace.trigger("hover-link", {
+                    event,
+                    source: CHAT_VIEW_TYPE,
+                    hoverParent: this,
+                    targetEl: linkEl,
+                    linktext: linktext,
+                    sourcePath: sourcePath,
+                });
+            });
+        });
     }
 }
