@@ -58,6 +58,43 @@
     font-weight: 600;
 }
 
+/* Info icon and text (for informational messages) */
+.task-chat-info-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.task-chat-info-text {
+    flex: 1;
+    color: var(--text-normal);
+}
+
+.task-chat-info-text strong {
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+/* Info box in settings */
+.task-chat-info-box {
+    padding: 12px;
+    background: var(--background-secondary);
+    border-left: 3px solid var(--text-accent);
+    border-radius: 4px;
+    margin: 12px 0;
+    line-height: 1.6;
+}
+
+.task-chat-troubleshooting-list {
+    margin: 8px 0 8px 20px;
+    padding: 0;
+}
+
+.task-chat-troubleshooting-list li {
+    margin: 6px 0;
+    line-height: 1.6;
+}
+
 /* Controls */
 .task-chat-controls {
     display: flex;

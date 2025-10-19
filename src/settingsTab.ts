@@ -1305,6 +1305,39 @@ Examples:
             cls: "setting-item-description",
         });
 
+        // DataView Status and Troubleshooting Info
+        const dataviewInfoBox = containerEl.createDiv({
+            cls: "setting-item-description task-chat-info-box",
+        });
+
+        dataviewInfoBox.createEl("strong", {
+            text: "💡 DataView Status & Troubleshooting",
+        });
+        dataviewInfoBox.createEl("br");
+        dataviewInfoBox.createEl("br");
+
+        dataviewInfoBox.appendText(
+            "If searches return 0 results but you have tasks in your vault:",
+        );
+        dataviewInfoBox.createEl("br");
+
+        const troubleshootingList = dataviewInfoBox.createEl("ul", {
+            cls: "task-chat-troubleshooting-list",
+        });
+
+        troubleshootingList.createEl("li", {
+            text: "⏱️ DataView may still be indexing - wait 10-30 seconds and click Refresh tasks",
+        });
+        troubleshootingList.createEl("li", {
+            text: "⚙️ DataView index delay may be too long - go to DataView settings and reduce 'Index delay' from default 2000ms to 500ms",
+        });
+        troubleshootingList.createEl("li", {
+            text: "✅ Verify task syntax - tasks must use proper Markdown format (e.g., - [ ] Task name)",
+        });
+        troubleshootingList.createEl("li", {
+            text: "🔄 Check DataView is enabled - go to Community Plugins and ensure DataView is enabled",
+        });
+
         new Setting(containerEl)
             .setName("Due date field")
             .setDesc("DataView field name for due dates")

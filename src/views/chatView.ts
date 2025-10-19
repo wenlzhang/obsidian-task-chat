@@ -301,12 +301,17 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render DataView warning banner if plugin is not enabled
+     * Render DataView status banner with helpful information
+     * Shows different messages based on DataView state:
+     * - Not installed/enabled: Installation instructions
+     * - Enabled but 0 tasks: Indexing status and troubleshooting tips
      */
     private renderDataviewWarning(): void {
-        // Check if DataView is enabled
-        if (DataviewService.isDataviewEnabled(this.app)) {
-            // DataView is enabled, remove warning if it exists
+        const isDataviewEnabled = DataviewService.isDataviewEnabled(this.app);
+        const taskCount = this.currentTasks.length;
+
+        // Case 1: DataView is enabled and has tasks - no warning needed
+        if (isDataviewEnabled && taskCount > 0) {
             if (this.dataviewWarningEl) {
                 this.dataviewWarningEl.remove();
                 this.dataviewWarningEl = null;
@@ -314,7 +319,7 @@ export class ChatView extends ItemView {
             return;
         }
 
-        // DataView is not enabled, show persistent warning
+        // Create or update warning banner
         if (!this.dataviewWarningEl) {
             this.dataviewWarningEl = this.contentEl.createDiv(
                 "task-chat-dataview-warning",
@@ -323,21 +328,63 @@ export class ChatView extends ItemView {
             this.dataviewWarningEl.empty();
         }
 
-        const warningIcon = this.dataviewWarningEl.createSpan({
-            cls: "task-chat-warning-icon",
-            text: "⚠️ ",
+        // Case 2: DataView is not enabled
+        if (!isDataviewEnabled) {
+            const warningIcon = this.dataviewWarningEl.createSpan({
+                cls: "task-chat-warning-icon",
+                text: "⚠️ ",
+            });
+
+            const warningText = this.dataviewWarningEl.createSpan({
+                cls: "task-chat-warning-text",
+            });
+
+            warningText.createEl("strong", {
+                text: "DataView plugin required: ",
+            });
+
+            warningText.appendText(
+                "This plugin requires the DataView plugin to function. Please install and enable it from the Community Plugins settings, then click Refresh tasks.",
+            );
+            return;
+        }
+
+        // Case 3: DataView is enabled but 0 tasks found
+        // This could mean indexing is in progress or delay is too long
+        const infoIcon = this.dataviewWarningEl.createSpan({
+            cls: "task-chat-info-icon",
+            text: "ℹ️ ",
         });
 
-        const warningText = this.dataviewWarningEl.createSpan({
-            cls: "task-chat-warning-text",
+        const infoText = this.dataviewWarningEl.createSpan({
+            cls: "task-chat-info-text",
         });
 
-        const strongEl = warningText.createEl("strong", {
-            text: "DataView plugin required: ",
+        infoText.createEl("strong", {
+            text: "DataView is enabled but no tasks found: ",
         });
 
-        warningText.appendText(
-            "This plugin requires the DataView plugin to function. Please install and enable it from the Community Plugins settings. After that, click on the Refresh tasks button.",
+        infoText.appendText(
+            "If you have tasks in your vault, this usually means DataView is still indexing your files or the index delay is too long. ",
+        );
+
+        infoText.createEl("br");
+        infoText.createEl("br");
+
+        infoText.appendText("📋 Troubleshooting steps:");
+        infoText.createEl("br");
+        infoText.appendText(
+            "1️⃣ Wait 10-30 seconds for DataView to finish indexing",
+        );
+        infoText.createEl("br");
+        infoText.appendText(
+            "2️⃣ Check DataView settings → Reduce 'Index delay' (default: 2000ms, try: 500ms)",
+        );
+        infoText.createEl("br");
+        infoText.appendText("3️⃣ Click the Refresh tasks button above");
+        infoText.createEl("br");
+        infoText.appendText(
+            "4️⃣ Verify tasks exist in your vault with proper syntax (e.g., - [ ] Task)",
         );
     }
 

@@ -980,9 +980,14 @@ Every response shows which mode was used:
 
 ### Prerequisites
 1. **Install DataView Plugin** (Required)
-   - Go to Settings → Community Plugins
+   - Go to Settings → Community Plugins → Browse
    - Search for "DataView"
    - Install and enable it
+   - **⚡ Performance tip**: After installing DataView, optimize indexing speed:
+     - Go to Settings → DataView → "Index Delay"
+     - Reduce from default 2000ms to **500ms** or 1000ms
+     - This makes Task Chat find tasks much faster!
+   - **First-time setup**: Wait 10-30 seconds after enabling DataView for initial indexing to complete
 
 ### Initial Configuration
 1. Open Task Chat settings (Settings → Task Chat)
@@ -1709,10 +1714,58 @@ This plugin leverages code patterns from:
 
 ### Tasks not showing up
 
-1. Ensure DataView plugin is installed and enabled
-2. Check that your tasks follow the proper format
-3. Click "Refresh tasks" in the chat view
-4. Verify DataView field mappings in settings
+**🔍 DataView Status Check:**
+
+First, determine which scenario applies to you:
+
+**Scenario A: DataView not installed/enabled**
+- The chat view will show: ⚠️ "DataView plugin required"
+- **Solution**: 
+  1. Go to Settings → Community Plugins
+  2. Browse and search for "DataView"
+  3. Install and enable DataView
+  4. Click "Refresh tasks" in Task Chat
+
+**Scenario B: DataView enabled but searches return 0 results**
+- DataView is working but you're getting no tasks
+- The chat view will show: ℹ️ "DataView is enabled but no tasks found"
+- **Most common causes:**
+
+1. **DataView is still indexing** (most common!)
+   - DataView needs time to index all your vault files
+   - **Wait 10-30 seconds** after enabling DataView or opening Obsidian
+   - Click "Refresh tasks" button in chat view
+   - Check the status bar at the bottom of Obsidian - it may show "Dataview: indexing..."
+
+2. **DataView index delay is too long**
+   - Default delay is 2000ms (2 seconds), which can be slow for large vaults
+   - **Solution**:
+     - Go to Settings → DataView → "Index Delay"
+     - Reduce from 2000ms to 500ms or 1000ms
+     - Restart Obsidian or wait for re-indexing
+     - Click "Refresh tasks" in Task Chat
+
+3. **Task syntax issues**
+   - Tasks must use proper Markdown checkbox syntax
+   - **Correct format**: `- [ ] Task description`
+   - **Incorrect**: `• [ ] Task` or `* [ ] Task` (bullets work, but checkboxes are better)
+   - Check a few tasks in your vault to verify format
+
+4. **Tasks in excluded folders**
+   - DataView may be excluding certain folders
+   - Check Settings → DataView → "Ignore Paths"
+   - Make sure your task folders aren't excluded
+
+**Quick diagnostic steps:**
+1. Open console (Ctrl/Cmd + Shift + I)
+2. Search for `[Task Chat]` logs
+3. Look for "DataView returned X pages" - if 0, DataView isn't working
+4. Look for "Successfully processed X tasks" - this shows how many tasks were found
+
+**Still not working?**
+- Verify at least one task exists in your vault with format: `- [ ] Task name`
+- Try creating a test note with a simple task
+- Check DataView documentation: https://blacksmithgu.github.io/obsidian-dataview/
 
 ### AI not responding
 

@@ -235,8 +235,27 @@ export class AIService {
                     false,
                     usingAIParsing,
                 );
+
+                // Build helpful message based on total task count
+                let responseMessage = `No tasks found matching ${filterDesc}.`;
+
+                // If we have 0 initial tasks, it might be a DataView indexing issue
+                if (tasks.length === 0) {
+                    responseMessage += `\n\n💡 **Tip**: If you have tasks in your vault, this might mean:\n`;
+                    responseMessage += `• DataView is still indexing (wait 10-30 seconds)\n`;
+                    responseMessage += `• DataView index delay is too long (reduce to 500ms in DataView settings)\n`;
+                    responseMessage += `• Tasks don't use the expected syntax (e.g., \`- [ ] Task\`)\n\n`;
+                    responseMessage += `Try clicking the **Refresh tasks** button and waiting a moment.`;
+                } else {
+                    // We have tasks, but none match the search
+                    responseMessage += `\n\n💡 Try:\n`;
+                    responseMessage += `• Broadening your search terms\n`;
+                    responseMessage += `• Removing some filters\n`;
+                    responseMessage += `• Checking for typos`;
+                }
+
                 return {
-                    response: `No tasks found matching ${filterDesc}.`,
+                    response: responseMessage,
                     directResults: [],
                     tokenUsage: {
                         promptTokens: 0,
