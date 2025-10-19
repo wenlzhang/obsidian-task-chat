@@ -269,9 +269,11 @@ export class QueryParserService {
             );
         const dueDateValueMapping =
             PropertyRecognitionService.buildDueDateValueMapping();
+        const statusValueMapping =
+            PropertyRecognitionService.buildStatusValueMapping();
         const priorityValueMapping =
             PromptBuilderService.buildPriorityMappingForParser(settings);
-        const statusValueMapping =
+        const statusMapping =
             PromptBuilderService.buildStatusMappingForParser(settings);
         const dateFieldNames =
             PromptBuilderService.buildDateFieldNamesForParser(settings);
@@ -348,7 +350,7 @@ Stage 2: Semantically expand property terms to recognize them
 - Property concepts to recognize:
   * PRIORITY concept: priority, important, urgent, 优先级, 优先, 重要, prioritet, viktig
   * DUE DATE concept: due, deadline, scheduled, 截止日期, 到期, 期限, förfallodatum, deadline
-  * STATUS concept: status, state, done, completed, 状态, 完成, 已完成, status, färdig
+  * STATUS concept: status, state, open, done, completed, cancelled, 状态, 完成, 已完成, 取消, status, färdig, avbruten
 
 🚨 CRITICAL PROPERTY EXPANSION EXAMPLES:
 
@@ -396,7 +398,42 @@ Example 3: Mixed language with specific priority
     "coreKeywords": ["任务"],
     "keywords": [<expanded versions of 任务>],
     "priority": 1,  // Specific priority level
-    "dueDate": null
+    "dueDate": null,
+    "status": null
+  }
+
+Example 4: Chinese status query
+  Query: "已完成的任务" (completed tasks)
+  
+  Step 1: Identify property term "已完成" (completed in Chinese)
+  Step 2: Recognize this as STATUS concept
+  Step 3: Extract structured filter → status: "completed"
+  Step 4: Extract content keywords: ["任务"] → expand normally
+  
+  Result:
+  {
+    "coreKeywords": ["任务"],
+    "keywords": [<expanded versions of 任务>],
+    "priority": null,
+    "dueDate": null,
+    "status": "completed"  // Specific status value
+  }
+
+Example 5: Swedish status query
+  Query: "pågående projekt" (ongoing projects)
+  
+  Step 1: Identify property term "pågående" (ongoing in Swedish)
+  Step 2: Recognize this as STATUS concept → in progress
+  Step 3: Extract structured filter → status: "inProgress"
+  Step 4: Extract content keywords: ["projekt"] → expand normally
+  
+  Result:
+  {
+    "coreKeywords": ["projekt"],
+    "keywords": [<expanded versions of projekt>],
+    "priority": null,
+    "dueDate": null,
+    "status": "inProgress"  // Active work
   }
 
 🚨 KEY PROPERTY RECOGNITION RULES:
@@ -406,25 +443,35 @@ Example 3: Mixed language with specific priority
    - "高优先级" = tasks with HIGH priority (priority = 1)
    - "截止日期任务" = tasks WITH due dates (dueDate = "any")
    - "今天到期" = tasks due TODAY (dueDate = "today")
+   - "已完成任务" = COMPLETED tasks (status = "completed")
+   - "进行中的工作" = IN PROGRESS tasks (status = "inProgress")
+   - "open tasks" = OPEN tasks (status = "open")
+   - "cancelled projects" = CANCELLED tasks (status = "cancelled")
 
 2. Separate property terms from content keywords
    - Property terms → structured filters (priority, dueDate, status fields)
    - Content keywords → keywords array (for text matching)
    - Example: "urgent bug fix" → priority:1 (from "urgent"), keywords:["bug", "fix"]
+   - Example: "done tasks for project" → status:"completed" (from "done"), keywords:["tasks", "project"]
 
 3. Multiple properties in one query
    - "高优先级的过期任务" = priority:1 + dueDate:"overdue"
    - "含有截止日期的重要工作" = dueDate:"any" + keywords:[重要, 工作]
+   - "open high priority tasks" = status:"open" + priority:1
+   - "已完成的重要项目" = status:"completed" + keywords:[重要, 项目]
+   - "overdue open tasks" = dueDate:"overdue" + status:"open"
 
 ${propertyTermMappings}
 
 ${priorityValueMapping}
 
-${statusValueMapping}
+${statusMapping}
 
 ${dateFieldNames}
 
 ${dueDateValueMapping}
+
+${statusValueMapping}
 
 ⚠️ CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
 
@@ -462,6 +509,41 @@ Example 3: "高优先级的开发任务，next week"
     "keywords": [<expanded versions in ${languageList}>],
     "priority": 1,
     "dueDate": "next-week"
+  }
+
+Example 4: "open bug reports"
+- Property term: "open" → status: "open"
+- Content keywords: "bug", "reports" → expand normally
+- Result:
+  {
+    "coreKeywords": ["bug", "reports"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "status": "open"
+  }
+
+Example 5: "已完成的重要项目 due last week"
+- Property term: "已完成" → status: "completed"
+- Property term: "重要" → keywords (NOT priority - just descriptive)
+- Property term: "last week" → dueDate: "overdue" (past due)
+- Content keywords: "项目" → expand normally
+- Result:
+  {
+    "coreKeywords": ["重要", "项目"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "status": "completed",
+    "dueDate": "overdue"
+  }
+
+Example 6: "pågående high priority tasks"
+- Property term: "pågående" → status: "inProgress"
+- Property term: "high priority" → priority: 1
+- Content keywords: "tasks" → expand normally
+- Result:
+  {
+    "coreKeywords": ["tasks"],
+    "keywords": [<expanded versions in ${languageList}>],
+    "status": "inProgress",
+    "priority": 1
   }
 
 🚨 KEY RULES FOR COMBINED QUERIES:

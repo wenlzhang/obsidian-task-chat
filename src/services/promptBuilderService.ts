@@ -120,19 +120,43 @@ Use these exact names when referring to task status.`;
     }
 
     /**
-     * Build status mapping for query parser (more concise format)
+     * Build status mapping for query parser (comprehensive format with all 4 statuses)
      * Used in QueryParserService for parsing natural language
      */
     static buildStatusMappingForParser(settings: PluginSettings): string {
         const names = settings.taskStatusDisplayNames;
         return `STATUS MAPPING (User-Configured):
-- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo, 未完成, 待办, öppen)
-- "completed" = ${names.completed || "Completed"} tasks (done, finished, 完成, 已完成, klar, färdig)
-- "inProgress" = ${names.inProgress || "In progress"} tasks (working on, ongoing, 进行中, 正在做, pågående)
+Status values must be EXACTLY one of: "open", "inProgress", "completed", "cancelled"
+
+- "open" = ${names.open || "Open"} tasks
+  English: open, pending, todo, incomplete, new, unstarted
+  中文: 未完成, 待办, 待处理, 新建
+  Svenska: öppen, väntande, att göra
+
+- "inProgress" = ${names.inProgress || "In progress"} tasks
+  English: in progress, working, ongoing, active, doing
+  中文: 进行中, 正在做, 处理中, 进行
+  Svenska: pågående, arbetar på, aktiv
+
+- "completed" = ${names.completed || "Completed"} tasks
+  English: done, completed, finished, closed, resolved
+  中文: 完成, 已完成, 结束, 已结束
+  Svenska: klar, färdig, slutförd, stängd
+
+- "cancelled" = ${names.cancelled || "Cancelled"} tasks
+  English: cancelled, canceled, abandoned, dropped, discarded
+  中文: 取消, 已取消, 放弃, 废弃
+  Svenska: avbruten, inställd, övergjven
 
 STATUS DISTINCTION:
-- Query about status → extract "open", "completed", or "inProgress"
-- General task queries → no status filter needed`;
+1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
+2. Asking for tasks with SPECIFIC status → status: "open", "inProgress", "completed", or "cancelled"
+
+EXAMPLES:
+- "open tasks" or "pending work" → "open" (specific value) ✅
+- "active tasks" or "what am I working on" → "inProgress" (specific value) ✅
+- "done tasks" or "finished work" → "completed" (specific value) ✅
+- "abandoned projects" or "cancelled tasks" → "cancelled" (specific value) ✅`;
     }
 
     /**

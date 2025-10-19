@@ -93,36 +93,75 @@ export class PropertyRecognitionService {
     };
 
     private static INTERNAL_STATUS_TERMS = {
+        // General status terms (any status)
+        general: [
+            "status",
+            "state",
+            "progress",
+            "状态",
+            "进度",
+            "情况",
+            "status",
+            "tillstånd",
+            "progress",
+        ],
         open: [
             "open",
             "pending",
             "todo",
             "incomplete",
+            "new",
+            "unstarted",
             "未完成",
             "待办",
-            "进行中",
+            "待处理",
+            "新建",
             "öppen",
             "väntande",
+            "att göra",
+        ],
+        inProgress: [
+            "in progress",
+            "working",
+            "ongoing",
+            "active",
+            "doing",
+            "进行中",
+            "正在做",
+            "处理中",
+            "进行",
+            "pågående",
+            "arbetar på",
+            "aktiv",
         ],
         completed: [
             "done",
             "completed",
             "finished",
+            "closed",
+            "resolved",
             "完成",
             "已完成",
             "结束",
+            "已结束",
             "klar",
             "färdig",
             "slutförd",
+            "stängd",
         ],
-        inProgress: [
-            "working",
-            "in progress",
-            "ongoing",
-            "进行中",
-            "正在做",
-            "pågående",
-            "arbetar på",
+        cancelled: [
+            "cancelled",
+            "canceled",
+            "abandoned",
+            "dropped",
+            "discarded",
+            "取消",
+            "已取消",
+            "放弃",
+            "废弃",
+            "avbruten",
+            "inställd",
+            "övergjven",
         ],
     };
 
@@ -157,12 +196,14 @@ export class PropertyRecognitionService {
                 future: this.INTERNAL_DUE_DATE_TERMS.future,
             },
             status: {
-                open: [
-                    ...this.INTERNAL_STATUS_TERMS.open,
+                general: [
+                    ...this.INTERNAL_STATUS_TERMS.general,
                     ...settings.userPropertyTerms.status,
                 ],
-                completed: this.INTERNAL_STATUS_TERMS.completed,
+                open: this.INTERNAL_STATUS_TERMS.open,
                 inProgress: this.INTERNAL_STATUS_TERMS.inProgress,
+                completed: this.INTERNAL_STATUS_TERMS.completed,
+                cancelled: this.INTERNAL_STATUS_TERMS.cancelled,
             },
         };
     }
@@ -212,9 +253,11 @@ Due Date Terms:
 - Future: ${combined.dueDate.future.slice(0, 8).join(", ")}...
 
 Status Terms:
+- General: ${combined.status.general.slice(0, 8).join(", ")}...
 - Open: ${combined.status.open.slice(0, 8).join(", ")}...
-- Completed: ${combined.status.completed.slice(0, 8).join(", ")}...
 - In Progress: ${combined.status.inProgress.slice(0, 8).join(", ")}...
+- Completed: ${combined.status.completed.slice(0, 8).join(", ")}...
+- Cancelled: ${combined.status.cancelled.slice(0, 8).join(", ")}...
 
 LAYER 3: Semantic Expansion (You provide this!)
 - Apply semantic expansion to ALL property terms across configured languages: ${languageList}
@@ -285,6 +328,39 @@ Be smart about implied meanings:
     }
 
     /**
+     * Build STATUS VALUE MAPPING for AI parser
+     * Maps various phrases to normalized status values
+     */
+    static buildStatusValueMapping(): string {
+        return `
+STATUS VALUE MAPPING (normalize to these values):
+
+IMPORTANT: There's a difference between:
+1. Asking for tasks WITH a status property (any value)
+2. Asking for tasks with SPECIFIC status value
+
+STATUS NORMALIZATION:
+- "open" = tasks that are OPEN/incomplete (未完成, 待办, öppen, pending, todo, new, unstarted)
+- "inProgress" = tasks IN PROGRESS (进行中, 正在做, pågående, working, ongoing, active, doing)
+- "completed" = tasks that are COMPLETED/done (完成, 已完成, klar, färdig, done, finished, closed, resolved)
+- "cancelled" = tasks that are CANCELLED/abandoned (取消, 已取消, avbruten, canceled, abandoned, dropped, discarded)
+
+KEY DISTINCTION:
+- "status tasks" or "with status" = null (has any status - rarely used) ✅
+- "open tasks" or "pending tasks" = "open" (specific value) ✅
+- "done tasks" or "completed" = "completed" (specific value) ✅
+- "cancelled tasks" or "abandoned" = "cancelled" (specific value) ✅
+- "active tasks" or "in progress" = "inProgress" (specific value) ✅
+
+Be smart about implied meanings:
+- "working on" → "inProgress" (actively working)
+- "finished" → "completed" (done)
+- "abandoned" → "cancelled" (given up)
+- "todo" → "open" (not started)
+`;
+    }
+
+    /**
      * Simple regex-based property recognition for Simple Search mode
      * Uses combined terms (user + internal) for regex matching
      *
@@ -344,13 +420,19 @@ Be smart about implied meanings:
 
         // Check for status terms
         const hasStatus =
+            combined.status.general.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
             combined.status.open.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.status.inProgress.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
             combined.status.completed.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
-            combined.status.inProgress.some((term) =>
+            combined.status.cancelled.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             );
 
