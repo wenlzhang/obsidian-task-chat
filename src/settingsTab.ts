@@ -1568,14 +1568,23 @@ Examples:
         statusCategoriesDesc.innerHTML = `
             <p><strong>📋 Flexible Status Categories</strong></p>
             <p>Define custom status categories with their checkbox symbols and scores. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
+            <p><strong>Special categories:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 5px;">
+                <li><strong>Open:</strong> Default Markdown open task (space character). This category is locked and cannot be deleted or modified.</li>
+                <li><strong>Other:</strong> Automatically catches all symbols not assigned to other categories. This category is locked and cannot be deleted.</li>
+            </ul>
             <p><strong>Field descriptions:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Category key:</strong> Internal identifier (e.g., "important", "waiting")</li>
-                <li><strong>Display name:</strong> Human-readable name shown in UI</li>
-                <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,-,>,/,?,!,I,b,i,p,c,u,d")</li>
-                <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important)</li>
+                <li><strong>Category key:</strong> Internal identifier (e.g., "important", "tendency"). No spaces or special characters. camelCase recommended. Editable for custom categories.</li>
+                <li><strong>Display name:</strong> Human-readable name shown in UI (sentence case recommended).</li>
+                <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,X" or "!,I,b").</li>
+                <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important).</li>
             </ul>
-            <p><strong>💡 Tip:</strong> Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</p>
+            <p><strong>💡 Tips:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 5px;">
+                <li>Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</li>
+                <li>For proper status symbol display, use a compatible theme like <a href="https://github.com/kepano/obsidian-minimal">Minimal</a>.</li>
+            </ul>
         `;
 
         // Add column headers
@@ -1740,44 +1749,111 @@ Examples:
         const displayName = config.displayName || categoryKey;
         const score = typeof config.score === "number" ? config.score : 0.5;
 
+        // Identify special categories
+        const defaultCategories = [
+            "open",
+            "completed",
+            "inProgress",
+            "cancelled",
+            "other",
+        ];
+        const isDefaultCategory = defaultCategories.includes(categoryKey);
+        const isSpecialCategory =
+            categoryKey === "open" || categoryKey === "other";
+
         // Create horizontal grid row
         const rowDiv = containerEl.createDiv();
         rowDiv.style.cssText =
             "display: grid; grid-template-columns: 120px 150px 1fr 120px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); align-items: center;";
 
-        // Category key (readonly)
+        // Category key (editable for custom categories only)
         const keyInput = rowDiv.createEl("input", { type: "text" });
         keyInput.value = categoryKey;
-        keyInput.disabled = true;
-        keyInput.style.cssText =
-            "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary);";
 
-        // Display name
+        if (isDefaultCategory) {
+            keyInput.disabled = true;
+            keyInput.title = "Default category key cannot be changed";
+            keyInput.style.cssText =
+                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); cursor: not-allowed;";
+        } else {
+            // Custom categories: allow editing key
+            keyInput.style.cssText =
+                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            keyInput.addEventListener("change", async () => {
+                const newKey = keyInput.value.trim();
+                if (
+                    newKey &&
+                    newKey !== categoryKey &&
+                    !this.plugin.settings.taskStatusMapping[newKey]
+                ) {
+                    // Rename the category key
+                    this.plugin.settings.taskStatusMapping[newKey] = {
+                        symbols: symbols,
+                        score: score,
+                        displayName: displayName,
+                    };
+                    delete this.plugin.settings.taskStatusMapping[categoryKey];
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh UI
+                } else {
+                    keyInput.value = categoryKey; // Reset if invalid
+                    if (!newKey) {
+                        new Notice("Category key cannot be empty");
+                    } else if (this.plugin.settings.taskStatusMapping[newKey]) {
+                        new Notice("Category key already exists");
+                    }
+                }
+            });
+        }
+
+        // Display name (locked for special categories: open, other)
         const nameInput = rowDiv.createEl("input", { type: "text" });
         nameInput.value = displayName;
         nameInput.placeholder = "Display name";
-        nameInput.style.cssText =
-            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
-        nameInput.addEventListener("change", async () => {
-            this.plugin.settings.taskStatusMapping[categoryKey].displayName =
-                nameInput.value || categoryKey;
-            await this.plugin.saveSettings();
-        });
 
-        // Symbols
-        const symbolsInput = rowDiv.createEl("input", { type: "text" });
-        symbolsInput.value = symbols.join(", ");
-        symbolsInput.placeholder = "e.g., ?,!,I,b,i";
-        symbolsInput.style.cssText =
-            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
-
-        // Disable symbols editing for 'open' category
-        if (categoryKey === "open") {
-            symbolsInput.disabled = true;
-            symbolsInput.title =
-                "Default open status symbols cannot be changed";
-            symbolsInput.style.opacity = "0.6";
+        if (isSpecialCategory) {
+            nameInput.disabled = true;
+            nameInput.style.cssText =
+                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
+            if (categoryKey === "open") {
+                nameInput.title =
+                    "Default open task category, display name locked";
+            } else if (categoryKey === "other") {
+                nameInput.title =
+                    "Default catch-all category, display name locked";
+            }
         } else {
+            nameInput.style.cssText =
+                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            nameInput.addEventListener("change", async () => {
+                this.plugin.settings.taskStatusMapping[
+                    categoryKey
+                ].displayName = nameInput.value || categoryKey;
+                await this.plugin.saveSettings();
+            });
+        }
+
+        // Symbols (locked for open and other, show actual values not placeholder)
+        const symbolsInput = rowDiv.createEl("input", { type: "text" });
+        symbolsInput.value = symbols.join(",");
+
+        if (isSpecialCategory) {
+            symbolsInput.disabled = true;
+            symbolsInput.style.cssText =
+                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
+            if (categoryKey === "open") {
+                symbolsInput.title =
+                    "Default Markdown open task (space character), cannot be changed";
+                symbolsInput.placeholder = "(space)";
+            } else if (categoryKey === "other") {
+                symbolsInput.title =
+                    "Catches all unassigned symbols automatically, no manual symbols needed";
+                symbolsInput.placeholder = "(auto)";
+            }
+        } else {
+            symbolsInput.style.cssText =
+                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            symbolsInput.placeholder = "e.g., x,X or !,I,b";
             symbolsInput.addEventListener("change", async () => {
                 this.plugin.settings.taskStatusMapping[categoryKey].symbols =
                     symbolsInput.value
@@ -1816,13 +1892,17 @@ Examples:
             await this.plugin.saveSettings();
         });
 
-        // Remove button (disabled for 'open')
-        if (categoryKey === "open") {
+        // Remove button (disabled for 'open' and 'other')
+        if (isSpecialCategory) {
             const disabledBtn = rowDiv.createEl("button", {
                 text: "✕",
             });
             disabledBtn.disabled = true;
-            disabledBtn.title = "Cannot delete default open category";
+            if (categoryKey === "open") {
+                disabledBtn.title = "Cannot delete default open category";
+            } else if (categoryKey === "other") {
+                disabledBtn.title = "Cannot delete default catch-all category";
+            }
             disabledBtn.style.cssText =
                 "padding: 2px 8px; opacity: 0.3; cursor: not-allowed;";
         } else {

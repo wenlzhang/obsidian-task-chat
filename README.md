@@ -53,11 +53,11 @@ Choose the mode that fits your needs. Set your default in settings, override per
   - Date ranges: this week, next week, this month
   - Specific dates: YYYY-MM-DD format
   - "Any due date" filter for tasks with deadlines
-- **Status Filtering**: 
-  - Open/incomplete tasks
-  - Completed tasks
-  - In-progress tasks
-  - Cancelled tasks
+- **Status Filtering**: Flexible custom status categories
+  - Default categories: Open, Completed, In progress, Cancelled, Other
+  - Fully customizable: add your own categories (Important, Tendency, etc.)
+  - Compatible with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker) and similar plugins
+  - **Theme recommendation**: Use compatible themes like [Minimal](https://github.com/kepano/obsidian-minimal) for proper status symbol display
 - **Folder Filtering**: Path-based filtering with partial matches
 - **Tag Filtering**: Hashtag-based filtering (#work, #personal)
 - **Compound Filtering**: Combine multiple filters simultaneously
@@ -711,9 +711,18 @@ The settings tab includes convenient reset buttons to restore default values:
   - Auto-loads available models on startup
   - Caches model list for quick access
 - **Custom API Endpoints**: Use custom endpoints or proxies
-- **Task Status Mapping**: Customize how task statuses are recognized
-  - Default: Tasks plugin compatible
-  - Fully customizable status symbols
+- **Task Status Mapping**: Flexible custom status categories with scoring
+  - **Default categories** (can't be deleted):
+    - **Open**: Default Markdown open task (space character) - locked
+    - **Other**: Automatically catches all unassigned symbols - locked
+  - **Editable categories**: Completed, In progress, Cancelled
+  - **Custom categories**: Add your own (Important, Bookmark, Waiting, etc.)
+  - **Per-category configuration**:
+    - Display name: Human-readable label (sentence case recommended)
+    - Symbols: Checkbox characters (e.g., `x,X` or `!,I,b`)
+    - Score: Weighting for task prioritization (0.0-1.0)
+  - **Compatible with**: [DataView](https://github.com/blacksmithgu/obsidian-dataview), [Tasks plugin](https://github.com/obsidian-tasks-group/obsidian-tasks),[Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
+  - **Theme recommendation**: For proper status symbol display, use compatible themes like [Minimal](https://github.com/kepano/obsidian-minimal)
 - **Priority Mapping**: Define your own priority value mappings
   - Map any text value to priority levels 1-4
   - Support for multilingual priority values

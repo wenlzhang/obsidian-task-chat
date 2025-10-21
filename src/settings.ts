@@ -186,6 +186,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     },
 
     // Task Status Mapping (flexible - users can add/remove categories)
+    // Special categories: "open" and "other" are protected and cannot be deleted
+    // - "open": Default Markdown open task (space), display name and symbols locked
+    // - "other": Catches all unassigned symbols, display name and symbols locked
     taskStatusMapping: {
         open: {
             symbols: [" "],
@@ -208,7 +211,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             displayName: "Cancelled",
         },
         other: {
-            symbols: ["!", "b", "I", "i"],
+            symbols: [],
             score: 0.5,
             displayName: "Other",
         },
