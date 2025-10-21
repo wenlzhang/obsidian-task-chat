@@ -343,11 +343,9 @@ export class AIService {
                     settings.priorityNoneScore,
                 );
                 const maxStatusScore = Math.max(
-                    settings.statusOpenScore,
-                    settings.statusInProgressScore,
-                    settings.statusOtherScore,
-                    settings.statusCompletedScore,
-                    settings.statusCancelledScore,
+                    ...Object.values(settings.taskStatusMapping).map(
+                        (config) => config.score,
+                    ),
                 );
 
                 // Dynamic max score based on what will ACTUALLY be scored
@@ -895,7 +893,7 @@ export class AIService {
 
             // Status - use user's display name
             const statusDisplayName =
-                settings.taskStatusDisplayNames[task.statusCategory] ||
+                settings.taskStatusMapping[task.statusCategory]?.displayName ||
                 task.statusCategory;
             metadata.push(`Status: ${statusDisplayName}`);
 

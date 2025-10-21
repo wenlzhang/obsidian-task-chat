@@ -55,9 +55,12 @@ export interface PluginSettings {
         priority: string;
     };
 
-    // Task Status Mapping
-    taskStatusMapping: Record<string, string[]>;
-    taskStatusDisplayNames: Record<string, string>;
+    // Task Status Mapping (flexible categories)
+    // Each category maps checkbox symbols to a score and display name
+    taskStatusMapping: Record<
+        string,
+        { symbols: string[]; score: number; displayName: string }
+    >;
 
     // Priority Mapping (numeric keys 1-4, customizable string values)
     dataviewPriorityMapping: PriorityMapping;
@@ -134,12 +137,8 @@ export interface PluginSettings {
     priorityP4Score: number; // Score for priority 4 (low) (default: 0.2)
     priorityNoneScore: number; // Score for no priority (default: 0.1)
 
-    // Status Sub-Coefficients
-    statusOpenScore: number; // Score for open tasks (default: 1.0)
-    statusInProgressScore: number; // Score for in-progress tasks (default: 0.75)
-    statusOtherScore: number; // Score for other status tasks (default: 0.5)
-    statusCompletedScore: number; // Score for completed tasks (default: 0.2)
-    statusCancelledScore: number; // Score for cancelled tasks (default: 0.1)
+    // Status Sub-Coefficients (DEPRECATED - now in taskStatusMapping)
+    // Kept for backward compatibility during migration
 
     // Sort settings - Unified multi-criteria sorting for all modes
     // Relevance is always first (weighted by coefficients)
@@ -186,21 +185,33 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         priority: "p",
     },
 
-    // Task Status Mapping (matching Tasks plugin defaults)
+    // Task Status Mapping (flexible - users can add/remove categories)
     taskStatusMapping: {
-        open: [" ", ""],
-        completed: ["x", "X"],
-        inProgress: ["/", "~"],
-        cancelled: ["-"],
-        other: [],
-    },
-
-    taskStatusDisplayNames: {
-        open: "Open",
-        completed: "Completed",
-        inProgress: "In progress",
-        cancelled: "Cancelled",
-        other: "Other",
+        open: {
+            symbols: [" ", ""],
+            score: 1.0,
+            displayName: "Open",
+        },
+        completed: {
+            symbols: ["x", "X"],
+            score: 0.2,
+            displayName: "Completed",
+        },
+        inProgress: {
+            symbols: ["/", "~"],
+            score: 0.75,
+            displayName: "In Progress",
+        },
+        cancelled: {
+            symbols: ["-"],
+            score: 0.1,
+            displayName: "Cancelled",
+        },
+        other: {
+            symbols: [],
+            score: 0.5,
+            displayName: "Other",
+        },
     },
 
     // Priority Mapping (Todoist-style)
@@ -294,12 +305,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     priorityP4Score: 0.2, // Priority 4 (low)
     priorityNoneScore: 0.1, // No priority
 
-    // Status Sub-Coefficients (0-1 range)
-    statusOpenScore: 1.0, // Open tasks
-    statusInProgressScore: 0.75, // In-progress tasks
-    statusOtherScore: 0.5, // Other status tasks
-    statusCompletedScore: 0.2, // Completed tasks
-    statusCancelledScore: 0.1, // Cancelled tasks
+    // Status Sub-Coefficients (DEPRECATED - removed, now in taskStatusMapping)
+    // Migration: Old settings will be automatically converted to new structure
 
     // Unified multi-criteria sorting for all modes
     // Relevance always first (weighted by coefficients: R×20, D×4, P×1)

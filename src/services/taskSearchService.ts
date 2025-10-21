@@ -908,31 +908,40 @@ export class TaskSearchService {
     }
 
     /**
-     * Calculate status score
-     * @param statusCategory - Task status category (open, completed, inProgress, cancelled, other)
+     * Calculate status score (dynamic - supports custom categories)
+     * @param statusCategory - Task status category (any custom category name)
      * @param settings - Plugin settings with user-configurable coefficients
-     * @returns Score: User-configurable (defaults: 1.0 open, 0.75 inProgress, 0.2 completed, 0.1 cancelled, 0.5 other)
+     * @returns Score from taskStatusMapping (0.0-1.0), defaults to 0.5 for unknown categories
      */
     private static calculateStatusScore(
         statusCategory: string | undefined,
         settings: import("../settings").PluginSettings,
     ): number {
-        if (!statusCategory) return settings.statusOpenScore; // Default to open
-
-        switch (statusCategory.toLowerCase()) {
-            case "completed":
-                return settings.statusCompletedScore;
-            case "inprogress":
-            case "in-progress":
-                return settings.statusInProgressScore;
-            case "open":
-                return settings.statusOpenScore;
-            case "cancelled":
-                return settings.statusCancelledScore;
-            case "other":
-            default:
-                return settings.statusOtherScore;
+        if (!statusCategory) {
+            // Default to "open" category score if exists, otherwise 1.0
+            return settings.taskStatusMapping.open?.score ?? 1.0;
         }
+
+        // Normalize for backward compatibility (handles "inProgress" or "in-progress")
+        const normalized = statusCategory.toLowerCase().replace(/-/g, "");
+
+        // Try direct lookup
+        const directConfig = settings.taskStatusMapping[statusCategory];
+        if (directConfig) {
+            return directConfig.score;
+        }
+
+        // Try normalized lookup
+        for (const [category, config] of Object.entries(
+            settings.taskStatusMapping,
+        )) {
+            if (category.toLowerCase().replace(/-/g, "") === normalized) {
+                return config.score;
+            }
+        }
+
+        // Unknown category - return "other" score if exists, otherwise 0.5
+        return settings.taskStatusMapping.other?.score ?? 0.5;
     }
 
     /**

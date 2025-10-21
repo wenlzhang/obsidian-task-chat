@@ -866,11 +866,9 @@ Examples:
                 this.plugin.settings.priorityNoneScore,
             );
             const maxStatusScore = Math.max(
-                this.plugin.settings.statusCompletedScore,
-                this.plugin.settings.statusInProgressScore,
-                this.plugin.settings.statusOpenScore,
-                this.plugin.settings.statusCancelledScore,
-                this.plugin.settings.statusOtherScore,
+                ...Object.values(this.plugin.settings.taskStatusMapping).map(
+                    (config) => config.score,
+                ),
             );
 
             const maxScore =
@@ -1099,80 +1097,16 @@ Examples:
                     }),
             );
 
-        // Status Sub-Coefficients
-        containerEl.createEl("h4", { text: "Status sub-coefficients" });
+        // Status Sub-Coefficients - MOVED TO STATUS MAPPING
+        containerEl.createEl("h4", { text: "Status scores" });
 
-        new Setting(containerEl)
-            .setName("Open")
-            .setDesc("Score for open tasks (0.0-1.0). Default: 1.0.")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setValue(this.plugin.settings.statusOpenScore)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.statusOpenScore = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("In progress")
-            .setDesc("Score for in-progress tasks (0.0-1.0). Default: 0.75.")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setValue(this.plugin.settings.statusInProgressScore)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.statusInProgressScore = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Other status")
-            .setDesc(
-                "Score for tasks with other/unknown status (0.0-1.0). Default: 0.5.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setValue(this.plugin.settings.statusOtherScore)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.statusOtherScore = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Completed")
-            .setDesc("Score for completed tasks (0.0-1.0). Default: 0.2.")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setValue(this.plugin.settings.statusCompletedScore)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.statusCompletedScore = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Cancelled")
-            .setDesc("Score for cancelled tasks (0.0-1.0). Default: 0.1.")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 1, 0.05)
-                    .setValue(this.plugin.settings.statusCancelledScore)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.statusCancelledScore = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        const statusScoreNote = containerEl.createDiv({
+            cls: "setting-item-description task-chat-info-box",
+        });
+        statusScoreNote.innerHTML = `
+            <p><strong>ℹ️ Status scores are now configured in the Status Mapping section above.</strong></p>
+            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status mapping" section to manage categories and their scores.</p>
+        `;
 
         // Reset Buttons Section
         containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
@@ -1220,17 +1154,10 @@ Examples:
                             DEFAULT_SETTINGS.priorityP4Score;
                         this.plugin.settings.priorityNoneScore =
                             DEFAULT_SETTINGS.priorityNoneScore;
-                        // Status
-                        this.plugin.settings.statusCompletedScore =
-                            DEFAULT_SETTINGS.statusCompletedScore;
-                        this.plugin.settings.statusInProgressScore =
-                            DEFAULT_SETTINGS.statusInProgressScore;
-                        this.plugin.settings.statusOpenScore =
-                            DEFAULT_SETTINGS.statusOpenScore;
-                        this.plugin.settings.statusCancelledScore =
-                            DEFAULT_SETTINGS.statusCancelledScore;
-                        this.plugin.settings.statusOtherScore =
-                            DEFAULT_SETTINGS.statusOtherScore;
+                        // Status - reset entire taskStatusMapping
+                        this.plugin.settings.taskStatusMapping = JSON.parse(
+                            JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
+                        );
                         await this.plugin.saveSettings();
                         new Notice(
                             "All advanced coefficients reset to defaults",
@@ -1328,24 +1255,19 @@ Examples:
                 }),
             );
 
-        // Reset status sub-coefficients
+        // Reset status categories
         new Setting(containerEl)
-            .setName("Reset status sub-coefficients")
-            .setDesc("Reset all status level scores to defaults.")
+            .setName("Reset status categories")
+            .setDesc(
+                "Reset all status categories (symbols, scores, names) to defaults: Open, Completed, In Progress, Cancelled, Other.",
+            )
             .addButton((button) =>
                 button.setButtonText("Reset Status").onClick(async () => {
-                    this.plugin.settings.statusCompletedScore =
-                        DEFAULT_SETTINGS.statusCompletedScore;
-                    this.plugin.settings.statusInProgressScore =
-                        DEFAULT_SETTINGS.statusInProgressScore;
-                    this.plugin.settings.statusOpenScore =
-                        DEFAULT_SETTINGS.statusOpenScore;
-                    this.plugin.settings.statusCancelledScore =
-                        DEFAULT_SETTINGS.statusCancelledScore;
-                    this.plugin.settings.statusOtherScore =
-                        DEFAULT_SETTINGS.statusOtherScore;
+                    this.plugin.settings.taskStatusMapping = JSON.parse(
+                        JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
+                    );
                     await this.plugin.saveSettings();
-                    new Notice("Status sub-coefficients reset to defaults");
+                    new Notice("Status categories reset to defaults");
                     this.display();
                 }),
             );
@@ -1637,138 +1559,65 @@ Examples:
                     }),
             );
 
-        // Status Mapping
-        containerEl.createEl("h3", { text: "Status mapping" });
+        // Status Categories (Dynamic)
+        containerEl.createEl("h3", { text: "Status categories" });
 
-        const statusMappingDesc = containerEl.createDiv({
-            cls: "setting-item-description",
+        const statusCategoriesDesc = containerEl.createDiv({
+            cls: "setting-item-description task-chat-info-box",
         });
-        statusMappingDesc.innerHTML = `
-            <p>Define which task status characters map to each category. Separate multiple characters with commas.</p>
-            <p><strong>Common Status Characters:</strong></p>
+        statusCategoriesDesc.innerHTML = `
+            <p><strong>📋 Flexible Status Categories</strong></p>
+            <p>Define custom status categories with their checkbox symbols and scores. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
+            <p><strong>How it works:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><code>[ ]</code> or <code> </code> (space) = Open/incomplete tasks</li>
-                <li><code>[x]</code> or <code>[X]</code> = Completed tasks</li>
-                <li><code>[/]</code> or <code>[>]</code> = In progress tasks</li>
-                <li><code>[-]</code> = Cancelled tasks</li>
-                <li>Custom characters like <code>[!]</code>, <code>[?]</code>, <code>[*]</code>, etc.</li>
+                <li><strong>Category Name:</strong> Internal identifier (e.g., "important", "waiting")</li>
+                <li><strong>Display Name:</strong> Human-readable name shown in UI</li>
+                <li><strong>Symbols:</strong> Checkbox characters that map to this category (e.g., "!", "‼️")</li>
+                <li><strong>Score:</strong> Weight for scoring (0.0-2.0, higher = more important)</li>
             </ul>
-            <p><strong>💡 Tip:</strong> Match these to your vault's task markers or use with plugins like <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a>.</p>
+            <p><strong>💡 Tip:</strong> Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</p>
         `;
 
-        new Setting(containerEl)
-            .setName('Status "open" characters')
-            .setDesc(
-                "Characters for open/incomplete tasks (e.g., space, -, ?, !)",
-            )
-            .addText((text) =>
-                text
-                    .setPlaceholder(" , -, ?, !")
-                    .setValue(
-                        this.plugin.settings.taskStatusMapping.open.join(", "),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping.open = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("status-mapping-input");
-                    }),
-            );
+        // Render all existing categories
+        const categories = Object.entries(
+            this.plugin.settings.taskStatusMapping,
+        );
+        for (const [categoryKey, config] of categories) {
+            this.renderStatusCategory(containerEl, categoryKey, config);
+        }
 
+        // Add new category button
         new Setting(containerEl)
-            .setName('Status "completed" characters')
-            .setDesc("Characters for completed tasks (e.g., x, X)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("x, X")
-                    .setValue(
-                        this.plugin.settings.taskStatusMapping.completed.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping.completed = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("status-mapping-input");
-                    }),
-            );
+            .setName("Add status category")
+            .setDesc("Create a new custom status category")
+            .addButton((button) =>
+                button
+                    .setButtonText("+ Add Category")
+                    .setCta()
+                    .onClick(async () => {
+                        // Generate unique category name
+                        let categoryNum = 1;
+                        let newCategoryKey = `custom${categoryNum}`;
+                        while (
+                            this.plugin.settings.taskStatusMapping[
+                                newCategoryKey
+                            ]
+                        ) {
+                            categoryNum++;
+                            newCategoryKey = `custom${categoryNum}`;
+                        }
 
-        new Setting(containerEl)
-            .setName('Status "in progress" characters')
-            .setDesc("Characters for in-progress tasks (e.g., /, >, <)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("/, >, <")
-                    .setValue(
-                        this.plugin.settings.taskStatusMapping.inProgress.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping.inProgress =
-                            value
-                                .split(",")
-                                .map((v) => v.trim())
-                                .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("status-mapping-input");
-                    }),
-            );
+                        // Add new category with defaults
+                        this.plugin.settings.taskStatusMapping[newCategoryKey] =
+                            {
+                                symbols: [],
+                                score: 0.8,
+                                displayName: `Custom ${categoryNum}`,
+                            };
 
-        new Setting(containerEl)
-            .setName('Status "cancelled" characters')
-            .setDesc("Characters for cancelled tasks (e.g., -)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("-")
-                    .setValue(
-                        this.plugin.settings.taskStatusMapping.cancelled.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping.cancelled = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
                         await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("status-mapping-input");
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName('Status "other" characters')
-            .setDesc(
-                "Characters for other/custom status (e.g., *, R, P, anything else)",
-            )
-            .addText((text) =>
-                text
-                    .setPlaceholder("*, R, P")
-                    .setValue(
-                        this.plugin.settings.taskStatusMapping.other.join(", "),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping.other = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("status-mapping-input");
+                        this.display(); // Refresh UI
+                        new Notice(`Added new category: Custom ${categoryNum}`);
                     }),
             );
 
@@ -1857,6 +1706,142 @@ Examples:
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to show updated stats
                 }),
+            );
+    }
+
+    /**
+     * Render a single status category with all its settings
+     */
+    private renderStatusCategory(
+        containerEl: HTMLElement,
+        categoryKey: string,
+        config: { symbols: string[]; score: number; displayName: string },
+    ): void {
+        const categoryContainer = containerEl.createDiv({
+            cls: "status-category-container",
+        });
+        categoryContainer.style.cssText =
+            "border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 16px; margin-bottom: 16px; background: var(--background-secondary);";
+
+        // Category header with name and remove button
+        const headerDiv = categoryContainer.createDiv();
+        headerDiv.style.cssText =
+            "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--background-modifier-border);";
+
+        const titleDiv = headerDiv.createDiv();
+        titleDiv.style.cssText = "font-weight: 600; font-size: 14px;";
+        titleDiv.textContent = config.displayName || categoryKey;
+
+        const removeButton = headerDiv.createEl("button", {
+            text: "Remove",
+            cls: "mod-warning",
+        });
+        removeButton.style.cssText = "font-size: 12px; padding: 4px 12px;";
+        removeButton.onclick = async () => {
+            if (
+                await new Promise((resolve) => {
+                    const modal = new (require("obsidian").Modal)(this.app);
+                    modal.titleEl.setText("Remove status category?");
+                    modal.contentEl.createEl("p", {
+                        text: `Are you sure you want to remove the "${config.displayName}" category? This will affect how tasks with these symbols are scored.`,
+                    });
+                    const buttonDiv = modal.contentEl.createDiv();
+                    buttonDiv.style.cssText =
+                        "display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;";
+                    const cancelBtn = buttonDiv.createEl("button", {
+                        text: "Cancel",
+                    });
+                    cancelBtn.onclick = () => {
+                        modal.close();
+                        resolve(false);
+                    };
+                    const confirmBtn = buttonDiv.createEl("button", {
+                        text: "Remove",
+                        cls: "mod-warning",
+                    });
+                    confirmBtn.onclick = () => {
+                        modal.close();
+                        resolve(true);
+                    };
+                    modal.open();
+                })
+            ) {
+                delete this.plugin.settings.taskStatusMapping[categoryKey];
+                await this.plugin.saveSettings();
+                this.display(); // Refresh UI
+                new Notice(`Removed category: ${config.displayName}`);
+            }
+        };
+
+        // Category key (readonly)
+        new Setting(categoryContainer)
+            .setName("Category key")
+            .setDesc("Internal identifier (cannot be changed)")
+            .addText((text) => {
+                text.setValue(categoryKey).setDisabled(true);
+                text.inputEl.style.cssText = "opacity: 0.6;";
+            });
+
+        // Display name
+        new Setting(categoryContainer)
+            .setName("Display name")
+            .setDesc("Human-readable name shown in UI")
+            .addText((text) =>
+                text
+                    .setPlaceholder("Enter display name")
+                    .setValue(config.displayName)
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].displayName = value || categoryKey;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        // Symbols
+        new Setting(categoryContainer)
+            .setName("Checkbox symbols")
+            .setDesc("Characters that map to this category (comma-separated)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("e.g., !, ‼️, !!")
+                    .setValue(config.symbols.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].symbols = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        // Score slider
+        new Setting(categoryContainer)
+            .setName("Score weight")
+            .setDesc(
+                `Scoring weight for this category (0.0-2.0). Current: ${config.score.toFixed(2)}`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 2, 0.05)
+                    .setValue(config.score)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].score = value;
+                        await this.plugin.saveSettings();
+                        // Update description
+                        const desc =
+                            slider.sliderEl.parentElement?.querySelector(
+                                ".setting-item-description",
+                            );
+                        if (desc) {
+                            desc.textContent = `Scoring weight for this category (0.0-2.0). Current: ${value.toFixed(2)}`;
+                        }
+                    }),
             );
     }
 

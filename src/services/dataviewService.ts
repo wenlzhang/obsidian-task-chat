@@ -38,10 +38,10 @@ export class DataviewService {
 
         const cleanSymbol = symbol.replace(/[\[\]]/g, "").trim();
 
-        for (const [category, symbols] of Object.entries(
+        for (const [category, config] of Object.entries(
             settings.taskStatusMapping,
         )) {
-            if (symbols.some((s) => s === cleanSymbol)) {
+            if (config.symbols.some((s) => s === cleanSymbol)) {
                 return category as TaskStatusCategory;
             }
         }
