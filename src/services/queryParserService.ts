@@ -276,7 +276,7 @@ export class QueryParserService {
         const dueDateValueMapping =
             PropertyRecognitionService.buildDueDateValueMapping();
         const statusValueMapping =
-            PropertyRecognitionService.buildStatusValueMapping();
+            PropertyRecognitionService.buildStatusValueMapping(settings);
         const priorityValueMapping =
             PromptBuilderService.buildPriorityMappingForParser(
                 settings,
@@ -622,10 +622,10 @@ Examples:
 - "active tasks" → status: ["open", "inProgress"] (interpret "active" as multiple statuses)
 
 Rules:
-- If user specifies multiple statuses, return as array: ["open", "inProgress"]
-- If user says "or", return as array: ["completed", "cancelled"]
-- If user specifies one status, return as single string: "open"
-- Use correct status values: "open", "inProgress", "completed", "cancelled"
+- If user specifies multiple statuses, return as array
+- If user says "or", return as array
+- If user specifies one status, return as single string
+- Use ONLY the status category keys defined in the STATUS MAPPING section above (supports custom categories)
 
 **RELATIVE DATE SUPPORT:**
 Users can specify dates relative to today:

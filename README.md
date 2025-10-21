@@ -711,18 +711,79 @@ The settings tab includes convenient reset buttons to restore default values:
   - Auto-loads available models on startup
   - Caches model list for quick access
 - **Custom API Endpoints**: Use custom endpoints or proxies
-- **Task Status Mapping**: Flexible custom status categories with scoring
-  - **Default categories** (can't be deleted):
-    - **Open**: Default Markdown open task (space character) - locked
-    - **Other**: Automatically catches all unassigned symbols - locked
-  - **Editable categories**: Completed, In progress, Cancelled
-  - **Custom categories**: Add your own (Important, Bookmark, Waiting, etc.)
-  - **Per-category configuration**:
-    - Display name: Human-readable label (sentence case recommended)
-    - Symbols: Checkbox characters (e.g., `x,X` or `!,I,b`)
-    - Score: Weighting for task prioritization (0.0-1.0)
-  - **Compatible with**: [DataView](https://github.com/blacksmithgu/obsidian-dataview), [Tasks plugin](https://github.com/obsidian-tasks-group/obsidian-tasks),[Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
+- **Task Status Mapping**: Flexible custom status categories with intelligent protection model
+  
+  **Protection Model (ensures consistent task management):**
+  
+  **Fully Locked Categories (displayName + symbols cannot be modified):**
+  - **Open** `[ ]` - Default Markdown open task (space character)
+    - Required for all open tasks
+    - Cannot be deleted or modified
+  - **Other** - Catches all unassigned symbols automatically
+    - Required as fallback category
+    - Cannot be deleted or modified
+  
+  **Partially Locked Categories (displayName + symbols CAN be modified, but cannot delete):**
+  - **Completed** `[x]` or `[X]` - Finished tasks
+    - Core category for task management
+    - You can change display name (e.g., "Done", "Finished") and symbols
+    - Cannot delete (needed for filtering completed tasks)
+  - **In progress** `[/]` - Tasks being worked on
+    - Core category for active work
+    - You can change display name (e.g., "Working", "Active") and symbols
+    - Cannot delete (needed for progress tracking)
+  - **Cancelled** `[-]` - Abandoned/cancelled tasks
+    - Core category for task lifecycle
+    - You can change display name (e.g., "Abandoned", "Dropped") and symbols
+    - Cannot delete (needed for cancelled task tracking)
+  
+  **Custom Categories (fully editable and deletable):**
+  - Add your own categories: Important `[!]`, Bookmark `[*]`, Waiting `[?]`, etc.
+  - Fully customizable: category key, display name, symbols, score
+  - Can be deleted anytime
+  
+  **Per-category Configuration:**
+  - **Category key**: Internal identifier (e.g., "important", "bookmark")
+    - camelCase recommended, no spaces
+    - Locked for protected categories, editable for custom
+  - **Display name**: Human-readable label (sentence case recommended)
+    - Locked for fully locked categories (Open, Other)
+    - Editable for partially locked (Completed, In progress, Cancelled)
+    - Editable for custom categories
+  - **Symbols**: Checkbox characters (comma-separated)
+    - Examples: `x,X` or `!,I,b`
+    - Locked for fully locked categories
+    - Editable for partially locked and custom categories
+  - **Score**: Weighting for task prioritization (0.0-1.0)
+    - Higher score = higher importance in scoring
+    - Examples: 1.0 (open), 0.8 (important), 0.2 (completed), 0.1 (cancelled)
+    - Editable for ALL categories
+  
+  **Why This Protection Model?**
+  - **Consistency**: 5 core categories ensure reliable task management across all search modes
+  - **Flexibility**: Partially locked categories can be renamed/customized to match your workflow
+  - **Safety**: Cannot accidentally delete core categories needed for filtering/sorting
+  - **Extensibility**: Add unlimited custom categories for your specific needs
+  
+  **Practical Examples:**
+  
+  *Customize core categories to match your language:*
+  - Change "Completed" → "完成" (Chinese) or "Klar" (Swedish)
+  - Change symbols: `[x]` → `[✓]` or `[√]`
+  - System respects your changes everywhere (AI, search, display)
+  
+  *Add custom categories for your workflow:*
+  - Important: `[!]` with score 0.8
+  
+  *Don't want certain symbols?*
+  - For partially locked categories, assign rare symbols: `[§]`, `[¶]`
+  - Use custom categories with your preferred symbols instead
+  - System automatically respects your symbol mappings
+  
+  **Integration:**
+  - **Compatible with**: [DataView](https://github.com/blacksmithgu/obsidian-dataview), [Tasks plugin](https://github.com/obsidian-tasks-group/obsidian-tasks), [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
   - **Theme recommendation**: For proper status symbol display, use compatible themes like [Minimal](https://github.com/kepano/obsidian-minimal)
+  - **AI Recognition**: System dynamically infers semantic terms from your display names for all search modes
 - **Priority Mapping**: Define your own priority value mappings
   - Map any text value to priority levels 1-4
   - Support for multilingual priority values

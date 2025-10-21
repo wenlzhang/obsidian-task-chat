@@ -22,6 +22,38 @@ export type SortCriterion =
     | "created"
     | "alphabetical";
 
+// Protected status categories that cannot be deleted
+// These are core categories needed for consistent task management
+export const PROTECTED_STATUS_CATEGORIES = {
+    // Fully locked - cannot modify displayName, symbols, or delete
+    FULLY_LOCKED: ["open", "other"] as readonly string[],
+    // Partially locked - can modify displayName and symbols, but cannot delete
+    DELETABLE_LOCKED: [
+        "completed",
+        "inProgress",
+        "cancelled",
+    ] as readonly string[],
+} as const;
+
+// Helper to check if a category is protected from deletion
+export function isStatusCategoryProtected(categoryKey: string): boolean {
+    return (
+        (
+            PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED as readonly string[]
+        ).includes(categoryKey) ||
+        (
+            PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED as readonly string[]
+        ).includes(categoryKey)
+    );
+}
+
+// Helper to check if a category is fully locked (displayName and symbols cannot be modified)
+export function isStatusCategoryFullyLocked(categoryKey: string): boolean {
+    return (
+        PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED as readonly string[]
+    ).includes(categoryKey);
+}
+
 export interface PluginSettings {
     // AI Provider Settings
     aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
@@ -185,10 +217,16 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         priority: "p",
     },
 
-    // Task Status Mapping (flexible - users can add/remove categories)
-    // Special categories: "open" and "other" are protected and cannot be deleted
-    // - "open": Default Markdown open task (space), display name and symbols locked
-    // - "other": Catches all unassigned symbols, display name and symbols locked
+    // Task Status Mapping (flexible - users can add/remove custom categories)
+    // Protected categories (cannot be deleted):
+    // 1. Fully locked (displayName + symbols locked):
+    //    - "open": Default Markdown open task (space character)
+    //    - "other": Catches all unassigned symbols automatically
+    // 2. Partially locked (displayName + symbols can be modified, but cannot delete):
+    //    - "completed": Finished tasks
+    //    - "inProgress": Tasks currently being worked on
+    //    - "cancelled": Abandoned/cancelled tasks
+    // Users can add custom categories (e.g., "important", "bookmark", "waiting")
     taskStatusMapping: {
         open: {
             symbols: [" "],

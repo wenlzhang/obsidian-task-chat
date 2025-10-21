@@ -2,7 +2,12 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import TaskChatPlugin from "./main";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
-import { DEFAULT_SETTINGS } from "./settings";
+import {
+    DEFAULT_SETTINGS,
+    isStatusCategoryProtected,
+    isStatusCategoryFullyLocked,
+    PROTECTED_STATUS_CATEGORIES,
+} from "./settings";
 import { StopWords } from "./services/stopWords";
 
 export class SettingsTab extends PluginSettingTab {
@@ -1568,10 +1573,21 @@ Examples:
         statusCategoriesDesc.innerHTML = `
             <p><strong>📋 Flexible Status Categories</strong></p>
             <p>Define custom status categories with their checkbox symbols and scores. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
-            <p><strong>Special categories:</strong></p>
+            <p><strong>Protected categories (cannot be deleted):</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Open:</strong> Default Markdown open task (space character). This category is locked and cannot be deleted or modified.</li>
-                <li><strong>Other:</strong> Automatically catches all symbols not assigned to other categories. This category is locked and cannot be deleted.</li>
+                <li><strong>Fully locked (displayName + symbols locked):</strong>
+                    <ul style="margin-left: 20px; margin-top: 3px;">
+                        <li><strong>Open:</strong> Default Markdown open task (space character)</li>
+                        <li><strong>Other:</strong> Catches all unassigned symbols automatically</li>
+                    </ul>
+                </li>
+                <li><strong>Partially locked (displayName + symbols can be modified):</strong>
+                    <ul style="margin-left: 20px; margin-top: 3px;">
+                        <li><strong>Completed:</strong> Finished tasks</li>
+                        <li><strong>In progress:</strong> Tasks being worked on</li>
+                        <li><strong>Cancelled:</strong> Abandoned tasks</li>
+                    </ul>
+                </li>
             </ul>
             <p><strong>Field descriptions:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
@@ -1749,17 +1765,9 @@ Examples:
         const displayName = config.displayName || categoryKey;
         const score = typeof config.score === "number" ? config.score : 0.5;
 
-        // Identify special categories
-        const defaultCategories = [
-            "open",
-            "completed",
-            "inProgress",
-            "cancelled",
-            "other",
-        ];
-        const isDefaultCategory = defaultCategories.includes(categoryKey);
-        const isSpecialCategory =
-            categoryKey === "open" || categoryKey === "other";
+        // Identify protected categories using helper functions
+        const isProtectedCategory = isStatusCategoryProtected(categoryKey);
+        const isFullyLocked = isStatusCategoryFullyLocked(categoryKey);
 
         // Create horizontal grid row
         const rowDiv = containerEl.createDiv();
@@ -1770,9 +1778,9 @@ Examples:
         const keyInput = rowDiv.createEl("input", { type: "text" });
         keyInput.value = categoryKey;
 
-        if (isDefaultCategory) {
+        if (isProtectedCategory) {
             keyInput.disabled = true;
-            keyInput.title = "Default category key cannot be changed";
+            keyInput.title = "Protected category key cannot be changed";
             keyInput.style.cssText =
                 "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); cursor: not-allowed;";
         } else {
@@ -1806,12 +1814,12 @@ Examples:
             });
         }
 
-        // Display name (locked for special categories: open, other)
+        // Display name (locked only for fully locked categories: open, other)
         const nameInput = rowDiv.createEl("input", { type: "text" });
         nameInput.value = displayName;
         nameInput.placeholder = "Display name";
 
-        if (isSpecialCategory) {
+        if (isFullyLocked) {
             nameInput.disabled = true;
             nameInput.style.cssText =
                 "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
@@ -1833,11 +1841,11 @@ Examples:
             });
         }
 
-        // Symbols (locked for open and other, show actual values not placeholder)
+        // Symbols (locked only for fully locked categories: open, other)
         const symbolsInput = rowDiv.createEl("input", { type: "text" });
         symbolsInput.value = symbols.join(",");
 
-        if (isSpecialCategory) {
+        if (isFullyLocked) {
             symbolsInput.disabled = true;
             symbolsInput.style.cssText =
                 "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
@@ -1892,17 +1900,30 @@ Examples:
             await this.plugin.saveSettings();
         });
 
-        // Remove button (disabled for 'open' and 'other')
-        if (isSpecialCategory) {
+        // Remove button (disabled for all protected categories)
+        if (isProtectedCategory) {
             const disabledBtn = rowDiv.createEl("button", {
                 text: "✕",
             });
             disabledBtn.disabled = true;
+
+            // Provide specific messages for different protected categories
             if (categoryKey === "open") {
-                disabledBtn.title = "Cannot delete default open category";
+                disabledBtn.title =
+                    "Cannot delete: Default open task category (required)";
             } else if (categoryKey === "other") {
-                disabledBtn.title = "Cannot delete default catch-all category";
+                disabledBtn.title =
+                    "Cannot delete: Default catch-all category (required)";
+            } else if (
+                (
+                    PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED as readonly string[]
+                ).includes(categoryKey)
+            ) {
+                disabledBtn.title = `Cannot delete: Core category "${displayName}" (required for consistent task management)`;
+            } else {
+                disabledBtn.title = "Cannot delete this protected category";
             }
+
             disabledBtn.style.cssText =
                 "padding: 2px 8px; opacity: 0.3; cursor: not-allowed;";
         } else {

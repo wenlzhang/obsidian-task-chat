@@ -8,6 +8,146 @@ import { PluginSettings, SortCriterion } from "../settings";
  */
 export class PromptBuilderService {
     /**
+     * Dynamically infer description based on display name patterns
+     * This allows generating appropriate descriptions for ANY user-defined category
+     */
+    private static inferStatusDescription(displayName: string): string {
+        const lower = displayName.toLowerCase();
+
+        if (
+            lower.includes("open") ||
+            lower.includes("todo")
+        ) {
+            return "Tasks not yet started or awaiting action";
+        }
+
+        if (
+            lower.includes("progress") ||
+            lower.includes("working") ||
+            lower.includes("active")
+        ) {
+            return "Tasks currently being worked on";
+        }
+
+        if (
+            lower.includes("complete") ||
+            lower.includes("done") ||
+            lower.includes("finish")
+        ) {
+            return "Finished tasks";
+        }
+
+        if (
+            lower.includes("cancel") ||
+            lower.includes("abandon") ||
+            lower.includes("drop")
+        ) {
+            return "Tasks that were abandoned or cancelled";
+        }
+
+        if (
+            lower.includes("important") ||
+            lower.includes("urgent") ||
+            lower.includes("critical")
+        ) {
+            return "High-importance or urgent tasks";
+        }
+
+        if (
+            lower.includes("bookmark") ||
+            lower.includes("mark") ||
+            lower.includes("star") ||
+            lower.includes("flag")
+        ) {
+            return "Bookmarked or marked tasks for later review";
+        }
+
+        if (
+            lower.includes("wait") ||
+            lower.includes("block") ||
+            lower.includes("hold") ||
+            lower.includes("pending")
+        ) {
+            return "Tasks waiting on external dependencies";
+        }
+
+        if (lower.includes("other")) {
+            return "Tasks with unrecognized or custom status symbols";
+        }
+
+        // Fallback
+        return `Tasks with this status: ${displayName}`;
+    }
+
+    /**
+     * Dynamically infer term suggestions (English only for parser)
+     * Simplified version for parser prompts
+     */
+    private static inferStatusTermSuggestions(displayName: string): string {
+        const lower = displayName.toLowerCase();
+
+        if (
+            lower.includes("open") ||
+            lower.includes("todo")
+        ) {
+            return "incomplete, todo, new, unstarted";
+        }
+
+        if (
+            lower.includes("progress") ||
+            lower.includes("working") ||
+            lower.includes("active")
+        ) {
+            return "working, ongoing, active, doing";
+        }
+
+        if (
+            lower.includes("complete") ||
+            lower.includes("done") ||
+            lower.includes("finish")
+        ) {
+            return "done, finished, closed, resolved";
+        }
+
+        if (
+            lower.includes("cancel") ||
+            lower.includes("abandon") ||
+            lower.includes("drop")
+        ) {
+            return "abandoned, dropped, discarded";
+        }
+
+        if (
+            lower.includes("important") ||
+            lower.includes("urgent") ||
+            lower.includes("critical")
+        ) {
+            return "urgent, critical, high-priority, significant";
+        }
+
+        if (
+            lower.includes("bookmark") ||
+            lower.includes("mark") ||
+            lower.includes("star") ||
+            lower.includes("flag")
+        ) {
+            return "marked, starred, flagged, saved";
+        }
+
+        if (
+            lower.includes("wait") ||
+            lower.includes("block") ||
+            lower.includes("hold") ||
+            lower.includes("pending")
+        ) {
+            return "blocked, pending, on-hold, deferred";
+        }
+
+        // Fallback: use display name as base
+        return displayName.toLowerCase();
+    }
+
+    /**
      * Build priority mapping documentation from user settings
      * Used in both query parsing and task analysis prompts
      */
@@ -118,48 +258,10 @@ Users may use these field names in queries - recognize all variations:
     static buildStatusMapping(settings: PluginSettings): string {
         const categories = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Generate description based on common patterns
-                let description = "Tasks with this status";
-                if (
-                    key === "open" ||
-                    config.displayName.toLowerCase().includes("open")
-                ) {
-                    description = "Tasks not yet started or awaiting action";
-                } else if (
-                    key === "completed" ||
-                    config.displayName.toLowerCase().includes("complete") ||
-                    config.displayName.toLowerCase().includes("done")
-                ) {
-                    description = "Finished tasks";
-                } else if (
-                    key === "inProgress" ||
-                    config.displayName.toLowerCase().includes("progress") ||
-                    config.displayName.toLowerCase().includes("working")
-                ) {
-                    description = "Tasks currently being worked on";
-                } else if (
-                    key === "cancelled" ||
-                    config.displayName.toLowerCase().includes("cancel") ||
-                    config.displayName.toLowerCase().includes("abandon")
-                ) {
-                    description = "Tasks that were abandoned or cancelled";
-                } else if (
-                    key === "important" ||
-                    config.displayName.toLowerCase().includes("important")
-                ) {
-                    description = "High-importance or urgent tasks";
-                } else if (
-                    key === "bookmark" ||
-                    config.displayName.toLowerCase().includes("bookmark") ||
-                    config.displayName.toLowerCase().includes("mark")
-                ) {
-                    description = "Bookmarked or marked tasks for later review";
-                } else if (
-                    key === "waiting" ||
-                    config.displayName.toLowerCase().includes("wait")
-                ) {
-                    description = "Tasks waiting on external dependencies";
-                }
+                // Dynamically infer description based on display name patterns
+                const description = this.inferStatusDescription(
+                    config.displayName,
+                );
                 return `- ${config.displayName} (${key}): ${description}`;
             })
             .join("\n");
@@ -185,49 +287,13 @@ Use the display name when showing status to users.`;
         const categoryKeys = Object.keys(settings.taskStatusMapping);
         const categoryList = categoryKeys.map((k) => `"${k}"`).join(", ");
 
-        // Build examples for each category
+        // Build examples for each category dynamically from user settings
         const categoryExamples = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Provide term suggestions based on category
-                let termSuggestions = key.toLowerCase();
-                if (
-                    key === "open" ||
-                    config.displayName.toLowerCase().includes("open")
-                ) {
-                    termSuggestions =
-                        "incomplete, pending, todo, new, unstarted";
-                } else if (
-                    key === "completed" ||
-                    config.displayName.toLowerCase().includes("complete")
-                ) {
-                    termSuggestions = "done, finished, closed, resolved";
-                } else if (
-                    key === "inProgress" ||
-                    config.displayName.toLowerCase().includes("progress")
-                ) {
-                    termSuggestions = "working, ongoing, active, doing";
-                } else if (
-                    key === "cancelled" ||
-                    config.displayName.toLowerCase().includes("cancel")
-                ) {
-                    termSuggestions = "abandoned, dropped, discarded";
-                } else if (
-                    key === "important" ||
-                    config.displayName.toLowerCase().includes("important")
-                ) {
-                    termSuggestions =
-                        "urgent, critical, high-priority, significant";
-                } else if (
-                    key === "bookmark" ||
-                    config.displayName.toLowerCase().includes("bookmark")
-                ) {
-                    termSuggestions = "marked, starred, flagged, saved";
-                } else if (
-                    key === "waiting" ||
-                    config.displayName.toLowerCase().includes("wait")
-                ) {
-                    termSuggestions = "blocked, pending, on-hold, deferred";
-                }
+                // Dynamically infer term suggestions based on display name patterns
+                const termSuggestions = this.inferStatusTermSuggestions(
+                    config.displayName,
+                );
                 return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
             })
             .join("\n");

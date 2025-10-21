@@ -12,6 +12,111 @@ import { PluginSettings } from "../settings";
  */
 export class PropertyRecognitionService {
     /**
+     * Dynamically infer semantic term suggestions based on display name patterns
+     * This allows the system to generate appropriate synonyms for ANY user-defined category
+     * without hardcoding specific category keys.
+     *
+     * @param displayName - The display name of the status category (e.g., "Important", "Bookmark")
+     * @param categoryKey - The internal key (used as fallback if no pattern matches)
+     * @returns Multilingual semantic terms for this category
+     */
+    private static inferStatusTerms(
+        displayName: string,
+        categoryKey: string,
+    ): string {
+        const lower = displayName.toLowerCase();
+
+        // Pattern matching for common category types (language-agnostic)
+        if (
+            lower.includes("open") ||
+            lower.includes("todo") ||
+            lower.includes("待办") ||
+            lower.includes("未完") ||
+            lower.includes("öppen")
+        ) {
+            return "未完成, 待办, öppen, todo, new, unstarted, incomplete";
+        }
+
+        if (
+            lower.includes("progress") ||
+            lower.includes("working") ||
+            lower.includes("active") ||
+            lower.includes("进行") ||
+            lower.includes("正在") ||
+            lower.includes("pågående")
+        ) {
+            return "进行中, 正在做, pågående, working, ongoing, active, doing, wip";
+        }
+
+        if (
+            lower.includes("complete") ||
+            lower.includes("done") ||
+            lower.includes("finish") ||
+            lower.includes("完成") ||
+            lower.includes("klar") ||
+            lower.includes("färdig")
+        ) {
+            return "完成, 已完成, klar, färdig, done, finished, closed, resolved";
+        }
+
+        if (
+            lower.includes("cancel") ||
+            lower.includes("abandon") ||
+            lower.includes("drop") ||
+            lower.includes("取消") ||
+            lower.includes("avbruten")
+        ) {
+            return "取消, 已取消, avbruten, canceled, abandoned, dropped, discarded";
+        }
+
+        if (
+            lower.includes("important") ||
+            lower.includes("urgent") ||
+            lower.includes("critical") ||
+            lower.includes("重要") ||
+            lower.includes("紧急") ||
+            lower.includes("viktig")
+        ) {
+            return "重要, 重要的, viktig, betydande, urgent, critical, high-priority, significant, key, essential";
+        }
+
+        if (
+            lower.includes("bookmark") ||
+            lower.includes("mark") ||
+            lower.includes("star") ||
+            lower.includes("flag") ||
+            lower.includes("书签") ||
+            lower.includes("标记") ||
+            lower.includes("bokmärke")
+        ) {
+            return "书签, 标记, bokmärke, märkt, marked, starred, flagged, saved, pinned";
+        }
+
+        if (
+            lower.includes("wait") ||
+            lower.includes("block") ||
+            lower.includes("pend") ||
+            lower.includes("hold") ||
+            lower.includes("等待") ||
+            lower.includes("待定") ||
+            lower.includes("väntar")
+        ) {
+            return "等待, 待定, väntar, väntande, blocked, pending, on-hold, deferred, postponed";
+        }
+
+        if (
+            lower.includes("other") ||
+            lower.includes("其他") ||
+            lower.includes("övrig")
+        ) {
+            return "其他, övrig, unrecognized, misc, other";
+        }
+
+        // Fallback: use displayName and categoryKey as base terms
+        return `${displayName.toLowerCase()}, ${categoryKey.toLowerCase()}`;
+    }
+
+    /**
      * Internal embedded mappings - Core property terms in multiple languages
      * These serve as fallback when user hasn't configured custom terms
      *
@@ -365,33 +470,47 @@ Be smart about implied meanings:
     /**
      * Build STATUS VALUE MAPPING for AI parser
      * Maps various phrases to normalized status values
+     * Now DYNAMIC: includes all custom status categories from user's taskStatusMapping
      */
-    static buildStatusValueMapping(): string {
+    static buildStatusValueMapping(settings: PluginSettings): string {
+        // Build status normalization examples dynamically from user settings
+        // Uses pattern matching on display names to infer appropriate semantic terms
+        const statusExamples = Object.entries(settings.taskStatusMapping)
+            .map(([key, config]) => {
+                // Dynamically infer term suggestions based on display name patterns
+                const termSuggestions = this.inferStatusTerms(
+                    config.displayName,
+                    key,
+                );
+
+                return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
+            })
+            .join("\n");
+
+        // Build key distinction examples dynamically (first 4 categories)
+        const distinctionExamples = Object.entries(settings.taskStatusMapping)
+            .slice(0, 5)
+            .map(([key, config]) => {
+                const displayName = config.displayName.toLowerCase();
+                return `- "${displayName} tasks" → "${key}" (specific value) ✅`;
+            })
+            .join("\n");
+
         return `
-STATUS VALUE MAPPING (normalize to these values):
+STATUS VALUE MAPPING (normalize to user-configured categories):
 
 IMPORTANT: There's a difference between:
 1. Asking for tasks WITH a status property (any value)
 2. Asking for tasks with SPECIFIC status value
 
-STATUS NORMALIZATION:
-- "open" = tasks that are OPEN/incomplete (未完成, 待办, öppen, pending, todo, new, unstarted)
-- "inProgress" = tasks IN PROGRESS (进行中, 正在做, pågående, working, ongoing, active, doing)
-- "completed" = tasks that are COMPLETED/done (完成, 已完成, klar, färdig, done, finished, closed, resolved)
-- "cancelled" = tasks that are CANCELLED/abandoned (取消, 已取消, avbruten, canceled, abandoned, dropped, discarded)
+STATUS NORMALIZATION (User-Configured - supports custom categories):
+${statusExamples}
 
 KEY DISTINCTION:
 - "status tasks" or "with status" = null (has any status - rarely used) ✅
-- "open tasks" or "pending tasks" = "open" (specific value) ✅
-- "done tasks" or "completed" = "completed" (specific value) ✅
-- "cancelled tasks" or "abandoned" = "cancelled" (specific value) ✅
-- "active tasks" or "in progress" = "inProgress" (specific value) ✅
+${distinctionExamples}
 
-Be smart about implied meanings:
-- "working on" → "inProgress" (actively working)
-- "finished" → "completed" (done)
-- "abandoned" → "cancelled" (given up)
-- "todo" → "open" (not started)
+Be smart about implied meanings and synonyms - map user's natural language to the correct status category key.
 `;
     }
 
@@ -453,23 +572,31 @@ Be smart about implied meanings:
                 lowerQuery.includes(term.toLowerCase()),
             );
 
-        // Check for status terms
-        const hasStatus =
+        // Check for status terms (dynamically check ALL categories)
+        let hasStatus = false;
+        if (
             combined.status.general.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
-            ) ||
-            combined.status.open.some((term) =>
-                lowerQuery.includes(term.toLowerCase()),
-            ) ||
-            combined.status.inProgress.some((term) =>
-                lowerQuery.includes(term.toLowerCase()),
-            ) ||
-            combined.status.completed.some((term) =>
-                lowerQuery.includes(term.toLowerCase()),
-            ) ||
-            combined.status.cancelled.some((term) =>
-                lowerQuery.includes(term.toLowerCase()),
-            );
+            )
+        ) {
+            hasStatus = true;
+        } else {
+            // Check all status categories dynamically (supports custom categories)
+            for (const [categoryKey, terms] of Object.entries(
+                combined.status,
+            )) {
+                if (categoryKey === "general") continue; // Already checked above
+                if (
+                    Array.isArray(terms) &&
+                    terms.some((term) =>
+                        lowerQuery.includes(term.toLowerCase()),
+                    )
+                ) {
+                    hasStatus = true;
+                    break;
+                }
+            }
+        }
 
         return {
             hasPriority,
