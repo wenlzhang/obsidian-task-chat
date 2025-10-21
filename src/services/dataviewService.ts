@@ -617,19 +617,16 @@ export class DataviewService {
     ): { start?: string; end?: string } | null {
         const lowerFilter = dateFilter.toLowerCase().trim();
 
-        // NEW: DataView duration formats (COMPREHENSIVE)
-        // Supports: "1s", "2min", "3hours", "4d", "5wks", "6mo", "7yr"
-        // Also: "1h 30m", "2d 4h", "1yr 2mo 3d"
+        // DataView duration formats (DAY-LEVEL ONLY)
+        // ONLY supports day-level or longer: "7d", "2w", "3mo", "1yr"
+        // Also supports combinations: "1yr 2mo 3d"
+        // NOTE: Sub-day patterns (seconds, minutes, hours) are NOT supported
+        // because our filtering uses date-only comparisons (.startOf("day"))
         const durationPattern =
-            /^(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)(?:\s+(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?(?:\s+(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?$/;
+            /^(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)(?:\s+(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?(?:\s+(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?$/;
         const durationMatch = lowerFilter.match(durationPattern);
         if (durationMatch) {
             const parseDurationUnit = (unitStr: string): string => {
-                if (/^(s|sec|secs|second|seconds)$/.test(unitStr))
-                    return "seconds";
-                if (/^(m|min|mins|minute|minutes)$/.test(unitStr))
-                    return "minutes";
-                if (/^(h|hr|hrs|hour|hours)$/.test(unitStr)) return "hours";
                 if (/^(d|day|days)$/.test(unitStr)) return "days";
                 if (/^(w|wk|wks|week|weeks)$/.test(unitStr)) return "weeks";
                 if (/^(mo|month|months)$/.test(unitStr)) return "months";
@@ -867,11 +864,12 @@ export class DataviewService {
      * Comprehensive support for Todoist patterns:
      * - "search: meeting" → extract keywords
      * - "p1", "p2", "p3", "p4" → priority
-     * - "#project" → project filter
+     * - "##project" → project filter
      * - "date before: May 5", "due before: May 5" → date ranges (distinguished)
      * - "overdue", "recurring", "subtask", "no date", "no priority" → special keywords
      * - "&" (AND), "|" (OR), "!" (NOT) → operators
-     * - "today at 2pm" → time support
+     * NOTE: Time components (e.g., "today at 2pm") are parsed but ignored
+     * because filtering uses date-only comparisons
      *
      * @param query Todoist-style query string
      * @returns Parsed query components compatible with our system
@@ -1003,22 +1001,21 @@ export class DataviewService {
     }
 
     /**
-     * Parse complex date strings with time support (NEW: Phase 3A)
-     * Supports: "May 5", "today at 2pm", "next Friday at 13:00"
+     * Parse date strings (DATE-ONLY, Phase 3A)
+     * Supports: "May 5", "today", "next Friday", "2025-10-21"
+     * NOTE: Time components (e.g., "at 2pm") are NOT supported because
+     * our filtering uses date-only comparisons (.startOf("day"))
      *
      * @param dateStr Date string to parse
-     * @returns Formatted date string (YYYY-MM-DD HH:mm) or null
+     * @returns Formatted date string (YYYY-MM-DD) or null
      */
     private static parseComplexDate(dateStr: string): string | null {
-        // Try chrono-node first (supports time)
+        // Try chrono-node first (natural language dates)
         const chronoParsed = chrono.parseDate(dateStr);
         if (chronoParsed) {
             const parsed = moment(chronoParsed);
             if (parsed.isValid()) {
-                // Check if time was included
-                if (dateStr.includes("at") || dateStr.includes(":")) {
-                    return parsed.format("YYYY-MM-DD HH:mm");
-                }
+                // Always return date-only format (time is stripped during filtering anyway)
                 return parsed.format("YYYY-MM-DD");
             }
         }

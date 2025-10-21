@@ -217,37 +217,19 @@ function runTests() {
     console.log(`${'='.repeat(80)}\n`);
     
     // ==========================================================================
-    // Test Suite 1: DataView Duration Formats (Comprehensive)
+    // Test Suite 1: DataView Duration Formats (Day-Level Only)
     // ==========================================================================
-    console.log(`\n📦 Test Suite 1: DataView Duration Formats (Comprehensive)`);
+    console.log(`\n📦 Test Suite 1: DataView Duration Formats (Day-Level Only)`);
     console.log(`${'-'.repeat(80)}`);
-    
-    // Seconds
-    runner.test('Parse "5s"', DataviewService.parseRelativeDateRange('5s', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "10 seconds"', DataviewService.parseRelativeDateRange('10 seconds', today),
-        (r) => r && r.start && r.end);
-    
-    // Minutes
-    runner.test('Parse "30m"', DataviewService.parseRelativeDateRange('30m', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "15 mins"', DataviewService.parseRelativeDateRange('15 mins', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "45 minutes"', DataviewService.parseRelativeDateRange('45 minutes', today),
-        (r) => r && r.start && r.end);
-    
-    // Hours
-    runner.test('Parse "2h"', DataviewService.parseRelativeDateRange('2h', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "4 hrs"', DataviewService.parseRelativeDateRange('4 hrs', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "8 hours"', DataviewService.parseRelativeDateRange('8 hours', today),
-        (r) => r && r.start && r.end);
+    console.log(`⚠️  NOTE: Sub-day patterns (seconds, minutes, hours) NOT supported`);
+    console.log(`   Reason: Filtering uses date-only comparisons (.startOf("day"))\n`);
     
     // Days
     runner.test('Parse "1d"', DataviewService.parseRelativeDateRange('1d', today),
         (r) => r && r.start && r.end);
     runner.test('Parse "7 days"', DataviewService.parseRelativeDateRange('7 days', today),
+        (r) => r && r.start && r.end);
+    runner.test('Parse "14 days"', DataviewService.parseRelativeDateRange('14 days', today),
         (r) => r && r.start && r.end);
     
     // Weeks
@@ -261,6 +243,8 @@ function runTests() {
     // Months
     runner.test('Parse "1mo"', DataviewService.parseRelativeDateRange('1mo', today),
         (r) => r && r.start && r.end);
+    runner.test('Parse "3 months"', DataviewService.parseRelativeDateRange('3 months', today),
+        (r) => r && r.start && r.end);
     runner.test('Parse "6 months"', DataviewService.parseRelativeDateRange('6 months', today),
         (r) => r && r.start && r.end);
     
@@ -270,12 +254,12 @@ function runTests() {
     runner.test('Parse "2 years"', DataviewService.parseRelativeDateRange('2 years', today),
         (r) => r && r.start && r.end);
     
-    // Combinations
-    runner.test('Parse "1h 30m"', DataviewService.parseRelativeDateRange('1h 30m', today),
-        (r) => r && r.start && r.end);
-    runner.test('Parse "2d 4h"', DataviewService.parseRelativeDateRange('2d 4h', today),
-        (r) => r && r.start && r.end);
+    // Combinations (day-level only)
     runner.test('Parse "1yr 2mo 3d"', DataviewService.parseRelativeDateRange('1yr 2mo 3d', today),
+        (r) => r && r.start && r.end);
+    runner.test('Parse "6mo 2w"', DataviewService.parseRelativeDateRange('6mo 2w', today),
+        (r) => r && r.start && r.end);
+    runner.test('Parse "2w 5d"', DataviewService.parseRelativeDateRange('2w 5d', today),
         (r) => r && r.start && r.end);
     
     // ==========================================================================

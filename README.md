@@ -78,7 +78,6 @@ Write queries using familiar Todoist patterns:
   - `due before: May 5` - Tasks due before a date
   - `date before: Friday` - Tasks dated before
   - `due after: today` - Tasks due after
-  - **Time Support**: `today at 2pm`, `Friday at 13:00` ⏰
 - **Special Keywords**:
   - `overdue` / `od` / `over due` - Overdue tasks
   - `recurring` - Recurring tasks
@@ -97,25 +96,19 @@ due before: today at 2pm & overdue
 ##ProjectName & !subtask & recurring
 ```
 
-#### **DataView Duration Formats** (40+ variations)
+#### **DataView Duration Formats** (Day-Level Only)
 
 Use concise DataView-style durations for date ranges:
 
 | Format | Example | Meaning |
 |--------|---------|---------|
-| **Seconds** | `30s`, `45 seconds` | Next 30/45 seconds |
-| **Minutes** | `15m`, `30 mins` | Next 15/30 minutes |
-| **Hours** | `2h`, `4 hours` | Next 2/4 hours |
 | **Days** | `7d`, `14 days` | Next 7/14 days |
 | **Weeks** | `2w`, `4 weeks` | Next 2/4 weeks |
 | **Months** | `3mo`, `6 months` | Next 3/6 months |
 | **Years** | `1yr`, `2 years` | Next 1/2 years |
-| **Combinations** | `1h 30m`, `2d 4h` | Combined durations |
+| **Combinations** | `1yr 2mo 3d` | Combined durations |
 
-**All abbreviations supported:**
-- Seconds: `s`, `sec`, `secs`, `second`, `seconds`
-- Minutes: `m`, `min`, `mins`, `minute`, `minutes`
-- Hours: `h`, `hr`, `hrs`, `hour`, `hours`
+**Supported abbreviations:**
 - Days: `d`, `day`, `days`
 - Weeks: `w`, `wk`, `wks`, `week`, `weeks`
 - Months: `mo`, `month`, `months`
@@ -123,27 +116,31 @@ Use concise DataView-style durations for date ranges:
 
 **Examples:**
 ```
-1h 30m              → Tasks in next 1.5 hours
-2d 4h               → Tasks in next 2 days 4 hours
+7d                  → Tasks in next 7 days
+2w                  → Tasks in next 2 weeks
+3mo                 → Tasks in next 3 months
 1yr 2mo 3d          → Tasks in next 1 year 2 months 3 days
 ```
 
-#### **Natural Language Dates** (~95% coverage)
+**⚠️ Limitation:** Sub-day patterns (seconds, minutes, hours, time-of-day) are not supported because filtering uses date-only comparisons. Patterns like `30s`, `2h`, or `today at 2pm` will not work as expected.
+
+#### **Natural Language Dates** (~95% coverage, Date-Only)
 
 Powered by chrono-node for maximum flexibility:
 
 - **Named Days**: `today`, `tomorrow`, `yesterday`, `monday`, `sat`
 - **Relative**: `next Friday`, `last Monday`, `in 2 weeks`
-- **Ranges**: `Aug 17 - Aug 19`, `Friday from 13:00 - 16:00`
-- **Time Expressions**: `today at 2pm`, `tomorrow at 09:30`
+- **Date Ranges**: `Aug 17 - Aug 19`
 - **Compound**: `2 weeks from now`, `5 days from now`
 
-#### **Enhanced Relative Dates** (25+ patterns)
+**Note:** Time components (e.g., `at 2pm`, `13:00`) are parsed but ignored because filtering uses date-only comparisons.
+
+#### **Enhanced Relative Dates** (20+ patterns, Day-Level)
 
 Flexible relative date expressions:
 
 - **Past**: `5 days ago`, `2 weeks ago`, `1 year ago`, `-3 days`
-- **Future**: `within 5 days`, `next 2 weeks`, `3 days`, `+4 hours`
+- **Future**: `within 5 days`, `next 2 weeks`, `3 days`
 - **Ranges**: `last 7 days`, `next 3 weeks`
 - **Named**: `next week`, `first day` (of month)
 - **Weekdays**: `sat`, `saturday`, `mon`, `monday`, etc.
@@ -157,14 +154,16 @@ within 2 weeks      → Next 2 weeks
 first day           → First day of current month
 ```
 
+**Note:** Sub-day relative patterns (e.g., `+4 hours`, `30 minutes ago`) are not supported.
+
 #### **Query Combinations**
 
 Mix and match for powerful queries:
 
 ```
-search: meeting & ##Work & p1 & due before: today at 2pm
+search: meeting & ##Work & p1 & due before: Friday
 overdue & recurring & ##ProjectName
-2d 4h & !no date & p2
+7d & !no date & p2
 next week & subtask & #urgent
 ```
 
