@@ -1024,6 +1024,45 @@ CRITICAL RULES:
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
 
+🚨 CRITICAL DISAMBIGUATION LOGIC - CHECK BEFORE EXTRACTING KEYWORDS:
+
+**STEP 1: Check if query matches STATUS category (HIGHEST PRIORITY)**
+- Compare query against STATUS MAPPING category names defined above
+- If the query word EXACTLY MATCHES a status display name (case-insensitive), it's a STATUS FILTER
+- Examples based on your STATUS MAPPING:
+  ${Object.entries(settings.taskStatusMapping)
+      .slice(0, 4)
+      .map(([key, config]) => {
+          const displayLower = config.displayName.toLowerCase();
+          return `  * Query: "${displayLower}" → CHECK: Does "${displayLower}" match status "${config.displayName}"? YES → status: "${key}", keywords: []`;
+      })
+      .join("\n")}
+
+**STEP 2: If not status, check if query matches PRIORITY level**
+- Check if query contains priority indicators (high, urgent, medium, low, etc.)
+- If yes → extract priority value, DO NOT add to keywords
+
+**STEP 3: If not status or priority, check if query matches DUE DATE**
+- Check if query contains date indicators (today, overdue, tomorrow, etc.)
+- If yes → extract dueDate value, DO NOT add to keywords
+
+**STEP 4: If none of the above, treat as content KEYWORDS**
+- Extract meaningful words and expand them semantically
+
+⚠️ DISAMBIGUATION PRIORITY ORDER:
+1. STATUS categories (check first!)
+2. PRIORITY indicators
+3. DUE DATE indicators
+4. KEYWORDS (only if not status/priority/date)
+
+⚠️ REAL EXAMPLE WALKTHROUGH:
+Query: "important"
+Step 1: Check STATUS MAPPING → Is "important" a status category? 
+  ${Object.keys(settings.taskStatusMapping).includes("important") ? '→ YES! "important" is a status category' : '→ NO, "important" is not a status category'}
+  ${Object.keys(settings.taskStatusMapping).includes("important") ? `→ Result: status: "important", keywords: []` : `→ Continue to Step 2`}
+Step 2: ${Object.keys(settings.taskStatusMapping).includes("important") ? "(Skipped - already matched as status)" : 'Check PRIORITY → Is "important" a priority indicator?'}
+  ${Object.keys(settings.taskStatusMapping).includes("important") ? "" : "→ Could be, but check if it's a status category FIRST (Step 1)"}
+
 🚨 STOP WORDS - DO NOT EXTRACT OR EXPAND TO THESE:
 The following ${stopWordsList.length} words are STOP WORDS. You MUST:
 1. NOT extract them as core keywords (skip them during extraction)

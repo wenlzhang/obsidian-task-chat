@@ -211,10 +211,12 @@ IMPORTANT DISTINCTION:
 2. Asking for tasks with SPECIFIC priority → priority: 1, 2, 3, or 4
 
 EXAMPLES:
-- "priority tasks" or "important tasks" → null (has any priority) ✅
+- "priority tasks" or "tasks with priority" → null (has any priority) ✅
 - "high priority" or "urgent" → 1 (specific value) ✅
 - "medium priority" → 2 (specific value) ✅
-- "low priority" → 3 (specific value) ✅`;
+- "low priority" → 3 (specific value) ✅
+
+⚠️ NOTE: If "important" is a STATUS category (check STATUS MAPPING section), "important" refers to STATUS, not priority!`;
     }
 
     /**
@@ -304,6 +306,11 @@ ${categoryExamples}
 
 Your task: Generate semantic equivalents in ${languageList} for recognizing these status values.
 
+🔑 CRITICAL DISAMBIGUATION RULES:
+1. If a word/phrase EXACTLY MATCHES a status category name (e.g., "${categoryKeys[0]}", "${categoryKeys[1]}"), interpret it as a STATUS FILTER FIRST
+2. When user says just "${categoryKeys.map((k) => settings.taskStatusMapping[k].displayName.toLowerCase()).join('", "')}" (without "tasks"), assume they mean that status
+3. Only interpret as keywords if the term does NOT match any status category
+
 STATUS DISTINCTION:
 1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
 2. Asking for tasks with SPECIFIC status → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
@@ -311,10 +318,19 @@ STATUS DISTINCTION:
 EXAMPLES (using current categories):
 ${Object.entries(settings.taskStatusMapping)
     .slice(0, 4)
-    .map(
-        ([key, config]) =>
-            `- "${config.displayName.toLowerCase()} tasks" → "${key}" (specific value) ✅`,
-    )
+    .map(([key, config]) => {
+        const displayLower = config.displayName.toLowerCase();
+        return `- "${displayLower}" → status: "${key}" (status category match) ✅\n- "${displayLower} tasks" → status: "${key}" (specific value) ✅`;
+    })
+    .join("\n")}
+
+DISAMBIGUATION EXAMPLES (IMPORTANT!):
+${Object.entries(settings.taskStatusMapping)
+    .slice(0, 3)
+    .map(([key, config]) => {
+        const displayLower = config.displayName.toLowerCase();
+        return `- Query: "${displayLower}" → Check: Does "${displayLower}" match status "${key}"? YES → status: "${key}" ✅`;
+    })
     .join("\n")}`;
     }
 
