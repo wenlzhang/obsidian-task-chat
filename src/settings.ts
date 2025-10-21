@@ -241,7 +241,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         inProgress: {
             symbols: ["/"],
             score: 0.75,
-            displayName: "In progress",
+            displayName: "In Progress",
         },
         cancelled: {
             symbols: ["-"],

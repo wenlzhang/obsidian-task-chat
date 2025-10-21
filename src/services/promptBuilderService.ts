@@ -14,10 +14,7 @@ export class PromptBuilderService {
     private static inferStatusDescription(displayName: string): string {
         const lower = displayName.toLowerCase();
 
-        if (
-            lower.includes("open") ||
-            lower.includes("todo")
-        ) {
+        if (lower.includes("open") || lower.includes("todo")) {
             return "Tasks not yet started or awaiting action";
         }
 
@@ -86,10 +83,7 @@ export class PromptBuilderService {
     private static inferStatusTermSuggestions(displayName: string): string {
         const lower = displayName.toLowerCase();
 
-        if (
-            lower.includes("open") ||
-            lower.includes("todo")
-        ) {
+        if (lower.includes("open") || lower.includes("todo")) {
             return "incomplete, todo, new, unstarted";
         }
 

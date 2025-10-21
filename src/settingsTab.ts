@@ -1584,7 +1584,7 @@ Examples:
                 <li><strong>Partially locked (displayName + symbols can be modified):</strong>
                     <ul style="margin-left: 20px; margin-top: 3px;">
                         <li><strong>Completed:</strong> Finished tasks</li>
-                        <li><strong>In progress:</strong> Tasks being worked on</li>
+                        <li><strong>In Progress:</strong> Tasks being worked on</li>
                         <li><strong>Cancelled:</strong> Abandoned tasks</li>
                     </ul>
                 </li>
