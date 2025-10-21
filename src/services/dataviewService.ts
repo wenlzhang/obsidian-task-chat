@@ -1,6 +1,7 @@
 import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
+import * as chrono from "chrono-node";
 
 /**
  * Service for integrating with Dataview plugin to fetch tasks
@@ -564,7 +565,19 @@ export class DataviewService {
             }
 
             default:
-                // Try to parse as specific date (YYYY-MM-DD)
+                // NEW (Phase 2): Try natural language parsing with chrono-node
+                const chronoParsed = chrono.parseDate(dateFilter);
+                if (chronoParsed) {
+                    const chronoDate = moment(chronoParsed).startOf("day");
+                    if (chronoDate.isValid()) {
+                        return {
+                            start: chronoDate.format("YYYY-MM-DD"),
+                            end: chronoDate.format("YYYY-MM-DD"),
+                        };
+                    }
+                }
+
+                // Fallback: Try to parse as specific date (YYYY-MM-DD)
                 const parsedDate = moment(dateFilter, "YYYY-MM-DD", true);
                 if (parsedDate.isValid()) {
                     return {
@@ -574,6 +587,89 @@ export class DataviewService {
                 }
                 return null;
         }
+    }
+
+    /**
+     * Parse Todoist-style query syntax (NEW: Phase 2 Enhancement)
+     * Supports patterns like:
+     * - "search: meeting" → extract keywords
+     * - "p1", "p2" → priority
+     * - "date before: May 5" → date range
+     * - "& " → AND operator (implicit in our system)
+     *
+     * @param query Todoist-style query string
+     * @returns Parsed query components compatible with our system
+     */
+    static parseTodoistSyntax(query: string): {
+        keywords?: string[];
+        priority?: number;
+        dueDate?: string;
+        dueDateRange?: { start?: string; end?: string };
+    } {
+        const result: any = {};
+
+        // Pattern 1: "search: keyword" or "search: 'phrase with spaces'"
+        const searchMatch = query.match(/search:\s*["']?([^"'&|]+)["']?/i);
+        if (searchMatch) {
+            const searchTerm = searchMatch[1].trim();
+            result.keywords = [searchTerm];
+        }
+
+        // Pattern 2: Priority "p1", "p2", "p3", "p4"
+        const priorityMatch = query.match(/\bp([1-4])\b/i);
+        if (priorityMatch) {
+            result.priority = parseInt(priorityMatch[1]);
+        }
+
+        // Pattern 3: "date before: <date>" (improved regex to capture multi-word dates)
+        const dateBeforeMatch = query.match(
+            /date\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateBeforeMatch) {
+            const dateStr = dateBeforeMatch[1].trim();
+            // Try parsing with chrono-node first
+            const chronoParsed = chrono.parseDate(dateStr);
+            if (chronoParsed) {
+                const parsed = moment(chronoParsed);
+                if (parsed.isValid()) {
+                    result.dueDateRange = { end: parsed.format("YYYY-MM-DD") };
+                }
+            } else {
+                // Fallback to moment parsing
+                const parsed = moment(dateStr);
+                if (parsed.isValid()) {
+                    result.dueDateRange = { end: parsed.format("YYYY-MM-DD") };
+                }
+            }
+        }
+
+        // Pattern 4: "date after: <date>" (improved regex to capture multi-word dates)
+        const dateAfterMatch = query.match(
+            /date\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateAfterMatch) {
+            const dateStr = dateAfterMatch[1].trim();
+            // Try parsing with chrono-node first
+            const chronoParsed = chrono.parseDate(dateStr);
+            if (chronoParsed) {
+                const parsed = moment(chronoParsed);
+                if (parsed.isValid()) {
+                    result.dueDateRange = {
+                        start: parsed.format("YYYY-MM-DD"),
+                    };
+                }
+            } else {
+                // Fallback to moment parsing
+                const parsed = moment(dateStr);
+                if (parsed.isValid()) {
+                    result.dueDateRange = {
+                        start: parsed.format("YYYY-MM-DD"),
+                    };
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
