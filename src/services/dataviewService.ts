@@ -41,8 +41,11 @@ export class DataviewService {
         for (const [category, config] of Object.entries(
             settings.taskStatusMapping,
         )) {
-            if (config.symbols.some((s) => s === cleanSymbol)) {
-                return category as TaskStatusCategory;
+            // Defensive check: ensure config and symbols array exist
+            if (config && Array.isArray(config.symbols)) {
+                if (config.symbols.some((s) => s === cleanSymbol)) {
+                    return category as TaskStatusCategory;
+                }
             }
         }
 

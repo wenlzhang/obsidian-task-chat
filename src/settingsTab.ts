@@ -1715,8 +1715,20 @@ Examples:
     private renderStatusCategory(
         containerEl: HTMLElement,
         categoryKey: string,
-        config: { symbols: string[]; score: number; displayName: string },
+        config: { symbols?: string[]; score?: number; displayName?: string },
     ): void {
+        // Defensive check: ensure config has required properties
+        if (!config) {
+            console.error(
+                `[Task Chat] Invalid config for category: ${categoryKey}`,
+            );
+            return;
+        }
+
+        // Set defaults for missing properties
+        const symbols = Array.isArray(config.symbols) ? config.symbols : [];
+        const displayName = config.displayName || categoryKey;
+        const score = typeof config.score === "number" ? config.score : 0.5;
         const categoryContainer = containerEl.createDiv({
             cls: "status-category-container",
         });
@@ -1730,7 +1742,7 @@ Examples:
 
         const titleDiv = headerDiv.createDiv();
         titleDiv.style.cssText = "font-weight: 600; font-size: 14px;";
-        titleDiv.textContent = config.displayName || categoryKey;
+        titleDiv.textContent = displayName;
 
         const removeButton = headerDiv.createEl("button", {
             text: "Remove",
@@ -1743,7 +1755,7 @@ Examples:
                     const modal = new (require("obsidian").Modal)(this.app);
                     modal.titleEl.setText("Remove status category?");
                     modal.contentEl.createEl("p", {
-                        text: `Are you sure you want to remove the "${config.displayName}" category? This will affect how tasks with these symbols are scored.`,
+                        text: `Are you sure you want to remove the "${displayName}" category? This will affect how tasks with these symbols are scored.`,
                     });
                     const buttonDiv = modal.contentEl.createDiv();
                     buttonDiv.style.cssText =
@@ -1769,7 +1781,7 @@ Examples:
                 delete this.plugin.settings.taskStatusMapping[categoryKey];
                 await this.plugin.saveSettings();
                 this.display(); // Refresh UI
-                new Notice(`Removed category: ${config.displayName}`);
+                new Notice(`Removed category: ${displayName}`);
             }
         };
 
@@ -1789,7 +1801,7 @@ Examples:
             .addText((text) =>
                 text
                     .setPlaceholder("Enter display name")
-                    .setValue(config.displayName)
+                    .setValue(displayName)
                     .onChange(async (value) => {
                         this.plugin.settings.taskStatusMapping[
                             categoryKey
@@ -1805,7 +1817,7 @@ Examples:
             .addText((text) =>
                 text
                     .setPlaceholder("e.g., !, ‼️, !!")
-                    .setValue(config.symbols.join(", "))
+                    .setValue(symbols.join(", "))
                     .onChange(async (value) => {
                         this.plugin.settings.taskStatusMapping[
                             categoryKey
@@ -1821,12 +1833,12 @@ Examples:
         new Setting(categoryContainer)
             .setName("Score weight")
             .setDesc(
-                `Scoring weight for this category (0.0-2.0). Current: ${config.score.toFixed(2)}`,
+                `Scoring weight for this category (0.0-2.0). Current: ${score.toFixed(2)}`,
             )
             .addSlider((slider) =>
                 slider
                     .setLimits(0, 2, 0.05)
-                    .setValue(config.score)
+                    .setValue(score)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.plugin.settings.taskStatusMapping[
