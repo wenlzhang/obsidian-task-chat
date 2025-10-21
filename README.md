@@ -201,6 +201,145 @@ s:open,/,?,! & next week            → Open, in-progress, blocked, or important
 s:x,done,finished & ##Archive       → All completed tasks (any expression)
 ```
 
+#### **🤖 AI-Enhanced Natural Language Queries** (Smart Search & Task Chat)
+
+**Available in**: Smart Search and Task Chat modes (not Simple Search)
+
+Type naturally in any language - AI understands your intent, corrects typos, and maps to structured queries!
+
+**Natural Language Examples:**
+
+```
+English:
+"show me urgent open tasks that are overdue"
+→ AI understands: s:open & p1 & overdue
+
+"tasks I'm working on that are due tomorrow"
+→ AI understands: s:inprogress & due:2025-01-22
+
+"critical bugs in the payment system"
+→ AI understands: keywords:[bug, payment, system] & p1
+
+中文 (Chinese):
+"明天到期的紧急未完成任务"
+→ AI understands: s:open & p1 & due:tomorrow
+
+"正在进行的高优先级工作"
+→ AI understands: s:inprogress & p1
+
+Swedish:
+"brådskande ofullständiga uppgifter förfallna imorgon"
+→ AI understands: s:open & p1 & due:tomorrow
+
+German:
+"dringende unvollständige Aufgaben fällig morgen"
+→ AI understands: s:open & p1 & due:tomorrow
+
+Spanish:
+"tareas urgentes incompletas vencidas mañana"
+→ AI understands: s:open & p1 & due:tomorrow
+```
+
+**Typo Tolerance:**
+
+```
+User types: "s:opne & priorty:1 & complated taks"
+AI corrects: s:open & p1 & completed tasks ✅
+
+Common typos handled:
+- priorty → priority
+- complated → completed
+- taks → task
+- urgant → urgent
+- opne → open
+```
+
+**Property Understanding Across Languages:**
+
+```
+Status Recognition:
+English: open, in progress, done, cancelled, blocked
+中文: 打开, 进行中, 完成, 取消, 阻塞
+Swedish: öppen, pågående, klar, avbruten, blockerad
+
+Priority Recognition:
+English: urgent, critical, high, medium, low
+中文: 紧急, 严重, 高, 中, 低
+Swedish: brådskande, kritisk, hög, medel, låg
+
+Due Date Recognition:
+English: tomorrow, next week, overdue
+中文: 明天, 下周, 过期
+Swedish: imorgon, nästa vecka, försenad
+```
+
+**How It Works:**
+
+1. **Simple Search**: Uses regex patterns (fast, free, no AI)
+2. **Smart Search**: AI parses natural language → structured query → uses internal filtering
+3. **Task Chat**: Same as Smart Search + AI analysis & recommendations
+
+**Benefits:**
+
+- ✅ **Multilingual**: Query in 5+ languages (English, 中文, Swedish, German, Spanish)
+- ✅ **Typo-tolerant**: AI corrects common mistakes automatically
+- ✅ **Natural**: Type how you think, not in syntax
+- ✅ **Transparent**: See what AI understood (Task Chat shows feedback)
+- ✅ **Reliable**: Falls back to Simple Search if AI uncertain
+- ✅ **Optional**: Can still use exact syntax if preferred
+
+**Cost:**
+- Simple Search: $0 (no AI)
+- Smart Search: ~$0.0001 per query (AI parsing only)
+- Task Chat: ~$0.0021 per query (AI parsing + analysis)
+
+**Example Workflow:**
+
+```
+User (English): "show me critical bugs that are overdue"
+
+AI Understanding (shown in Task Chat):
+┌─────────────────────────────────────────────┐
+│ 🤖 Query Understanding                      │
+├─────────────────────────────────────────────┤
+│ Keywords: bugs, critical                    │
+│ Priority: p1 (critical)                     │
+│ Due date: overdue                           │
+│ Status: (any)                               │
+│                                             │
+│ Found: 12 critical overdue bugs             │
+└─────────────────────────────────────────────┘
+
+AI Analysis:
+┌─────────────────────────────────────────────┐
+│ 🎯 Task Analysis                            │
+├─────────────────────────────────────────────┤
+│ Most urgent: 5 bugs overdue >1 week         │
+│ In progress: 3                              │
+│ Not started: 4                              │
+│                                             │
+│ Recommendation: Focus on [TASK_1] first -   │
+│ payment system bug affecting production     │
+└─────────────────────────────────────────────┘
+```
+
+**Settings:**
+
+Configure AI enhancements in Settings → AI Provider Settings:
+- Enable/disable per mode
+- Set confidence threshold
+- Configure supported languages
+- Toggle typo correction
+- Show/hide AI understanding
+
+**Best Practices:**
+
+1. **Use natural language** in Smart Search & Task Chat
+2. **Use exact syntax** in Simple Search for speed
+3. **Mix both**: Natural language + exact syntax works!
+4. **Any language**: Query in your preferred language
+5. **Don't worry about typos**: AI corrects automatically
+
 ### 🎯 Task Display & Sorting
 - **Multi-Criteria Sorting**: Tasks are sorted by multiple criteria in sequence
   - Primary sort applied first, secondary for ties, tertiary for further ties
