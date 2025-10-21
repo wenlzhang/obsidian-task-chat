@@ -87,7 +87,7 @@ export interface QueryIntent {
     // Property filters - support both single and multi-value
     extractedPriority: number | number[] | null; // Single: 1, Multi: [1, 2, 3]
     extractedDueDateFilter: string | null; // Simple date filter: "today", "overdue", "+5d"
-    extractedDueDateRange: { start: string; end: string } | null; // Date range: "this week"
+    extractedDueDateRange: DateRange | null; // Date range: "before 2025-12-31", "after 2025-01-01", "from X to Y"
     extractedStatus: string | string[] | null; // Single: "open", Multi: ["open", "inProgress"]
 
     // Other filters

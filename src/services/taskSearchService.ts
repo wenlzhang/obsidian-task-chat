@@ -113,6 +113,16 @@ export class TaskSearchService {
             "",
         );
 
+        // Remove date range phrases (NEW: Phase 1 Enhancement)
+        cleanedQuery = cleanedQuery.replace(
+            /(?:date\s+)?(?:before|after)[:\s]+\d{4}-\d{2}-\d{2}/gi,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            /from\s+\d{4}-\d{2}-\d{2}\s+to\s+\d{4}-\d{2}-\d{2}/gi,
+            "",
+        );
+
         // Remove status phrases
         cleanedQuery = cleanedQuery.replace(
             /(?:open|completed|done|finished|in\s*progress|未完成|完成|已完成|进行中)/gi,
@@ -472,6 +482,44 @@ export class TaskSearchService {
     }
 
     /**
+     * Extract date range from query (NEW: Phase 1 Enhancement)
+     * Supports patterns: "before YYYY-MM-DD", "after YYYY-MM-DD", "from YYYY-MM-DD to YYYY-MM-DD"
+     *
+     * @returns { start?: string, end?: string } | null
+     */
+    static extractDueDateRange(
+        query: string,
+    ): { start?: string; end?: string } | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Pattern 1: "before YYYY-MM-DD" or "date before: YYYY-MM-DD"
+        const beforeMatch = lowerQuery.match(
+            /(?:date\s+)?before[:\s]+(\d{4}-\d{2}-\d{2})/,
+        );
+        if (beforeMatch) {
+            return { end: beforeMatch[1] };
+        }
+
+        // Pattern 2: "after YYYY-MM-DD" or "date after: YYYY-MM-DD"
+        const afterMatch = lowerQuery.match(
+            /(?:date\s+)?after[:\s]+(\d{4}-\d{2}-\d{2})/,
+        );
+        if (afterMatch) {
+            return { start: afterMatch[1] };
+        }
+
+        // Pattern 3: "from YYYY-MM-DD to YYYY-MM-DD"
+        const betweenMatch = lowerQuery.match(
+            /from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/,
+        );
+        if (betweenMatch) {
+            return { start: betweenMatch[1], end: betweenMatch[2] };
+        }
+
+        return null;
+    }
+
+    /**
      * Extract status filter from query
      * Supports: open, inProgress, completed, cancelled
      */
@@ -713,6 +761,7 @@ export class TaskSearchService {
             query,
             settings,
         );
+        const extractedDueDateRange = this.extractDueDateRange(query); // NEW: Enhanced date range extraction
         const extractedStatus = this.extractStatusFromQuery(query);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
@@ -722,6 +771,7 @@ export class TaskSearchService {
         const filterCount =
             (extractedPriority ? 1 : 0) +
             (extractedDueDateFilter ? 1 : 0) +
+            (extractedDueDateRange ? 1 : 0) +
             (extractedStatus ? 1 : 0) +
             (extractedFolder ? 1 : 0) +
             (extractedTags.length > 0 ? 1 : 0) +
@@ -733,6 +783,28 @@ export class TaskSearchService {
             settings,
         );
 
+        // Enhanced logging for debugging (Phase 1 Enhancement #2)
+        console.log("[Simple Search] ========== QUERY PARSING ==========");
+        console.log("[Simple Search] Original query:", query);
+        console.log("[Simple Search] Extracted properties:", {
+            priority: extractedPriority || "none",
+            dueDate: extractedDueDateFilter || "none",
+            dueDateRange: extractedDueDateRange
+                ? JSON.stringify(extractedDueDateRange)
+                : "none",
+            status: extractedStatus || "none",
+            folder: extractedFolder || "none",
+            tags: extractedTags.length > 0 ? extractedTags.join(", ") : "none",
+        });
+        console.log(
+            "[Simple Search] Extracted keywords:",
+            keywords.length > 0 ? keywords.join(", ") : "(none)",
+        );
+        console.log("[Simple Search] Active filters:", filterCount);
+        console.log(
+            "[Simple Search] ==========================================",
+        );
+
         return {
             isSearch: this.isSearchQuery(query),
             isPriority: propertyHints.hasPriority,
@@ -740,7 +812,7 @@ export class TaskSearchService {
             keywords,
             extractedPriority,
             extractedDueDateFilter,
-            extractedDueDateRange: null, // TODO: Add regex-based range extraction
+            extractedDueDateRange, // NEW: Now uses actual extracted value
             extractedStatus,
             extractedFolder,
             extractedTags,
