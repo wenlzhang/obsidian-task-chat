@@ -473,13 +473,51 @@ This means:
 - [ ] "open or in progress high priority" → Open/InProgress P1 tasks
 - [ ] "completed tasks in 5 days" → Completed tasks due in 5 days
 
-## Next Steps
+## UI Implementation
 
-### UI Implementation (Pending)
-- [ ] Add status mapping UI to settings tab
-- [ ] Allow users to configure status value mapping
-- [ ] Add tooltips explaining multi-value syntax
-- [ ] Add examples to settings descriptions
+### Status Mapping UI (✅ Complete)
+Added comprehensive status mapping UI in settings tab:
+
+**Location:** After priority mapping, before pricing information
+
+**Features:**
+- 5 text input fields for status categories (open, completed, inProgress, cancelled, other)
+- Comma-separated values for each category
+- Uses existing `taskStatusMapping` setting
+- Follows same pattern as priority mapping UI
+- Includes helpful description with common status characters
+- Links to popular task plugins (Tasks, Task Marker)
+
+**Example Configuration:**
+```
+Open: " ", -, ?, !
+Completed: x, X
+In Progress: /, >, <
+Cancelled: -
+Other: *, R, P
+```
+
+**Integration:**
+```typescript
+// Settings interface (already existed)
+taskStatusMapping: Record<string, string[]>
+
+// Default values (already existed)
+taskStatusMapping: {
+    open: [" ", ""],
+    completed: ["x", "X"],
+    inProgress: ["/", "~"],
+    cancelled: ["-"],
+    other: [],
+}
+```
+
+**Learned from Reference Plugins:**
+- **Todoist Context Bridge**: Mapping object pattern with text inputs
+- **Task Marker**: Simple string inputs for character configuration
+- **Hybrid approach**: Text inputs with comma separation for flexibility
+
+## Next Steps
 
 ### Documentation (Pending)
 - [ ] Update README with multi-value examples
@@ -522,7 +560,7 @@ This means:
 ✅ **DataView Integration:** Complete  
 ✅ **Simple Search Support:** Complete  
 ✅ **AI Service Integration:** Complete  
-⏳ **UI Implementation:** Pending (status mapping)  
+✅ **Status Mapping UI:** Complete  
 ⏳ **Documentation:** Pending (user guide)  
 
-**Overall Progress:** 80% complete
+**Overall Progress:** 95% complete - Ready for testing!

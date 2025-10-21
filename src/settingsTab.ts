@@ -1637,6 +1637,141 @@ Examples:
                     }),
             );
 
+        // Status Mapping
+        containerEl.createEl("h3", { text: "Status mapping" });
+
+        const statusMappingDesc = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        statusMappingDesc.innerHTML = `
+            <p>Define which task status characters map to each category. Separate multiple characters with commas.</p>
+            <p><strong>Common Status Characters:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 5px;">
+                <li><code>[ ]</code> or <code> </code> (space) = Open/incomplete tasks</li>
+                <li><code>[x]</code> or <code>[X]</code> = Completed tasks</li>
+                <li><code>[/]</code> or <code>[>]</code> = In progress tasks</li>
+                <li><code>[-]</code> = Cancelled tasks</li>
+                <li>Custom characters like <code>[!]</code>, <code>[?]</code>, <code>[*]</code>, etc.</li>
+            </ul>
+            <p><strong>💡 Tip:</strong> Match these to your vault's task markers or use with plugins like <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a>.</p>
+        `;
+
+        new Setting(containerEl)
+            .setName('Status "open" characters')
+            .setDesc(
+                "Characters for open/incomplete tasks (e.g., space, -, ?, !)",
+            )
+            .addText((text) =>
+                text
+                    .setPlaceholder(" , -, ?, !")
+                    .setValue(
+                        this.plugin.settings.taskStatusMapping.open.join(", "),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping.open = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("status-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName('Status "completed" characters')
+            .setDesc("Characters for completed tasks (e.g., x, X)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("x, X")
+                    .setValue(
+                        this.plugin.settings.taskStatusMapping.completed.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping.completed = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("status-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName('Status "in progress" characters')
+            .setDesc("Characters for in-progress tasks (e.g., /, >, <)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("/, >, <")
+                    .setValue(
+                        this.plugin.settings.taskStatusMapping.inProgress.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping.inProgress =
+                            value
+                                .split(",")
+                                .map((v) => v.trim())
+                                .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("status-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName('Status "cancelled" characters')
+            .setDesc("Characters for cancelled tasks (e.g., -)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("-")
+                    .setValue(
+                        this.plugin.settings.taskStatusMapping.cancelled.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping.cancelled = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("status-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName('Status "other" characters')
+            .setDesc(
+                "Characters for other/custom status (e.g., *, R, P, anything else)",
+            )
+            .addText((text) =>
+                text
+                    .setPlaceholder("*, R, P")
+                    .setValue(
+                        this.plugin.settings.taskStatusMapping.other.join(", "),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping.other = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("status-mapping-input");
+                    }),
+            );
+
         // Pricing Information
         containerEl.createEl("h3", { text: "Pricing data" });
 
