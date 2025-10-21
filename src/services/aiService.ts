@@ -185,20 +185,23 @@ export class AIService {
             const hasPropertyFilters = !!(
                 intent.extractedPriority ||
                 intent.extractedDueDateFilter ||
+                intent.extractedDueDateRange ||
                 intent.extractedStatus
             );
 
             if (hasPropertyFilters) {
                 // Reload tasks from DataView API with property filters
+                // Multi-value support: priority and status can be arrays
                 tasksAfterPropertyFilter =
                     await DataviewService.parseTasksFromDataview(
                         app,
                         settings,
                         undefined, // No legacy date filter
                         {
-                            priority: intent.extractedPriority,
-                            dueDate: intent.extractedDueDateFilter,
-                            status: intent.extractedStatus,
+                            priority: intent.extractedPriority, // Can be number or number[]
+                            dueDate: intent.extractedDueDateFilter, // Single date or relative
+                            dueDateRange: intent.extractedDueDateRange, // Date range
+                            status: intent.extractedStatus, // Can be string or string[]
                         },
                     );
             }

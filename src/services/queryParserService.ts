@@ -24,9 +24,15 @@ export interface ParsedQuery {
     coreKeywords?: string[]; // Original extracted keywords before expansion
 
     // PART 2: Task Attributes (Structured Filters)
-    priority?: number; // 1, 2, 3, 4
-    dueDate?: string; // "any" (has due date), "today", "tomorrow", "overdue", "future", "week", "next-week", or specific date
-    status?: string; // "open", "completed", "inProgress"
+    // Multi-value support: Can be single value or array
+    priority?: number | number[]; // Single: 1, Multi: [1, 2, 3]
+    dueDate?: string; // Single date: "today", "overdue", "+5d" (relative)
+    dueDateRange?: {
+        // Date range: "this week", "next month"
+        start: string;
+        end: string;
+    };
+    status?: string | string[]; // Single: "open", Multi: ["open", "inProgress"]
     folder?: string;
     tags?: string[];
 
@@ -587,13 +593,106 @@ Example 6: "pågående high priority tasks"
 5. Property terms should NEVER appear in keywords array
 6. Each query can have BOTH keywords AND properties
 
+🚨 MULTI-VALUE PROPERTIES & DATE RANGES (NEW!)
+
+The system now supports multi-value properties and date ranges for more flexible filtering:
+
+**MULTI-VALUE PRIORITY:**
+Users can specify multiple priority levels to search across:
+
+Examples:
+- "priority 1 2 3 tasks" → priority: [1, 2, 3] (array for multi-value)
+- "high or medium priority" → priority: [1, 2] (array)
+- "priority 1" → priority: 1 (single number)
+- "priority tasks" → priority: null (any priority)
+
+Rules:
+- If user specifies multiple numeric priorities, return as array: [1, 2, 3]
+- If user says "1 or 2" or "1 2", return as array: [1, 2]
+- If user specifies one priority, return as single number: 1
+- If user just wants tasks WITH priority (no specific value), return null
+
+**MULTI-VALUE STATUS:**
+Users can specify multiple statuses to search across:
+
+Examples:
+- "open or in progress tasks" → status: ["open", "inProgress"] (array for multi-value)
+- "completed or cancelled" → status: ["completed", "cancelled"] (array)
+- "done tasks" → status: "completed" (single string)
+- "active tasks" → status: ["open", "inProgress"] (interpret "active" as multiple statuses)
+
+Rules:
+- If user specifies multiple statuses, return as array: ["open", "inProgress"]
+- If user says "or", return as array: ["completed", "cancelled"]
+- If user specifies one status, return as single string: "open"
+- Use correct status values: "open", "inProgress", "completed", "cancelled"
+
+**RELATIVE DATE SUPPORT:**
+Users can specify dates relative to today:
+
+Examples:
+- "due in 5 days" → dueDate: "+5d" (5 days from now)
+- "due in 2 weeks" → dueDate: "+2w" (2 weeks from now)
+- "due in 1 month" → dueDate: "+1m" (1 month from now)
+- "due today" → dueDate: "today" (existing format)
+- "overdue" → dueDate: "overdue" (existing format)
+
+Relative date format:
+- "+Nd" = N days from now (e.g., "+5d" = 5 days)
+- "+Nw" = N weeks from now (e.g., "+2w" = 2 weeks)
+- "+Nm" = N months from now (e.g., "+1m" = 1 month)
+
+**DATE RANGE SUPPORT:**
+Users can specify date ranges:
+
+Examples:
+- "due this week" → dueDateRange: {start: "week-start", end: "week-end"}
+- "due next week" → dueDateRange: {start: "next-week-start", end: "next-week-end"}
+- "due this month" → dueDateRange: {start: "month-start", end: "month-end"}
+- "due between Monday and Friday" → dueDateRange: {start: "YYYY-MM-DD", end: "YYYY-MM-DD"}
+
+Rules:
+- If user specifies a range, use dueDateRange with start and end
+- If user specifies a single date/relative date, use dueDate
+- Do NOT use both dueDate and dueDateRange in same query
+
+**MULTI-VALUE + RANGE COMBINED EXAMPLES:**
+
+Example 1: "priority 1 2 tasks due this week"
+Result:
+{
+  "coreKeywords": ["tasks"],
+  "keywords": [<expanded>],
+  "priority": [1, 2],
+  "dueDateRange": {"start": "week-start", "end": "week-end"}
+}
+
+Example 2: "open or in progress high priority tasks"
+Result:
+{
+  "coreKeywords": ["tasks"],
+  "keywords": [<expanded>],
+  "status": ["open", "inProgress"],
+  "priority": 1
+}
+
+Example 3: "completed or cancelled tasks from last month"
+Result:
+{
+  "coreKeywords": ["tasks"],
+  "keywords": [<expanded>],
+  "status": ["completed", "cancelled"],
+  "dueDateRange": {"start": "last-month-start", "end": "last-month-end"}
+}
+
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
   "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
-  "priority": <number or null>,
+  "priority": <number or array of numbers or null>,
   "dueDate": <string or null>,
-  "status": <string or null>,
+  "dueDateRange": <{start: string, end: string} or null>,
+  "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>]
 }

@@ -3,6 +3,14 @@ import { SessionData } from "./models/task";
 // Priority mapping type: Fixed numeric keys (1-4), customizable string values
 export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
 
+// Status mapping type: Fixed status categories, customizable string values
+export type StatusMapping = {
+    open: string[];
+    inProgress: string[];
+    completed: string[];
+    cancelled: string[];
+};
+
 // Sort criterion type for multi-criteria sorting
 // "relevance" is always first and cannot be removed (primary sort)
 // Other criteria serve as tiebreakers for tasks with equal scores
@@ -53,6 +61,10 @@ export interface PluginSettings {
 
     // Priority Mapping (numeric keys 1-4, customizable string values)
     dataviewPriorityMapping: PriorityMapping;
+
+    // Status Value Mapping (fixed status categories, customizable string values)
+    // Maps natural language terms to status categories for query recognition
+    dataviewStatusMapping: StatusMapping;
 
     // Date Formats
     dateFormats: {
@@ -201,6 +213,19 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         2: ["2", "p2", "medium"],
         3: ["3", "p3", "low"],
         4: ["4", "p4", "none"],
+    },
+
+    // Status Value Mapping
+    // Keys: FIXED status categories (open, inProgress, completed, cancelled)
+    // Values: CUSTOMIZABLE strings that map to each category
+    // Example: User can add "待办" to open, then "待办" in query will filter for open tasks
+    // This is separate from taskStatusMapping which maps checkbox symbols
+    // This maps natural language terms to status categories for query recognition
+    dataviewStatusMapping: {
+        open: ["open", "pending", "todo"],
+        inProgress: ["progress", "doing", "wip", "active"],
+        completed: ["done", "finished", "complete", "closed"],
+        cancelled: ["cancelled", "canceled", "abandoned", "dropped"],
     },
 
     // Date Formats

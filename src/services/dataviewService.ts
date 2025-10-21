@@ -589,15 +589,16 @@ export class DataviewService {
      */
     private static buildTaskFilter(
         intent: {
-            priority?: number | null;
+            priority?: number | number[] | null; // Support multi-value
             dueDate?: string | null;
-            status?: string | null;
+            dueDateRange?: { start: string; end: string } | null;
+            status?: string | string[] | null; // Support multi-value
         },
         settings: PluginSettings,
     ): ((dvTask: any) => boolean) | null {
         const filters: ((dvTask: any) => boolean)[] = [];
 
-        // Build priority filter (checks task metadata)
+        // Build priority filter (supports multi-value)
         if (intent.priority) {
             const priorityFields = [
                 settings.dataviewKeys.priority,
@@ -605,7 +606,9 @@ export class DataviewService {
                 "p",
                 "pri",
             ];
-            const targetPriority = intent.priority;
+            const targetPriorities = Array.isArray(intent.priority)
+                ? intent.priority
+                : [intent.priority];
 
             filters.push((dvTask: any) => {
                 // Check task's own fields
@@ -613,7 +616,10 @@ export class DataviewService {
                     const value = dvTask[field];
                     if (value !== undefined && value !== null) {
                         const mapped = this.mapPriority(value, settings);
-                        if (mapped === targetPriority) {
+                        if (
+                            mapped !== undefined &&
+                            targetPriorities.includes(mapped)
+                        ) {
                             return true;
                         }
                     }
@@ -671,17 +677,106 @@ export class DataviewService {
                     }
                     return false;
                 });
+            } else if (intent.dueDate.startsWith("+")) {
+                // Relative date: +Nd (days), +Nw (weeks), +Nm (months)
+                const match = intent.dueDate.match(/^\+(\d+)([dwm])$/);
+                if (match) {
+                    const amount = parseInt(match[1]);
+                    const unit = match[2];
+                    let targetDate: moment.Moment;
+
+                    if (unit === "d") {
+                        targetDate = moment().add(amount, "days");
+                    } else if (unit === "w") {
+                        targetDate = moment().add(amount, "weeks");
+                    } else if (unit === "m") {
+                        targetDate = moment().add(amount, "months");
+                    } else {
+                        // Invalid unit, skip this filter
+                        targetDate = moment(); // Fallback to today
+                    }
+
+                    const targetDateStr = targetDate.format("YYYY-MM-DD");
+                    filters.push((dvTask: any) => {
+                        for (const field of dueDateFields) {
+                            const value = dvTask[field];
+                            if (value) {
+                                const formatted = this.formatDate(value);
+                                if (formatted === targetDateStr) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    });
+                }
             }
             // Add more due date filters as needed (tomorrow, week, etc.)
         }
 
-        // Build status filter (checks task status)
+        // Build date range filter
+        if (intent.dueDateRange) {
+            const dueDateFields = [
+                settings.dataviewKeys.dueDate,
+                "due",
+                "deadline",
+                "dueDate",
+                "scheduled",
+            ];
+            const { start, end } = intent.dueDateRange;
+
+            // Parse range keywords (week-start, month-start, etc.)
+            let startDate: moment.Moment;
+            let endDate: moment.Moment;
+
+            if (start === "week-start") {
+                startDate = moment().startOf("week");
+            } else if (start === "next-week-start") {
+                startDate = moment().add(1, "week").startOf("week");
+            } else if (start === "month-start") {
+                startDate = moment().startOf("month");
+            } else {
+                startDate = moment(start);
+            }
+
+            if (end === "week-end") {
+                endDate = moment().endOf("week");
+            } else if (end === "next-week-end") {
+                endDate = moment().add(1, "week").endOf("week");
+            } else if (end === "month-end") {
+                endDate = moment().endOf("month");
+            } else {
+                endDate = moment(end);
+            }
+
+            filters.push((dvTask: any) => {
+                for (const field of dueDateFields) {
+                    const value = dvTask[field];
+                    if (value) {
+                        const taskDate = moment(this.formatDate(value));
+                        if (
+                            taskDate.isSameOrAfter(startDate, "day") &&
+                            taskDate.isSameOrBefore(endDate, "day")
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Build status filter (supports multi-value)
         if (intent.status) {
+            const targetStatuses = Array.isArray(intent.status)
+                ? intent.status
+                : [intent.status];
+
             filters.push((dvTask: any) => {
                 const status = dvTask.status;
                 if (status !== undefined) {
                     const mapped = this.mapStatusToCategory(status, settings);
-                    return mapped === intent.status;
+                    return targetStatuses.includes(mapped);
                 }
                 return false;
             });
@@ -714,9 +809,10 @@ export class DataviewService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | null;
-            dueDate?: string | null;
-            status?: string | null;
+            priority?: number | number[] | null; // Support multi-value
+            dueDate?: string | null; // Single date or relative
+            dueDateRange?: { start: string; end: string } | null; // Date range
+            status?: string | string[] | null; // Support multi-value
         },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);

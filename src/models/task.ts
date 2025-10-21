@@ -69,3 +69,28 @@ export interface SessionData {
     currentSessionId: string | null;
     lastSessionId: string | null;
 }
+
+/**
+ * Query intent analysis result from regex parsing (Simple Search) or AI parsing (Smart/Chat)
+ * Supports multi-value properties and date ranges
+ */
+export interface QueryIntent {
+    // Query analysis flags
+    isSearch: boolean;
+    isPriority: boolean;
+    isDueDate: boolean;
+    hasMultipleFilters: boolean;
+
+    // Content keywords for semantic matching
+    keywords: string[];
+
+    // Property filters - support both single and multi-value
+    extractedPriority: number | number[] | null; // Single: 1, Multi: [1, 2, 3]
+    extractedDueDateFilter: string | null; // Simple date filter: "today", "overdue", "+5d"
+    extractedDueDateRange: { start: string; end: string } | null; // Date range: "this week"
+    extractedStatus: string | string[] | null; // Single: "open", Multi: ["open", "inProgress"]
+
+    // Other filters
+    extractedFolder: string | null;
+    extractedTags: string[];
+}

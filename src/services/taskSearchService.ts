@@ -1,4 +1,4 @@
-import { Task } from "../models/task";
+import { Task, QueryIntent } from "../models/task";
 import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
@@ -320,6 +320,24 @@ export class TaskSearchService {
             return "next-week";
         }
 
+        // Check for relative date patterns (NEW: "in 5 days", "in 2 weeks", "in 1 month")
+        const relativeDatePattern =
+            /\bin\s+(\d+)\s+(day|days|week|weeks|month|months)\b/i;
+        const relativeMatch = lowerQuery.match(relativeDatePattern);
+        if (relativeMatch) {
+            const amount = relativeMatch[1];
+            const unit = relativeMatch[2].toLowerCase();
+
+            // Normalize to single letter: d, w, m
+            if (unit.startsWith("day")) {
+                return `+${amount}d`;
+            } else if (unit.startsWith("week")) {
+                return `+${amount}w`;
+            } else if (unit.startsWith("month")) {
+                return `+${amount}m`;
+            }
+        }
+
         // Check for specific date patterns (YYYY-MM-DD, MM-DD, etc.)
         const datePatterns = [
             /\b(\d{4}-\d{2}-\d{2})\b/, // YYYY-MM-DD
@@ -411,6 +429,33 @@ export class TaskSearchService {
                 }
 
                 default:
+                    // Check for relative date format: +Nd, +Nw, +Nm
+                    if (filter.startsWith("+")) {
+                        const relativeMatch = filter.match(/^\+(\d+)([dwm])$/);
+                        if (relativeMatch) {
+                            const amount = parseInt(relativeMatch[1]);
+                            const unit = relativeMatch[2];
+                            const targetDate = new Date(today);
+
+                            if (unit === "d") {
+                                targetDate.setDate(
+                                    targetDate.getDate() + amount,
+                                );
+                            } else if (unit === "w") {
+                                targetDate.setDate(
+                                    targetDate.getDate() + amount * 7,
+                                );
+                            } else if (unit === "m") {
+                                targetDate.setMonth(
+                                    targetDate.getMonth() + amount,
+                                );
+                            }
+
+                            targetDate.setHours(0, 0, 0, 0);
+                            return dueDate.getTime() === targetDate.getTime();
+                        }
+                    }
+
                     // Try to match specific date
                     try {
                         const targetDate = new Date(filter);
@@ -536,13 +581,14 @@ export class TaskSearchService {
 
     /**
      * Apply compound filters to tasks
+     * Now supports multi-value properties (priority and status can be arrays)
      */
     static applyCompoundFilters(
         tasks: Task[],
         filters: {
-            priority?: number | null;
+            priority?: number | number[] | null; // Support single or array
             dueDate?: string | null;
-            status?: string | null;
+            status?: string | string[] | null; // Support single or array
             folder?: string | null;
             tags?: string[];
             keywords?: string[];
@@ -550,14 +596,18 @@ export class TaskSearchService {
     ): Task[] {
         let filteredTasks = [...tasks];
 
-        // Apply priority filter
+        // Apply priority filter (supports multi-value)
         if (filters.priority) {
             const beforePriority = filteredTasks.length;
-            filteredTasks = filteredTasks.filter(
-                (task) => task.priority === filters.priority,
+            const priorities = Array.isArray(filters.priority)
+                ? filters.priority
+                : [filters.priority];
+
+            filteredTasks = filteredTasks.filter((task) =>
+                priorities.includes(task.priority!),
             );
             console.log(
-                `[Task Chat] Priority filter (${filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
+                `[Task Chat] Priority filter (${Array.isArray(filters.priority) ? filters.priority.join(", ") : filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -573,14 +623,18 @@ export class TaskSearchService {
             );
         }
 
-        // Apply status filter
+        // Apply status filter (supports multi-value)
         if (filters.status) {
             const beforeStatus = filteredTasks.length;
-            filteredTasks = filteredTasks.filter(
-                (task) => task.statusCategory === filters.status,
+            const statuses = Array.isArray(filters.status)
+                ? filters.status
+                : [filters.status];
+
+            filteredTasks = filteredTasks.filter((task) =>
+                statuses.includes(task.statusCategory),
             );
             console.log(
-                `[Task Chat] Status filter (${filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
+                `[Task Chat] Status filter (${Array.isArray(filters.status) ? filters.status.join(", ") : filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -644,25 +698,16 @@ export class TaskSearchService {
     }
 
     /**
-     * Analyze query intent with comprehensive filter extraction
+     * Analyze query intent using regex-based extraction (Simple Search mode)
+     * Now returns QueryIntent type with support for multi-value properties and date ranges
+     *
      * @param query User's search query
      * @param settings Plugin settings (for property term recognition)
      */
     static analyzeQueryIntent(
         query: string,
         settings: PluginSettings,
-    ): {
-        isSearch: boolean;
-        isPriority: boolean;
-        isDueDate: boolean;
-        keywords: string[];
-        extractedPriority: number | null;
-        extractedDueDateFilter: string | null;
-        extractedStatus: string | null;
-        extractedFolder: string | null;
-        extractedTags: string[];
-        hasMultipleFilters: boolean;
-    } {
+    ): QueryIntent {
         const extractedPriority = this.extractPriorityFromQuery(query);
         const extractedDueDateFilter = this.extractDueDateFilter(
             query,
@@ -695,6 +740,7 @@ export class TaskSearchService {
             keywords,
             extractedPriority,
             extractedDueDateFilter,
+            extractedDueDateRange: null, // TODO: Add regex-based range extraction
             extractedStatus,
             extractedFolder,
             extractedTags,
