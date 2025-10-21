@@ -825,15 +825,23 @@ export class TaskSearchService {
     }
 
     /**
-     * Validate extracted query properties (NEW: Enhancement #4)
-     * Warns about invalid priorities and date ranges
+     * Validate extracted query properties (ENHANCED: Phase 3E)
+     * Comprehensive validation for:
+     * - Priorities (1-4)
+     * - Date ranges (with time support)
+     * - Project names
+     * - Special keywords
      *
      * @param priority Extracted priority (1-4 is valid)
      * @param dueDateRange Extracted date range
+     * @param project Extracted project name (optional)
+     * @param specialKeywords Extracted special keywords (optional)
      */
     private static validateQueryProperties(
         priority: number | null,
         dueDateRange: { start?: string; end?: string } | null,
+        project?: string | null,
+        specialKeywords?: string[],
     ): void {
         // Validate priority (only 1-4 are valid)
         if (priority !== null && (priority < 1 || priority > 4)) {
@@ -842,31 +850,69 @@ export class TaskSearchService {
             );
         }
 
+        // NEW: Validate project name
+        if (project) {
+            // Check for invalid characters (only alphanumeric, underscore, dash allowed)
+            if (!/^[A-Za-z0-9_-]+$/.test(project)) {
+                console.warn(
+                    `[Simple Search] ⚠️  Invalid project name: "${project}". Use only letters, numbers, underscore, or dash.`,
+                );
+            }
+        }
+
+        // NEW: Validate special keywords
+        if (specialKeywords && specialKeywords.length > 0) {
+            const validKeywords = [
+                "overdue",
+                "recurring",
+                "subtask",
+                "no_date",
+                "has_date",
+                "no_priority",
+            ];
+            const invalid = specialKeywords.filter(
+                (kw) => !validKeywords.includes(kw),
+            );
+            if (invalid.length > 0) {
+                console.warn(
+                    `[Simple Search] ⚠️  Unknown special keywords: ${invalid.join(", ")}`,
+                );
+            }
+        }
+
         // Validate date range
         if (dueDateRange) {
             const { start, end } = dueDateRange;
 
+            // NEW: Support both date-only and date-time formats
+            const isValidDate = (dateStr: string): boolean => {
+                // Try YYYY-MM-DD HH:mm format first (with time)
+                if (moment(dateStr, "YYYY-MM-DD HH:mm", true).isValid()) {
+                    return true;
+                }
+                // Try YYYY-MM-DD format (date only)
+                if (moment(dateStr, "YYYY-MM-DD", true).isValid()) {
+                    return true;
+                }
+                return false;
+            };
+
             // Check if start date is valid
-            if (start && !moment(start, "YYYY-MM-DD", true).isValid()) {
+            if (start && !isValidDate(start)) {
                 console.warn(
-                    `[Simple Search] ⚠️  Invalid start date: "${start}". Expected format: YYYY-MM-DD.`,
+                    `[Simple Search] ⚠️  Invalid start date: "${start}". Expected format: YYYY-MM-DD or YYYY-MM-DD HH:mm.`,
                 );
             }
 
             // Check if end date is valid
-            if (end && !moment(end, "YYYY-MM-DD", true).isValid()) {
+            if (end && !isValidDate(end)) {
                 console.warn(
-                    `[Simple Search] ⚠️  Invalid end date: "${end}". Expected format: YYYY-MM-DD.`,
+                    `[Simple Search] ⚠️  Invalid end date: "${end}". Expected format: YYYY-MM-DD or YYYY-MM-DD HH:mm.`,
                 );
             }
 
             // Check if start is after end
-            if (
-                start &&
-                end &&
-                moment(start, "YYYY-MM-DD", true).isValid() &&
-                moment(end, "YYYY-MM-DD", true).isValid()
-            ) {
+            if (start && end && isValidDate(start) && isValidDate(end)) {
                 const startDate = moment(start);
                 const endDate = moment(end);
                 if (startDate.isAfter(endDate)) {
@@ -874,6 +920,18 @@ export class TaskSearchService {
                         `[Simple Search] ⚠️  Invalid date range: start (${start}) is after end (${end}).`,
                     );
                 }
+            }
+
+            // NEW: Warn if time without date
+            if (start && start.includes(":") && !start.includes(" ")) {
+                console.warn(
+                    `[Simple Search] ⚠️  Time without date: "${start}". Use format: YYYY-MM-DD HH:mm.`,
+                );
+            }
+            if (end && end.includes(":") && !end.includes(" ")) {
+                console.warn(
+                    `[Simple Search] ⚠️  Time without date: "${end}". Use format: YYYY-MM-DD HH:mm.`,
+                );
             }
         }
     }

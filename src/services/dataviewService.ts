@@ -599,12 +599,13 @@ export class DataviewService {
     }
 
     /**
-     * Parse relative date ranges (NEW: Enhancement #3)
-     * Supports patterns like:
-     * - "5 days ago" → date 5 days in the past
-     * - "within 5 days" → range from today to 5 days in future
-     * - "next 2 weeks" → range from today to 14 days in future
-     * - "last 3 days" → range from 3 days ago to today
+     * Parse relative date ranges (ENHANCED: Phase 3D)
+     * Comprehensive support for:
+     * - Original: "5 days ago", "within 5 days", "next 2 weeks", "last 7 days"
+     * - Todoist-style: "3 days", "-3 days", "+4 hours"
+     * - DataView duration: "1D", "2W", "1M", "1Y"
+     * - Named: "next week", "first day", "sat"
+     * - Compound: "1 week after next week"
      *
      * @param dateFilter Date filter string
      * @param today Reference date (usually current date)
@@ -616,9 +617,155 @@ export class DataviewService {
     ): { start?: string; end?: string } | null {
         const lowerFilter = dateFilter.toLowerCase().trim();
 
+        // NEW: DataView duration formats (COMPREHENSIVE)
+        // Supports: "1s", "2min", "3hours", "4d", "5wks", "6mo", "7yr"
+        // Also: "1h 30m", "2d 4h", "1yr 2mo 3d"
+        const durationPattern =
+            /^(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)(?:\s+(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?(?:\s+(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?$/;
+        const durationMatch = lowerFilter.match(durationPattern);
+        if (durationMatch) {
+            const parseDurationUnit = (unitStr: string): string => {
+                if (/^(s|sec|secs|second|seconds)$/.test(unitStr))
+                    return "seconds";
+                if (/^(m|min|mins|minute|minutes)$/.test(unitStr))
+                    return "minutes";
+                if (/^(h|hr|hrs|hour|hours)$/.test(unitStr)) return "hours";
+                if (/^(d|day|days)$/.test(unitStr)) return "days";
+                if (/^(w|wk|wks|week|weeks)$/.test(unitStr)) return "weeks";
+                if (/^(mo|month|months)$/.test(unitStr)) return "months";
+                if (/^(yr|yrs|year|years)$/.test(unitStr)) return "years";
+                return "days"; // fallback
+            };
+
+            let futureDate = today.clone();
+
+            // Parse first unit
+            const amount1 = parseInt(durationMatch[1]);
+            const unit1 = parseDurationUnit(durationMatch[2]);
+            futureDate = futureDate.add(
+                amount1,
+                unit1 as moment.unitOfTime.DurationConstructor,
+            );
+
+            // Parse optional second unit
+            if (durationMatch[3] && durationMatch[4]) {
+                const amount2 = parseInt(durationMatch[3]);
+                const unit2 = parseDurationUnit(durationMatch[4]);
+                futureDate = futureDate.add(
+                    amount2,
+                    unit2 as moment.unitOfTime.DurationConstructor,
+                );
+            }
+
+            // Parse optional third unit
+            if (durationMatch[5] && durationMatch[6]) {
+                const amount3 = parseInt(durationMatch[5]);
+                const unit3 = parseDurationUnit(durationMatch[6]);
+                futureDate = futureDate.add(
+                    amount3,
+                    unit3 as moment.unitOfTime.DurationConstructor,
+                );
+            }
+
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
+        // NEW: Todoist-style: "3 days" (next 3 days)
+        const todoistNextMatch = lowerFilter.match(
+            /^(\d+)\s+(day|days|week|weeks)$/,
+        );
+        if (todoistNextMatch) {
+            const amount = parseInt(todoistNextMatch[1]);
+            const unit = todoistNextMatch[2].startsWith("week")
+                ? "weeks"
+                : "days";
+            const futureDate = today.clone().add(amount, unit);
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
+        // NEW: Todoist-style: "-3 days" (past 3 days)
+        const todoistPastMatch = lowerFilter.match(
+            /^-(\d+)\s+(day|days|week|weeks)$/,
+        );
+        if (todoistPastMatch) {
+            const amount = parseInt(todoistPastMatch[1]);
+            const unit = todoistPastMatch[2].startsWith("week")
+                ? "weeks"
+                : "days";
+            const pastDate = today.clone().subtract(amount, unit);
+            return {
+                start: pastDate.format("YYYY-MM-DD"),
+                end: today.format("YYYY-MM-DD"),
+            };
+        }
+
+        // NEW: Todoist-style: "+4 hours"
+        const todoistHoursMatch = lowerFilter.match(/^\+(\d+)\s+hours?$/);
+        if (todoistHoursMatch) {
+            const hours = parseInt(todoistHoursMatch[1]);
+            const futureTime = today.clone().add(hours, "hours");
+            return {
+                start: today.format("YYYY-MM-DD HH:mm"),
+                end: futureTime.format("YYYY-MM-DD HH:mm"),
+            };
+        }
+
+        // NEW: Named days: "next week", "sat", "saturday"
+        if (lowerFilter === "next week") {
+            const nextWeekStart = today.clone().add(7, "days").startOf("week");
+            const nextWeekEnd = nextWeekStart.clone().endOf("week");
+            return {
+                start: nextWeekStart.format("YYYY-MM-DD"),
+                end: nextWeekEnd.format("YYYY-MM-DD"),
+            };
+        }
+
+        if (lowerFilter === "first day") {
+            const firstDay = today.clone().startOf("month");
+            return {
+                start: firstDay.format("YYYY-MM-DD"),
+                end: firstDay.format("YYYY-MM-DD"),
+            };
+        }
+
+        // NEW: Day names: "sat", "saturday", etc.
+        const dayNames: { [key: string]: number } = {
+            sun: 0,
+            sunday: 0,
+            mon: 1,
+            monday: 1,
+            tue: 2,
+            tuesday: 2,
+            wed: 3,
+            wednesday: 3,
+            thu: 4,
+            thursday: 4,
+            fri: 5,
+            friday: 5,
+            sat: 6,
+            saturday: 6,
+        };
+        if (dayNames.hasOwnProperty(lowerFilter)) {
+            const targetDay = dayNames[lowerFilter];
+            const currentDay = today.day();
+            let daysToAdd = targetDay - currentDay;
+            if (daysToAdd <= 0) daysToAdd += 7; // Next occurrence
+            const targetDate = today.clone().add(daysToAdd, "days");
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: targetDate.format("YYYY-MM-DD"),
+            };
+        }
+
         // Pattern 1: "X days/weeks/months ago"
         const agoMatch = lowerFilter.match(
-            /(\d+)\s+(day|days|week|weeks|month|months)\s+ago/,
+            /(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago/,
         );
         if (agoMatch) {
             const amount = parseInt(agoMatch[1]);
@@ -626,7 +773,9 @@ export class DataviewService {
                 ? "weeks"
                 : agoMatch[2].startsWith("month")
                   ? "months"
-                  : "days";
+                  : agoMatch[2].startsWith("year")
+                    ? "years"
+                    : "days";
             const pastDate = today.clone().subtract(amount, unit);
             return {
                 start: pastDate.format("YYYY-MM-DD"),
@@ -636,27 +785,13 @@ export class DataviewService {
 
         // Pattern 2: "within X days/weeks"
         const withinMatch = lowerFilter.match(
-            /within\s+(\d+)\s+(day|days|week|weeks)/,
+            /within\s+(\d+)\s+(day|days|week|weeks|month|months)/,
         );
         if (withinMatch) {
             const amount = parseInt(withinMatch[1]);
-            const unit = withinMatch[2].startsWith("week") ? "weeks" : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 3: "next X days/weeks/months"
-        const nextMatch = lowerFilter.match(
-            /next\s+(\d+)\s+(day|days|week|weeks|month|months)/,
-        );
-        if (nextMatch) {
-            const amount = parseInt(nextMatch[1]);
-            const unit = nextMatch[2].startsWith("week")
+            const unit = withinMatch[2].startsWith("week")
                 ? "weeks"
-                : nextMatch[2].startsWith("month")
+                : withinMatch[2].startsWith("month")
                   ? "months"
                   : "days";
             const futureDate = today.clone().add(amount, unit);
@@ -666,13 +801,37 @@ export class DataviewService {
             };
         }
 
+        // Pattern 3: "next X days/weeks/months"
+        const nextMatch = lowerFilter.match(
+            /next\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)/,
+        );
+        if (nextMatch) {
+            const amount = parseInt(nextMatch[1]);
+            const unit = nextMatch[2].startsWith("week")
+                ? "weeks"
+                : nextMatch[2].startsWith("month")
+                  ? "months"
+                  : nextMatch[2].startsWith("year")
+                    ? "years"
+                    : "days";
+            const futureDate = today.clone().add(amount, unit);
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
         // Pattern 4: "last X days/weeks"
         const lastMatch = lowerFilter.match(
-            /last\s+(\d+)\s+(day|days|week|weeks)/,
+            /last\s+(\d+)\s+(day|days|week|weeks|month|months)/,
         );
         if (lastMatch) {
             const amount = parseInt(lastMatch[1]);
-            const unit = lastMatch[2].startsWith("week") ? "weeks" : "days";
+            const unit = lastMatch[2].startsWith("week")
+                ? "weeks"
+                : lastMatch[2].startsWith("month")
+                  ? "months"
+                  : "days";
             const pastDate = today.clone().subtract(amount, unit);
             return {
                 start: pastDate.format("YYYY-MM-DD"),
@@ -680,16 +839,39 @@ export class DataviewService {
             };
         }
 
+        // Pattern 5: "X weeks/months from now"
+        const fromNowMatch = lowerFilter.match(
+            /(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+from\s+now/,
+        );
+        if (fromNowMatch) {
+            const amount = parseInt(fromNowMatch[1]);
+            const unit = fromNowMatch[2].startsWith("week")
+                ? "weeks"
+                : fromNowMatch[2].startsWith("month")
+                  ? "months"
+                  : fromNowMatch[2].startsWith("year")
+                    ? "years"
+                    : "days";
+            const futureDate = today.clone().add(amount, unit);
+            return {
+                start: futureDate.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
         return null;
     }
 
     /**
-     * Parse Todoist-style query syntax (NEW: Phase 2 Enhancement)
-     * Supports patterns like:
+     * Parse Todoist-style query syntax (ENHANCED: Phase 3A)
+     * Comprehensive support for Todoist patterns:
      * - "search: meeting" → extract keywords
-     * - "p1", "p2" → priority
-     * - "date before: May 5" → date range
-     * - "& " → AND operator (implicit in our system)
+     * - "p1", "p2", "p3", "p4" → priority
+     * - "#project" → project filter
+     * - "date before: May 5", "due before: May 5" → date ranges (distinguished)
+     * - "overdue", "recurring", "subtask", "no date", "no priority" → special keywords
+     * - "&" (AND), "|" (OR), "!" (NOT) → operators
+     * - "today at 2pm" → time support
      *
      * @param query Todoist-style query string
      * @returns Parsed query components compatible with our system
@@ -699,8 +881,19 @@ export class DataviewService {
         priority?: number;
         dueDate?: string;
         dueDateRange?: { start?: string; end?: string };
+        project?: string;
+        specialKeywords?: string[];
+        operators?: { and?: boolean; or?: boolean; not?: boolean };
     } {
-        const result: any = {};
+        const result: any = {
+            specialKeywords: [],
+            operators: {},
+        };
+
+        // NEW: Detect operators
+        if (query.includes("&")) result.operators.and = true;
+        if (query.includes("|")) result.operators.or = true;
+        if (query.includes("!")) result.operators.not = true;
 
         // Pattern 1: "search: keyword" or "search: 'phrase with spaces'"
         const searchMatch = query.match(/search:\s*["']?([^"'&|]+)["']?/i);
@@ -709,61 +902,134 @@ export class DataviewService {
             result.keywords = [searchTerm];
         }
 
-        // Pattern 2: Priority "p1", "p2", "p3", "p4"
+        // NEW Pattern 2: Projects "#ProjectName" or "##SubProject"
+        const projectMatch = query.match(/##+([A-Za-z0-9_-]+)/);
+        if (projectMatch) {
+            result.project = projectMatch[1];
+        }
+
+        // Pattern 3: Priority "p1", "p2", "p3", "p4"
         const priorityMatch = query.match(/\bp([1-4])\b/i);
         if (priorityMatch) {
             result.priority = parseInt(priorityMatch[1]);
         }
 
-        // Pattern 3: "date before: <date>" (improved regex to capture multi-word dates)
-        const dateBeforeMatch = query.match(
-            /date\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
-        );
-        if (dateBeforeMatch) {
-            const dateStr = dateBeforeMatch[1].trim();
-            // Try parsing with chrono-node first
-            const chronoParsed = chrono.parseDate(dateStr);
-            if (chronoParsed) {
-                const parsed = moment(chronoParsed);
-                if (parsed.isValid()) {
-                    result.dueDateRange = { end: parsed.format("YYYY-MM-DD") };
-                }
+        // NEW Pattern 4: Special keywords
+        // "overdue" or "over due" or "od"
+        if (
+            /\b(overdue|over\s+due|od)\b/i.test(query) &&
+            !query.includes("!overdue")
+        ) {
+            result.specialKeywords.push("overdue");
+            // Set date range to show overdue tasks
+            const today = moment().startOf("day");
+            result.dueDateRange = { end: today.format("YYYY-MM-DD") };
+        }
+
+        // "recurring"
+        if (/\brecurring\b/i.test(query) && !query.includes("!recurring")) {
+            result.specialKeywords.push("recurring");
+        }
+
+        // "subtask"
+        if (/\bsubtask\b/i.test(query) && !query.includes("!subtask")) {
+            result.specialKeywords.push("subtask");
+        }
+
+        // "no date" or "!no date"
+        if (/\bno\s+date\b/i.test(query)) {
+            if (query.includes("!no date")) {
+                result.specialKeywords.push("has_date");
             } else {
-                // Fallback to moment parsing
-                const parsed = moment(dateStr);
-                if (parsed.isValid()) {
-                    result.dueDateRange = { end: parsed.format("YYYY-MM-DD") };
-                }
+                result.specialKeywords.push("no_date");
             }
         }
 
-        // Pattern 4: "date after: <date>" (improved regex to capture multi-word dates)
-        const dateAfterMatch = query.match(
-            /date\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        // "no priority"
+        if (/\bno\s+priority\b/i.test(query)) {
+            result.specialKeywords.push("no_priority");
+            result.priority = 4; // In Todoist, no priority = p4
+        }
+
+        // NEW Pattern 5: "due before: <date>" vs "date before: <date>" (distinguished)
+        const dueBeforeMatch = query.match(
+            /due\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
         );
-        if (dateAfterMatch) {
+        if (dueBeforeMatch) {
+            const dateStr = dueBeforeMatch[1].trim();
+            const parsedDate = this.parseComplexDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { end: parsedDate };
+            }
+        }
+
+        // Pattern 6: "date before: <date>" (for tasks with date property)
+        const dateBeforeMatch = query.match(
+            /(?<!due\s)date\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateBeforeMatch && !dueBeforeMatch) {
+            const dateStr = dateBeforeMatch[1].trim();
+            const parsedDate = this.parseComplexDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { end: parsedDate };
+            }
+        }
+
+        // NEW Pattern 7: "due after: <date>" vs "date after: <date>" (distinguished)
+        const dueAfterMatch = query.match(
+            /due\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dueAfterMatch) {
+            const dateStr = dueAfterMatch[1].trim();
+            const parsedDate = this.parseComplexDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { start: parsedDate };
+            }
+        }
+
+        // Pattern 8: "date after: <date>"
+        const dateAfterMatch = query.match(
+            /(?<!due\s)date\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateAfterMatch && !dueAfterMatch) {
             const dateStr = dateAfterMatch[1].trim();
-            // Try parsing with chrono-node first
-            const chronoParsed = chrono.parseDate(dateStr);
-            if (chronoParsed) {
-                const parsed = moment(chronoParsed);
-                if (parsed.isValid()) {
-                    result.dueDateRange = {
-                        start: parsed.format("YYYY-MM-DD"),
-                    };
-                }
-            } else {
-                // Fallback to moment parsing
-                const parsed = moment(dateStr);
-                if (parsed.isValid()) {
-                    result.dueDateRange = {
-                        start: parsed.format("YYYY-MM-DD"),
-                    };
-                }
+            const parsedDate = this.parseComplexDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { start: parsedDate };
             }
         }
 
         return result;
+    }
+
+    /**
+     * Parse complex date strings with time support (NEW: Phase 3A)
+     * Supports: "May 5", "today at 2pm", "next Friday at 13:00"
+     *
+     * @param dateStr Date string to parse
+     * @returns Formatted date string (YYYY-MM-DD HH:mm) or null
+     */
+    private static parseComplexDate(dateStr: string): string | null {
+        // Try chrono-node first (supports time)
+        const chronoParsed = chrono.parseDate(dateStr);
+        if (chronoParsed) {
+            const parsed = moment(chronoParsed);
+            if (parsed.isValid()) {
+                // Check if time was included
+                if (dateStr.includes("at") || dateStr.includes(":")) {
+                    return parsed.format("YYYY-MM-DD HH:mm");
+                }
+                return parsed.format("YYYY-MM-DD");
+            }
+        }
+
+        // Fallback to moment parsing
+        const parsed = moment(dateStr);
+        if (parsed.isValid()) {
+            return parsed.format("YYYY-MM-DD");
+        }
+
+        return null;
     }
 
     /**

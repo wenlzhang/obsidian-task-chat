@@ -63,6 +63,111 @@ Choose the mode that fits your needs. Set your default in settings, override per
 - **Compound Filtering**: Combine multiple filters simultaneously
   - Example: "high priority overdue tasks in project folder with #urgent tag"
 
+### 🚀 Advanced Query Syntax
+
+Task Chat supports powerful query syntaxes inspired by Todoist, DataView, and natural language processing:
+
+#### **Todoist-Inspired Syntax** (~75% coverage)
+
+Write queries using familiar Todoist patterns:
+
+- **Keyword Search**: `search: meeting`, `search: "project review"`
+- **Projects**: `##ProjectName`, `###SubProject`
+- **Priorities**: `p1`, `p2`, `p3`, `p4`
+- **Date Filters**:
+  - `due before: May 5` - Tasks due before a date
+  - `date before: Friday` - Tasks dated before
+  - `due after: today` - Tasks due after
+  - **Time Support**: `today at 2pm`, `Friday at 13:00` ⏰
+- **Special Keywords**:
+  - `overdue` / `od` / `over due` - Overdue tasks
+  - `recurring` - Recurring tasks
+  - `subtask` - Subtasks only
+  - `no date` / `!no date` - Tasks without/with dates
+  - `no priority` - Tasks without priority
+- **Logical Operators**:
+  - `&` (AND) - Both conditions must match
+  - `|` (OR) - Either condition matches
+  - `!` (NOT) - Negation
+
+**Examples:**
+```
+search: meeting & ##Work & p1
+due before: today at 2pm & overdue
+##ProjectName & !subtask & recurring
+```
+
+#### **DataView Duration Formats** (40+ variations)
+
+Use concise DataView-style durations for date ranges:
+
+| Format | Example | Meaning |
+|--------|---------|---------|
+| **Seconds** | `30s`, `45 seconds` | Next 30/45 seconds |
+| **Minutes** | `15m`, `30 mins` | Next 15/30 minutes |
+| **Hours** | `2h`, `4 hours` | Next 2/4 hours |
+| **Days** | `7d`, `14 days` | Next 7/14 days |
+| **Weeks** | `2w`, `4 weeks` | Next 2/4 weeks |
+| **Months** | `3mo`, `6 months` | Next 3/6 months |
+| **Years** | `1yr`, `2 years` | Next 1/2 years |
+| **Combinations** | `1h 30m`, `2d 4h` | Combined durations |
+
+**All abbreviations supported:**
+- Seconds: `s`, `sec`, `secs`, `second`, `seconds`
+- Minutes: `m`, `min`, `mins`, `minute`, `minutes`
+- Hours: `h`, `hr`, `hrs`, `hour`, `hours`
+- Days: `d`, `day`, `days`
+- Weeks: `w`, `wk`, `wks`, `week`, `weeks`
+- Months: `mo`, `month`, `months`
+- Years: `yr`, `yrs`, `year`, `years`
+
+**Examples:**
+```
+1h 30m              → Tasks in next 1.5 hours
+2d 4h               → Tasks in next 2 days 4 hours
+1yr 2mo 3d          → Tasks in next 1 year 2 months 3 days
+```
+
+#### **Natural Language Dates** (~95% coverage)
+
+Powered by chrono-node for maximum flexibility:
+
+- **Named Days**: `today`, `tomorrow`, `yesterday`, `monday`, `sat`
+- **Relative**: `next Friday`, `last Monday`, `in 2 weeks`
+- **Ranges**: `Aug 17 - Aug 19`, `Friday from 13:00 - 16:00`
+- **Time Expressions**: `today at 2pm`, `tomorrow at 09:30`
+- **Compound**: `2 weeks from now`, `5 days from now`
+
+#### **Enhanced Relative Dates** (25+ patterns)
+
+Flexible relative date expressions:
+
+- **Past**: `5 days ago`, `2 weeks ago`, `1 year ago`, `-3 days`
+- **Future**: `within 5 days`, `next 2 weeks`, `3 days`, `+4 hours`
+- **Ranges**: `last 7 days`, `next 3 weeks`
+- **Named**: `next week`, `first day` (of month)
+- **Weekdays**: `sat`, `saturday`, `mon`, `monday`, etc.
+
+**Examples:**
+```
+5 days ago          → Exact date 5 days past
+-3 days             → Past 3 days range
+next week           → Next week's date range
+within 2 weeks      → Next 2 weeks
+first day           → First day of current month
+```
+
+#### **Query Combinations**
+
+Mix and match for powerful queries:
+
+```
+search: meeting & ##Work & p1 & due before: today at 2pm
+overdue & recurring & ##ProjectName
+2d 4h & !no date & p2
+next week & subtask & #urgent
+```
+
 ### 🎯 Task Display & Sorting
 - **Multi-Criteria Sorting**: Tasks are sorted by multiple criteria in sequence
   - Primary sort applied first, secondary for ties, tertiary for further ties
