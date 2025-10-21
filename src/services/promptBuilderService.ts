@@ -113,53 +113,149 @@ Users may use these field names in queries - recognize all variations:
     /**
      * Build task status mapping from user settings
      * Used in task analysis prompts
+     * Dynamically includes all user-defined status categories
      */
     static buildStatusMapping(settings: PluginSettings): string {
-        const names = settings.taskStatusDisplayNames;
+        const categories = Object.entries(settings.taskStatusMapping)
+            .map(([key, config]) => {
+                // Generate description based on common patterns
+                let description = "Tasks with this status";
+                if (
+                    key === "open" ||
+                    config.displayName.toLowerCase().includes("open")
+                ) {
+                    description = "Tasks not yet started or awaiting action";
+                } else if (
+                    key === "completed" ||
+                    config.displayName.toLowerCase().includes("complete") ||
+                    config.displayName.toLowerCase().includes("done")
+                ) {
+                    description = "Finished tasks";
+                } else if (
+                    key === "inProgress" ||
+                    config.displayName.toLowerCase().includes("progress") ||
+                    config.displayName.toLowerCase().includes("working")
+                ) {
+                    description = "Tasks currently being worked on";
+                } else if (
+                    key === "cancelled" ||
+                    config.displayName.toLowerCase().includes("cancel") ||
+                    config.displayName.toLowerCase().includes("abandon")
+                ) {
+                    description = "Tasks that were abandoned or cancelled";
+                } else if (
+                    key === "important" ||
+                    config.displayName.toLowerCase().includes("important")
+                ) {
+                    description = "High-importance or urgent tasks";
+                } else if (
+                    key === "bookmark" ||
+                    config.displayName.toLowerCase().includes("bookmark") ||
+                    config.displayName.toLowerCase().includes("mark")
+                ) {
+                    description = "Bookmarked or marked tasks for later review";
+                } else if (
+                    key === "waiting" ||
+                    config.displayName.toLowerCase().includes("wait")
+                ) {
+                    description = "Tasks waiting on external dependencies";
+                }
+                return `- ${config.displayName} (${key}): ${description}`;
+            })
+            .join("\n");
+
         return `
 TASK STATUS CATEGORIES (User-Configured):
-- ${names.open || "Open"}: Tasks not yet started or in progress
-- ${names.completed || "Completed"}: Finished tasks
-- ${names.inProgress || "In progress"}: Tasks currently being worked on
-- ${names.cancelled || "Cancelled"}: Tasks that were abandoned
-- ${names.other || "Other"}: Miscellaneous task states
-Use these exact names when referring to task status.`;
+${categories}
+
+Use the category key (in parentheses) when referring to status in structured data.
+Use the display name when showing status to users.`;
     }
 
     /**
-     * Build status mapping for query parser (comprehensive format with all 4 statuses)
+     * Build status mapping for query parser (comprehensive format with dynamic categories)
      * Used in QueryParserService for parsing natural language
+     * Dynamically includes all user-defined status categories from taskStatusMapping
      */
     static buildStatusMappingForParser(
         settings: PluginSettings,
         queryLanguages: string[],
     ): string {
-        const names = settings.taskStatusDisplayNames;
         const languageList = queryLanguages.join(", ");
+        const categoryKeys = Object.keys(settings.taskStatusMapping);
+        const categoryList = categoryKeys.map((k) => `"${k}"`).join(", ");
 
-        return `STATUS MAPPING (User-Configured):
-Status values must be EXACTLY one of: "open", "inProgress", "completed", "cancelled"
+        // Build examples for each category
+        const categoryExamples = Object.entries(settings.taskStatusMapping)
+            .map(([key, config]) => {
+                // Provide term suggestions based on category
+                let termSuggestions = key.toLowerCase();
+                if (
+                    key === "open" ||
+                    config.displayName.toLowerCase().includes("open")
+                ) {
+                    termSuggestions =
+                        "incomplete, pending, todo, new, unstarted";
+                } else if (
+                    key === "completed" ||
+                    config.displayName.toLowerCase().includes("complete")
+                ) {
+                    termSuggestions = "done, finished, closed, resolved";
+                } else if (
+                    key === "inProgress" ||
+                    config.displayName.toLowerCase().includes("progress")
+                ) {
+                    termSuggestions = "working, ongoing, active, doing";
+                } else if (
+                    key === "cancelled" ||
+                    config.displayName.toLowerCase().includes("cancel")
+                ) {
+                    termSuggestions = "abandoned, dropped, discarded";
+                } else if (
+                    key === "important" ||
+                    config.displayName.toLowerCase().includes("important")
+                ) {
+                    termSuggestions =
+                        "urgent, critical, high-priority, significant";
+                } else if (
+                    key === "bookmark" ||
+                    config.displayName.toLowerCase().includes("bookmark")
+                ) {
+                    termSuggestions = "marked, starred, flagged, saved";
+                } else if (
+                    key === "waiting" ||
+                    config.displayName.toLowerCase().includes("wait")
+                ) {
+                    termSuggestions = "blocked, pending, on-hold, deferred";
+                }
+                return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
+            })
+            .join("\n");
 
+        return `STATUS MAPPING (User-Configured - Dynamic):
+Status values must be EXACTLY one of: ${categoryList}
+
+⚠️ The system supports CUSTOM STATUS CATEGORIES defined by the user!
 ⚠️ EXPAND STATUS TERMS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
 You MUST generate semantic equivalents for EACH status in EVERY configured language.
 
-Example base terms (Layer 2 - Internal):
-- "open" = ${names.open || "Open"} tasks (incomplete, pending, todo, new, unstarted)
-- "inProgress" = ${names.inProgress || "In progress"} tasks (working, ongoing, active, doing)
-- "completed" = ${names.completed || "Completed"} tasks (done, finished, closed, resolved)
-- "cancelled" = ${names.cancelled || "Cancelled"} tasks (abandoned, dropped, discarded)
+Current status categories:
+${categoryExamples}
 
 Your task: Generate semantic equivalents in ${languageList} for recognizing these status values.
 
 STATUS DISTINCTION:
 1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
-2. Asking for tasks with SPECIFIC status → status: "open", "inProgress", "completed", or "cancelled"
+2. Asking for tasks with SPECIFIC status → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
 
-EXAMPLES:
-- "open tasks" or "pending work" → "open" (specific value) ✅
-- "active tasks" or "what am I working on" → "inProgress" (specific value) ✅
-- "done tasks" or "finished work" → "completed" (specific value) ✅
-- "abandoned projects" or "cancelled tasks" → "cancelled" (specific value) ✅`;
+EXAMPLES (using current categories):
+${Object.entries(settings.taskStatusMapping)
+    .slice(0, 4)
+    .map(
+        ([key, config]) =>
+            `- "${config.displayName.toLowerCase()} tasks" → "${key}" (specific value) ✅`,
+    )
+    .join("\n")}`;
     }
 
     /**
@@ -284,9 +380,9 @@ ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
      */
     static buildMetadataGuidance(settings: PluginSettings): string {
         // Get user's configured values
-        const statusNames = Object.values(settings.taskStatusDisplayNames).join(
-            ", ",
-        );
+        const statusNames = Object.values(settings.taskStatusMapping)
+            .map((config) => config.displayName)
+            .join(", ");
         const priorityMappings = Object.entries(
             settings.dataviewPriorityMapping,
         )

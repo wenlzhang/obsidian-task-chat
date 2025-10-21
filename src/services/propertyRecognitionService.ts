@@ -173,6 +173,48 @@ export class PropertyRecognitionService {
      * @returns Combined property terms ready for use
      */
     static getCombinedPropertyTerms(settings: PluginSettings) {
+        // Build status terms dynamically from taskStatusMapping
+        const statusTerms: Record<string, string[]> = {
+            general: [
+                ...this.INTERNAL_STATUS_TERMS.general,
+                ...settings.userPropertyTerms.status,
+            ],
+        };
+
+        // Add default categories (if they exist)
+        if (this.INTERNAL_STATUS_TERMS.open)
+            statusTerms.open = this.INTERNAL_STATUS_TERMS.open;
+        if (this.INTERNAL_STATUS_TERMS.inProgress)
+            statusTerms.inProgress = this.INTERNAL_STATUS_TERMS.inProgress;
+        if (this.INTERNAL_STATUS_TERMS.completed)
+            statusTerms.completed = this.INTERNAL_STATUS_TERMS.completed;
+        if (this.INTERNAL_STATUS_TERMS.cancelled)
+            statusTerms.cancelled = this.INTERNAL_STATUS_TERMS.cancelled;
+
+        // Add all user-defined status categories from taskStatusMapping
+        // This allows AI to recognize custom categories like "important", "bookmark", etc.
+        for (const [categoryKey, config] of Object.entries(
+            settings.taskStatusMapping,
+        )) {
+            // Use displayName as a term (e.g., "Important" for important category)
+            if (!statusTerms[categoryKey]) {
+                statusTerms[categoryKey] = [];
+            }
+            // Add display name as a recognizable term
+            if (
+                config.displayName &&
+                !statusTerms[categoryKey].includes(
+                    config.displayName.toLowerCase(),
+                )
+            ) {
+                statusTerms[categoryKey].push(config.displayName.toLowerCase());
+            }
+            // Add category key as term (e.g., "important" for important category)
+            if (!statusTerms[categoryKey].includes(categoryKey.toLowerCase())) {
+                statusTerms[categoryKey].push(categoryKey.toLowerCase());
+            }
+        }
+
         return {
             priority: {
                 general: [
@@ -195,16 +237,7 @@ export class PropertyRecognitionService {
                 nextWeek: this.INTERNAL_DUE_DATE_TERMS.nextWeek,
                 future: this.INTERNAL_DUE_DATE_TERMS.future,
             },
-            status: {
-                general: [
-                    ...this.INTERNAL_STATUS_TERMS.general,
-                    ...settings.userPropertyTerms.status,
-                ],
-                open: this.INTERNAL_STATUS_TERMS.open,
-                inProgress: this.INTERNAL_STATUS_TERMS.inProgress,
-                completed: this.INTERNAL_STATUS_TERMS.completed,
-                cancelled: this.INTERNAL_STATUS_TERMS.cancelled,
-            },
+            status: statusTerms,
         };
     }
 
@@ -254,10 +287,14 @@ Due Date Terms:
 
 Status Terms:
 - General: ${combined.status.general.slice(0, 8).join(", ")}...
-- Open: ${combined.status.open.slice(0, 8).join(", ")}...
-- In Progress: ${combined.status.inProgress.slice(0, 8).join(", ")}...
-- Completed: ${combined.status.completed.slice(0, 8).join(", ")}...
-- Cancelled: ${combined.status.cancelled.slice(0, 8).join(", ")}...
+${Object.entries(combined.status)
+    .filter(([key]) => key !== "general")
+    .map(([key, terms]) => {
+        const categoryConfig = settings.taskStatusMapping[key];
+        const displayName = categoryConfig?.displayName || key;
+        return `- ${displayName}: ${terms.slice(0, 8).join(", ")}${terms.length > 8 ? "..." : ""}`;
+    })
+    .join("\n")}
 
 LAYER 3: Semantic Expansion (You provide this!)
 - Apply semantic expansion to ALL property terms across configured languages: ${languageList}
