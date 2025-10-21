@@ -50,6 +50,20 @@ export interface ParsedQuery {
         totalKeywords: number; // Total after expansion
         coreKeywordsCount: number; // Original count before expansion
     };
+
+    // AI Understanding Metadata (for Natural Language & Typo Correction)
+    aiUnderstanding?: {
+        detectedLanguage?: string; // Primary language detected (e.g., "en", "zh", "sv")
+        correctedTypos?: string[]; // List of corrections made (e.g., ["urgant→urgent", "taks→task"])
+        semanticMappings?: {
+            // What AI understood from natural language
+            status?: string; // e.g., "working on" → "inprogress"
+            priority?: string; // e.g., "urgent" → 1
+            dueDate?: string; // e.g., "tomorrow" → specific date
+        };
+        confidence?: number; // 0-1, how confident AI is in the parsing
+        naturalLanguageUsed?: boolean; // Whether user used natural language vs exact syntax
+    };
 }
 
 /**
@@ -684,6 +698,203 @@ Result:
   "status": ["completed", "cancelled"],
   "dueDateRange": {"start": "last-month-start", "end": "last-month-end"}
 }
+
+🚨 NATURAL LANGUAGE UNDERSTANDING & TYPO CORRECTION 🚨
+
+You are a multilingual query understanding AI that supports natural language queries across ALL ${queryLanguages.length} configured languages: ${languageList}
+
+**CAPABILITIES:**
+1. ✅ Understand natural language sentences (not just syntax)
+2. ✅ Automatically correct common typos
+3. ✅ Recognize task properties in natural language
+4. ✅ Work across ALL configured languages (${languageList})
+5. ✅ Map semantic meanings to structured filters
+
+**NATURAL LANGUAGE UNDERSTANDING:**
+
+Users can type naturally in ANY of the configured languages. Parse their intent into structured queries.
+
+Natural Language Examples (understand these patterns):
+
+STATUS in natural language:
+${queryLanguages
+    .map((lang, idx) => {
+        if (
+            lang.toLowerCase().includes("english") ||
+            lang === "English" ||
+            lang === "en"
+        ) {
+            return `  ${lang}: "open tasks", "tasks I'm working on", "finished items", "blocked work", "cancelled projects"`;
+        } else if (
+            lang.includes("中文") ||
+            lang.includes("Chinese") ||
+            lang === "zh"
+        ) {
+            return `  ${lang}: "打开的任务", "正在进行的工作", "已完成的项目", "阻塞的任务", "取消的工作"`;
+        } else if (
+            lang.toLowerCase().includes("swedish") ||
+            lang === "Svenska" ||
+            lang === "sv"
+        ) {
+            return `  ${lang}: "öppna uppgifter", "pågående arbete", "klara uppgifter", "blockerade uppgifter", "avbruten projekt"`;
+        } else if (
+            lang.toLowerCase().includes("german") ||
+            lang === "Deutsch" ||
+            lang === "de"
+        ) {
+            return `  ${lang}: "offene Aufgaben", "laufende Arbeit", "fertige Aufgaben", "blockierte Aufgaben", "abgebrochene Projekte"`;
+        } else if (
+            lang.toLowerCase().includes("spanish") ||
+            lang === "Español" ||
+            lang === "es"
+        ) {
+            return `  ${lang}: "tareas abiertas", "trabajo en progreso", "tareas completadas", "tareas bloqueadas", "proyectos cancelados"`;
+        } else {
+            return `  ${lang}: (generate natural status phrases in this language)`;
+        }
+    })
+    .join("\n")}
+
+PRIORITY in natural language:
+${queryLanguages
+    .map((lang, idx) => {
+        if (
+            lang.toLowerCase().includes("english") ||
+            lang === "English" ||
+            lang === "en"
+        ) {
+            return `  ${lang}: "urgent tasks", "critical work", "high priority", "low importance", "can wait"`;
+        } else if (
+            lang.includes("中文") ||
+            lang.includes("Chinese") ||
+            lang === "zh"
+        ) {
+            return `  ${lang}: "紧急任务", "严重工作", "高优先级", "低重要性", "可以等待"`;
+        } else if (
+            lang.toLowerCase().includes("swedish") ||
+            lang === "Svenska" ||
+            lang === "sv"
+        ) {
+            return `  ${lang}: "brådskande uppgifter", "kritiskt arbete", "hög prioritet", "låg prioritet", "kan vänta"`;
+        } else if (
+            lang.toLowerCase().includes("german") ||
+            lang === "Deutsch" ||
+            lang === "de"
+        ) {
+            return `  ${lang}: "dringende Aufgaben", "kritische Arbeit", "hohe Priorität", "niedrige Priorität", "kann warten"`;
+        } else if (
+            lang.toLowerCase().includes("spanish") ||
+            lang === "Español" ||
+            lang === "es"
+        ) {
+            return `  ${lang}: "tareas urgentes", "trabajo crítico", "alta prioridad", "baja prioridad", "puede esperar"`;
+        } else {
+            return `  ${lang}: (generate natural priority phrases in this language)`;
+        }
+    })
+    .join("\n")}
+
+DUE DATE in natural language:
+${queryLanguages
+    .map((lang, idx) => {
+        if (
+            lang.toLowerCase().includes("english") ||
+            lang === "English" ||
+            lang === "en"
+        ) {
+            return `  ${lang}: "due today", "deadline tomorrow", "overdue items", "no deadline", "late tasks"`;
+        } else if (
+            lang.includes("中文") ||
+            lang.includes("Chinese") ||
+            lang === "zh"
+        ) {
+            return `  ${lang}: "今天到期", "明天截止", "过期的项目", "没有截止日期", "延迟的任务"`;
+        } else if (
+            lang.toLowerCase().includes("swedish") ||
+            lang === "Svenska" ||
+            lang === "sv"
+        ) {
+            return `  ${lang}: "förfaller idag", "deadline imorgon", "försenade uppgifter", "ingen deadline", "sena uppgifter"`;
+        } else if (
+            lang.toLowerCase().includes("german") ||
+            lang === "Deutsch" ||
+            lang === "de"
+        ) {
+            return `  ${lang}: "fällig heute", "Frist morgen", "überfällige Aufgaben", "keine Frist", "verspätete Aufgaben"`;
+        } else if (
+            lang.toLowerCase().includes("spanish") ||
+            lang === "Español" ||
+            lang === "es"
+        ) {
+            return `  ${lang}: "vence hoy", "fecha límite mañana", "tareas vencidas", "sin fecha límite", "tareas atrasadas"`;
+        } else {
+            return `  ${lang}: (generate natural due date phrases in this language)`;
+        }
+    })
+    .join("\n")}
+
+**Property Mapping Rules:**
+- "urgent", "critical", "asap", "emergency" → priority: 1
+- "high", "important" → priority: 1 or 2
+- "medium", "normal" → priority: 2 or 3
+- "low", "minor", "later" → priority: 3 or 4
+- "open", "todo", "pending" → status: "open"
+- "in progress", "doing", "working on", "wip" → status: "inprogress"
+- "done", "finished", "completed", "closed" → status: "completed"
+- "cancelled", "abandoned", "dropped" → status: "cancelled"
+- "blocked", "stuck", "waiting" → status: "?" (or identify as blocked)
+- "today" → dueDate: today's date
+- "tomorrow" → dueDate: tomorrow's date
+- "overdue", "late", "past due" → dueDate: "overdue"
+- "no deadline", "no date" → dueDate: "no date"
+
+**TYPO CORRECTION:**
+
+Automatically correct common misspellings before parsing. Users make typos - fix them!
+
+Common typo patterns:
+- Missing letters: "priorty" → "priority", "taks" → "task"
+- Extra letters: "openn" → "open", "taskks" → "tasks"
+- Transpositions: "tasl" → "task", "priortiy" → "priority"
+- Wrong letters: "complated" → "completed", "urgant" → "urgent"
+- Phonetic: "kritical" → "critical", "importent" → "important"
+
+Typo examples to handle:
+- "urgant taks" → "urgent tasks"
+- "complated items" → "completed items"
+- "priorty 1" → "priority 1"
+- "overdu work" → "overdue work"
+- "tommorow" → "tomorrow"
+- "critcal bugs" → "critical bugs"
+- "paymant system" → "payment system"
+- "opne projects" → "open projects"
+
+**Process:**
+1. Read user's query
+2. Correct any typos automatically
+3. Understand natural language (map to properties)
+4. Extract keywords and property filters
+5. Expand keywords semantically
+6. Return structured JSON
+
+**Examples of Natural Language Parsing:**
+
+English: "show me urgent open tasks that are overdue"
+→ Understand: priority:1 (urgent), status:"open", dueDate:"overdue"
+→ Extract: priority: 1, status: "open", dueDate: "overdue", keywords: ["show", "me", "tasks"]
+
+中文: "明天到期的紧急未完成任务"
+→ Understand: dueDate:"tomorrow", priority:1 (urgent), status:"open" (incomplete)
+→ Extract: dueDate: tomorrow's date, priority: 1, status: "open", keywords: ["任务"]
+
+Swedish: "brådskande ofullständiga uppgifter förfallna imorgon"
+→ Understand: priority:1 (urgent), status:"open" (incomplete), dueDate:"tomorrow"
+→ Extract: priority: 1, status: "open", dueDate: tomorrow's date, keywords: ["uppgifter"]
+
+With typos: "urgant complated taks in paymant system"
+→ Correct: "urgent completed tasks in payment system"
+→ Understand: priority:1 (urgent), status:"completed"
+→ Extract: priority: 1, status: "completed", keywords: ["tasks", "payment", "system"]
 
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
