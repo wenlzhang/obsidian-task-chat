@@ -141,6 +141,18 @@ class DataviewService {
             result.priority = parseInt(priorityMatch[1]);
         }
 
+        // Status category "status:open" or "s:completed"
+        const statusMatch = query.match(/\b(status|s):(\w+[-]?\w*)/i);
+        if (statusMatch) {
+            result.statusCategory = statusMatch[2].replace(/-/g, '').replace(/\s+/g, '');
+        }
+
+        // Status symbol "symbol:x" or "symbol:/"
+        const symbolMatch = query.match(/\bsymbol:([^\s&|]+)/i);
+        if (symbolMatch) {
+            result.statusSymbol = symbolMatch[1];
+        }
+
         // Special keywords
         if (/\b(overdue|over\s+due|od)\b/i.test(query) && !query.includes('!overdue')) {
             result.specialKeywords.push('overdue');
@@ -323,6 +335,26 @@ function runTests() {
         (r) => r.keywords && r.keywords[0] === 'meeting' && r.priority === 1 && r.operators.and);
     runner.test('Parse "##Work & overdue"', DataviewService.parseTodoistSyntax('##Work & overdue'),
         (r) => r.project === 'Work' && r.specialKeywords.includes('overdue') && r.operators.and);
+    
+    // Status filtering (NEW: Phase 4)
+    runner.test('Parse "status:open"', DataviewService.parseTodoistSyntax('status:open'),
+        (r) => r.statusCategory === 'open');
+    runner.test('Parse "s:completed"', DataviewService.parseTodoistSyntax('s:completed'),
+        (r) => r.statusCategory === 'completed');
+    runner.test('Parse "status:in-progress"', DataviewService.parseTodoistSyntax('status:in-progress'),
+        (r) => r.statusCategory === 'inprogress');
+    runner.test('Parse "symbol:x"', DataviewService.parseTodoistSyntax('symbol:x'),
+        (r) => r.statusSymbol === 'x');
+    runner.test('Parse "symbol:/"', DataviewService.parseTodoistSyntax('symbol:/'),
+        (r) => r.statusSymbol === '/');
+    runner.test('Parse "symbol:?"', DataviewService.parseTodoistSyntax('symbol:?'),
+        (r) => r.statusSymbol === '?');
+    
+    // Status with other filters
+    runner.test('Parse "status:open & p1"', DataviewService.parseTodoistSyntax('status:open & p1'),
+        (r) => r.statusCategory === 'open' && r.priority === 1 && r.operators.and);
+    runner.test('Parse "symbol:/ & ##Work"', DataviewService.parseTodoistSyntax('symbol:/ & ##Work'),
+        (r) => r.statusSymbol === '/' && r.project === 'Work' && r.operators.and);
     
     // ==========================================================================
     // Test Suite 4: Original Patterns (Backward Compatibility)

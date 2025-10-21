@@ -74,6 +74,12 @@ Write queries using familiar Todoist patterns:
 - **Keyword Search**: `search: meeting`, `search: "project review"`
 - **Projects**: `##ProjectName`, `###SubProject`
 - **Priorities**: `p1`, `p2`, `p3`, `p4`
+- **Status Filters**: (NEW)
+  - `status:open` or `s:open` - Filter by status category
+  - `status:completed`, `s:completed` - Completed tasks
+  - `status:in-progress`, `s:wip` - In-progress tasks
+  - `symbol:x` - Filter by exact checkbox symbol
+  - `symbol:/`, `symbol:?` - Any custom symbol
 - **Date Filters**:
   - `due before: May 5` - Tasks due before a date
   - `date before: Friday` - Tasks dated before
@@ -92,8 +98,9 @@ Write queries using familiar Todoist patterns:
 **Examples:**
 ```
 search: meeting & ##Work & p1
-due before: today at 2pm & overdue
-##ProjectName & !subtask & recurring
+status:open & overdue & p1
+##ProjectName & symbol:/ & !subtask
+s:completed & due before: Friday
 ```
 
 #### **DataView Duration Formats** (Day-Level Only)
@@ -161,10 +168,17 @@ first day           → First day of current month
 Mix and match for powerful queries:
 
 ```
-search: meeting & ##Work & p1 & due before: Friday
-overdue & recurring & ##ProjectName
-7d & !no date & p2
-next week & subtask & #urgent
+# Status + Priority + Date
+status:open & p1 & overdue
+s:wip & due before: Friday & ##Work
+
+# Symbol + Project + Keywords
+symbol:/ & ##ProjectName & search: review
+symbol:? & next week & #urgent
+
+# Complex combinations
+status:open & !subtask & 7d & p2
+s:completed & due before: Monday & #done
 ```
 
 ### 🎯 Task Display & Sorting
