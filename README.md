@@ -78,6 +78,7 @@ Write queries using familiar Todoist patterns:
   - **By category**: `s:open`, `s:completed`, `s:wip` (uses aliases)
   - **By symbol**: `s:x`, `s:/`, `s:?` (exact checkbox match)
   - **Multiple values**: `s:x,/` or `s:open,wip` (comma-separated, no spaces)
+  - **Mixed types**: `s:open,/,?` (combine categories and symbols!)
   - **Flexible names**: `s:in-progress` or `s:inprogress` (both work)
   - **Case-insensitive**: `s:Completed` or `s:completed` (both work)
 - **Date Filters**:
@@ -102,10 +103,15 @@ s:open & p1 & overdue
 s:x & ##Project
 s:done & due before: Friday
 
-# Multiple status filters
-s:x,/ & ##Work           → Completed OR in-progress tasks
-s:open,wip & p1          → Open OR WIP tasks with high priority
+# Multiple status filters (same type)
+s:x,/ & ##Work           → Completed OR in-progress (both symbols)
+s:open,wip & p1          → Open OR WIP (both categories)
 s:done,finished,closed   → Multiple aliases for same category
+
+# Mixed types (categories + symbols)
+s:open,/,? & ##Project   → Open OR in-progress OR blocked
+s:wip,x,done & p1        → WIP (alias) OR completed (symbol/alias)
+s:!,urgent,important     → Important (symbol) OR urgent (categories)
 ```
 
 #### **DataView Duration Formats** (Day-Level Only)
@@ -189,6 +195,10 @@ s:? & next week & p1                     → Blocked high-priority tasks next we
 # Complex combinations
 s:open,wip & !subtask & 7d & p2    → Open/WIP non-subtasks, next 7 days, medium priority
 s:cancelled,dropped & overdue       → Cancelled tasks that were overdue
+
+# Task Marker workflows (mixing symbols)
+s:open,/,?,! & next week            → Open, in-progress, blocked, or important tasks
+s:x,done,finished & ##Archive       → All completed tasks (any expression)
 ```
 
 ### 🎯 Task Display & Sorting
@@ -1840,6 +1850,10 @@ s:in-progress      → Same (hyphenated form works too)
 s:doing            → Same (another alias)
 s:done             → Matches "completed" category (alias)
 s:finished         → Same (another alias)
+
+# Mix categories and symbols freely!
+s:open,/           → Open tasks OR in-progress (symbol)
+s:wip,x,?          → WIP (alias) OR completed OR blocked
 ```
 
 **Benefits:**

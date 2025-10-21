@@ -1600,6 +1600,7 @@ Examples:
             <p><strong>💡 Tips:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
                 <li><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:value1,value2</code> for multiple statuses. Works with category names, aliases, or symbols!</li>
+                <li><strong>Mix freely:</strong> Combine categories and symbols: <code>s:open,/,?</code> matches open tasks OR in-progress OR blocked. Very flexible!</li>
                 <li><strong>Aliases benefit:</strong> Add multiple ways to query the same category (e.g., <code>wip,doing,active</code> for "In Progress").</li>
                 <li>Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</li>
                 <li>For proper status symbol display, use a compatible theme like <a href="https://github.com/kepano/obsidian-minimal">Minimal</a>.</li>
