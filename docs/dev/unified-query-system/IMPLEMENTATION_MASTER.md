@@ -271,10 +271,25 @@ static async executeSimpleSearch(
 
 ### **Testing Requirements**
 
-1. **Unit Tests**: Test `SimplePropertyParser.parse()` with various inputs
+**See**: [`TEST_FRAMEWORK.md`](./TEST_FRAMEWORK.md) for complete test suite
+
+1. **Unit Tests**: Run `node test-scripts/phase1-parser-test.js`
+   - 18 test cases covering all property types
+   - Expected: 18/18 passed (100%)
+
 2. **Integration Tests**: Test with existing DataView
+   - Use test vault with sample tasks
+   - Verify DataviewService integration
+
 3. **Performance Tests**: Verify < 100ms execution
+   - Run 100 iterations
+   - Measure average execution time
+   - Expected: < 100ms average
+
 4. **Accuracy Tests**: Verify 100% property extraction
+   - All regex patterns working
+   - Keywords extracted correctly
+   - Properties never missed
 
 ### **Deliverables**
 - ✅ `simplePropertyParser.ts` created
@@ -646,6 +661,29 @@ Update this section as phases complete:
 - [`00_START_HERE.md`](./00_START_HERE.md) - Master index
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) - Technical details
 - [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md) - Design decisions
+
+---
+
+## 🧪 **Test Framework**
+
+**Complete test suite available**: [`TEST_FRAMEWORK.md`](./TEST_FRAMEWORK.md)
+
+### **Key Features**
+- ✅ Test vault with DataView syntax tasks
+- ✅ Automated test scripts for each phase
+- ✅ AI simulation for Smart Search & Task Chat
+- ✅ Performance benchmarking
+- ✅ Documentation update workflow
+
+### **Test Scripts**
+- `test-scripts/phase1-parser-test.js` - Phase 1 unit tests
+- `test-scripts/ai-simulation-test.md` - AI simulation reference
+
+### **Documentation Workflow**
+**See**: [`DOCUMENTATION_UPDATE_WORKFLOW.md`](./DOCUMENTATION_UPDATE_WORKFLOW.md)
+- After each feature: Update progress, test results
+- After each phase: Create phase summary, update master docs
+- Systematic approach to keeping all docs current
 
 ---
 
