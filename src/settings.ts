@@ -188,7 +188,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Task Status Mapping (flexible - users can add/remove categories)
     taskStatusMapping: {
         open: {
-            symbols: [" ", ""],
+            symbols: [" "],
             score: 1.0,
             displayName: "Open",
         },
@@ -198,9 +198,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             displayName: "Completed",
         },
         inProgress: {
-            symbols: ["/", "~"],
+            symbols: ["/"],
             score: 0.75,
-            displayName: "In Progress",
+            displayName: "In progress",
         },
         cancelled: {
             symbols: ["-"],
@@ -208,7 +208,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             displayName: "Cancelled",
         },
         other: {
-            symbols: [],
+            symbols: ["!", "b", "I", "i"],
             score: 0.5,
             displayName: "Other",
         },

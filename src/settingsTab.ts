@@ -1568,15 +1568,25 @@ Examples:
         statusCategoriesDesc.innerHTML = `
             <p><strong>📋 Flexible Status Categories</strong></p>
             <p>Define custom status categories with their checkbox symbols and scores. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
-            <p><strong>How it works:</strong></p>
+            <p><strong>Field descriptions:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Category Name:</strong> Internal identifier (e.g., "important", "waiting")</li>
-                <li><strong>Display Name:</strong> Human-readable name shown in UI</li>
-                <li><strong>Symbols:</strong> Checkbox characters that map to this category (e.g., "!", "‼️")</li>
-                <li><strong>Score:</strong> Weight for scoring (0.0-2.0, higher = more important)</li>
+                <li><strong>Category key:</strong> Internal identifier (e.g., "important", "waiting")</li>
+                <li><strong>Display name:</strong> Human-readable name shown in UI</li>
+                <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,-,>,/,?,!,I,b,i,p,c,u,d")</li>
+                <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important)</li>
             </ul>
             <p><strong>💡 Tip:</strong> Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</p>
         `;
+
+        // Add column headers
+        const headerDiv = containerEl.createDiv();
+        headerDiv.style.cssText =
+            "display: grid; grid-template-columns: 120px 150px 1fr 120px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
+        headerDiv.createDiv({ text: "Category key" });
+        headerDiv.createDiv({ text: "Display name" });
+        headerDiv.createDiv({ text: "Symbols" });
+        headerDiv.createDiv({ text: "Score" });
+        headerDiv.createDiv({ text: "" }); // For remove button
 
         // Render all existing categories
         const categories = Object.entries(
@@ -1611,7 +1621,7 @@ Examples:
                         this.plugin.settings.taskStatusMapping[newCategoryKey] =
                             {
                                 symbols: [],
-                                score: 0.8,
+                                score: 0.5,
                                 displayName: `Custom ${categoryNum}`,
                             };
 
@@ -1710,7 +1720,7 @@ Examples:
     }
 
     /**
-     * Render a single status category with all its settings
+     * Render a single status category with all its settings in horizontal grid layout
      */
     private renderStatusCategory(
         containerEl: HTMLElement,
@@ -1729,132 +1739,112 @@ Examples:
         const symbols = Array.isArray(config.symbols) ? config.symbols : [];
         const displayName = config.displayName || categoryKey;
         const score = typeof config.score === "number" ? config.score : 0.5;
-        const categoryContainer = containerEl.createDiv({
-            cls: "status-category-container",
-        });
-        categoryContainer.style.cssText =
-            "border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 16px; margin-bottom: 16px; background: var(--background-secondary);";
 
-        // Category header with name and remove button
-        const headerDiv = categoryContainer.createDiv();
-        headerDiv.style.cssText =
-            "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--background-modifier-border);";
-
-        const titleDiv = headerDiv.createDiv();
-        titleDiv.style.cssText = "font-weight: 600; font-size: 14px;";
-        titleDiv.textContent = displayName;
-
-        const removeButton = headerDiv.createEl("button", {
-            text: "Remove",
-            cls: "mod-warning",
-        });
-        removeButton.style.cssText = "font-size: 12px; padding: 4px 12px;";
-        removeButton.onclick = async () => {
-            if (
-                await new Promise((resolve) => {
-                    const modal = new (require("obsidian").Modal)(this.app);
-                    modal.titleEl.setText("Remove status category?");
-                    modal.contentEl.createEl("p", {
-                        text: `Are you sure you want to remove the "${displayName}" category? This will affect how tasks with these symbols are scored.`,
-                    });
-                    const buttonDiv = modal.contentEl.createDiv();
-                    buttonDiv.style.cssText =
-                        "display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;";
-                    const cancelBtn = buttonDiv.createEl("button", {
-                        text: "Cancel",
-                    });
-                    cancelBtn.onclick = () => {
-                        modal.close();
-                        resolve(false);
-                    };
-                    const confirmBtn = buttonDiv.createEl("button", {
-                        text: "Remove",
-                        cls: "mod-warning",
-                    });
-                    confirmBtn.onclick = () => {
-                        modal.close();
-                        resolve(true);
-                    };
-                    modal.open();
-                })
-            ) {
-                delete this.plugin.settings.taskStatusMapping[categoryKey];
-                await this.plugin.saveSettings();
-                this.display(); // Refresh UI
-                new Notice(`Removed category: ${displayName}`);
-            }
-        };
+        // Create horizontal grid row
+        const rowDiv = containerEl.createDiv();
+        rowDiv.style.cssText =
+            "display: grid; grid-template-columns: 120px 150px 1fr 120px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); align-items: center;";
 
         // Category key (readonly)
-        new Setting(categoryContainer)
-            .setName("Category key")
-            .setDesc("Internal identifier (cannot be changed)")
-            .addText((text) => {
-                text.setValue(categoryKey).setDisabled(true);
-                text.inputEl.style.cssText = "opacity: 0.6;";
-            });
+        const keyInput = rowDiv.createEl("input", { type: "text" });
+        keyInput.value = categoryKey;
+        keyInput.disabled = true;
+        keyInput.style.cssText =
+            "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary);";
 
         // Display name
-        new Setting(categoryContainer)
-            .setName("Display name")
-            .setDesc("Human-readable name shown in UI")
-            .addText((text) =>
-                text
-                    .setPlaceholder("Enter display name")
-                    .setValue(displayName)
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping[
-                            categoryKey
-                        ].displayName = value || categoryKey;
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        const nameInput = rowDiv.createEl("input", { type: "text" });
+        nameInput.value = displayName;
+        nameInput.placeholder = "Display name";
+        nameInput.style.cssText =
+            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+        nameInput.addEventListener("change", async () => {
+            this.plugin.settings.taskStatusMapping[categoryKey].displayName =
+                nameInput.value || categoryKey;
+            await this.plugin.saveSettings();
+        });
 
         // Symbols
-        new Setting(categoryContainer)
-            .setName("Checkbox symbols")
-            .setDesc("Characters that map to this category (comma-separated)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("e.g., !, ‼️, !!")
-                    .setValue(symbols.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping[
-                            categoryKey
-                        ].symbols = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    }),
-            );
+        const symbolsInput = rowDiv.createEl("input", { type: "text" });
+        symbolsInput.value = symbols.join(", ");
+        symbolsInput.placeholder = "e.g., ?,!,I,b,i";
+        symbolsInput.style.cssText =
+            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
 
-        // Score slider
-        new Setting(categoryContainer)
-            .setName("Score weight")
-            .setDesc(
-                `Scoring weight for this category (0.0-2.0). Current: ${score.toFixed(2)}`,
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 2, 0.05)
-                    .setValue(score)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.taskStatusMapping[
-                            categoryKey
-                        ].score = value;
-                        await this.plugin.saveSettings();
-                        // Update description
-                        const desc =
-                            slider.sliderEl.parentElement?.querySelector(
-                                ".setting-item-description",
-                            );
-                        if (desc) {
-                            desc.textContent = `Scoring weight for this category (0.0-2.0). Current: ${value.toFixed(2)}`;
-                        }
-                    }),
-            );
+        // Disable symbols editing for 'open' category
+        if (categoryKey === "open") {
+            symbolsInput.disabled = true;
+            symbolsInput.title =
+                "Default open status symbols cannot be changed";
+            symbolsInput.style.opacity = "0.6";
+        } else {
+            symbolsInput.addEventListener("change", async () => {
+                this.plugin.settings.taskStatusMapping[categoryKey].symbols =
+                    symbolsInput.value
+                        .split(",")
+                        .map((v) => v.trim())
+                        .filter((v) => v);
+                await this.plugin.saveSettings();
+            });
+        }
+
+        // Score slider (0-1 range)
+        const scoreContainer = rowDiv.createDiv();
+        scoreContainer.style.cssText =
+            "display: flex; align-items: center; gap: 4px;";
+
+        const scoreInput = scoreContainer.createEl("input", {
+            type: "range",
+            attr: {
+                min: "0",
+                max: "1",
+                step: "0.05",
+            },
+        });
+        scoreInput.value = score.toString();
+        scoreInput.style.cssText = "flex: 1; min-width: 60px;";
+
+        const scoreLabel = scoreContainer.createEl("span");
+        scoreLabel.textContent = score.toFixed(2);
+        scoreLabel.style.cssText =
+            "font-size: 11px; color: var(--text-muted); min-width: 32px;";
+
+        scoreInput.addEventListener("input", async () => {
+            const value = parseFloat(scoreInput.value);
+            scoreLabel.textContent = value.toFixed(2);
+            this.plugin.settings.taskStatusMapping[categoryKey].score = value;
+            await this.plugin.saveSettings();
+        });
+
+        // Remove button (disabled for 'open')
+        if (categoryKey === "open") {
+            const disabledBtn = rowDiv.createEl("button", {
+                text: "✕",
+            });
+            disabledBtn.disabled = true;
+            disabledBtn.title = "Cannot delete default open category";
+            disabledBtn.style.cssText =
+                "padding: 2px 8px; opacity: 0.3; cursor: not-allowed;";
+        } else {
+            const removeBtn = rowDiv.createEl("button", {
+                text: "✕",
+                cls: "mod-warning",
+            });
+            removeBtn.title = `Remove ${displayName}`;
+            removeBtn.style.cssText = "padding: 2px 8px; font-size: 14px;";
+            removeBtn.addEventListener("click", async () => {
+                if (
+                    confirm(
+                        `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,
+                    )
+                ) {
+                    delete this.plugin.settings.taskStatusMapping[categoryKey];
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh UI
+                    new Notice(`Removed category: ${displayName}`);
+                }
+            });
+        }
     }
 
     /**
