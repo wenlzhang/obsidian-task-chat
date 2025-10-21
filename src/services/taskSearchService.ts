@@ -4,6 +4,7 @@ import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
 import { PropertyRecognitionService } from "./propertyRecognitionService";
 import { PluginSettings } from "../settings";
+import { moment } from "obsidian";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -805,6 +806,9 @@ export class TaskSearchService {
             "[Simple Search] ==========================================",
         );
 
+        // NEW (Enhancement #4): Validate extracted properties
+        this.validateQueryProperties(extractedPriority, extractedDueDateRange);
+
         return {
             isSearch: this.isSearchQuery(query),
             isPriority: propertyHints.hasPriority,
@@ -818,6 +822,60 @@ export class TaskSearchService {
             extractedTags,
             hasMultipleFilters: filterCount > 1,
         };
+    }
+
+    /**
+     * Validate extracted query properties (NEW: Enhancement #4)
+     * Warns about invalid priorities and date ranges
+     *
+     * @param priority Extracted priority (1-4 is valid)
+     * @param dueDateRange Extracted date range
+     */
+    private static validateQueryProperties(
+        priority: number | null,
+        dueDateRange: { start?: string; end?: string } | null,
+    ): void {
+        // Validate priority (only 1-4 are valid)
+        if (priority !== null && (priority < 1 || priority > 4)) {
+            console.warn(
+                `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4.`,
+            );
+        }
+
+        // Validate date range
+        if (dueDateRange) {
+            const { start, end } = dueDateRange;
+
+            // Check if start date is valid
+            if (start && !moment(start, "YYYY-MM-DD", true).isValid()) {
+                console.warn(
+                    `[Simple Search] ⚠️  Invalid start date: "${start}". Expected format: YYYY-MM-DD.`,
+                );
+            }
+
+            // Check if end date is valid
+            if (end && !moment(end, "YYYY-MM-DD", true).isValid()) {
+                console.warn(
+                    `[Simple Search] ⚠️  Invalid end date: "${end}". Expected format: YYYY-MM-DD.`,
+                );
+            }
+
+            // Check if start is after end
+            if (
+                start &&
+                end &&
+                moment(start, "YYYY-MM-DD", true).isValid() &&
+                moment(end, "YYYY-MM-DD", true).isValid()
+            ) {
+                const startDate = moment(start);
+                const endDate = moment(end);
+                if (startDate.isAfter(endDate)) {
+                    console.warn(
+                        `[Simple Search] ⚠️  Invalid date range: start (${start}) is after end (${end}).`,
+                    );
+                }
+            }
+        }
     }
 
     /**

@@ -565,6 +565,15 @@ export class DataviewService {
             }
 
             default:
+                // NEW (Enhancement #3): Try relative date patterns first
+                const relativeRange = this.parseRelativeDateRange(
+                    dateFilter,
+                    today,
+                );
+                if (relativeRange) {
+                    return relativeRange;
+                }
+
                 // NEW (Phase 2): Try natural language parsing with chrono-node
                 const chronoParsed = chrono.parseDate(dateFilter);
                 if (chronoParsed) {
@@ -587,6 +596,91 @@ export class DataviewService {
                 }
                 return null;
         }
+    }
+
+    /**
+     * Parse relative date ranges (NEW: Enhancement #3)
+     * Supports patterns like:
+     * - "5 days ago" → date 5 days in the past
+     * - "within 5 days" → range from today to 5 days in future
+     * - "next 2 weeks" → range from today to 14 days in future
+     * - "last 3 days" → range from 3 days ago to today
+     *
+     * @param dateFilter Date filter string
+     * @param today Reference date (usually current date)
+     * @returns DateRange or null if pattern not recognized
+     */
+    private static parseRelativeDateRange(
+        dateFilter: string,
+        today: moment.Moment,
+    ): { start?: string; end?: string } | null {
+        const lowerFilter = dateFilter.toLowerCase().trim();
+
+        // Pattern 1: "X days/weeks/months ago"
+        const agoMatch = lowerFilter.match(
+            /(\d+)\s+(day|days|week|weeks|month|months)\s+ago/,
+        );
+        if (agoMatch) {
+            const amount = parseInt(agoMatch[1]);
+            const unit = agoMatch[2].startsWith("week")
+                ? "weeks"
+                : agoMatch[2].startsWith("month")
+                  ? "months"
+                  : "days";
+            const pastDate = today.clone().subtract(amount, unit);
+            return {
+                start: pastDate.format("YYYY-MM-DD"),
+                end: pastDate.format("YYYY-MM-DD"),
+            };
+        }
+
+        // Pattern 2: "within X days/weeks"
+        const withinMatch = lowerFilter.match(
+            /within\s+(\d+)\s+(day|days|week|weeks)/,
+        );
+        if (withinMatch) {
+            const amount = parseInt(withinMatch[1]);
+            const unit = withinMatch[2].startsWith("week") ? "weeks" : "days";
+            const futureDate = today.clone().add(amount, unit);
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
+        // Pattern 3: "next X days/weeks/months"
+        const nextMatch = lowerFilter.match(
+            /next\s+(\d+)\s+(day|days|week|weeks|month|months)/,
+        );
+        if (nextMatch) {
+            const amount = parseInt(nextMatch[1]);
+            const unit = nextMatch[2].startsWith("week")
+                ? "weeks"
+                : nextMatch[2].startsWith("month")
+                  ? "months"
+                  : "days";
+            const futureDate = today.clone().add(amount, unit);
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: futureDate.format("YYYY-MM-DD"),
+            };
+        }
+
+        // Pattern 4: "last X days/weeks"
+        const lastMatch = lowerFilter.match(
+            /last\s+(\d+)\s+(day|days|week|weeks)/,
+        );
+        if (lastMatch) {
+            const amount = parseInt(lastMatch[1]);
+            const unit = lastMatch[2].startsWith("week") ? "weeks" : "days";
+            const pastDate = today.clone().subtract(amount, unit);
+            return {
+                start: pastDate.format("YYYY-MM-DD"),
+                end: today.format("YYYY-MM-DD"),
+            };
+        }
+
+        return null;
     }
 
     /**
