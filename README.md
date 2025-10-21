@@ -74,12 +74,12 @@ Write queries using familiar Todoist patterns:
 - **Keyword Search**: `search: meeting`, `search: "project review"`
 - **Projects**: `##ProjectName`, `###SubProject`
 - **Priorities**: `p1`, `p2`, `p3`, `p4`
-- **Status Filters**: (NEW)
-  - `status:open` or `s:open` - Filter by status category
-  - `status:completed`, `s:completed` - Completed tasks
-  - `status:in-progress`, `s:wip` - In-progress tasks
-  - `symbol:x` - Filter by exact checkbox symbol
-  - `symbol:/`, `symbol:?` - Any custom symbol
+- **Status Filters**: (NEW - Unified `s:` syntax)
+  - **By category**: `s:open`, `s:completed`, `s:wip` (uses aliases)
+  - **By symbol**: `s:x`, `s:/`, `s:?` (exact checkbox match)
+  - **Multiple values**: `s:x,/` or `s:open,wip` (comma-separated, no spaces)
+  - **Flexible names**: `s:in-progress` or `s:inprogress` (both work)
+  - **Case-insensitive**: `s:Completed` or `s:completed` (both work)
 - **Date Filters**:
   - `due before: May 5` - Tasks due before a date
   - `date before: Friday` - Tasks dated before
@@ -97,10 +97,15 @@ Write queries using familiar Todoist patterns:
 
 **Examples:**
 ```
-search: meeting & ##Work & p1
-status:open & overdue & p1
-##ProjectName & symbol:/ & !subtask
-s:completed & due before: Friday
+# Single status filters
+s:open & p1 & overdue
+s:x & ##Project
+s:done & due before: Friday
+
+# Multiple status filters
+s:x,/ & ##Work           → Completed OR in-progress tasks
+s:open,wip & p1          → Open OR WIP tasks with high priority
+s:done,finished,closed   → Multiple aliases for same category
 ```
 
 #### **DataView Duration Formats** (Day-Level Only)
@@ -169,16 +174,21 @@ Mix and match for powerful queries:
 
 ```
 # Status + Priority + Date
-status:open & p1 & overdue
-s:wip & due before: Friday & ##Work
+s:open & p1 & overdue              → High priority overdue open tasks
+s:wip & due before: Friday         → WIP tasks due this week
+s:x,/ & 7d                         → Completed or WIP tasks from last 7 days
 
-# Symbol + Project + Keywords
-symbol:/ & ##ProjectName & search: review
-symbol:? & next week & #urgent
+# Multiple statuses with filters
+s:open,todo,pending & ##Work       → Any open task (aliases) in Work project
+s:x,done,finished & due before: Monday  → Completed tasks (any alias) due before Monday
+
+# Symbols + Keywords + Projects
+s:/ & ##ProjectName & search: review     → In-progress review tasks
+s:? & next week & p1                     → Blocked high-priority tasks next week
 
 # Complex combinations
-status:open & !subtask & 7d & p2
-s:completed & due before: Monday & #done
+s:open,wip & !subtask & 7d & p2    → Open/WIP non-subtasks, next 7 days, medium priority
+s:cancelled,dropped & overdue       → Cancelled tasks that were overdue
 ```
 
 ### 🎯 Task Display & Sorting
@@ -1804,6 +1814,44 @@ Task Chat works with standard Markdown tasks that include DataView metadata:
   - Completed: `- [x] Task`
   - In Progress: `- [/] Task`
   - Cancelled: `- [-] Task`
+  - Custom: Works with Task Marker plugin and custom symbols
+
+### Status Configuration & Aliases
+
+**Customize status categories in Settings → Task Display → Status Mapping**
+
+Each status category can have:
+1. **Checkbox symbols**: Which symbols (e.g., `x`, `/`) belong to this category
+2. **Display name**: How it appears in UI (e.g., "In Progress")
+3. **Aliases**: Comma-separated query names (e.g., `inprogress,in-progress,wip,doing,active`)
+
+**Default configuration:**
+```
+open: symbols=[" "], aliases="open,todo,pending"
+completed: symbols=["x","X"], aliases="completed,done,finished,closed"
+inProgress: symbols=["/"], aliases="inprogress,in-progress,wip,doing,active"
+cancelled: symbols=["-"], aliases="cancelled,canceled,abandoned,dropped"
+```
+
+**Using aliases in queries:**
+```
+s:wip              → Matches "inProgress" category (alias)
+s:in-progress      → Same (hyphenated form works too)
+s:doing            → Same (another alias)
+s:done             → Matches "completed" category (alias)
+s:finished         → Same (another alias)
+```
+
+**Benefits:**
+- ✅ **Flexible querying**: Use the name that feels natural to you
+- ✅ **Case-insensitive**: `s:Done`, `s:done`, `s:DONE` all work
+- ✅ **Hyphen-tolerant**: `s:in-progress` or `s:inprogress` both work
+- ✅ **Multiple aliases**: Add as many comma-separated aliases as you want
+
+**Important notes:**
+- ⚠️ **No spaces in aliases**: Use `completed,done` not `completed, done`
+- ⚠️ **Remove spaces from display names**: To query "In Progress", use `s:inprogress` or `s:in-progress`
+- 💡 **Tip**: Add language-specific aliases like `完成,done,completed` for multilingual workflows
   
 - **Tags**: 
   - Standard Obsidian tags: `#work`, `#personal`, `#urgent`

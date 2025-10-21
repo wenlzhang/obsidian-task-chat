@@ -88,10 +88,16 @@ export interface PluginSettings {
     };
 
     // Task Status Mapping (flexible categories)
-    // Each category maps checkbox symbols to a score and display name
+    // Each category maps checkbox symbols to a score, display name, and aliases
+    // aliases: comma-separated query names (e.g., "completed,done,finished")
     taskStatusMapping: Record<
         string,
-        { symbols: string[]; score: number; displayName: string }
+        {
+            symbols: string[];
+            score: number;
+            displayName: string;
+            aliases: string; // Comma-separated aliases for querying (no spaces)
+        }
     >;
 
     // Priority Mapping (numeric keys 1-4, customizable string values)
@@ -232,26 +238,31 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             symbols: [" "],
             score: 1.0,
             displayName: "Open",
+            aliases: "open,todo,pending",
         },
         completed: {
             symbols: ["x", "X"],
             score: 0.2,
             displayName: "Completed",
+            aliases: "completed,done,finished,closed",
         },
         inProgress: {
             symbols: ["/"],
             score: 0.75,
             displayName: "In Progress",
+            aliases: "inprogress,in-progress,wip,doing,active",
         },
         cancelled: {
             symbols: ["-"],
             score: 0.1,
             displayName: "Cancelled",
+            aliases: "cancelled,canceled,abandoned,dropped",
         },
         other: {
             symbols: [],
             score: 0.5,
             displayName: "Other",
+            aliases: "other",
         },
     },
 

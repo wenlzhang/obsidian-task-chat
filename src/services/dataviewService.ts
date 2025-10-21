@@ -860,13 +860,14 @@ export class DataviewService {
     }
 
     /**
-     * Parse Todoist-style query syntax (ENHANCED: Phase 3A + Status)
+     * Parse Todoist-style query syntax (ENHANCED: Phase 3A + Unified Status)
      * Comprehensive support for Todoist patterns:
      * - "search: meeting" → extract keywords
      * - "p1", "p2", "p3", "p4" → priority
      * - "##project" → project filter
-     * - "status:open" or "s:completed" → status category filter (NEW)
-     * - "symbol:x" or "symbol:/" → status symbol filter (NEW)
+     * - "s:open" → status category (by internal name or alias)
+     * - "s:x" → status symbol (exact match)
+     * - "s:x,/" → multiple statuses (comma-separated)
      * - "date before: May 5", "due before: May 5" → date ranges (distinguished)
      * - "overdue", "recurring", "subtask", "no date", "no priority" → special keywords
      * - "&" (AND), "|" (OR), "!" (NOT) → operators
@@ -882,8 +883,7 @@ export class DataviewService {
         dueDate?: string;
         dueDateRange?: { start?: string; end?: string };
         project?: string;
-        statusCategory?: string;
-        statusSymbol?: string;
+        statusValues?: string[]; // Unified: can be categories or symbols
         specialKeywords?: string[];
         operators?: { and?: boolean; or?: boolean; not?: boolean };
     } {
@@ -916,22 +916,22 @@ export class DataviewService {
             result.priority = parseInt(priorityMatch[1]);
         }
 
-        // NEW Pattern 4: Status category "status:open" or "s:completed"
-        const statusMatch = query.match(/\b(status|s):(\w+[-]?\w*)/i);
+        // NEW Pattern 4: Unified Status Syntax "s:value" or "s:value1,value2"
+        // Supports:
+        // - Category names (internal or alias): s:open, s:completed, s:done, s:in-progress
+        // - Symbols: s:x, s:/, s:?
+        // - Multiple values: s:x,/, s:open,wip
+        const statusMatch = query.match(/\bs:([^\s&|]+)/i);
         if (statusMatch) {
-            // Normalize: "in-progress" → "inProgress", "in progress" → "inProgress"
-            result.statusCategory = statusMatch[2]
-                .replace(/-/g, "")
-                .replace(/\s+/g, "");
+            const rawValues = statusMatch[1];
+            // Split by comma (no spaces allowed per user request)
+            result.statusValues = rawValues
+                .split(",")
+                .map((v) => v.trim())
+                .filter((v) => v.length > 0);
         }
 
-        // NEW Pattern 5: Status symbol "symbol:x" or "symbol:/"
-        const symbolMatch = query.match(/\bsymbol:([^\s&|]+)/i);
-        if (symbolMatch) {
-            result.statusSymbol = symbolMatch[1];
-        }
-
-        // NEW Pattern 6: Special keywords
+        // NEW Pattern 5: Special keywords
         // "overdue" or "over due" or "od"
         if (
             /\b(overdue|over\s+due|od)\b/i.test(query) &&
@@ -1068,8 +1068,7 @@ export class DataviewService {
             dueDate?: string | null;
             dueDateRange?: { start: string; end: string } | null;
             status?: string | string[] | null; // Support multi-value
-            statusCategory?: string | null; // NEW: Todoist-style status:open
-            statusSymbol?: string | null; // NEW: Todoist-style symbol:x
+            statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
         settings: PluginSettings,
     ): ((dvTask: any) => boolean) | null {
@@ -1259,29 +1258,49 @@ export class DataviewService {
             });
         }
 
-        // NEW: Build status category filter (Todoist-style: status:open)
-        if (intent.statusCategory) {
-            const targetCategory = intent.statusCategory;
-            const categoryConfig = settings.taskStatusMapping[targetCategory];
+        // NEW: Build unified status filter (s: syntax - categories or symbols)
+        // Supports: s:open, s:x, s:done, s:x,/, etc.
+        if (intent.statusValues && intent.statusValues.length > 0) {
+            filters.push((dvTask: any) => {
+                const taskStatus = dvTask.status;
+                if (taskStatus === undefined) return false;
 
-            if (categoryConfig) {
-                const symbols = categoryConfig.symbols;
-                filters.push((dvTask: any) => {
-                    const status = dvTask.status;
-                    if (status !== undefined) {
-                        return symbols.includes(status);
+                // Check each value with OR logic
+                return intent.statusValues!.some((value) => {
+                    // 1. Try exact symbol match first (highest priority)
+                    if (taskStatus === value) return true;
+
+                    // 2. Try matching against category (internal name or aliases)
+                    // Normalize value for comparison: remove hyphens, lowercase
+                    const normalizedValue = value
+                        .toLowerCase()
+                        .replace(/-/g, "")
+                        .replace(/\s+/g, "");
+
+                    for (const [categoryKey, categoryConfig] of Object.entries(
+                        settings.taskStatusMapping,
+                    )) {
+                        // Check internal name match (case-insensitive, normalized)
+                        if (
+                            categoryKey.toLowerCase() === normalizedValue ||
+                            categoryKey.toLowerCase().replace(/-/g, "") ===
+                                normalizedValue
+                        ) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
+
+                        // Check aliases match (case-insensitive)
+                        const aliases = categoryConfig.aliases
+                            .toLowerCase()
+                            .split(",")
+                            .map((a) => a.trim());
+                        if (aliases.includes(value.toLowerCase())) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
                     }
+
                     return false;
                 });
-            }
-        }
-
-        // NEW: Build status symbol filter (Todoist-style: symbol:x)
-        if (intent.statusSymbol) {
-            const targetSymbol = intent.statusSymbol;
-            filters.push((dvTask: any) => {
-                const status = dvTask.status;
-                return status === targetSymbol;
             });
         }
 
@@ -1301,7 +1320,7 @@ export class DataviewService {
      * @param app - Obsidian app instance
      * @param settings - Plugin settings
      * @param dateFilter - Optional date filter: "any", "today", "overdue", "future", "week", "next-week", "tomorrow", or specific date (YYYY-MM-DD)
-     * @param propertyFilters Optional property filters (priority, dueDate, status, statusCategory, statusSymbol)
+     * @param propertyFilters Optional property filters (priority, dueDate, status, statusValues)
      *
      * When dateFilter is provided, tasks are filtered AT LOAD TIME (before adding to array),
      * which is more efficient than loading all tasks and filtering afterward.
@@ -1316,8 +1335,7 @@ export class DataviewService {
             dueDate?: string | null; // Single date or relative
             dueDateRange?: { start: string; end: string } | null; // Date range
             status?: string | string[] | null; // Support multi-value
-            statusCategory?: string | null; // NEW: Todoist-style status:open
-            statusSymbol?: string | null; // NEW: Todoist-style symbol:x
+            statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);

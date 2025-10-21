@@ -1572,7 +1572,7 @@ Examples:
         });
         statusCategoriesDesc.innerHTML = `
             <p><strong>📋 Flexible Status Categories</strong></p>
-            <p>Define custom status categories with their checkbox symbols and scores. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
+            <p>Define custom status categories with their checkbox symbols, scores, and query aliases. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
             <p><strong>Protected categories (cannot be deleted):</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
                 <li><strong>Fully locked (displayName + symbols locked):</strong>
@@ -1593,11 +1593,14 @@ Examples:
             <ul style="margin-left: 20px; margin-top: 5px;">
                 <li><strong>Category key:</strong> Internal identifier (e.g., "important", "tendency"). No spaces or special characters. camelCase recommended. Editable for custom categories.</li>
                 <li><strong>Display name:</strong> Human-readable name shown in UI (sentence case recommended).</li>
+                <li><strong>Query aliases:</strong> Comma-separated names for querying (NO SPACES). Example: <code>completed,done,finished</code> allows queries like <code>s:done</code>, <code>s:completed</code>, or <code>s:finished</code>. Case-insensitive and hyphen-tolerant (<code>in-progress</code> = <code>inprogress</code>).</li>
                 <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,X" or "!,I,b").</li>
                 <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important).</li>
             </ul>
             <p><strong>💡 Tips:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
+                <li><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:value1,value2</code> for multiple statuses. Works with category names, aliases, or symbols!</li>
+                <li><strong>Aliases benefit:</strong> Add multiple ways to query the same category (e.g., <code>wip,doing,active</code> for "In Progress").</li>
                 <li>Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</li>
                 <li>For proper status symbol display, use a compatible theme like <a href="https://github.com/kepano/obsidian-minimal">Minimal</a>.</li>
             </ul>
@@ -1606,9 +1609,10 @@ Examples:
         // Add column headers
         const headerDiv = containerEl.createDiv();
         headerDiv.style.cssText =
-            "display: grid; grid-template-columns: 120px 150px 1fr 120px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
+            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
         headerDiv.createDiv({ text: "Category key" });
         headerDiv.createDiv({ text: "Display name" });
+        headerDiv.createDiv({ text: "Query aliases" });
         headerDiv.createDiv({ text: "Symbols" });
         headerDiv.createDiv({ text: "Score" });
         headerDiv.createDiv({ text: "" }); // For remove button
@@ -1648,6 +1652,7 @@ Examples:
                                 symbols: [],
                                 score: 0.5,
                                 displayName: `Custom ${categoryNum}`,
+                                aliases: `custom${categoryNum}`,
                             };
 
                         await this.plugin.saveSettings();
@@ -1750,7 +1755,12 @@ Examples:
     private renderStatusCategory(
         containerEl: HTMLElement,
         categoryKey: string,
-        config: { symbols?: string[]; score?: number; displayName?: string },
+        config: {
+            symbols?: string[];
+            score?: number;
+            displayName?: string;
+            aliases?: string;
+        },
     ): void {
         // Defensive check: ensure config has required properties
         if (!config) {
@@ -1764,6 +1774,7 @@ Examples:
         const symbols = Array.isArray(config.symbols) ? config.symbols : [];
         const displayName = config.displayName || categoryKey;
         const score = typeof config.score === "number" ? config.score : 0.5;
+        const aliases = config.aliases || categoryKey.toLowerCase();
 
         // Identify protected categories using helper functions
         const isProtectedCategory = isStatusCategoryProtected(categoryKey);
@@ -1772,7 +1783,7 @@ Examples:
         // Create horizontal grid row
         const rowDiv = containerEl.createDiv();
         rowDiv.style.cssText =
-            "display: grid; grid-template-columns: 120px 150px 1fr 120px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); align-items: center;";
+            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); align-items: center;";
 
         // Category key (editable for custom categories only)
         const keyInput = rowDiv.createEl("input", { type: "text" });
@@ -1799,6 +1810,7 @@ Examples:
                         symbols: symbols,
                         score: score,
                         displayName: displayName,
+                        aliases: aliases,
                     };
                     delete this.plugin.settings.taskStatusMapping[categoryKey];
                     await this.plugin.saveSettings();
@@ -1840,6 +1852,21 @@ Examples:
                 await this.plugin.saveSettings();
             });
         }
+
+        // Aliases (comma-separated query names)
+        const aliasesInput = rowDiv.createEl("input", { type: "text" });
+        aliasesInput.value = aliases;
+        aliasesInput.placeholder = "e.g., wip,doing,active";
+        aliasesInput.title =
+            "Comma-separated aliases for querying (NO SPACES). Example: completed,done,finished";
+        aliasesInput.style.cssText =
+            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+        aliasesInput.addEventListener("change", async () => {
+            const value = aliasesInput.value.trim();
+            this.plugin.settings.taskStatusMapping[categoryKey].aliases =
+                value || categoryKey.toLowerCase();
+            await this.plugin.saveSettings();
+        });
 
         // Symbols (locked only for fully locked categories: open, other)
         const symbolsInput = rowDiv.createEl("input", { type: "text" });
