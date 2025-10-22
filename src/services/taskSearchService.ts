@@ -93,53 +93,84 @@ export class TaskSearchService {
      */
     static extractKeywords(query: string): string[] {
         // First, remove filter-related phrases from the query
+        // Use centralized patterns from TaskPropertyService
         let cleanedQuery = query;
 
-        // Remove priority phrases
+        // Remove priority syntax using centralized pattern
         cleanedQuery = cleanedQuery.replace(
-            /priority\s*(?:is\s*|=\s*)?[1-4]|p[1-4]|优先级\s*(?:为|是)?\s*[1-4]/gi,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
-            /high(?:est)?\s*priority|medium\s*priority|low\s*priority/gi,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
-            /高优先级|最高优先级|中优先级|普通优先级|低优先级|无优先级/g,
+            TaskPropertyService.QUERY_PATTERNS.priority,
             "",
         );
 
-        // Remove due date phrases
+        // Remove status syntax using centralized pattern
         cleanedQuery = cleanedQuery.replace(
-            /due\s*(?:today|tomorrow|this\s*week|next\s*week)?|overdue|今天|明天|本周|下周|过期/gi,
+            TaskPropertyService.QUERY_PATTERNS.status,
             "",
         );
 
-        // Remove date range phrases (NEW: Phase 1 Enhancement)
+        // Remove project syntax using centralized pattern
         cleanedQuery = cleanedQuery.replace(
-            /(?:date\s+)?(?:before|after)[:\s]+\d{4}-\d{2}-\d{2}/gi,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
-            /from\s+\d{4}-\d{2}-\d{2}\s+to\s+\d{4}-\d{2}-\d{2}/gi,
+            TaskPropertyService.QUERY_PATTERNS.project,
             "",
         );
 
-        // Remove status phrases
+        // Remove search syntax using centralized pattern
         cleanedQuery = cleanedQuery.replace(
-            /(?:open|completed|done|finished|in\s*progress|未完成|完成|已完成|进行中)/gi,
+            TaskPropertyService.QUERY_PATTERNS.search,
             "",
         );
 
-        // Remove tag indicators
-        cleanedQuery = cleanedQuery.replace(/#\w+/g, "");
+        // Remove special keywords using centralized patterns
         cleanedQuery = cleanedQuery.replace(
-            /(?:with|tagged|having)\s*tags?/gi,
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordSubtask,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoDate,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoPriority,
             "",
         );
 
-        // Remove folder indicators
-        cleanedQuery = cleanedQuery.replace(/(?:in|from)\s+folder/gi, "");
+        // Remove date range syntax using centralized patterns
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueBeforeRange,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueAfterRange,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dateBeforeRange,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dateAfterRange,
+            "",
+        );
+
+        // Remove hashtags using centralized pattern
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.hashtag,
+            "",
+        );
+
+        // Remove operators using centralized pattern
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.operators,
+            "",
+        );
 
         // Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
@@ -167,25 +198,11 @@ export class TaskSearchService {
      * Check if query is asking about task search/finding
      */
     static isSearchQuery(query: string): boolean {
-        const searchKeywords = [
-            "find",
-            "search",
-            "look",
-            "show",
-            "list",
-            "get",
-            "where",
-            "找",
-            "查找",
-            "搜索",
-            "显示",
-            "列出",
-            "哪里",
-            "在哪",
-        ];
-
+        // Use centralized search keywords from TaskPropertyService
         const lowerQuery = query.toLowerCase();
-        return searchKeywords.some((keyword) => lowerQuery.includes(keyword));
+        return TaskPropertyService.SEARCH_KEYWORDS.some((keyword) =>
+            lowerQuery.includes(keyword),
+        );
     }
 
     /**
@@ -303,9 +320,10 @@ export class TaskSearchService {
         if (hasAnyTerm(combined.dueDate.nextWeek)) return "next-week";
 
         // Check for relative date patterns ("in 5 days", "+3d", etc.)
-        const relativeDatePattern =
-            /\bin\s+(\d+)\s+(day|days|week|weeks|month|months)\b/i;
-        const relativeMatch = lowerQuery.match(relativeDatePattern);
+        // Use centralized pattern from TaskPropertyService
+        const relativeMatch = lowerQuery.match(
+            TaskPropertyService.DATE_PATTERNS.relative,
+        );
         if (relativeMatch) {
             const amount = relativeMatch[1];
             const unit = relativeMatch[2].toLowerCase();
@@ -314,13 +332,13 @@ export class TaskSearchService {
             if (unit.startsWith("month")) return `+${amount}m`;
         }
 
-        // Check for specific date patterns
-        const datePatterns = [
-            /\b(\d{4}-\d{2}-\d{2})\b/,
-            /\b(\d{2}\/\d{2}\/\d{4})\b/,
-            /\b(\d{4}\/\d{2}\/\d{2})\b/,
+        // Check for specific date patterns using centralized patterns
+        const datePatternChecks = [
+            TaskPropertyService.DATE_PATTERNS.iso,
+            TaskPropertyService.DATE_PATTERNS.us,
+            TaskPropertyService.DATE_PATTERNS.international,
         ];
-        for (const pattern of datePatterns) {
+        for (const pattern of datePatternChecks) {
             const match = lowerQuery.match(pattern);
             if (match) return match[1];
         }
@@ -350,21 +368,22 @@ export class TaskSearchService {
     ): { start?: string; end?: string } | null {
         const lowerQuery = query.toLowerCase();
 
+        // Use centralized date patterns from TaskPropertyService
         // Pattern 1: "before YYYY-MM-DD"
         const beforeMatch = lowerQuery.match(
-            /(?:date\s+)?before[:\s]+(\d{4}-\d{2}-\d{2})/,
+            TaskPropertyService.DATE_PATTERNS.before,
         );
         if (beforeMatch) return { end: beforeMatch[1] };
 
         // Pattern 2: "after YYYY-MM-DD"
         const afterMatch = lowerQuery.match(
-            /(?:date\s+)?after[:\s]+(\d{4}-\d{2}-\d{2})/,
+            TaskPropertyService.DATE_PATTERNS.after,
         );
         if (afterMatch) return { start: afterMatch[1] };
 
         // Pattern 3: "from YYYY-MM-DD to YYYY-MM-DD"
         const betweenMatch = lowerQuery.match(
-            /from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/,
+            TaskPropertyService.DATE_PATTERNS.between,
         );
         if (betweenMatch)
             return { start: betweenMatch[1], end: betweenMatch[2] };
@@ -694,16 +713,11 @@ export class TaskSearchService {
             }
         }
 
-        // NEW: Validate special keywords
+        // NEW: Validate special keywords using centralized list
         if (specialKeywords && specialKeywords.length > 0) {
-            const validKeywords = [
-                "overdue",
-                "recurring",
-                "subtask",
-                "no_date",
-                "has_date",
-                "no_priority",
-            ];
+            // Use centralized valid keywords from TaskPropertyService
+            const validKeywords =
+                TaskPropertyService.VALID_SPECIAL_KEYWORDS as readonly string[];
             const invalid = specialKeywords.filter(
                 (kw) => !validKeywords.includes(kw),
             );

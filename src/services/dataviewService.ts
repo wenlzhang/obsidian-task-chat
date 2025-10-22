@@ -2,7 +2,6 @@ import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskPropertyService } from "./taskPropertyService";
-import * as chrono from "chrono-node";
 
 /**
  * Service for integrating with Dataview plugin to fetch tasks
@@ -150,19 +149,12 @@ export class DataviewService {
     ): string | undefined {
         if (!text || typeof text !== "string") return undefined;
 
-        // Map of all possible emoji shorthands
-        // We check all emojis and let the caller decide which one to use
-        const emojiPatterns: { [key: string]: RegExp } = {
-            due: /🗓️\s*(\d{4}-\d{2}-\d{2})/,
-            completion: /✅\s*(\d{4}-\d{2}-\d{2})/,
-            created: /➕\s*(\d{4}-\d{2}-\d{2})/,
-            start: /🛫\s*(\d{4}-\d{2}-\d{2})/,
-            scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,
-        };
-
+        // Use centralized emoji patterns from TaskPropertyService
         // Check all emoji patterns and return the first match
         // This allows the function to work regardless of field naming
-        for (const pattern of Object.values(emojiPatterns)) {
+        for (const pattern of Object.values(
+            TaskPropertyService.DATE_EMOJI_PATTERNS,
+        )) {
             const match = text.match(pattern);
             if (match && match[1]) {
                 const extractedDate = match[1].trim();
@@ -244,12 +236,14 @@ export class DataviewService {
             priority = this.mapPriority(priorityValue, settings);
         } else if (text) {
             // Fallback to emoji-based priority (Tasks plugin format)
-            if (text.includes("⏫")) {
-                priority = 1; // high
-            } else if (text.includes("🔼")) {
-                priority = 2; // medium
-            } else if (text.includes("🔽") || text.includes("⏬")) {
-                priority = 3; // low
+            // Use centralized emoji mappings from TaskPropertyService
+            for (const [emoji, priorityLevel] of Object.entries(
+                TaskPropertyService.PRIORITY_EMOJI_MAP,
+            )) {
+                if (text.includes(emoji)) {
+                    priority = priorityLevel;
+                    break;
+                }
             }
         }
 
@@ -317,17 +311,6 @@ export class DataviewService {
         };
 
         return task;
-    }
-
-    /**
-     * Check if task matches date range filter
-     * Delegates to TaskPropertyService for consistent behavior
-     */
-    private static matchesDateRange(
-        task: Task,
-        dateRange: { start?: string; end?: string } | null,
-    ): boolean {
-        return TaskPropertyService.matchesDateRange(task, dateRange);
     }
 
     /**
@@ -622,12 +605,9 @@ export class DataviewService {
 
         // Build priority filter (supports multi-value)
         if (intent.priority) {
-            const priorityFields = [
-                settings.dataviewKeys.priority,
-                "priority",
-                "p",
-                "pri",
-            ];
+            // Use centralized priority field names
+            const priorityFields =
+                TaskPropertyService.getAllPriorityFieldNames(settings);
             const targetPriorities = Array.isArray(intent.priority)
                 ? intent.priority
                 : [intent.priority];
@@ -652,15 +632,12 @@ export class DataviewService {
 
         // Build due date filter (checks task metadata)
         if (intent.dueDate) {
-            const dueDateFields = [
-                settings.dataviewKeys.dueDate,
-                "due",
-                "deadline",
-                "dueDate",
-                "scheduled",
-            ];
+            // Use centralized date field names
+            const dueDateFields =
+                TaskPropertyService.getAllDueDateFieldNames(settings);
 
-            if (intent.dueDate === "any") {
+            // Use centralized due date keywords from TaskPropertyService
+            if (intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.any) {
                 // Has any due date
                 filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
@@ -671,7 +648,9 @@ export class DataviewService {
                     }
                     return false;
                 });
-            } else if (intent.dueDate === "today") {
+            } else if (
+                intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.today
+            ) {
                 const today = moment().format("YYYY-MM-DD");
                 filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
@@ -685,7 +664,9 @@ export class DataviewService {
                     }
                     return false;
                 });
-            } else if (intent.dueDate === "overdue") {
+            } else if (
+                intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.overdue
+            ) {
                 const today = moment();
                 filters.push((dvTask: any) => {
                     for (const field of dueDateFields) {
@@ -738,34 +719,38 @@ export class DataviewService {
 
         // Build date range filter
         if (intent.dueDateRange) {
-            const dueDateFields = [
-                settings.dataviewKeys.dueDate,
-                "due",
-                "deadline",
-                "dueDate",
-                "scheduled",
-            ];
+            // Use centralized date field names
+            const dueDateFields =
+                TaskPropertyService.getAllDueDateFieldNames(settings);
             const { start, end } = intent.dueDateRange;
 
-            // Parse range keywords (week-start, month-start, etc.)
+            // Parse range keywords using centralized constants from TaskPropertyService
             let startDate: moment.Moment;
             let endDate: moment.Moment;
 
-            if (start === "week-start") {
+            if (start === TaskPropertyService.DATE_RANGE_KEYWORDS.weekStart) {
                 startDate = moment().startOf("week");
-            } else if (start === "next-week-start") {
+            } else if (
+                start === TaskPropertyService.DATE_RANGE_KEYWORDS.nextWeekStart
+            ) {
                 startDate = moment().add(1, "week").startOf("week");
-            } else if (start === "month-start") {
+            } else if (
+                start === TaskPropertyService.DATE_RANGE_KEYWORDS.monthStart
+            ) {
                 startDate = moment().startOf("month");
             } else {
                 startDate = moment(start);
             }
 
-            if (end === "week-end") {
+            if (end === TaskPropertyService.DATE_RANGE_KEYWORDS.weekEnd) {
                 endDate = moment().endOf("week");
-            } else if (end === "next-week-end") {
+            } else if (
+                end === TaskPropertyService.DATE_RANGE_KEYWORDS.nextWeekEnd
+            ) {
                 endDate = moment().add(1, "week").endOf("week");
-            } else if (end === "month-end") {
+            } else if (
+                end === TaskPropertyService.DATE_RANGE_KEYWORDS.monthEnd
+            ) {
                 endDate = moment().endOf("month");
             } else {
                 endDate = moment(end);

@@ -193,6 +193,64 @@ export class TaskPropertyService {
             "tillstånd",
             "progress",
         ],
+        open: [
+            "open",
+            "pending",
+            "todo",
+            "incomplete",
+            "new",
+            "unstarted",
+            "未完成",
+            "待办",
+            "待处理",
+            "新建",
+            "öppen",
+            "väntande",
+            "att göra",
+        ],
+        inProgress: [
+            "in progress",
+            "working",
+            "ongoing",
+            "active",
+            "doing",
+            "进行中",
+            "正在做",
+            "处理中",
+            "进行",
+            "pågående",
+            "arbetar på",
+            "aktiv",
+        ],
+        completed: [
+            "done",
+            "completed",
+            "finished",
+            "closed",
+            "resolved",
+            "完成",
+            "已完成",
+            "结束",
+            "已结束",
+            "klar",
+            "färdig",
+            "slutförd",
+            "stängd",
+        ],
+        cancelled: [
+            "cancelled",
+            "canceled",
+            "abandoned",
+            "dropped",
+            "discarded",
+            "取消",
+            "已取消",
+            "放弃",
+            "废弃",
+            "avbruten",
+            "inställd",
+            "övergjven",
+        ],
     } as const;
 
     /**
@@ -229,6 +287,134 @@ export class TaskPropertyService {
         "no date",
         "no priority",
     ] as const;
+
+    /**
+     * Valid special keywords for validation (normalized format)
+     * Used to validate special keywords from query parsing
+     */
+    static readonly VALID_SPECIAL_KEYWORDS = [
+        "overdue",
+        "recurring",
+        "subtask",
+        "no_date",
+        "has_date",
+        "no_priority",
+    ] as const;
+
+    /**
+     * Date extraction patterns for identifying specific dates in queries
+     * Used in date range extraction and date filter detection
+     */
+    static readonly DATE_PATTERNS = {
+        // ISO format: YYYY-MM-DD
+        iso: /\b(\d{4}-\d{2}-\d{2})\b/,
+        // US format: MM/DD/YYYY
+        us: /\b(\d{2}\/\d{2}\/\d{4})\b/,
+        // International format: YYYY/MM/DD
+        international: /\b(\d{4}\/\d{2}\/\d{2})\b/,
+        // Date range: "before YYYY-MM-DD"
+        before: /(?:date\s+)?before[:\s]+(\d{4}-\d{2}-\d{2})/,
+        // Date range: "after YYYY-MM-DD"
+        after: /(?:date\s+)?after[:\s]+(\d{4}-\d{2}-\d{2})/,
+        // Date range: "from YYYY-MM-DD to YYYY-MM-DD"
+        between: /from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/,
+        // Relative date: "in 5 days", "in 2 weeks"
+        relative: /\bin\s+(\d+)\s+(day|days|week|weeks|month|months)\b/i,
+    } as const;
+
+    /**
+     * Search action keywords (multilingual)
+     * Used to identify if query is asking for search/find action
+     */
+    static readonly SEARCH_KEYWORDS = [
+        // English
+        "find",
+        "search",
+        "look",
+        "show",
+        "list",
+        "get",
+        "where",
+        // Chinese
+        "找",
+        "查找",
+        "搜索",
+        "显示",
+        "列出",
+        "哪里",
+        "在哪",
+    ] as const;
+
+    /**
+     * Priority emoji mappings (Tasks plugin format)
+     * Maps emoji symbols to priority levels
+     */
+    static readonly PRIORITY_EMOJI_MAP = {
+        "⏫": 1, // high priority
+        "🔼": 2, // medium priority
+        "🔽": 3, // low priority
+        "⏬": 3, // low priority (alternative)
+    } as const;
+
+    /**
+     * Due date filter keywords
+     * Used for special date filtering (any, today, overdue, etc.)
+     */
+    static readonly DUE_DATE_KEYWORDS = {
+        any: "any", // Has any due date
+        today: "today", // Due today
+        tomorrow: "tomorrow", // Due tomorrow
+        overdue: "overdue", // Past due
+        future: "future", // Future dates
+        week: "week", // This week
+        nextWeek: "next-week", // Next week
+    } as const;
+
+    /**
+     * Date range keywords for relative dates
+     * Used in date range parsing (week-start, month-end, etc.)
+     */
+    static readonly DATE_RANGE_KEYWORDS = {
+        weekStart: "week-start",
+        weekEnd: "week-end",
+        nextWeekStart: "next-week-start",
+        nextWeekEnd: "next-week-end",
+        monthStart: "month-start",
+        monthEnd: "month-end",
+    } as const;
+
+    /**
+     * Completion status filter values
+     * Used in task filtering by completion status
+     */
+    static readonly COMPLETION_STATUS = {
+        all: "all",
+        completed: "completed",
+        incomplete: "incomplete",
+    } as const;
+
+    /**
+     * Status category values
+     * Standard task status categories
+     */
+    static readonly STATUS_CATEGORY = {
+        completed: "completed",
+        open: "open",
+        inProgress: "inProgress",
+        cancelled: "cancelled",
+    } as const;
+
+    /**
+     * Priority value constants
+     * Used for priority representation
+     */
+    static readonly PRIORITY_VALUES = {
+        none: "none", // String representation for undefined/no priority
+        p1: "1", // High priority
+        p2: "2", // Medium-high priority
+        p3: "3", // Medium-low priority
+        p4: "4", // Low priority
+    } as const;
 
     // ==========================================
     // COMBINED TERM METHODS (Base + User Settings)
@@ -306,13 +492,53 @@ export class TaskPropertyService {
             ],
         };
 
-        // Add terms from each status category
+        // Add base terms for default categories (if they exist in BASE_STATUS_TERMS)
+        const baseCategories = Object.keys(this.BASE_STATUS_TERMS).filter(
+            (key) => key !== "general",
+        ) as Array<keyof typeof this.BASE_STATUS_TERMS>;
+
+        for (const categoryKey of baseCategories) {
+            if (this.BASE_STATUS_TERMS[categoryKey]) {
+                result[categoryKey] = [...this.BASE_STATUS_TERMS[categoryKey]];
+            }
+        }
+
+        // Add terms from user-defined status categories in taskStatusMapping
         for (const [categoryKey, config] of Object.entries(
             settings.taskStatusMapping,
         )) {
             if (config) {
-                const terms = this.inferStatusTerms(categoryKey, settings);
-                result[categoryKey] = terms.split(", ");
+                // Get inferred terms for this category
+                const inferredTerms = this.inferStatusTerms(
+                    categoryKey,
+                    settings,
+                ).split(", ");
+
+                // Combine with existing base terms (if any) and remove duplicates
+                if (result[categoryKey]) {
+                    result[categoryKey] = [
+                        ...result[categoryKey],
+                        ...inferredTerms.filter(
+                            (term) => !result[categoryKey].includes(term),
+                        ),
+                    ];
+                } else {
+                    result[categoryKey] = inferredTerms;
+                }
+
+                // Add display name as a recognizable term if not already present
+                if (config.displayName) {
+                    const displayNameLower = config.displayName.toLowerCase();
+                    if (!result[categoryKey].includes(displayNameLower)) {
+                        result[categoryKey].push(displayNameLower);
+                    }
+                }
+
+                // Add category key as term if not already present
+                const categoryKeyLower = categoryKey.toLowerCase();
+                if (!result[categoryKey].includes(categoryKeyLower)) {
+                    result[categoryKey].push(categoryKeyLower);
+                }
             }
         }
 
@@ -344,7 +570,6 @@ export class TaskPropertyService {
     static getAllDueDateFieldNames(settings: PluginSettings): string[] {
         return [settings.dataviewKeys.dueDate, ...this.DATE_FIELDS.due];
     }
-
 
     /**
      * Map a DataView task status symbol to status category

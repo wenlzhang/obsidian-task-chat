@@ -2,6 +2,7 @@ import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
 import { PromptBuilderService } from "./promptBuilderService";
 import { PropertyRecognitionService } from "./propertyRecognitionService";
+import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 
 /**
@@ -269,41 +270,83 @@ export class QueryParserService {
 
     /**
      * Remove standard property syntax from query to get remaining keywords
-     * Uses patterns that match parseStandardQuerySyntax to ensure consistency
+     * Uses centralized patterns from TaskPropertyService for consistency
      */
     private static removeStandardProperties(query: string): string {
         let cleaned = query;
 
-        // Use patterns that match parseStandardQuerySyntax (comprehensive and tested)
-        // This ensures we remove exactly what parseStandardQuerySyntax recognizes
+        // Use centralized QUERY_PATTERNS from TaskPropertyService
+        // This ensures consistency across all services
 
         // Remove priority syntax (p1-p4)
-        cleaned = cleaned.replace(/\bp[1-4]\b/gi, "");
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.priority,
+            "",
+        );
 
         // Remove status syntax (s:value or s:value1,value2)
-        cleaned = cleaned.replace(/\bs:[^\s&|]+/gi, "");
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.status,
+            "",
+        );
 
         // Remove project syntax (##project)
-        cleaned = cleaned.replace(/##+[A-Za-z0-9_-]+/g, "");
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.project,
+            "",
+        );
 
         // Remove search syntax (search:"term" or search:term)
-        cleaned = cleaned.replace(/search:\s*["']?[^"'&|]+["']?/gi, "");
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.search,
+            "",
+        );
 
-        // Remove special keywords (that parseTodoistSyntax recognizes)
-        cleaned = cleaned.replace(/\b(overdue|over\s+due|od)\b/gi, "");
-        cleaned = cleaned.replace(/\brecurring\b/gi, "");
-        cleaned = cleaned.replace(/\bsubtask\b/gi, "");
-        cleaned = cleaned.replace(/\bno\s+date\b/gi, "");
-        cleaned = cleaned.replace(/\bno\s+priority\b/gi, "");
+        // Remove special keywords (centralized patterns)
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordSubtask,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoDate,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoPriority,
+            "",
+        );
 
-        // Remove date range syntax (due before:, due after:, date before:, date after:)
-        cleaned = cleaned.replace(/due\s+before:\s*[^&|]+/gi, "");
-        cleaned = cleaned.replace(/due\s+after:\s*[^&|]+/gi, "");
-        cleaned = cleaned.replace(/(?<!due\s)date\s+before:\s*[^&|]+/gi, "");
-        cleaned = cleaned.replace(/(?<!due\s)date\s+after:\s*[^&|]+/gi, "");
+        // Remove date range syntax (centralized patterns)
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueBeforeRange,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueAfterRange,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.dateBeforeRange,
+            "",
+        );
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.dateAfterRange,
+            "",
+        );
 
-        // Remove operators (handled separately by parseTodoistSyntax)
-        cleaned = cleaned.replace(/[&|!]/g, "");
+        // Remove operators
+        cleaned = cleaned.replace(
+            TaskPropertyService.QUERY_PATTERNS.operators,
+            "",
+        );
 
         // Clean up extra spaces
         cleaned = cleaned.replace(/\s+/g, " ").trim();

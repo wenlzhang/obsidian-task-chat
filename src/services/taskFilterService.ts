@@ -33,10 +33,11 @@ export class TaskFilterService {
         // Filter by priorities
         if (filter.priorities && filter.priorities.length > 0) {
             filtered = filtered.filter((task) => {
+                // Use centralized priority value from TaskPropertyService
                 const priority =
                     task.priority !== undefined
                         ? String(task.priority)
-                        : "none";
+                        : TaskPropertyService.PRIORITY_VALUES.none;
                 return filter.priorities!.includes(priority);
             });
         }
@@ -53,14 +54,29 @@ export class TaskFilterService {
         }
 
         // Filter by completion status
-        if (filter.completionStatus && filter.completionStatus !== "all") {
-            if (filter.completionStatus === "completed") {
+        // Use centralized completion status constants from TaskPropertyService
+        if (
+            filter.completionStatus &&
+            filter.completionStatus !==
+                TaskPropertyService.COMPLETION_STATUS.all
+        ) {
+            if (
+                filter.completionStatus ===
+                TaskPropertyService.COMPLETION_STATUS.completed
+            ) {
                 filtered = filtered.filter(
-                    (task) => task.statusCategory === "completed",
+                    (task) =>
+                        task.statusCategory ===
+                        TaskPropertyService.STATUS_CATEGORY.completed,
                 );
-            } else if (filter.completionStatus === "incomplete") {
+            } else if (
+                filter.completionStatus ===
+                TaskPropertyService.COMPLETION_STATUS.incomplete
+            ) {
                 filtered = filtered.filter(
-                    (task) => task.statusCategory !== "completed",
+                    (task) =>
+                        task.statusCategory !==
+                        TaskPropertyService.STATUS_CATEGORY.completed,
                 );
             }
         }
@@ -94,8 +110,11 @@ export class TaskFilterService {
     static getUniquePriorities(tasks: Task[]): string[] {
         const priorities = new Set<string>();
         tasks.forEach((task) => {
+            // Use centralized priority value from TaskPropertyService
             const priority =
-                task.priority !== undefined ? String(task.priority) : "none";
+                task.priority !== undefined
+                    ? String(task.priority)
+                    : TaskPropertyService.PRIORITY_VALUES.none;
             priorities.add(priority);
         });
         return Array.from(priorities).sort();
@@ -134,7 +153,11 @@ export class TaskFilterService {
         let dueThisWeek = 0;
 
         tasks.forEach((task) => {
-            if (task.statusCategory === "completed") {
+            // Use centralized status category from TaskPropertyService
+            if (
+                task.statusCategory ===
+                TaskPropertyService.STATUS_CATEGORY.completed
+            ) {
                 completed++;
             } else {
                 incomplete++;
@@ -145,7 +168,8 @@ export class TaskFilterService {
                 if (dueDate.isValid()) {
                     if (
                         dueDate.isBefore(today) &&
-                        task.statusCategory !== "completed"
+                        task.statusCategory !==
+                            TaskPropertyService.STATUS_CATEGORY.completed
                     ) {
                         overdue++;
                     }

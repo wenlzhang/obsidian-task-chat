@@ -1,5 +1,6 @@
 import { PluginSettings } from "../settings";
 import { TaskPropertyService } from "./taskPropertyService";
+import { PromptBuilderService } from "./promptBuilderService";
 
 /**
  * Property Recognition Service
@@ -27,240 +28,27 @@ export class PropertyRecognitionService {
         return TaskPropertyService.inferStatusTerms(categoryKey, settings);
     }
 
-    /**
-     * Internal embedded mappings - Core property terms in multiple languages
-     * These serve as fallback when user hasn't configured custom terms
-     *
-     * Architecture: Internal mappings + User terms → Combined → Semantic expansion
-     */
-    private static INTERNAL_PRIORITY_TERMS = {
-        // General priority terms (any priority)
-        general: [
-            "priority",
-            "important",
-            "urgent",
-            "优先级",
-            "优先",
-            "重要",
-            "紧急",
-            "prioritet",
-            "viktig",
-            "brådskande",
-        ],
-        // High priority specific
-        high: [
-            "high",
-            "highest",
-            "critical",
-            "top",
-            "高",
-            "最高",
-            "关键",
-            "首要",
-            "hög",
-            "högst",
-            "kritisk",
-        ],
-        // Medium priority specific
-        medium: ["medium", "normal", "中", "中等", "普通", "medel", "normal"],
-        // Low priority specific
-        low: ["low", "minor", "低", "次要", "不重要", "låg", "mindre"],
-    };
-
-    private static INTERNAL_DUE_DATE_TERMS = {
-        // General due date terms (any due date)
-        general: [
-            "due",
-            "deadline",
-            "scheduled",
-            "截止日期",
-            "到期",
-            "期限",
-            "计划",
-            "förfallodatum",
-            "deadline",
-            "schemalagd",
-        ],
-        // Time-specific
-        today: ["today", "今天", "今日", "idag"],
-        tomorrow: ["tomorrow", "明天", "imorgon"],
-        overdue: [
-            "overdue",
-            "late",
-            "past due",
-            "过期",
-            "逾期",
-            "延迟",
-            "försenad",
-            "sen",
-        ],
-        thisWeek: ["this week", "本周", "这周", "denna vecka"],
-        nextWeek: ["next week", "下周", "nästa vecka"],
-        future: [
-            "future",
-            "upcoming",
-            "later",
-            "未来",
-            "将来",
-            "以后",
-            "framtida",
-            "kommande",
-        ],
-    };
-
-    private static INTERNAL_STATUS_TERMS = {
-        // General status terms (any status)
-        general: [
-            "status",
-            "state",
-            "progress",
-            "状态",
-            "进度",
-            "情况",
-            "status",
-            "tillstånd",
-            "progress",
-        ],
-        open: [
-            "open",
-            "pending",
-            "todo",
-            "incomplete",
-            "new",
-            "unstarted",
-            "未完成",
-            "待办",
-            "待处理",
-            "新建",
-            "öppen",
-            "väntande",
-            "att göra",
-        ],
-        inProgress: [
-            "in progress",
-            "working",
-            "ongoing",
-            "active",
-            "doing",
-            "进行中",
-            "正在做",
-            "处理中",
-            "进行",
-            "pågående",
-            "arbetar på",
-            "aktiv",
-        ],
-        completed: [
-            "done",
-            "completed",
-            "finished",
-            "closed",
-            "resolved",
-            "完成",
-            "已完成",
-            "结束",
-            "已结束",
-            "klar",
-            "färdig",
-            "slutförd",
-            "stängd",
-        ],
-        cancelled: [
-            "cancelled",
-            "canceled",
-            "abandoned",
-            "dropped",
-            "discarded",
-            "取消",
-            "已取消",
-            "放弃",
-            "废弃",
-            "avbruten",
-            "inställd",
-            "övergjven",
-        ],
-    };
+    // Note: Internal property terms are now centralized in TaskPropertyService
+    // Use TaskPropertyService.getCombinedPriorityTerms(), getCombinedDueDateTerms(), getCombinedStatusTerms()
 
     /**
-     * Get combined property terms (user-configured + internal mappings)
-     * This is used for regex matching in Simple Search mode and as base for semantic expansion
+     * Get combined property terms (user-configured + base terms)
+     * Delegates to TaskPropertyService for centralized term management
      *
      * @param settings Plugin settings containing user-configured terms
      * @returns Combined property terms ready for use
      */
     static getCombinedPropertyTerms(settings: PluginSettings) {
-        // Build status terms dynamically from taskStatusMapping
-        const statusTerms: Record<string, string[]> = {
-            general: [
-                ...this.INTERNAL_STATUS_TERMS.general,
-                ...settings.userPropertyTerms.status,
-            ],
-        };
-
-        // Add default categories (if they exist)
-        if (this.INTERNAL_STATUS_TERMS.open)
-            statusTerms.open = this.INTERNAL_STATUS_TERMS.open;
-        if (this.INTERNAL_STATUS_TERMS.inProgress)
-            statusTerms.inProgress = this.INTERNAL_STATUS_TERMS.inProgress;
-        if (this.INTERNAL_STATUS_TERMS.completed)
-            statusTerms.completed = this.INTERNAL_STATUS_TERMS.completed;
-        if (this.INTERNAL_STATUS_TERMS.cancelled)
-            statusTerms.cancelled = this.INTERNAL_STATUS_TERMS.cancelled;
-
-        // Add all user-defined status categories from taskStatusMapping
-        // This allows AI to recognize custom categories like "important", "bookmark", etc.
-        for (const [categoryKey, config] of Object.entries(
-            settings.taskStatusMapping,
-        )) {
-            // Use displayName as a term (e.g., "Important" for important category)
-            if (!statusTerms[categoryKey]) {
-                statusTerms[categoryKey] = [];
-            }
-            // Add display name as a recognizable term
-            if (
-                config.displayName &&
-                !statusTerms[categoryKey].includes(
-                    config.displayName.toLowerCase(),
-                )
-            ) {
-                statusTerms[categoryKey].push(config.displayName.toLowerCase());
-            }
-            // Add category key as term (e.g., "important" for important category)
-            if (!statusTerms[categoryKey].includes(categoryKey.toLowerCase())) {
-                statusTerms[categoryKey].push(categoryKey.toLowerCase());
-            }
-        }
-
         return {
-            priority: {
-                general: [
-                    ...this.INTERNAL_PRIORITY_TERMS.general,
-                    ...settings.userPropertyTerms.priority,
-                ],
-                high: this.INTERNAL_PRIORITY_TERMS.high,
-                medium: this.INTERNAL_PRIORITY_TERMS.medium,
-                low: this.INTERNAL_PRIORITY_TERMS.low,
-            },
-            dueDate: {
-                general: [
-                    ...this.INTERNAL_DUE_DATE_TERMS.general,
-                    ...settings.userPropertyTerms.dueDate,
-                ],
-                today: this.INTERNAL_DUE_DATE_TERMS.today,
-                tomorrow: this.INTERNAL_DUE_DATE_TERMS.tomorrow,
-                overdue: this.INTERNAL_DUE_DATE_TERMS.overdue,
-                thisWeek: this.INTERNAL_DUE_DATE_TERMS.thisWeek,
-                nextWeek: this.INTERNAL_DUE_DATE_TERMS.nextWeek,
-                future: this.INTERNAL_DUE_DATE_TERMS.future,
-            },
-            status: statusTerms,
+            priority: TaskPropertyService.getCombinedPriorityTerms(settings),
+            dueDate: TaskPropertyService.getCombinedDueDateTerms(settings),
+            status: TaskPropertyService.getCombinedStatusTerms(settings),
         };
     }
 
     /**
      * Build property term mappings for AI query parser prompt
-     * Combines user-configured terms with internal mappings
-     * Used in Smart Search and Task Chat modes for semantic expansion
+     * Delegates to PromptBuilderService for centralized prompt generation
      *
      * @param settings Plugin settings
      * @param queryLanguages User-configured languages for semantic expansion
@@ -270,78 +58,11 @@ export class PropertyRecognitionService {
         settings: PluginSettings,
         queryLanguages: string[],
     ): string {
-        const combined = this.getCombinedPropertyTerms(settings);
-        const languageList = queryLanguages.join(", ");
-
-        return `
-🚨 PROPERTY TERM RECOGNITION (Three-Layer System)
-
-You have access to three layers of property term recognition:
-
-LAYER 1: User-Configured Terms (Highest Priority)
-${settings.userPropertyTerms.priority.length > 0 ? `- Priority: ${settings.userPropertyTerms.priority.join(", ")}` : "- Priority: (none configured)"}
-${settings.userPropertyTerms.dueDate.length > 0 ? `- Due Date: ${settings.userPropertyTerms.dueDate.join(", ")}` : "- Due Date: (none configured)"}
-${settings.userPropertyTerms.status.length > 0 ? `- Status: ${settings.userPropertyTerms.status.join(", ")}` : "- Status: (none configured)"}
-
-LAYER 2: Internal Embedded Mappings (Fallback)
-These are built-in terms that work across languages:
-
-Priority Terms:
-- General: ${combined.priority.general.slice(0, 10).join(", ")}...
-- High: ${combined.priority.high.slice(0, 8).join(", ")}...
-- Medium: ${combined.priority.medium.join(", ")}
-- Low: ${combined.priority.low.slice(0, 8).join(", ")}...
-
-Due Date Terms:
-- General: ${combined.dueDate.general.slice(0, 10).join(", ")}...
-- Today: ${combined.dueDate.today.join(", ")}
-- Tomorrow: ${combined.dueDate.tomorrow.join(", ")}
-- Overdue: ${combined.dueDate.overdue.slice(0, 8).join(", ")}...
-- This Week: ${combined.dueDate.thisWeek.join(", ")}
-- Next Week: ${combined.dueDate.nextWeek.join(", ")}
-- Future: ${combined.dueDate.future.slice(0, 8).join(", ")}...
-
-Status Terms:
-- General: ${combined.status.general.slice(0, 8).join(", ")}...
-${Object.entries(combined.status)
-    .filter(([key]) => key !== "general")
-    .map(([key, terms]) => {
-        const categoryConfig = settings.taskStatusMapping[key];
-        const displayName = categoryConfig?.displayName || key;
-        return `- ${displayName}: ${terms.slice(0, 8).join(", ")}${terms.length > 8 ? "..." : ""}`;
-    })
-    .join("\n")}
-
-LAYER 3: Semantic Expansion (You provide this!)
-- Apply semantic expansion to ALL property terms across configured languages: ${languageList}
-- Generate semantic equivalents DIRECTLY in each language
-- This enables cross-language property recognition
-
-PROPERTY EXPANSION FLOW (Like Keywords):
-
-Step 1: Identify Core Property Terms
-- Extract property-related terms from query
-- Example: "优先级任务" → core property term: "优先级"
-- Example: "with due date" → core property term: "due date"
-
-Step 2: Apply Semantic Expansion
-- Expand EACH core property term into ALL ${queryLanguages.length} languages: ${languageList}
-- Generate semantic equivalents DIRECTLY in each language
-- Example expansion for PRIORITY concept across YOUR configured languages:
-${queryLanguages.map((lang, idx) => `  * ${lang}: [generate 5-10 semantic equivalents for "priority" in ${lang}]`).join("\n")}
-
-Step 3: Match Against Combined Terms (Layer 1 + Layer 2)
-- Check expanded terms against user-configured terms (Layer 1)
-- Check expanded terms against internal mappings (Layer 2)
-- Extract structured property values (priority, dueDate, status)
-
-Step 4: Separate Property Terms from Keywords
-- Property terms → structured filters (priority, dueDate, status fields)
-- Content keywords → keywords array (for text matching)
-- Example: "urgent bug fix" → 
-  * Property: priority = 1 (from "urgent")
-  * Keywords: ["bug", "fix"]
-`;
+        // Use centralized prompt builder
+        return PromptBuilderService.buildPropertyTermGuidance(
+            settings,
+            queryLanguages,
+        );
     }
 
     /**
