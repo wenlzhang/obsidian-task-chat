@@ -13,18 +13,18 @@ import { TaskPropertyService } from "./taskPropertyService";
  */
 export class PropertyRecognitionService {
     /**
-     * Dynamically infer semantic term suggestions based on display name patterns
+     * Get semantic term suggestions based on category key
      * Delegates to TaskPropertyService for consistent behavior
      *
-     * @param displayName - The display name of the status category
-     * @param categoryKey - The internal key (used as fallback if no pattern matches)
+     * @param categoryKey - The category key (stable identifier)
+     * @param settings - Plugin settings with taskStatusMapping
      * @returns Multilingual semantic terms for this category
      */
     private static inferStatusTerms(
-        displayName: string,
         categoryKey: string,
+        settings: PluginSettings,
     ): string {
-        return TaskPropertyService.inferStatusTerms(displayName, categoryKey);
+        return TaskPropertyService.inferStatusTerms(categoryKey, settings);
     }
 
     /**
@@ -388,11 +388,8 @@ Be smart about implied meanings:
         // Uses pattern matching on display names to infer appropriate semantic terms
         const statusExamples = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Dynamically infer term suggestions based on display name patterns
-                const termSuggestions = this.inferStatusTerms(
-                    config.displayName,
-                    key,
-                );
+                // Get semantic terms based on category key (stable)
+                const termSuggestions = this.inferStatusTerms(key, settings);
 
                 return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
             })

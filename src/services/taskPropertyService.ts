@@ -33,6 +33,37 @@ export class TaskPropertyService {
     // ==========================================
 
     /**
+     * Default configurations for built-in status categories
+     * Used when user hasn't explicitly configured order/description/terms
+     * Based on category KEY (stable), not display name (user-defined)
+     */
+    private static readonly DEFAULT_STATUS_CONFIG: Record<
+        string,
+        { order: number; description: string; terms: string }
+    > = {
+        open: {
+            order: 1,
+            description: "Tasks not yet started or awaiting action",
+            terms: "open, todo, pending, new, unstarted, incomplete, not started, to do, 待办, 未完成, öppen",
+        },
+        inProgress: {
+            order: 2,
+            description: "Tasks currently being worked on",
+            terms: "inprogress, in-progress, wip, doing, active, working, ongoing, current, 进行中, 正在做, pågående",
+        },
+        completed: {
+            order: 6,
+            description: "Tasks that have been finished",
+            terms: "completed, done, finished, closed, resolved, complete, 完成, 已完成, klar, färdig",
+        },
+        cancelled: {
+            order: 7,
+            description: "Tasks that were abandoned or cancelled",
+            terms: "cancelled, canceled, abandoned, dropped, discarded, rejected, 取消, 已取消, avbruten",
+        },
+    };
+
+    /**
      * Map a DataView task status symbol to status category
      * Uses user's configured taskStatusMapping
      *
@@ -69,268 +100,111 @@ export class TaskPropertyService {
 
     /**
      * Get status order for sorting
-     * Uses user's custom status categories with smart defaults
+     * Uses category key (stable) instead of display name (user-defined)
+     * Priority: User config > Built-in defaults > Generic fallback
      *
-     * @param status - Status category
+     * @param categoryKey - Status category key (e.g., "open", "inProgress", "myCustom")
      * @param settings - Plugin settings with taskStatusMapping
      * @returns Order number (lower = higher priority in sorting)
      */
     static getStatusOrder(
-        status: string | undefined,
+        categoryKey: string | undefined,
         settings: PluginSettings,
     ): number {
-        if (!status) return 999; // Unknown goes last
+        if (!categoryKey) return 999; // Unknown goes last
 
-        const normalized = status.toLowerCase().replace(/[\s-]/g, "");
+        const config = settings.taskStatusMapping[categoryKey];
+        if (!config) return 999; // Category not found
 
-        // Check if user has this category configured
-        for (const [categoryKey, config] of Object.entries(
-            settings.taskStatusMapping,
-        )) {
-            const normalizedKey = categoryKey
-                .toLowerCase()
-                .replace(/[\s-]/g, "");
-            if (normalizedKey === normalized) {
-                // Use displayName pattern matching for smart ordering
-                return this.inferStatusOrderFromPattern(config.displayName);
-            }
+        // 1. Use explicit order if configured by user
+        if (config.order !== undefined) {
+            return config.order;
         }
 
-        // Fallback to hardcoded patterns (if not in user settings)
-        return this.inferStatusOrderFromPattern(status);
+        // 2. Use built-in default if available
+        const defaultConfig = this.DEFAULT_STATUS_CONFIG[categoryKey];
+        if (defaultConfig) {
+            return defaultConfig.order;
+        }
+
+        // 3. Generic fallback for custom categories
+        return 8; // Custom categories appear after built-in ones
     }
 
     /**
-     * Infer status sort order from display name pattern
-     * Active work (open/inProgress) should appear before finished work
+     * Get description for a status category
+     * Uses category key (stable) instead of display name (user-defined)
+     * Priority: User config > Built-in defaults > Generic fallback
+     * Used in AI prompts to help AI understand category meaning
      *
-     * @param displayName - Status display name or category
-     * @returns Order number for sorting
+     * @param categoryKey - Status category key (e.g., "open", "inProgress", "myCustom")
+     * @param settings - Plugin settings with taskStatusMapping
+     * @returns Human-readable description for AI prompts
      */
-    private static inferStatusOrderFromPattern(displayName: string): number {
-        const lower = displayName.toLowerCase();
-
-        // Active work (highest priority)
-        if (
-            lower.includes("open") ||
-            lower.includes("todo") ||
-            lower.includes("待办") ||
-            lower.includes("öppen")
-        ) {
-            return 1;
-        }
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active") ||
-            lower.includes("进行") ||
-            lower.includes("pågående")
-        ) {
-            return 2;
+    static inferStatusDescription(
+        categoryKey: string,
+        settings: PluginSettings,
+    ): string {
+        const config = settings.taskStatusMapping[categoryKey];
+        if (!config) {
+            return `Tasks with ${categoryKey} status`; // Fallback for unknown category
         }
 
-        // Important/urgent (high priority even if not active)
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical") ||
-            lower.includes("重要") ||
-            lower.includes("viktig")
-        ) {
-            return 3;
+        // 1. Use explicit description if configured by user
+        if (config.description) {
+            return config.description;
         }
 
-        // Waiting/blocked (medium priority)
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("pend") ||
-            lower.includes("等待") ||
-            lower.includes("väntar")
-        ) {
-            return 4;
+        // 2. Use built-in default if available
+        const defaultConfig = this.DEFAULT_STATUS_CONFIG[categoryKey];
+        if (defaultConfig) {
+            return defaultConfig.description;
         }
 
-        // Bookmarked (medium-low priority)
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("书签") ||
-            lower.includes("bokmärke")
-        ) {
-            return 5;
-        }
-
-        // Finished work (lower priority)
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish") ||
-            lower.includes("完成") ||
-            lower.includes("klar")
-        ) {
-            return 6;
-        }
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("取消") ||
-            lower.includes("avbruten")
-        ) {
-            return 7;
-        }
-
-        // Other/unknown (lowest priority)
-        return 8;
+        // 3. Generic fallback for custom categories
+        return `Tasks with ${config.displayName} status`;
     }
 
     /**
-     * Infer description for a status category based on display name patterns
-     * Used in prompt building for AI understanding
+     * Get semantic terms for a status category
+     * Uses category key (stable) instead of display name (user-defined)
+     * Priority: User config > Built-in defaults > Generic fallback
+     * Used in AI prompts and property recognition for multilingual matching
      *
-     * @param displayName - Status display name
-     * @returns Human-readable description
+     * @param categoryKey - Status category key (e.g., "open", "inProgress", "myCustom")
+     * @param settings - Plugin settings with taskStatusMapping
+     * @returns Comma-separated multilingual semantic terms
      */
-    static inferStatusDescription(displayName: string): string {
-        const lower = displayName.toLowerCase();
-
-        if (lower.includes("open") || lower.includes("todo")) {
-            return "Tasks not yet started or awaiting action";
-        }
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active")
-        ) {
-            return "Tasks currently being worked on";
-        }
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish")
-        ) {
-            return "Finished tasks";
-        }
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("drop")
-        ) {
-            return "Tasks that were abandoned or cancelled";
-        }
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical")
-        ) {
-            return "High-importance or urgent tasks";
-        }
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("flag")
-        ) {
-            return "Bookmarked or marked tasks for later review";
-        }
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("hold") ||
-            lower.includes("pending")
-        ) {
-            return "Tasks waiting on external dependencies";
-        }
-        if (lower.includes("other")) {
-            return "Tasks with unrecognized or custom status symbols";
+    static inferStatusTerms(
+        categoryKey: string,
+        settings: PluginSettings,
+    ): string {
+        const config = settings.taskStatusMapping[categoryKey];
+        if (!config) {
+            return categoryKey; // Fallback for unknown category
         }
 
-        return `Tasks with this status: ${displayName}`;
-    }
-
-    /**
-     * Infer semantic term suggestions for status (for AI prompts)
-     * Provides multilingual synonyms based on display name patterns
-     *
-     * @param displayName - Status display name
-     * @param categoryKey - Category key (fallback)
-     * @returns Comma-separated multilingual terms
-     */
-    static inferStatusTerms(displayName: string, categoryKey: string): string {
-        const lower = displayName.toLowerCase();
-
-        if (
-            lower.includes("open") ||
-            lower.includes("todo") ||
-            lower.includes("待办") ||
-            lower.includes("öppen")
-        ) {
-            return "未完成, 待办, öppen, todo, new, unstarted, incomplete";
-        }
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active") ||
-            lower.includes("进行") ||
-            lower.includes("pågående")
-        ) {
-            return "进行中, 正在做, pågående, working, ongoing, active, doing, wip";
-        }
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish") ||
-            lower.includes("完成") ||
-            lower.includes("klar")
-        ) {
-            return "完成, 已完成, klar, färdig, done, finished, closed, resolved";
-        }
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("drop") ||
-            lower.includes("取消") ||
-            lower.includes("avbruten")
-        ) {
-            return "取消, 已取消, avbruten, canceled, abandoned, dropped, discarded";
-        }
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical") ||
-            lower.includes("重要") ||
-            lower.includes("viktig")
-        ) {
-            return "重要, 重要的, viktig, betydande, urgent, critical, high-priority, significant, key, essential";
-        }
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("书签") ||
-            lower.includes("bokmärke")
-        ) {
-            return "书签, 标记, bokmärke, märkt, marked, starred, flagged, saved, pinned";
-        }
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("pend") ||
-            lower.includes("等待") ||
-            lower.includes("väntar")
-        ) {
-            return "等待, 待定, väntar, väntande, blocked, pending, on-hold, deferred, postponed";
-        }
-        if (
-            lower.includes("other") ||
-            lower.includes("其他") ||
-            lower.includes("övrig")
-        ) {
-            return "其他, övrig, unrecognized, misc, other";
+        // 1. Use explicit terms if configured by user
+        if (config.terms) {
+            return config.terms;
         }
 
-        return `${displayName.toLowerCase()}, ${categoryKey.toLowerCase()}`;
+        // 2. Use built-in default if available
+        const defaultConfig = this.DEFAULT_STATUS_CONFIG[categoryKey];
+        if (defaultConfig) {
+            return defaultConfig.terms;
+        }
+
+        // 3. Generic fallback for custom categories
+        // Combine category key, display name, and aliases for maximum coverage
+        const parts = [
+            categoryKey.toLowerCase(),
+            config.displayName.toLowerCase(),
+        ];
+        if (config.aliases) {
+            parts.push(config.aliases.toLowerCase());
+        }
+        return parts.join(", ");
     }
 
     // ==========================================

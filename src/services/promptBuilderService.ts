@@ -10,22 +10,28 @@ import { TaskPropertyService } from "./taskPropertyService";
  */
 export class PromptBuilderService {
     /**
-     * Infer status description based on display name patterns
+     * Get status description based on category key
      * Delegates to TaskPropertyService for consistent behavior
      */
-    private static inferStatusDescription(displayName: string): string {
-        return TaskPropertyService.inferStatusDescription(displayName);
+    private static inferStatusDescription(
+        categoryKey: string,
+        settings: PluginSettings,
+    ): string {
+        return TaskPropertyService.inferStatusDescription(
+            categoryKey,
+            settings,
+        );
     }
 
     /**
-     * Infer semantic term suggestions for status categories
+     * Get status term suggestions based on category key
      * Delegates to TaskPropertyService for consistent behavior
      */
     private static inferStatusTermSuggestions(
-        displayName: string,
         categoryKey: string,
+        settings: PluginSettings,
     ): string {
-        return TaskPropertyService.inferStatusTerms(displayName, categoryKey);
+        return TaskPropertyService.inferStatusTerms(categoryKey, settings);
     }
 
     /**
@@ -141,11 +147,20 @@ Users may use these field names in queries - recognize all variations:
     static buildStatusMapping(settings: PluginSettings): string {
         const categories = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Dynamically infer description based on display name patterns
-                const description = this.inferStatusDescription(
-                    config.displayName,
-                );
+                // Get description based on category key (stable)
+                const description = this.inferStatusDescription(key, settings);
                 return `- ${config.displayName} (${key}): ${description}`;
+            })
+            .join("\n");
+
+        const statusTerms = Object.entries(settings.taskStatusMapping)
+            .map(([key, config]) => {
+                // Get semantic terms based on category key (stable)
+                const termSuggestions = this.inferStatusTermSuggestions(
+                    key,
+                    settings,
+                );
+                return `  - ${config.displayName} (${key}): ${termSuggestions}`;
             })
             .join("\n");
 
@@ -173,10 +188,10 @@ Use the display name when showing status to users.`;
         // Build examples for each category dynamically from user settings
         const categoryExamples = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Dynamically infer term suggestions based on display name patterns
+                // Get semantic terms based on category key (stable)
                 const termSuggestions = this.inferStatusTermSuggestions(
-                    config.displayName,
                     key,
+                    settings,
                 );
                 return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
             })

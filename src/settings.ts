@@ -89,7 +89,7 @@ export interface PluginSettings {
 
     // Task Status Mapping (flexible categories)
     // Each category maps checkbox symbols to a score, display name, and aliases
-    // aliases: comma-separated query names (e.g., "completed,done,finished")
+    // NEW: Optional order, description, and terms fields for advanced customization
     taskStatusMapping: Record<
         string,
         {
@@ -97,6 +97,9 @@ export interface PluginSettings {
             score: number;
             displayName: string;
             aliases: string; // Comma-separated aliases for querying (no spaces)
+            order?: number; // Sort order (1=highest priority, lower appears first). Optional: uses smart defaults if not set
+            description?: string; // Description for AI prompts (helps AI understand category meaning). Optional: uses defaults for built-in categories
+            terms?: string; // Semantic terms for recognition (comma-separated). Optional: uses multilingual defaults for built-in categories
         }
     >;
 

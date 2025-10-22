@@ -352,7 +352,7 @@ export class SettingsTab extends PluginSettingTab {
                 .setDesc("Specify how the AI should choose response language")
                 .addText((text) =>
                     text
-                        .setPlaceholder("e.g., Always respond in Spanish")
+                        .setPlaceholder("e.g., Always respond in English")
                         .setValue(
                             this.plugin.settings.customLanguageInstruction,
                         )
@@ -610,11 +610,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Priority terms")
             .setDesc(
-                "Your custom terms for priority (e.g., 'priority, important, urgent'). These combine with built-in terms (priority, important, urgent, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+                "Your custom terms for priority (e.g., 'priority, urgent'). These combine with built-in terms (priority, important, urgent, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
             )
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("priority, important, urgent")
+                    .setPlaceholder("priority, urgent")
                     .setValue(
                         this.plugin.settings.userPropertyTerms.priority.join(
                             ", ",
@@ -636,11 +636,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Due date terms")
             .setDesc(
-                "Your custom terms for due dates (e.g., 'due, deadline, scheduled'). These combine with built-in terms (due, deadline, scheduled, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+                "Your custom terms for due dates (e.g., 'due, deadline'). These combine with built-in terms (due, deadline, scheduled, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
             )
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("due, deadline, scheduled")
+                    .setPlaceholder("due, deadline")
                     .setValue(
                         this.plugin.settings.userPropertyTerms.dueDate.join(
                             ", ",
@@ -709,7 +709,7 @@ export class SettingsTab extends PluginSettingTab {
             )
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("project, task")
+                    .setPlaceholder("task")
                     .setValue(this.plugin.settings.userStopWords.join(", "))
                     .onChange(async (value) => {
                         this.plugin.settings.userStopWords = value
@@ -1544,7 +1544,7 @@ Examples:
             .setDesc("Values that indicate priority 1 (e.g., 1, p1, high)")
             .addText((text) =>
                 text
-                    .setPlaceholder("1, p1, high, highest")
+                    .setPlaceholder("1, p1, high")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping[1].join(
                             ", ",
@@ -1567,7 +1567,7 @@ Examples:
             .setDesc("Values that indicate priority 2 (e.g., 2, p2, medium)")
             .addText((text) =>
                 text
-                    .setPlaceholder("2, p2, medium, med")
+                    .setPlaceholder("2, p2, medium")
                     .setValue(
                         this.plugin.settings.dataviewPriorityMapping[2].join(
                             ", ",
@@ -1663,6 +1663,12 @@ Examples:
                 <li><strong>Query aliases:</strong> Comma-separated names for querying (NO SPACES). Example: <code>completed,done,finished</code> allows queries like <code>s:done</code>, <code>s:completed</code>, or <code>s:finished</code>. Case-insensitive and hyphen-tolerant (<code>in-progress</code> = <code>inprogress</code>).</li>
                 <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,X" or "!,I,b").</li>
                 <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important).</li>
+            </ul>
+            <p><strong>✨ Advanced fields (optional - click ⚙️ to configure):</strong></p>
+            <ul style="margin-left: 20px; margin-top: 5px;">
+                <li><strong>Order:</strong> Sort priority (1=highest). Controls which tasks appear first when sorting by status. Custom categories default to 8 (after built-in).</li>
+                <li><strong>Description:</strong> Explains this category's meaning for AI prompts. Helps AI understand your custom categories better in Smart Search and Task Chat.</li>
+                <li><strong>Terms:</strong> Comma-separated semantic terms for recognition (e.g., "urgent, critical, important, high-priority"). Used in Smart Search and Task Chat for better matching. Add terms in multiple languages for multilingual support.</li>
             </ul>
             <p><strong>💡 Tips:</strong></p>
             <ul style="margin-left: 20px; margin-top: 5px;">
@@ -1828,6 +1834,9 @@ Examples:
             score?: number;
             displayName?: string;
             aliases?: string;
+            order?: number;
+            description?: string;
+            terms?: string;
         },
     ): void {
         // Defensive check: ensure config has required properties
@@ -1843,6 +1852,9 @@ Examples:
         const displayName = config.displayName || categoryKey;
         const score = typeof config.score === "number" ? config.score : 0.5;
         const aliases = config.aliases || categoryKey.toLowerCase();
+        const order = config.order;
+        const description = config.description;
+        const terms = config.terms;
 
         // Identify protected categories using helper functions
         const isProtectedCategory = isStatusCategoryProtected(categoryKey);
@@ -1924,7 +1936,7 @@ Examples:
         // Aliases (comma-separated query names)
         const aliasesInput = rowDiv.createEl("input", { type: "text" });
         aliasesInput.value = aliases;
-        aliasesInput.placeholder = "e.g., wip,doing,active";
+        aliasesInput.placeholder = "e.g., wip,doing";
         aliasesInput.title =
             "Comma-separated aliases for querying (NO SPACES). Example: completed,done,finished";
         aliasesInput.style.cssText =
@@ -2041,6 +2053,106 @@ Examples:
                 }
             });
         }
+
+        // Advanced fields (optional - collapsible)
+        const advancedContainer = containerEl.createDiv();
+        advancedContainer.style.cssText =
+            "padding: 8px 12px; border-left: 3px solid var(--background-modifier-border); margin-left: 12px; margin-bottom: 8px; background: var(--background-secondary);";
+
+        const advancedHeader = advancedContainer.createDiv();
+        advancedHeader.style.cssText =
+            "display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 8px;";
+
+        const expandIcon = advancedHeader.createSpan({ text: "⚙️" });
+        advancedHeader.createSpan({
+            text: "Advanced (optional - order, description, terms)",
+            cls: "setting-item-name",
+        });
+
+        const advancedFields = advancedContainer.createDiv();
+        advancedFields.style.display = "none"; // Initially collapsed
+
+        advancedHeader.addEventListener("click", () => {
+            if (advancedFields.style.display === "none") {
+                advancedFields.style.display = "block";
+            } else {
+                advancedFields.style.display = "none";
+            }
+        });
+
+        // Order field
+        new Setting(advancedFields)
+            .setName("Sort order")
+            .setDesc(
+                `Sort priority (1=highest). Controls task order when sorting by status. Leave empty for smart defaults. Built-in categories: open=1, inProgress=2, completed=6, cancelled=7. Custom categories default to 8.`,
+            )
+            .addText((text) => {
+                text.setPlaceholder("e.g., 3")
+                    .setValue(order !== undefined ? String(order) : "")
+                    .onChange(async (value) => {
+                        const parsed = value.trim()
+                            ? parseInt(value.trim())
+                            : undefined;
+                        if (value.trim() && (isNaN(parsed!) || parsed! < 1)) {
+                            text.setValue(
+                                order !== undefined ? String(order) : "",
+                            );
+                            new Notice(
+                                "Order must be a positive number (1 or higher)",
+                            );
+                            return;
+                        }
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].order = parsed;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.style.width = "80px";
+            });
+
+        // Description field
+        new Setting(advancedFields)
+            .setName("Description")
+            .setDesc(
+                `Category description for AI prompts. Helps AI understand this category's meaning in Smart Search and Task Chat. Leave empty for smart defaults.`,
+            )
+            .addTextArea((textarea) => {
+                textarea
+                    .setPlaceholder(
+                        "e.g., High-priority urgent tasks requiring immediate attention",
+                    )
+                    .setValue(description || "")
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].description = value.trim() || undefined;
+                        await this.plugin.saveSettings();
+                    });
+                textarea.inputEl.style.width = "100%";
+                textarea.inputEl.style.minHeight = "60px";
+            });
+
+        // Terms field
+        new Setting(advancedFields)
+            .setName("Semantic terms")
+            .setDesc(
+                `Comma-separated terms for recognition in Smart Search and Task Chat (e.g., "urgent, critical"). Add terms in multiple languages for multilingual support!`,
+            )
+            .addTextArea((textarea) => {
+                textarea
+                    .setPlaceholder(
+                        "e.g., urgent,critical",
+                    )
+                    .setValue(terms || "")
+                    .onChange(async (value) => {
+                        this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ].terms = value.trim() || undefined;
+                        await this.plugin.saveSettings();
+                    });
+                textarea.inputEl.style.width = "100%";
+                textarea.inputEl.style.minHeight = "60px";
+            });
     }
 
     /**
