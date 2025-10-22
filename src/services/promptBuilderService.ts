@@ -1,5 +1,4 @@
 import { PluginSettings, SortCriterion } from "../settings";
-import { Task } from "../models/task";
 import { TaskPropertyService } from "./taskPropertyService";
 
 /**
@@ -422,5 +421,100 @@ METADATA FIELD REFERENCE (User's Configuration):
 - **Tags**: Task's tags (e.g., "#urgent #coding")
 
 REMEMBER: All these fields are extracted from DataView syntax and shown as clean metadata. Always use the metadata values, never try to parse raw syntax from task text!`;
+    }
+
+    /**
+     * Build comprehensive property term guidance for AI prompts
+     * Combines base terms + user-configured terms + status category terms
+     * Respects ALL user settings and configured languages
+     *
+     * Used in query parsing to help AI recognize property terms across all layers
+     *
+     * @param settings - Plugin settings with all user configuration
+     * @param queryLanguages - List of languages configured by user
+     * @returns Formatted property term guidance for AI prompts
+     */
+    static buildPropertyTermGuidance(
+        settings: PluginSettings,
+        queryLanguages: string[],
+    ): string {
+        // Get combined terms from TaskPropertyService
+        const combined = {
+            priority: TaskPropertyService.getCombinedPriorityTerms(settings),
+            dueDate: TaskPropertyService.getCombinedDueDateTerms(settings),
+            status: TaskPropertyService.getCombinedStatusTerms(settings),
+        };
+
+        const languageList = queryLanguages.join(", ");
+
+        // Build comprehensive guidance
+        return `
+🚨 PROPERTY TERM RECOGNITION (Three-Layer System)
+
+You have access to three layers of property term recognition:
+
+LAYER 1: User-Configured Terms (Highest Priority)
+${settings.userPropertyTerms.priority.length > 0 ? `- Priority: ${settings.userPropertyTerms.priority.join(", ")}` : "- Priority: (none configured)"}
+${settings.userPropertyTerms.dueDate.length > 0 ? `- Due Date: ${settings.userPropertyTerms.dueDate.join(", ")}` : "- Due Date: (none configured)"}
+${settings.userPropertyTerms.status.length > 0 ? `- Status: ${settings.userPropertyTerms.status.join(", ")}` : "- Status: (none configured)"}
+
+LAYER 2: Base Terms (Built-in, Multilingual)
+
+Priority Terms:
+- General: ${combined.priority.general.slice(0, 10).join(", ")}${combined.priority.general.length > 10 ? "..." : ""}
+- High: ${combined.priority.high.slice(0, 8).join(", ")}${combined.priority.high.length > 8 ? "..." : ""}
+- Medium: ${combined.priority.medium.join(", ")}
+- Low: ${combined.priority.low.slice(0, 8).join(", ")}${combined.priority.low.length > 8 ? "..." : ""}
+
+Due Date Terms:
+- General: ${combined.dueDate.general.slice(0, 10).join(", ")}${combined.dueDate.general.length > 10 ? "..." : ""}
+- Today: ${combined.dueDate.today.join(", ")}
+- Tomorrow: ${combined.dueDate.tomorrow.join(", ")}
+- Overdue: ${combined.dueDate.overdue.slice(0, 8).join(", ")}${combined.dueDate.overdue.length > 8 ? "..." : ""}
+- This Week: ${combined.dueDate.thisWeek.join(", ")}
+- Next Week: ${combined.dueDate.nextWeek.join(", ")}
+- Future: ${combined.dueDate.future.slice(0, 8).join(", ")}${combined.dueDate.future.length > 8 ? "..." : ""}
+
+Status Terms:
+- General: ${combined.status.general.slice(0, 8).join(", ")}${combined.status.general.length > 8 ? "..." : ""}
+${Object.entries(combined.status)
+    .filter(([key]) => key !== "general")
+    .map(([key, terms]) => {
+        const categoryConfig = settings.taskStatusMapping[key];
+        const displayName = categoryConfig?.displayName || key;
+        return `- ${displayName}: ${terms.slice(0, 8).join(", ")}${terms.length > 8 ? "..." : ""}`;
+    })
+    .join("\n")}
+
+LAYER 3: Semantic Expansion (You provide this!)
+- Apply semantic expansion to ALL property terms across configured languages: ${languageList}
+- Generate semantic equivalents DIRECTLY in each language
+- This enables cross-language property recognition
+
+PROPERTY EXPANSION FLOW (Like Keywords):
+
+Step 1: Identify Core Property Terms
+- Extract property-related terms from query
+- Example: "优先级任务" → core property term: "优先级"
+- Example: "with due date" → core property term: "due date"
+
+Step 2: Apply Semantic Expansion
+- Expand EACH core property term into ALL ${queryLanguages.length} languages: ${languageList}
+- Generate semantic equivalents DIRECTLY in each language
+- Example expansion for PRIORITY concept across YOUR configured languages:
+${queryLanguages.map((lang) => `  * ${lang}: [generate semantic equivalents for "priority" in ${lang}]`).join("\n")}
+
+Step 3: Match Against Combined Terms (Layer 1 + Layer 2)
+- Check expanded terms against user-configured terms (Layer 1)
+- Check expanded terms against base terms (Layer 2)
+- Extract structured property values (priority, dueDate, status)
+
+Step 4: Separate Property Terms from Keywords
+- Property terms → structured filters (priority, dueDate, status fields)
+- Content keywords → keywords array (for text matching)
+- Example: "urgent bug fix" → 
+  * Property: priority = 1 (from "urgent")
+  * Keywords: ["bug", "fix"]
+`;
     }
 }

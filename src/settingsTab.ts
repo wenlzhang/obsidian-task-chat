@@ -2140,9 +2140,7 @@ Examples:
             )
             .addTextArea((textarea) => {
                 textarea
-                    .setPlaceholder(
-                        "e.g., urgent,critical",
-                    )
+                    .setPlaceholder("e.g., urgent,critical")
                     .setValue(terms || "")
                     .onChange(async (value) => {
                         this.plugin.settings.taskStatusMapping[

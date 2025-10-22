@@ -63,6 +63,289 @@ export class TaskPropertyService {
         },
     };
 
+    // ==========================================
+    // CENTRALIZED CONSTANTS
+    // ==========================================
+
+    /**
+     * Standard date field names (DataView compatible)
+     * Used across dataviewService, taskFilterService, propertyRecognitionService
+     */
+    static readonly DATE_FIELDS = {
+        due: ["due", "dueDate", "deadline", "scheduled"],
+        completion: ["completion", "completed", "completedDate"],
+        created: ["created", "createdDate"],
+        start: ["start", "startDate"],
+        scheduled: ["scheduled", "scheduledDate"],
+    } as const;
+
+    /**
+     * Date field emoji patterns for extraction
+     * Used in dataviewService for extracting dates from task text
+     */
+    static readonly DATE_EMOJI_PATTERNS = {
+        due: /🗓️\s*(\d{4}-\d{2}-\d{2})/,
+        completion: /✅\s*(\d{4}-\d{2}-\d{2})/,
+        created: /➕\s*(\d{4}-\d{2}-\d{2})/,
+        start: /🛫\s*(\d{4}-\d{2}-\d{2})/,
+        scheduled: /⏳\s*(\d{4}-\d{2}-\d{2})/,
+    } as const;
+
+    /**
+     * Priority field names
+     * Used across multiple services for priority extraction
+     */
+    static readonly PRIORITY_FIELDS = {
+        primary: "priority",
+        aliases: ["p", "pri", "prio"],
+    } as const;
+
+    /**
+     * Base priority terms (English, Chinese, Swedish)
+     * These are COMBINED with user's configured terms via getCombinedPriorityTerms()
+     */
+    private static readonly BASE_PRIORITY_TERMS = {
+        general: [
+            "priority",
+            "important",
+            "urgent",
+            "优先级",
+            "优先",
+            "重要",
+            "紧急",
+            "prioritet",
+            "viktig",
+            "brådskande",
+        ],
+        high: [
+            "high",
+            "highest",
+            "critical",
+            "top",
+            "高",
+            "最高",
+            "关键",
+            "首要",
+            "hög",
+            "högst",
+            "kritisk",
+        ],
+        medium: ["medium", "normal", "中", "中等", "普通", "medel", "normal"],
+        low: ["low", "minor", "低", "次要", "不重要", "låg", "mindre"],
+    } as const;
+
+    /**
+     * Base due date terms (English, Chinese, Swedish)
+     * These are COMBINED with user's configured terms via getCombinedDueDateTerms()
+     */
+    private static readonly BASE_DUE_DATE_TERMS = {
+        general: [
+            "due",
+            "deadline",
+            "scheduled",
+            "截止日期",
+            "到期",
+            "期限",
+            "计划",
+            "förfallodatum",
+            "deadline",
+            "schemalagd",
+        ],
+        today: ["today", "今天", "今日", "idag"],
+        tomorrow: ["tomorrow", "明天", "imorgon"],
+        overdue: [
+            "overdue",
+            "late",
+            "past due",
+            "过期",
+            "逾期",
+            "延迟",
+            "försenad",
+            "sen",
+        ],
+        thisWeek: ["this week", "本周", "这周", "denna vecka"],
+        nextWeek: ["next week", "下周", "nästa vecka"],
+        future: [
+            "future",
+            "upcoming",
+            "later",
+            "未来",
+            "将来",
+            "以后",
+            "framtida",
+            "kommande",
+        ],
+    } as const;
+
+    /**
+     * Base status terms (English, Chinese, Swedish)
+     * Note: For status, we also have user's custom categories with their own terms!
+     */
+    private static readonly BASE_STATUS_TERMS = {
+        general: [
+            "status",
+            "state",
+            "progress",
+            "状态",
+            "进度",
+            "情况",
+            "status",
+            "tillstånd",
+            "progress",
+        ],
+    } as const;
+
+    /**
+     * Regex patterns for query syntax recognition
+     * Used in queryParserService and taskSearchService
+     */
+    static readonly QUERY_PATTERNS = {
+        priority: /\bp[1-4]\b/gi,
+        status: /\bs:[^\s&|]+/gi,
+        project: /##+[A-Za-z0-9_-]+/g,
+        search: /search:\s*["']?[^"'&|]+["']?/gi,
+        hashtag: /#([\w-]+)/g,
+        dueBeforeRange: /due\s+before:\s*[^&|]+/gi,
+        dueAfterRange: /due\s+after:\s*[^&|]+/gi,
+        dateBeforeRange: /(?<!due\s)date\s+before:\s*[^&|]+/gi,
+        dateAfterRange: /(?<!due\s)date\s+after:\s*[^&|]+/gi,
+        operators: /[&|!]/g,
+        specialKeywordOverdue: /\b(overdue|over\s+due|od)\b/gi,
+        specialKeywordRecurring: /\brecurring\b/gi,
+        specialKeywordSubtask: /\bsubtask\b/gi,
+        specialKeywordNoDate: /\bno\s+date\b/gi,
+        specialKeywordNoPriority: /\bno\s+priority\b/gi,
+    } as const;
+
+    /**
+     * Special keywords recognized in queries
+     */
+    static readonly SPECIAL_KEYWORDS = [
+        "overdue",
+        "over due",
+        "od",
+        "recurring",
+        "subtask",
+        "no date",
+        "no priority",
+    ] as const;
+
+    // ==========================================
+    // COMBINED TERM METHODS (Base + User Settings)
+    // ==========================================
+
+    /**
+     * Get combined priority terms (base + user-configured)
+     * Used in property recognition and AI prompts
+     *
+     * @param settings - Plugin settings with user-configured terms
+     * @returns Combined priority terms across all categories
+     */
+    static getCombinedPriorityTerms(settings: PluginSettings): {
+        general: string[];
+        high: string[];
+        medium: string[];
+        low: string[];
+    } {
+        return {
+            general: [
+                ...this.BASE_PRIORITY_TERMS.general,
+                ...settings.userPropertyTerms.priority,
+            ],
+            high: [...this.BASE_PRIORITY_TERMS.high],
+            medium: [...this.BASE_PRIORITY_TERMS.medium],
+            low: [...this.BASE_PRIORITY_TERMS.low],
+        };
+    }
+
+    /**
+     * Get combined due date terms (base + user-configured)
+     * Used in property recognition and AI prompts
+     *
+     * @param settings - Plugin settings with user-configured terms
+     * @returns Combined due date terms across all time periods
+     */
+    static getCombinedDueDateTerms(settings: PluginSettings): {
+        general: string[];
+        today: string[];
+        tomorrow: string[];
+        overdue: string[];
+        thisWeek: string[];
+        nextWeek: string[];
+        future: string[];
+    } {
+        return {
+            general: [
+                ...this.BASE_DUE_DATE_TERMS.general,
+                ...settings.userPropertyTerms.dueDate,
+            ],
+            today: [...this.BASE_DUE_DATE_TERMS.today],
+            tomorrow: [...this.BASE_DUE_DATE_TERMS.tomorrow],
+            overdue: [...this.BASE_DUE_DATE_TERMS.overdue],
+            thisWeek: [...this.BASE_DUE_DATE_TERMS.thisWeek],
+            nextWeek: [...this.BASE_DUE_DATE_TERMS.nextWeek],
+            future: [...this.BASE_DUE_DATE_TERMS.future],
+        };
+    }
+
+    /**
+     * Get combined status terms (base + user-configured + category terms)
+     * Used in property recognition and AI prompts
+     *
+     * @param settings - Plugin settings with user-configured terms and status categories
+     * @returns Combined status terms including all custom categories
+     */
+    static getCombinedStatusTerms(settings: PluginSettings): {
+        general: string[];
+        [categoryKey: string]: string[];
+    } {
+        const result: { general: string[]; [key: string]: string[] } = {
+            general: [
+                ...this.BASE_STATUS_TERMS.general,
+                ...settings.userPropertyTerms.status,
+            ],
+        };
+
+        // Add terms from each status category
+        for (const [categoryKey, config] of Object.entries(
+            settings.taskStatusMapping,
+        )) {
+            if (config) {
+                const terms = this.inferStatusTerms(categoryKey, settings);
+                result[categoryKey] = terms.split(", ");
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Get all priority field names to check
+     * Combines primary field + aliases + user's configured DataView key
+     *
+     * @param settings - Plugin settings
+     * @returns Array of field names to check for priority
+     */
+    static getAllPriorityFieldNames(settings: PluginSettings): string[] {
+        return [
+            settings.dataviewKeys.priority,
+            this.PRIORITY_FIELDS.primary,
+            ...this.PRIORITY_FIELDS.aliases,
+        ];
+    }
+
+    /**
+     * Get all due date field names to check
+     * Returns user's configured DataView key + standard aliases
+     *
+     * @param settings - Plugin settings
+     * @returns Array of field names to check for due dates
+     */
+    static getAllDueDateFieldNames(settings: PluginSettings): string[] {
+        return [settings.dataviewKeys.dueDate, ...this.DATE_FIELDS.due];
+    }
+
+
     /**
      * Map a DataView task status symbol to status category
      * Uses user's configured taskStatusMapping

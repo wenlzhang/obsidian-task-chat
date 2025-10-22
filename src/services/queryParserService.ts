@@ -1,6 +1,5 @@
 import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
-import { ModelProviderService } from "./modelProviderService";
 import { PromptBuilderService } from "./promptBuilderService";
 import { PropertyRecognitionService } from "./propertyRecognitionService";
 import { StopWords } from "./stopWords";

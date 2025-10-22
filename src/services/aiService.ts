@@ -247,7 +247,7 @@ export class AIService {
                 if (tasks.length === 0) {
                     responseMessage += `\n\n💡 **Tip**: If you have tasks in your vault, this might mean:\n`;
                     responseMessage += `• DataView is still indexing (wait 10-30 seconds)\n`;
-                    responseMessage += `• DataView index delay is too long (reduce to 500ms in DataView settings)\n`;
+                    responseMessage += `• DataView index delay is too long (try reducing index delay in DataView settings)\n`;
                     responseMessage += `• Tasks don't use the expected syntax (e.g., \`- [ ] Task\`)\n\n`;
                     responseMessage += `Try clicking the **Refresh tasks** button and waiting a moment.`;
                 } else {
