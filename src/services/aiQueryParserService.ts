@@ -1,7 +1,7 @@
 import { requestUrl } from "obsidian";
 import { PluginSettings } from "../settings";
-import { PromptBuilderService } from "./promptBuilderService";
-import { PropertyRecognitionService } from "./propertyRecognitionService";
+import { PromptBuilderService } from "./aiPromptBuilderService";
+import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 
@@ -381,14 +381,14 @@ export class QueryParserService {
 
         // Build property term mappings (three-layer system: user + internal + semantic)
         const propertyTermMappings =
-            PropertyRecognitionService.buildPropertyTermMappingsForParser(
+            AIPropertyPromptService.buildPropertyTermMappingsForParser(
                 settings,
                 queryLanguages,
             );
         const dueDateValueMapping =
-            PropertyRecognitionService.buildDueDateValueMapping();
+            AIPropertyPromptService.buildDueDateValueMapping();
         const statusValueMapping =
-            PropertyRecognitionService.buildStatusValueMapping(settings);
+            AIPropertyPromptService.buildStatusValueMapping(settings);
         const priorityValueMapping =
             PromptBuilderService.buildPriorityMappingForParser(
                 settings,

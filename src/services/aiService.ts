@@ -2,10 +2,10 @@ import { App, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings, SortCriterion } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
-import { QueryParserService, ParsedQuery } from "./queryParserService";
+import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
 import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
-import { PromptBuilderService } from "./promptBuilderService";
+import { PromptBuilderService } from "./aiPromptBuilderService";
 import { DataviewService } from "./dataviewService";
 
 /**

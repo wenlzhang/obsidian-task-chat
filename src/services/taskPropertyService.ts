@@ -69,7 +69,7 @@ export class TaskPropertyService {
 
     /**
      * Standard date field names (DataView compatible)
-     * Used across dataviewService, taskFilterService, propertyRecognitionService
+     * Used across dataviewService, taskFilterService, propertyDetectionService, aiPropertyPromptService
      */
     static readonly DATE_FIELDS = {
         due: ["due", "dueDate", "deadline", "scheduled"],

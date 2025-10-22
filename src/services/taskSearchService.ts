@@ -2,7 +2,7 @@ import { Task, QueryIntent } from "../models/task";
 import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
-import { PropertyRecognitionService } from "./propertyRecognitionService";
+import { PropertyDetectionService } from "./propertyDetectionService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { PluginSettings } from "../settings";
 import { moment } from "obsidian";
@@ -207,30 +207,28 @@ export class TaskSearchService {
 
     /**
      * Check if query is asking about priorities/recommendations
-     * @deprecated Use PropertyRecognitionService.detectPropertiesSimple() instead
-     * Kept for backward compatibility but delegates to PropertyRecognitionService
+     * @deprecated Use PropertyDetectionService.detectPropertiesSimple() instead
+     * Kept for backward compatibility but delegates to PropertyDetectionService
      */
     static isPriorityQuery(query: string, settings: PluginSettings): boolean {
-        return PropertyRecognitionService.detectPropertiesSimple(
-            query,
-            settings,
-        ).hasPriority;
+        return PropertyDetectionService.detectPropertiesSimple(query, settings)
+            .hasPriority;
     }
 
     /**
      * Extract priority level from query
-     * Delegates to PropertyRecognitionService for consistent behavior
+     * Delegates to PropertyDetectionService for consistent behavior
      *
-     * @deprecated This method now delegates to PropertyRecognitionService
+     * @deprecated This method now delegates to PropertyDetectionService
      * Uses combined terms (user + internal) instead of hardcoded patterns
      */
     static extractPriorityFromQuery(
         query: string,
         settings: PluginSettings,
     ): number | null {
-        // Use PropertyRecognitionService for consistent behavior across all modes
+        // Use PropertyDetectionService for consistent behavior across all modes
         const combined =
-            PropertyRecognitionService.getCombinedPropertyTerms(settings);
+            PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
         // Check for specific priority levels using combined terms
@@ -279,18 +277,16 @@ export class TaskSearchService {
 
     /**
      * Check if query is asking about due dates
-     * @deprecated Use PropertyRecognitionService.detectPropertiesSimple() instead
-     * Kept for backward compatibility but delegates to PropertyRecognitionService
+     * @deprecated Use PropertyDetectionService.detectPropertiesSimple() instead
+     * Kept for backward compatibility but delegates to PropertyDetectionService
      */
     static isDueDateQuery(query: string, settings: PluginSettings): boolean {
-        return PropertyRecognitionService.detectPropertiesSimple(
-            query,
-            settings,
-        ).hasDueDate;
+        return PropertyDetectionService.detectPropertiesSimple(query, settings)
+            .hasDueDate;
     }
 
     /**
-     * Extract due date filter from query using PropertyRecognitionService
+     * Extract due date filter from query using PropertyDetectionService
      * Returns: 'today', 'overdue', 'week', 'tomorrow', 'next-week', 'future', 'any', or specific date
      *
      * @param query User's search query
@@ -301,7 +297,7 @@ export class TaskSearchService {
         settings: PluginSettings,
     ): string | null {
         const combined =
-            PropertyRecognitionService.getCombinedPropertyTerms(settings);
+            PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
         // Helper to check if any term matches
@@ -393,18 +389,18 @@ export class TaskSearchService {
 
     /**
      * Extract status filter from query
-     * Delegates to PropertyRecognitionService for consistent behavior
+     * Delegates to PropertyDetectionService for consistent behavior
      *
-     * @deprecated This method now delegates to PropertyRecognitionService
+     * @deprecated This method now delegates to PropertyDetectionService
      * Uses combined terms (user + internal) to support custom status categories
      */
     static extractStatusFromQuery(
         query: string,
         settings: PluginSettings,
     ): string | null {
-        // Use PropertyRecognitionService for consistent behavior across all modes
+        // Use PropertyDetectionService for consistent behavior across all modes
         const combined =
-            PropertyRecognitionService.getCombinedPropertyTerms(settings);
+            PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
         // Check all status categories dynamically (supports custom categories!)
@@ -631,8 +627,8 @@ export class TaskSearchService {
             (extractedTags.length > 0 ? 1 : 0) +
             (keywords.length > 0 ? 1 : 0);
 
-        // Use PropertyRecognitionService for property detection (eliminates hardcoded duplicates)
-        const propertyHints = PropertyRecognitionService.detectPropertiesSimple(
+        // Use PropertyDetectionService for property detection (eliminates hardcoded duplicates)
+        const propertyHints = PropertyDetectionService.detectPropertiesSimple(
             query,
             settings,
         );
