@@ -140,7 +140,6 @@ export class TaskPropertyService {
             "截止日期",
             "到期",
             "期限",
-            "计划",
             "förfallodatum",
             "deadline",
         ],
@@ -250,6 +249,9 @@ export class TaskPropertyService {
         dateBeforeRange: /(?<!due\s)date\s+before:\s*[^&|]+/gi,
         dateAfterRange: /(?<!due\s)date\s+after:\s*[^&|]+/gi,
         operators: /[&|!]/g,
+        // Due date keywords (must be removed before AI parsing to save tokens)
+        dueDateKeywords:
+            /\b(due|today|tomorrow|this\s+week|next\s+week|this\s+month|next\s+month)\b/gi,
         specialKeywordOverdue: /\b(overdue|over\s+due|od)\b/gi,
         specialKeywordRecurring: /\brecurring\b/gi,
         specialKeywordSubtask: /\bsubtask\b/gi,

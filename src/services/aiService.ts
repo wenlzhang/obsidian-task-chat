@@ -193,14 +193,16 @@ export class AIService {
                           ? []
                           : [message];
 
-                // Safety net: Remove any remaining property trigger words
-                // (Should be rare since we pre-cleaned the query, but AI might still return some)
+                // IMPORTANT: Remove property trigger words from AI-returned keywords
+                // Even though we cleaned the input query, the AI might semantically expand
+                // to property-related words (e.g., "task" → "due", "deadline", "priority")
+                // We need to remove these to avoid false matches
                 keywords = TaskSearchService.removePropertyTriggerWords(
                     keywords,
                     settings,
                 );
 
-                // Safety net: Also clean up core keywords
+                // Also clean up core keywords returned by AI
                 if (parsedQuery.coreKeywords) {
                     parsedQuery.coreKeywords =
                         TaskSearchService.removePropertyTriggerWords(

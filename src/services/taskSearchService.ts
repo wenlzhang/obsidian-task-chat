@@ -122,6 +122,12 @@ export class TaskSearchService {
             "",
         );
 
+        // Remove due date keywords (due, today, tomorrow, etc.)
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueDateKeywords,
+            "",
+        );
+
         // Remove special keywords using centralized patterns
         cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
