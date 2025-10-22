@@ -471,13 +471,17 @@ export class DataviewService {
             result.priority = parseInt(priorityMatch[1]);
         }
 
-        // NEW Pattern 4: Unified Status Syntax "s:value" or "s:value1,value2"
+        // NEW Pattern 4: Unified Status Syntax "s:value" or "status:value" or "s:value1,value2"
         // Supports:
         // - Category names (internal or alias): s:open, s:completed, s:done, s:in-progress
         // - Symbols: s:x, s:/, s:?
         // - Multiple values: s:x,/, s:open,wip
-        const statusMatch = query.match(/\bs:([^\s&|]+)/i);
-        if (statusMatch) {
+        // Use centralized pattern from TaskPropertyService
+        const { TaskPropertyService } = require("./taskPropertyService");
+        const statusMatch = query.match(
+            TaskPropertyService.QUERY_PATTERNS.status,
+        );
+        if (statusMatch && statusMatch[1]) {
             const rawValues = statusMatch[1];
             // Split by comma (no spaces allowed per user request)
             result.statusValues = rawValues
