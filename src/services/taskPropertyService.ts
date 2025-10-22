@@ -1320,17 +1320,21 @@ export class TaskPropertyService {
             }
 
             // Check if value matches any alias
-            const aliases = config.aliases
-                .split(",")
-                .map((a) => a.trim().toLowerCase());
-            if (aliases.includes(lowerValue)) {
-                return categoryKey;
+            if (config.aliases) {
+                const aliases = config.aliases
+                    .split(",")
+                    .map((a) => a.trim().toLowerCase());
+                if (aliases.includes(lowerValue)) {
+                    return categoryKey;
+                }
             }
 
             // Check if value matches any symbol
-            const symbols = config.symbols.map((s) => s.toLowerCase());
-            if (symbols.includes(lowerValue)) {
-                return categoryKey;
+            if (config.symbols && Array.isArray(config.symbols)) {
+                const symbols = config.symbols.map((s) => s.toLowerCase());
+                if (symbols.includes(lowerValue)) {
+                    return categoryKey;
+                }
             }
         }
 

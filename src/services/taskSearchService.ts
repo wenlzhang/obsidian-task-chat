@@ -485,11 +485,13 @@ export class TaskSearchService {
                     return resolved;
                 }
 
-                // If explicit syntax was used but no match found, log warning
-                console.warn(
-                    `[Task Chat] Status value "${value}" not found in any category`,
-                );
-                return null;
+                // If explicit syntax was used but no match found, throw error
+                const availableCategories = Object.keys(
+                    settings.taskStatusMapping,
+                ).join(", ");
+                const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
+                console.error(`[Task Chat] ${errorMsg}`);
+                throw new Error(errorMsg);
             } else {
                 console.warn(
                     "[Task Chat] Status regex matched but capture group is undefined",
