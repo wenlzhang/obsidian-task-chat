@@ -1,4 +1,6 @@
 import { PluginSettings, SortCriterion } from "../settings";
+import { Task } from "../models/task";
+import { TaskPropertyService } from "./taskPropertyService";
 
 /**
  * Shared utility service for building AI prompt components
@@ -8,137 +10,22 @@ import { PluginSettings, SortCriterion } from "../settings";
  */
 export class PromptBuilderService {
     /**
-     * Dynamically infer description based on display name patterns
-     * This allows generating appropriate descriptions for ANY user-defined category
+     * Infer status description based on display name patterns
+     * Delegates to TaskPropertyService for consistent behavior
      */
     private static inferStatusDescription(displayName: string): string {
-        const lower = displayName.toLowerCase();
-
-        if (lower.includes("open") || lower.includes("todo")) {
-            return "Tasks not yet started or awaiting action";
-        }
-
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active")
-        ) {
-            return "Tasks currently being worked on";
-        }
-
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish")
-        ) {
-            return "Finished tasks";
-        }
-
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("drop")
-        ) {
-            return "Tasks that were abandoned or cancelled";
-        }
-
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical")
-        ) {
-            return "High-importance or urgent tasks";
-        }
-
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("flag")
-        ) {
-            return "Bookmarked or marked tasks for later review";
-        }
-
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("hold") ||
-            lower.includes("pending")
-        ) {
-            return "Tasks waiting on external dependencies";
-        }
-
-        if (lower.includes("other")) {
-            return "Tasks with unrecognized or custom status symbols";
-        }
-
-        // Fallback
-        return `Tasks with this status: ${displayName}`;
+        return TaskPropertyService.inferStatusDescription(displayName);
     }
 
     /**
-     * Dynamically infer term suggestions (English only for parser)
-     * Simplified version for parser prompts
+     * Infer semantic term suggestions for status categories
+     * Delegates to TaskPropertyService for consistent behavior
      */
-    private static inferStatusTermSuggestions(displayName: string): string {
-        const lower = displayName.toLowerCase();
-
-        if (lower.includes("open") || lower.includes("todo")) {
-            return "incomplete, todo, new, unstarted";
-        }
-
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active")
-        ) {
-            return "working, ongoing, active, doing";
-        }
-
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish")
-        ) {
-            return "done, finished, closed, resolved";
-        }
-
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("drop")
-        ) {
-            return "abandoned, dropped, discarded";
-        }
-
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical")
-        ) {
-            return "urgent, critical, high-priority, significant";
-        }
-
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("flag")
-        ) {
-            return "marked, starred, flagged, saved";
-        }
-
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("hold") ||
-            lower.includes("pending")
-        ) {
-            return "blocked, pending, on-hold, deferred";
-        }
-
-        // Fallback: use display name as base
-        return displayName.toLowerCase();
+    private static inferStatusTermSuggestions(
+        displayName: string,
+        categoryKey: string,
+    ): string {
+        return TaskPropertyService.inferStatusTerms(displayName, categoryKey);
     }
 
     /**
@@ -289,6 +176,7 @@ Use the display name when showing status to users.`;
                 // Dynamically infer term suggestions based on display name patterns
                 const termSuggestions = this.inferStatusTermSuggestions(
                     config.displayName,
+                    key,
                 );
                 return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
             })

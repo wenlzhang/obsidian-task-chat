@@ -1,4 +1,5 @@
 import { PluginSettings } from "../settings";
+import { TaskPropertyService } from "./taskPropertyService";
 
 /**
  * Property Recognition Service
@@ -13,10 +14,9 @@ import { PluginSettings } from "../settings";
 export class PropertyRecognitionService {
     /**
      * Dynamically infer semantic term suggestions based on display name patterns
-     * This allows the system to generate appropriate synonyms for ANY user-defined category
-     * without hardcoding specific category keys.
+     * Delegates to TaskPropertyService for consistent behavior
      *
-     * @param displayName - The display name of the status category (e.g., "Important", "Bookmark")
+     * @param displayName - The display name of the status category
      * @param categoryKey - The internal key (used as fallback if no pattern matches)
      * @returns Multilingual semantic terms for this category
      */
@@ -24,96 +24,7 @@ export class PropertyRecognitionService {
         displayName: string,
         categoryKey: string,
     ): string {
-        const lower = displayName.toLowerCase();
-
-        // Pattern matching for common category types (language-agnostic)
-        if (
-            lower.includes("open") ||
-            lower.includes("todo") ||
-            lower.includes("待办") ||
-            lower.includes("未完") ||
-            lower.includes("öppen")
-        ) {
-            return "未完成, 待办, öppen, todo, new, unstarted, incomplete";
-        }
-
-        if (
-            lower.includes("progress") ||
-            lower.includes("working") ||
-            lower.includes("active") ||
-            lower.includes("进行") ||
-            lower.includes("正在") ||
-            lower.includes("pågående")
-        ) {
-            return "进行中, 正在做, pågående, working, ongoing, active, doing, wip";
-        }
-
-        if (
-            lower.includes("complete") ||
-            lower.includes("done") ||
-            lower.includes("finish") ||
-            lower.includes("完成") ||
-            lower.includes("klar") ||
-            lower.includes("färdig")
-        ) {
-            return "完成, 已完成, klar, färdig, done, finished, closed, resolved";
-        }
-
-        if (
-            lower.includes("cancel") ||
-            lower.includes("abandon") ||
-            lower.includes("drop") ||
-            lower.includes("取消") ||
-            lower.includes("avbruten")
-        ) {
-            return "取消, 已取消, avbruten, canceled, abandoned, dropped, discarded";
-        }
-
-        if (
-            lower.includes("important") ||
-            lower.includes("urgent") ||
-            lower.includes("critical") ||
-            lower.includes("重要") ||
-            lower.includes("紧急") ||
-            lower.includes("viktig")
-        ) {
-            return "重要, 重要的, viktig, betydande, urgent, critical, high-priority, significant, key, essential";
-        }
-
-        if (
-            lower.includes("bookmark") ||
-            lower.includes("mark") ||
-            lower.includes("star") ||
-            lower.includes("flag") ||
-            lower.includes("书签") ||
-            lower.includes("标记") ||
-            lower.includes("bokmärke")
-        ) {
-            return "书签, 标记, bokmärke, märkt, marked, starred, flagged, saved, pinned";
-        }
-
-        if (
-            lower.includes("wait") ||
-            lower.includes("block") ||
-            lower.includes("pend") ||
-            lower.includes("hold") ||
-            lower.includes("等待") ||
-            lower.includes("待定") ||
-            lower.includes("väntar")
-        ) {
-            return "等待, 待定, väntar, väntande, blocked, pending, on-hold, deferred, postponed";
-        }
-
-        if (
-            lower.includes("other") ||
-            lower.includes("其他") ||
-            lower.includes("övrig")
-        ) {
-            return "其他, övrig, unrecognized, misc, other";
-        }
-
-        // Fallback: use displayName and categoryKey as base terms
-        return `${displayName.toLowerCase()}, ${categoryKey.toLowerCase()}`;
+        return TaskPropertyService.inferStatusTerms(displayName, categoryKey);
     }
 
     /**

@@ -1,5 +1,6 @@
 import { moment } from "obsidian";
 import { Task, TaskFilter } from "../models/task";
+import { TaskPropertyService } from "./taskPropertyService";
 
 /**
  * Service for filtering tasks based on various criteria
@@ -31,31 +32,24 @@ export class TaskFilterService {
 
         // Filter by priorities
         if (filter.priorities && filter.priorities.length > 0) {
-            filtered = filtered.filter((task) =>
-                filter.priorities!.includes(task.priority || "none"),
-            );
+            filtered = filtered.filter((task) => {
+                const priority =
+                    task.priority !== undefined
+                        ? String(task.priority)
+                        : "none";
+                return filter.priorities!.includes(priority);
+            });
         }
 
         // Filter by due date range
+        // Delegates to TaskPropertyService for consistent date handling
         if (filter.dueDateRange) {
-            filtered = filtered.filter((task) => {
-                if (!task.dueDate) return false;
-
-                const taskDate = moment(task.dueDate);
-                if (!taskDate.isValid()) return false;
-
-                if (filter.dueDateRange!.start) {
-                    const startDate = moment(filter.dueDateRange!.start);
-                    if (taskDate.isBefore(startDate, "day")) return false;
-                }
-
-                if (filter.dueDateRange!.end) {
-                    const endDate = moment(filter.dueDateRange!.end);
-                    if (taskDate.isAfter(endDate, "day")) return false;
-                }
-
-                return true;
-            });
+            filtered = filtered.filter((task) =>
+                TaskPropertyService.matchesDateRange(
+                    task,
+                    filter.dueDateRange!,
+                ),
+            );
         }
 
         // Filter by completion status
@@ -100,7 +94,9 @@ export class TaskFilterService {
     static getUniquePriorities(tasks: Task[]): string[] {
         const priorities = new Set<string>();
         tasks.forEach((task) => {
-            priorities.add(task.priority || "none");
+            const priority =
+                task.priority !== undefined ? String(task.priority) : "none";
+            priorities.add(priority);
         });
         return Array.from(priorities).sort();
     }

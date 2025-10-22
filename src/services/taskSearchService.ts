@@ -3,6 +3,7 @@ import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
 import { PropertyRecognitionService } from "./propertyRecognitionService";
+import { TaskPropertyService } from "./taskPropertyService";
 import { PluginSettings } from "../settings";
 import { moment } from "obsidian";
 
@@ -201,65 +202,52 @@ export class TaskSearchService {
 
     /**
      * Extract priority level from query
-     * Returns numeric priority (1=highest, 2=high, 3=medium, 4=low) or null
+     * Delegates to PropertyRecognitionService for consistent behavior
+     *
+     * @deprecated This method now delegates to PropertyRecognitionService
+     * Uses combined terms (user + internal) instead of hardcoded patterns
      */
-    static extractPriorityFromQuery(query: string): number | null {
+    static extractPriorityFromQuery(
+        query: string,
+        settings: PluginSettings,
+    ): number | null {
+        // Use PropertyRecognitionService for consistent behavior across all modes
+        const combined =
+            PropertyRecognitionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
+        // Check for specific priority levels using combined terms
         // Priority 1 (highest/high)
-        // Numeric: priority 1, p1, 优先级1, 优先级为1, 优先级是1
-        // Semantic: high priority, highest priority, 高优先级, 最高优先级
         if (
-            /(priority\s*(?:is\s*|=\s*)?1|p1|优先级\s*(?:为|是)?\s*1|\bp1\b)/i.test(
-                query,
-            ) ||
-            /(high(?:est)?\s*priority|priority\s*(?:is\s*)?high(?:est)?)/i.test(
-                query,
-            ) ||
-            /(高优先级|最高优先级|高\s*优先级|最高\s*优先级)/i.test(query)
+            combined.priority.high.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            )
         ) {
             return 1;
         }
 
-        // Priority 2 (medium/normal)
-        // Numeric: priority 2, p2, 优先级2
-        // Semantic: medium priority, normal priority, 中优先级, 普通优先级
+        // Priority 2 (medium)
         if (
-            /(priority\s*(?:is\s*|=\s*)?2|p2|优先级\s*(?:为|是)?\s*2|\bp2\b)/i.test(
-                query,
-            ) ||
-            /(medium|normal)\s*priority|priority\s*(?:is\s*)?(medium|normal)/i.test(
-                query,
-            ) ||
-            /(中优先级|普通优先级|中\s*优先级|普通\s*优先级)/i.test(query)
+            combined.priority.medium.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            )
         ) {
             return 2;
         }
 
         // Priority 3 (low)
-        // Numeric: priority 3, p3, 优先级3
-        // Semantic: low priority, 低优先级
         if (
-            /(priority\s*(?:is\s*|=\s*)?3|p3|优先级\s*(?:为|是)?\s*3|\bp3\b)/i.test(
-                query,
-            ) ||
-            /low\s*priority|priority\s*(?:is\s*)?low/i.test(query) ||
-            /(低优先级|低\s*优先级)/i.test(query)
+            combined.priority.low.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            )
         ) {
             return 3;
         }
 
-        // Priority 4 (none/no priority)
-        // Numeric: priority 4, p4, 优先级4
-        // Semantic: no priority, 无优先级
-        if (
-            /(priority\s*(?:is\s*|=\s*)?4|p4|优先级\s*(?:为|是)?\s*4|\bp4\b)/i.test(
-                query,
-            ) ||
-            /no\s*priority|priority\s*(?:is\s*)?none/i.test(query) ||
-            /(无优先级|无\s*优先级)/i.test(query)
-        ) {
-            return 4;
+        // Check for explicit p1-p4 patterns
+        const explicitMatch = query.match(/\bp([1-4])\b/i);
+        if (explicitMatch) {
+            return parseInt(explicitMatch[1]);
         }
 
         return null;
@@ -295,9 +283,9 @@ export class TaskSearchService {
         query: string,
         settings: PluginSettings,
     ): string | null {
-        const lowerQuery = query.toLowerCase();
         const combined =
             PropertyRecognitionService.getCombinedPropertyTerms(settings);
+        const lowerQuery = query.toLowerCase();
 
         // Helper to check if any term matches
         const hasAnyTerm = (terms: string[]) => {
@@ -306,269 +294,112 @@ export class TaskSearchService {
             );
         };
 
-        // Check for specific time periods (highest priority - most specific)
-        if (hasAnyTerm(combined.dueDate.overdue)) {
-            return "overdue";
-        }
+        // Check specific time periods (priority order: most specific first)
+        if (hasAnyTerm(combined.dueDate.overdue)) return "overdue";
+        if (hasAnyTerm(combined.dueDate.future)) return "future";
+        if (hasAnyTerm(combined.dueDate.today)) return "today";
+        if (hasAnyTerm(combined.dueDate.tomorrow)) return "tomorrow";
+        if (hasAnyTerm(combined.dueDate.thisWeek)) return "week";
+        if (hasAnyTerm(combined.dueDate.nextWeek)) return "next-week";
 
-        if (hasAnyTerm(combined.dueDate.future)) {
-            return "future";
-        }
-
-        if (hasAnyTerm(combined.dueDate.today)) {
-            return "today";
-        }
-
-        if (hasAnyTerm(combined.dueDate.tomorrow)) {
-            return "tomorrow";
-        }
-
-        if (hasAnyTerm(combined.dueDate.thisWeek)) {
-            return "week";
-        }
-
-        if (hasAnyTerm(combined.dueDate.nextWeek)) {
-            return "next-week";
-        }
-
-        // Check for relative date patterns (NEW: "in 5 days", "in 2 weeks", "in 1 month")
+        // Check for relative date patterns ("in 5 days", "+3d", etc.)
         const relativeDatePattern =
             /\bin\s+(\d+)\s+(day|days|week|weeks|month|months)\b/i;
         const relativeMatch = lowerQuery.match(relativeDatePattern);
         if (relativeMatch) {
             const amount = relativeMatch[1];
             const unit = relativeMatch[2].toLowerCase();
-
-            // Normalize to single letter: d, w, m
-            if (unit.startsWith("day")) {
-                return `+${amount}d`;
-            } else if (unit.startsWith("week")) {
-                return `+${amount}w`;
-            } else if (unit.startsWith("month")) {
-                return `+${amount}m`;
-            }
+            if (unit.startsWith("day")) return `+${amount}d`;
+            if (unit.startsWith("week")) return `+${amount}w`;
+            if (unit.startsWith("month")) return `+${amount}m`;
         }
 
-        // Check for specific date patterns (YYYY-MM-DD, MM-DD, etc.)
+        // Check for specific date patterns
         const datePatterns = [
-            /\b(\d{4}-\d{2}-\d{2})\b/, // YYYY-MM-DD
-            /\b(\d{2}\/\d{2}\/\d{4})\b/, // MM/DD/YYYY
-            /\b(\d{4}\/\d{2}\/\d{2})\b/, // YYYY/MM/DD
+            /\b(\d{4}-\d{2}-\d{2})\b/,
+            /\b(\d{2}\/\d{2}\/\d{4})\b/,
+            /\b(\d{4}\/\d{2}\/\d{2})\b/,
         ];
-
         for (const pattern of datePatterns) {
             const match = lowerQuery.match(pattern);
-            if (match) {
-                return match[1]; // Return the specific date
-            }
+            if (match) return match[1];
         }
 
-        // Check for generic "due" or "has due date" (tasks WITH a due date)
-        // Uses general terms from PropertyRecognitionService (user + internal)
-        if (hasAnyTerm(combined.dueDate.general)) {
-            return "any";
-        }
+        // Check for generic "due" (tasks WITH a due date)
+        if (hasAnyTerm(combined.dueDate.general)) return "any";
 
         return null;
     }
 
     /**
      * Filter tasks by due date
+     * Delegates to TaskPropertyService for consistent date handling
+     *
+     * @deprecated This method now delegates to TaskPropertyService
      */
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Special case: "any" means any task WITH a due date
-        if (filter === "any") {
-            return tasks.filter(
-                (task) =>
-                    task.dueDate !== undefined &&
-                    task.dueDate !== null &&
-                    task.dueDate !== "",
-            );
-        }
-
-        return tasks.filter((task) => {
-            if (!task.dueDate) return false;
-
-            // Parse date in local timezone by adding explicit time
-            // If the date is just "2025-10-10", treat it as local date not UTC
-            let dueDate: Date;
-            if (task.dueDate.includes("T") || task.dueDate.includes(" ")) {
-                // Has time component, parse as-is
-                dueDate = new Date(task.dueDate);
-            } else {
-                // Date only (e.g., "2025-10-10"), parse as local date
-                const parts = task.dueDate.split("-");
-                dueDate = new Date(
-                    parseInt(parts[0]),
-                    parseInt(parts[1]) - 1,
-                    parseInt(parts[2]),
-                );
-            }
-            dueDate.setHours(0, 0, 0, 0);
-
-            switch (filter) {
-                case "overdue":
-                    return dueDate < today;
-
-                case "future":
-                    return dueDate > today;
-
-                case "today":
-                    return dueDate.getTime() === today.getTime();
-
-                case "tomorrow": {
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    return dueDate.getTime() === tomorrow.getTime();
-                }
-
-                case "week": {
-                    const weekEnd = new Date(today);
-                    weekEnd.setDate(weekEnd.getDate() + 7);
-                    return dueDate >= today && dueDate <= weekEnd;
-                }
-
-                case "next-week": {
-                    const nextWeekStart = new Date(today);
-                    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-                    const nextWeekEnd = new Date(today);
-                    nextWeekEnd.setDate(nextWeekEnd.getDate() + 14);
-                    return dueDate >= nextWeekStart && dueDate <= nextWeekEnd;
-                }
-
-                default:
-                    // Check for relative date format: +Nd, +Nw, +Nm
-                    if (filter.startsWith("+")) {
-                        const relativeMatch = filter.match(/^\+(\d+)([dwm])$/);
-                        if (relativeMatch) {
-                            const amount = parseInt(relativeMatch[1]);
-                            const unit = relativeMatch[2];
-                            const targetDate = new Date(today);
-
-                            if (unit === "d") {
-                                targetDate.setDate(
-                                    targetDate.getDate() + amount,
-                                );
-                            } else if (unit === "w") {
-                                targetDate.setDate(
-                                    targetDate.getDate() + amount * 7,
-                                );
-                            } else if (unit === "m") {
-                                targetDate.setMonth(
-                                    targetDate.getMonth() + amount,
-                                );
-                            }
-
-                            targetDate.setHours(0, 0, 0, 0);
-                            return dueDate.getTime() === targetDate.getTime();
-                        }
-                    }
-
-                    // Try to match specific date
-                    try {
-                        const targetDate = new Date(filter);
-                        targetDate.setHours(0, 0, 0, 0);
-                        if (!isNaN(targetDate.getTime())) {
-                            return dueDate.getTime() === targetDate.getTime();
-                        }
-                    } catch (e) {
-                        // Invalid date format
-                    }
-                    return false;
-            }
-        });
+        return TaskPropertyService.filterByDueDate(tasks, filter);
     }
 
     /**
-     * Extract date range from query (NEW: Phase 1 Enhancement)
-     * Supports patterns: "before YYYY-MM-DD", "after YYYY-MM-DD", "from YYYY-MM-DD to YYYY-MM-DD"
-     *
-     * @returns { start?: string, end?: string } | null
+     * Extract date range from query
+     * Supports: "before DATE", "after DATE", "from DATE to DATE"
      */
     static extractDueDateRange(
         query: string,
     ): { start?: string; end?: string } | null {
         const lowerQuery = query.toLowerCase();
 
-        // Pattern 1: "before YYYY-MM-DD" or "date before: YYYY-MM-DD"
+        // Pattern 1: "before YYYY-MM-DD"
         const beforeMatch = lowerQuery.match(
             /(?:date\s+)?before[:\s]+(\d{4}-\d{2}-\d{2})/,
         );
-        if (beforeMatch) {
-            return { end: beforeMatch[1] };
-        }
+        if (beforeMatch) return { end: beforeMatch[1] };
 
-        // Pattern 2: "after YYYY-MM-DD" or "date after: YYYY-MM-DD"
+        // Pattern 2: "after YYYY-MM-DD"
         const afterMatch = lowerQuery.match(
             /(?:date\s+)?after[:\s]+(\d{4}-\d{2}-\d{2})/,
         );
-        if (afterMatch) {
-            return { start: afterMatch[1] };
-        }
+        if (afterMatch) return { start: afterMatch[1] };
 
         // Pattern 3: "from YYYY-MM-DD to YYYY-MM-DD"
         const betweenMatch = lowerQuery.match(
             /from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/,
         );
-        if (betweenMatch) {
+        if (betweenMatch)
             return { start: betweenMatch[1], end: betweenMatch[2] };
-        }
 
         return null;
     }
 
     /**
      * Extract status filter from query
-     * Supports: open, inProgress, completed, cancelled
+     * Delegates to PropertyRecognitionService for consistent behavior
+     *
+     * @deprecated This method now delegates to PropertyRecognitionService
+     * Uses combined terms (user + internal) to support custom status categories
      */
-    static extractStatusFromQuery(query: string): string | null {
+    static extractStatusFromQuery(
+        query: string,
+        settings: PluginSettings,
+    ): string | null {
+        // Use PropertyRecognitionService for consistent behavior across all modes
+        const combined =
+            PropertyRecognitionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
-        // Check for completed/done tasks
-        // English: completed, done, finished, closed, resolved
-        // Chinese: 完成, 已完成, 已结束
-        if (
-            /(completed?|done|finished|closed|resolved|完成|已完成|已结束)/i.test(
-                query,
-            )
-        ) {
-            return "completed";
-        }
+        // Check all status categories dynamically (supports custom categories!)
+        for (const [categoryKey, terms] of Object.entries(combined.status)) {
+            if (categoryKey === "general") continue; // Skip general terms
 
-        // Check for in-progress tasks
-        // English: in-progress, in progress, ongoing, active, working, doing
-        // Chinese: 进行中, 正在做, 进行, 处理中
-        if (
-            /(in[\s-]?progress|ongoing|active|working|doing|进行中|正在做|进行|处理中)/i.test(
-                query,
-            )
-        ) {
-            return "inProgress";
-        }
-
-        // Check for cancelled/abandoned tasks
-        // English: cancelled, canceled, abandoned, dropped, discarded
-        // Chinese: 取消, 已取消, 放弃
-        if (
-            /(cancell?ed|abandoned|dropped|discarded|取消|已取消|放弃)/i.test(
-                query,
-            )
-        ) {
-            return "cancelled";
-        }
-
-        // Check for open/incomplete tasks
-        // English: open, incomplete, pending, todo, new, unstarted
-        // Chinese: 未完成, 待办, 待处理, 新建
-        if (
-            /(open|incomplete|pending|todo|new|unstarted|未完成|待办|待处理|新建)/i.test(
-                query,
-            )
-        ) {
-            return "open";
+            if (Array.isArray(terms)) {
+                const hasMatch = terms.some((term) =>
+                    lowerQuery.includes(term.toLowerCase()),
+                );
+                if (hasMatch) {
+                    return categoryKey;
+                }
+            }
         }
 
         return null;
@@ -757,13 +588,16 @@ export class TaskSearchService {
         query: string,
         settings: PluginSettings,
     ): QueryIntent {
-        const extractedPriority = this.extractPriorityFromQuery(query);
+        const extractedPriority = this.extractPriorityFromQuery(
+            query,
+            settings,
+        );
         const extractedDueDateFilter = this.extractDueDateFilter(
             query,
             settings,
         );
-        const extractedDueDateRange = this.extractDueDateRange(query); // NEW: Enhanced date range extraction
-        const extractedStatus = this.extractStatusFromQuery(query);
+        const extractedDueDateRange = this.extractDueDateRange(query);
+        const extractedStatus = this.extractStatusFromQuery(query, settings);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
         const keywords = this.extractKeywords(query);

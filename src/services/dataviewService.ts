@@ -1,6 +1,7 @@
 import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
+import { TaskPropertyService } from "./taskPropertyService";
 import * as chrono from "chrono-node";
 
 /**
@@ -30,119 +31,32 @@ export class DataviewService {
 
     /**
      * Map a DataView task status symbol to status category
+     * Delegates to TaskPropertyService for consistent behavior
      */
     static mapStatusToCategory(
         symbol: string | undefined,
         settings: PluginSettings,
     ): TaskStatusCategory {
-        if (!symbol) return "open";
-
-        const cleanSymbol = symbol.replace(/[\[\]]/g, "").trim();
-
-        for (const [category, config] of Object.entries(
-            settings.taskStatusMapping,
-        )) {
-            // Defensive check: ensure config and symbols array exist
-            if (config && Array.isArray(config.symbols)) {
-                if (config.symbols.some((s) => s === cleanSymbol)) {
-                    return category as TaskStatusCategory;
-                }
-            }
-        }
-
-        if (cleanSymbol === "" || cleanSymbol === " ") {
-            return "open";
-        }
-
-        return "other";
+        return TaskPropertyService.mapStatusToCategory(symbol, settings);
     }
 
     /**
      * Map a DataView priority value to internal numeric priority
-     * Returns: 1 (highest), 2 (high), 3 (medium), 4 (low), or undefined (none)
+     * Delegates to TaskPropertyService for consistent behavior
      */
     static mapPriority(
         value: any,
         settings: PluginSettings,
     ): number | undefined {
-        if (value === undefined || value === null) {
-            return undefined;
-        }
-
-        const strValue = String(value).toLowerCase().trim();
-
-        for (const [priority, values] of Object.entries(
-            settings.dataviewPriorityMapping,
-        )) {
-            if (values.some((v) => v.toLowerCase() === strValue)) {
-                const result = parseInt(priority);
-                return result; // Convert key to number
-            }
-        }
-
-        return undefined; // No priority = undefined
+        return TaskPropertyService.mapPriority(value, settings);
     }
 
     /**
      * Format date to consistent string format
+     * Delegates to TaskPropertyService for consistent behavior
      */
     static formatDate(date: any, format?: string): string | undefined {
-        if (!date) return undefined;
-
-        try {
-            // Handle native Date objects
-            if (date instanceof Date) {
-                return format
-                    ? moment(date).format(format)
-                    : moment(date).format("YYYY-MM-DD");
-            }
-
-            // Handle objects with .format() method (moment/luxon objects)
-            if (
-                date &&
-                typeof date === "object" &&
-                typeof date.format === "function"
-            ) {
-                return format ? date.format(format) : date.format("YYYY-MM-DD");
-            }
-
-            // Handle Dataview date objects (which have toString() but not .format())
-            // These need to be converted to string first, then parsed by moment
-            if (
-                date &&
-                typeof date === "object" &&
-                typeof date.toString === "function"
-            ) {
-                const dateStr = date.toString();
-                const momentDate = moment(dateStr);
-                if (momentDate.isValid()) {
-                    return format
-                        ? momentDate.format(format)
-                        : momentDate.format("YYYY-MM-DD");
-                }
-            }
-
-            // Handle string dates
-            if (typeof date === "string") {
-                const dateStr = date.trim();
-                const parsedDate = moment(dateStr);
-                if (parsedDate.isValid()) {
-                    return format ? parsedDate.format(format) : dateStr;
-                }
-            }
-
-            // Fallback: try moment() directly
-            const momentDate = moment(date);
-            if (momentDate.isValid()) {
-                return format
-                    ? momentDate.format(format)
-                    : momentDate.format("YYYY-MM-DD");
-            }
-        } catch (e) {
-            console.error("Error formatting date:", e);
-        }
-
-        return undefined;
+        return TaskPropertyService.formatDate(date, format);
     }
 
     /**
@@ -407,39 +321,13 @@ export class DataviewService {
 
     /**
      * Check if task matches date range filter
+     * Delegates to TaskPropertyService for consistent behavior
      */
     private static matchesDateRange(
         task: Task,
         dateRange: { start?: string; end?: string } | null,
     ): boolean {
-        if (!dateRange) return true; // No filter = include all
-
-        // "any" filter - task must have a due date
-        if (
-            Object.keys(dateRange).length === 0 &&
-            dateRange.constructor === Object
-        ) {
-            return !!task.dueDate;
-        }
-
-        if (!task.dueDate) return false; // No due date = exclude
-
-        const taskDate = moment(task.dueDate).startOf("day");
-        if (!taskDate.isValid()) return false;
-
-        // Check start range
-        if (dateRange.start) {
-            const startDate = moment(dateRange.start).startOf("day");
-            if (taskDate.isBefore(startDate)) return false;
-        }
-
-        // Check end range
-        if (dateRange.end) {
-            const endDate = moment(dateRange.end).startOf("day");
-            if (taskDate.isAfter(endDate)) return false;
-        }
-
-        return true;
+        return TaskPropertyService.matchesDateRange(task, dateRange);
     }
 
     /**
@@ -508,356 +396,41 @@ export class DataviewService {
 
     /**
      * Convert date filter to Dataview date range query
+     * Delegates to TaskPropertyService for consistent behavior
      */
     static convertDateFilterToRange(dateFilter: string): {
         start?: string;
         end?: string;
     } | null {
-        const today = moment().startOf("day");
-
-        switch (dateFilter) {
-            case "any":
-                // Has a due date (non-null)
-                return {}; // Will check for existence, not range
-
-            case "today":
-                return {
-                    start: today.format("YYYY-MM-DD"),
-                    end: today.format("YYYY-MM-DD"),
-                };
-
-            case "tomorrow": {
-                const tomorrow = moment().add(1, "day").startOf("day");
-                return {
-                    start: tomorrow.format("YYYY-MM-DD"),
-                    end: tomorrow.format("YYYY-MM-DD"),
-                };
-            }
-
-            case "overdue":
-                return {
-                    end: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
-                };
-
-            case "future":
-                return {
-                    start: today.clone().add(1, "day").format("YYYY-MM-DD"),
-                };
-
-            case "week": {
-                const weekEnd = today.clone().add(7, "days").endOf("day");
-                return {
-                    start: today.format("YYYY-MM-DD"),
-                    end: weekEnd.format("YYYY-MM-DD"),
-                };
-            }
-
-            case "next-week": {
-                const nextWeekStart = today
-                    .clone()
-                    .add(7, "days")
-                    .startOf("day");
-                const nextWeekEnd = today.clone().add(14, "days").endOf("day");
-                return {
-                    start: nextWeekStart.format("YYYY-MM-DD"),
-                    end: nextWeekEnd.format("YYYY-MM-DD"),
-                };
-            }
-
-            default:
-                // NEW (Enhancement #3): Try relative date patterns first
-                const relativeRange = this.parseRelativeDateRange(
-                    dateFilter,
-                    today,
-                );
-                if (relativeRange) {
-                    return relativeRange;
-                }
-
-                // NEW (Phase 2): Try natural language parsing with chrono-node
-                const chronoParsed = chrono.parseDate(dateFilter);
-                if (chronoParsed) {
-                    const chronoDate = moment(chronoParsed).startOf("day");
-                    if (chronoDate.isValid()) {
-                        return {
-                            start: chronoDate.format("YYYY-MM-DD"),
-                            end: chronoDate.format("YYYY-MM-DD"),
-                        };
-                    }
-                }
-
-                // Fallback: Try to parse as specific date (YYYY-MM-DD)
-                const parsedDate = moment(dateFilter, "YYYY-MM-DD", true);
-                if (parsedDate.isValid()) {
-                    return {
-                        start: parsedDate.format("YYYY-MM-DD"),
-                        end: parsedDate.format("YYYY-MM-DD"),
-                    };
-                }
-                return null;
-        }
+        return TaskPropertyService.convertDateFilterToRange(dateFilter);
     }
 
     /**
-     * Parse relative date ranges (ENHANCED: Phase 3D)
-     * Comprehensive support for:
-     * - Original: "5 days ago", "within 5 days", "next 2 weeks", "last 7 days"
-     * - Todoist-style: "3 days", "-3 days", "+4 hours"
-     * - DataView duration: "1D", "2W", "1M", "1Y"
-     * - Named: "next week", "first day", "sat"
-     * - Compound: "1 week after next week"
+     * Parse relative date ranges
+     * Delegates to TaskPropertyService for consistent behavior
      *
-     * @param dateFilter Date filter string
-     * @param today Reference date (usually current date)
-     * @returns DateRange or null if pattern not recognized
+     * @deprecated This method now delegates to TaskPropertyService
      */
     private static parseRelativeDateRange(
         dateFilter: string,
         today: moment.Moment,
     ): { start?: string; end?: string } | null {
-        const lowerFilter = dateFilter.toLowerCase().trim();
-
-        // DataView duration formats (DAY-LEVEL ONLY)
-        // ONLY supports day-level or longer: "7d", "2w", "3mo", "1yr"
-        // Also supports combinations: "1yr 2mo 3d"
-        // NOTE: Sub-day patterns (seconds, minutes, hours) are NOT supported
-        // because our filtering uses date-only comparisons (.startOf("day"))
-        const durationPattern =
-            /^(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)(?:\s+(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?(?:\s+(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years))?$/;
-        const durationMatch = lowerFilter.match(durationPattern);
-        if (durationMatch) {
-            const parseDurationUnit = (unitStr: string): string => {
-                if (/^(d|day|days)$/.test(unitStr)) return "days";
-                if (/^(w|wk|wks|week|weeks)$/.test(unitStr)) return "weeks";
-                if (/^(mo|month|months)$/.test(unitStr)) return "months";
-                if (/^(yr|yrs|year|years)$/.test(unitStr)) return "years";
-                return "days"; // fallback
-            };
-
-            let futureDate = today.clone();
-
-            // Parse first unit
-            const amount1 = parseInt(durationMatch[1]);
-            const unit1 = parseDurationUnit(durationMatch[2]);
-            futureDate = futureDate.add(
-                amount1,
-                unit1 as moment.unitOfTime.DurationConstructor,
-            );
-
-            // Parse optional second unit
-            if (durationMatch[3] && durationMatch[4]) {
-                const amount2 = parseInt(durationMatch[3]);
-                const unit2 = parseDurationUnit(durationMatch[4]);
-                futureDate = futureDate.add(
-                    amount2,
-                    unit2 as moment.unitOfTime.DurationConstructor,
-                );
-            }
-
-            // Parse optional third unit
-            if (durationMatch[5] && durationMatch[6]) {
-                const amount3 = parseInt(durationMatch[5]);
-                const unit3 = parseDurationUnit(durationMatch[6]);
-                futureDate = futureDate.add(
-                    amount3,
-                    unit3 as moment.unitOfTime.DurationConstructor,
-                );
-            }
-
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // NEW: Todoist-style: "3 days" (next 3 days)
-        const todoistNextMatch = lowerFilter.match(
-            /^(\d+)\s+(day|days|week|weeks)$/,
-        );
-        if (todoistNextMatch) {
-            const amount = parseInt(todoistNextMatch[1]);
-            const unit = todoistNextMatch[2].startsWith("week")
-                ? "weeks"
-                : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // NEW: Todoist-style: "-3 days" (past 3 days)
-        const todoistPastMatch = lowerFilter.match(
-            /^-(\d+)\s+(day|days|week|weeks)$/,
-        );
-        if (todoistPastMatch) {
-            const amount = parseInt(todoistPastMatch[1]);
-            const unit = todoistPastMatch[2].startsWith("week")
-                ? "weeks"
-                : "days";
-            const pastDate = today.clone().subtract(amount, unit);
-            return {
-                start: pastDate.format("YYYY-MM-DD"),
-                end: today.format("YYYY-MM-DD"),
-            };
-        }
-
-        // NEW: Todoist-style: "+4 hours"
-        const todoistHoursMatch = lowerFilter.match(/^\+(\d+)\s+hours?$/);
-        if (todoistHoursMatch) {
-            const hours = parseInt(todoistHoursMatch[1]);
-            const futureTime = today.clone().add(hours, "hours");
-            return {
-                start: today.format("YYYY-MM-DD HH:mm"),
-                end: futureTime.format("YYYY-MM-DD HH:mm"),
-            };
-        }
-
-        // NEW: Named days: "next week", "sat", "saturday"
-        if (lowerFilter === "next week") {
-            const nextWeekStart = today.clone().add(7, "days").startOf("week");
-            const nextWeekEnd = nextWeekStart.clone().endOf("week");
-            return {
-                start: nextWeekStart.format("YYYY-MM-DD"),
-                end: nextWeekEnd.format("YYYY-MM-DD"),
-            };
-        }
-
-        if (lowerFilter === "first day") {
-            const firstDay = today.clone().startOf("month");
-            return {
-                start: firstDay.format("YYYY-MM-DD"),
-                end: firstDay.format("YYYY-MM-DD"),
-            };
-        }
-
-        // NEW: Day names: "sat", "saturday", etc.
-        const dayNames: { [key: string]: number } = {
-            sun: 0,
-            sunday: 0,
-            mon: 1,
-            monday: 1,
-            tue: 2,
-            tuesday: 2,
-            wed: 3,
-            wednesday: 3,
-            thu: 4,
-            thursday: 4,
-            fri: 5,
-            friday: 5,
-            sat: 6,
-            saturday: 6,
-        };
-        if (dayNames.hasOwnProperty(lowerFilter)) {
-            const targetDay = dayNames[lowerFilter];
-            const currentDay = today.day();
-            let daysToAdd = targetDay - currentDay;
-            if (daysToAdd <= 0) daysToAdd += 7; // Next occurrence
-            const targetDate = today.clone().add(daysToAdd, "days");
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: targetDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 1: "X days/weeks/months ago"
-        const agoMatch = lowerFilter.match(
-            /(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago/,
-        );
-        if (agoMatch) {
-            const amount = parseInt(agoMatch[1]);
-            const unit = agoMatch[2].startsWith("week")
-                ? "weeks"
-                : agoMatch[2].startsWith("month")
-                  ? "months"
-                  : agoMatch[2].startsWith("year")
-                    ? "years"
-                    : "days";
-            const pastDate = today.clone().subtract(amount, unit);
-            return {
-                start: pastDate.format("YYYY-MM-DD"),
-                end: pastDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 2: "within X days/weeks"
-        const withinMatch = lowerFilter.match(
-            /within\s+(\d+)\s+(day|days|week|weeks|month|months)/,
-        );
-        if (withinMatch) {
-            const amount = parseInt(withinMatch[1]);
-            const unit = withinMatch[2].startsWith("week")
-                ? "weeks"
-                : withinMatch[2].startsWith("month")
-                  ? "months"
-                  : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 3: "next X days/weeks/months"
-        const nextMatch = lowerFilter.match(
-            /next\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)/,
-        );
-        if (nextMatch) {
-            const amount = parseInt(nextMatch[1]);
-            const unit = nextMatch[2].startsWith("week")
-                ? "weeks"
-                : nextMatch[2].startsWith("month")
-                  ? "months"
-                  : nextMatch[2].startsWith("year")
-                    ? "years"
-                    : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 4: "last X days/weeks"
-        const lastMatch = lowerFilter.match(
-            /last\s+(\d+)\s+(day|days|week|weeks|month|months)/,
-        );
-        if (lastMatch) {
-            const amount = parseInt(lastMatch[1]);
-            const unit = lastMatch[2].startsWith("week")
-                ? "weeks"
-                : lastMatch[2].startsWith("month")
-                  ? "months"
-                  : "days";
-            const pastDate = today.clone().subtract(amount, unit);
-            return {
-                start: pastDate.format("YYYY-MM-DD"),
-                end: today.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 5: "X weeks/months from now"
-        const fromNowMatch = lowerFilter.match(
-            /(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+from\s+now/,
-        );
-        if (fromNowMatch) {
-            const amount = parseInt(fromNowMatch[1]);
-            const unit = fromNowMatch[2].startsWith("week")
-                ? "weeks"
-                : fromNowMatch[2].startsWith("month")
-                  ? "months"
-                  : fromNowMatch[2].startsWith("year")
-                    ? "years"
-                    : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: futureDate.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        return null;
+        return TaskPropertyService.parseRelativeDateRange(dateFilter, today);
     }
+
+    /**
+     * Parse date strings (DATE-ONLY)
+     * Delegates to TaskPropertyService
+     *
+     * @deprecated This method now delegates to TaskPropertyService
+     */
+    private static parseComplexDate(dateStr: string): string | null {
+        return TaskPropertyService.parseDate(dateStr);
+    }
+
+    // Note: ~250 lines of parseRelativeDateRange implementation have been
+    // moved to TaskPropertyService.parseRelativeDateRange()
+    // This eliminates duplication and provides a single source of truth
 
     /**
      * Parse standard query syntax (comprehensive parser)
@@ -1018,34 +591,8 @@ export class DataviewService {
         return result;
     }
 
-    /**
-     * Parse date strings (DATE-ONLY, Phase 3A)
-     * Supports: "May 5", "today", "next Friday", "2025-10-21"
-     * NOTE: Time components (e.g., "at 2pm") are NOT supported because
-     * our filtering uses date-only comparisons (.startOf("day"))
-     *
-     * @param dateStr Date string to parse
-     * @returns Formatted date string (YYYY-MM-DD) or null
-     */
-    private static parseComplexDate(dateStr: string): string | null {
-        // Try chrono-node first (natural language dates)
-        const chronoParsed = chrono.parseDate(dateStr);
-        if (chronoParsed) {
-            const parsed = moment(chronoParsed);
-            if (parsed.isValid()) {
-                // Always return date-only format (time is stripped during filtering anyway)
-                return parsed.format("YYYY-MM-DD");
-            }
-        }
-
-        // Fallback to moment parsing
-        const parsed = moment(dateStr);
-        if (parsed.isValid()) {
-            return parsed.format("YYYY-MM-DD");
-        }
-
-        return null;
-    }
+    // Note: parseComplexDate() has been moved to TaskPropertyService.parseDate()
+    // and is delegated at line 427. The implementation is no longer duplicated here.
 
     /**
      * Build task-level filter based on extracted intent

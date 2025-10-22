@@ -55,7 +55,10 @@ export class TaskSortService {
                         // Direction: ASC (2025-10-15 before 2025-10-20)
                         // Rationale: Overdue and soon-due tasks should appear first
                         // Special: Tasks without due dates appear last
-                        comparison = TaskPropertyService.compareDates(a.dueDate, b.dueDate); // ASC
+                        comparison = TaskPropertyService.compareDates(
+                            a.dueDate,
+                            b.dueDate,
+                        ); // ASC
                         break;
 
                     case "priority":
@@ -75,8 +78,14 @@ export class TaskSortService {
                         // Direction: Active work (open/inProgress) > finished work (completed/cancelled)
                         // Rationale: Active tasks should appear before finished tasks
                         // Uses TaskPropertyService to respect user's custom status categories
-                        const aOrder = TaskPropertyService.getStatusOrder(a.statusCategory, settings);
-                        const bOrder = TaskPropertyService.getStatusOrder(b.statusCategory, settings);
+                        const aOrder = TaskPropertyService.getStatusOrder(
+                            a.statusCategory,
+                            settings,
+                        );
+                        const bOrder = TaskPropertyService.getStatusOrder(
+                            b.statusCategory,
+                            settings,
+                        );
                         comparison = aOrder - bOrder;
                         break;
 
