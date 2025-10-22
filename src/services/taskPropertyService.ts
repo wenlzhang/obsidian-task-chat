@@ -44,12 +44,12 @@ export class TaskPropertyService {
         open: {
             order: 1,
             description: "Tasks not yet started or awaiting action",
-            terms: "open, todo, pending, new, unstarted, incomplete, not started, to do, 待办, 未完成, öppen",
+            terms: "open, todo, new, unstarted, incomplete, not started, to do, 待办, 未完成, öppen",
         },
         inProgress: {
             order: 2,
             description: "Tasks currently being worked on",
-            terms: "inprogress, in-progress, wip, doing, active, working, ongoing, current, 进行中, 正在做, pågående",
+            terms: "inprogress, in-progress, wip, working, ongoing, current, 进行中, 正在做, pågående",
         },
         completed: {
             order: 6,
@@ -72,7 +72,7 @@ export class TaskPropertyService {
      * Used across dataviewService, taskFilterService, propertyDetectionService, aiPropertyPromptService
      */
     static readonly DATE_FIELDS = {
-        due: ["due", "dueDate", "deadline", "scheduled"],
+        due: ["due", "dueDate", "deadline"],
         completion: ["completion", "completed", "completedDate"],
         created: ["created", "createdDate"],
         start: ["start", "startDate"],
@@ -107,11 +107,9 @@ export class TaskPropertyService {
     private static readonly BASE_PRIORITY_TERMS = {
         general: [
             "priority",
-            "important",
             "urgent",
             "优先级",
             "优先",
-            "重要",
             "紧急",
             "prioritet",
             "viktig",
@@ -120,18 +118,15 @@ export class TaskPropertyService {
         high: [
             "high",
             "highest",
-            "critical",
             "top",
             "高",
             "最高",
-            "关键",
-            "首要",
             "hög",
             "högst",
             "kritisk",
         ],
         medium: ["medium", "normal", "中", "中等", "普通", "medel", "normal"],
-        low: ["low", "minor", "低", "次要", "不重要", "låg", "mindre"],
+        low: ["low", "minor", "低", "次要", "låg", "mindre"],
     } as const;
 
     /**
@@ -142,14 +137,12 @@ export class TaskPropertyService {
         general: [
             "due",
             "deadline",
-            "scheduled",
             "截止日期",
             "到期",
             "期限",
             "计划",
             "förfallodatum",
             "deadline",
-            "schemalagd",
         ],
         today: ["today", "今天", "今日", "idag"],
         tomorrow: ["tomorrow", "明天", "imorgon"],
@@ -184,18 +177,14 @@ export class TaskPropertyService {
     private static readonly BASE_STATUS_TERMS = {
         general: [
             "status",
-            "state",
             "progress",
             "状态",
             "进度",
             "情况",
-            "status",
             "tillstånd",
-            "progress",
         ],
         open: [
             "open",
-            "pending",
             "todo",
             "incomplete",
             "new",
@@ -1260,5 +1249,44 @@ export class TaskPropertyService {
                     return false;
             }
         });
+    }
+
+    /**
+     * Get all property trigger words that should be removed from keywords
+     * These words activate filters and should NOT be used for relevance scoring
+     *
+     * Includes:
+     * - Due date terms (general, today, tomorrow, overdue, week, future)
+     * - Priority terms (general, high, medium, low)
+     * - Status terms (general + all categories)
+     * - User-configured custom terms
+     *
+     * @param settings - Plugin settings with user-configured terms
+     * @returns Set of all property trigger words (lowercase)
+     */
+    static getAllPropertyTriggerWords(settings: PluginSettings): Set<string> {
+        const triggerWords = new Set<string>();
+
+        // Get combined terms (base + user-configured)
+        const dueDateTerms = this.getCombinedDueDateTerms(settings);
+        const priorityTerms = this.getCombinedPriorityTerms(settings);
+        const statusTerms = this.getCombinedStatusTerms(settings);
+
+        // Add all due date terms
+        Object.values(dueDateTerms).forEach((terms) => {
+            terms.forEach((term) => triggerWords.add(term.toLowerCase()));
+        });
+
+        // Add all priority terms
+        Object.values(priorityTerms).forEach((terms) => {
+            terms.forEach((term) => triggerWords.add(term.toLowerCase()));
+        });
+
+        // Add all status terms (including custom categories)
+        Object.values(statusTerms).forEach((terms) => {
+            terms.forEach((term) => triggerWords.add(term.toLowerCase()));
+        });
+
+        return triggerWords;
     }
 }

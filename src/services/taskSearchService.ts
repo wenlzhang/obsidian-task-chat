@@ -195,6 +195,67 @@ export class TaskSearchService {
     }
 
     /**
+     * Remove property trigger words from keywords using smart positional filtering
+     *
+     * STRATEGY: Only remove property trigger words if they appear at the BEGINNING or END
+     * of the query, as users typically type: "keywords + properties" or "properties + keywords"
+     *
+     * Examples:
+     * - "task chat due" → remove "due" (at end) → ["task", "chat"]
+     * - "due task chat" → remove "due" (at beginning) → ["task", "chat"]
+     * - "task due chat" → keep "due" (in middle) → ["task", "due", "chat"]
+     *
+     * This prevents over-aggressive removal while handling common query patterns.
+     *
+     * @param keywords - Keywords extracted from query (after stop word filtering)
+     * @param settings - Plugin settings with user-configured property terms
+     * @returns Keywords with property trigger words removed (if at beginning/end)
+     */
+    private static removePropertyTriggerWords(
+        keywords: string[],
+        settings: PluginSettings,
+    ): string[] {
+        if (keywords.length === 0) return keywords;
+
+        // Get all property trigger words from centralized source
+        const propertyTriggerWords =
+            TaskPropertyService.getAllPropertyTriggerWords(settings);
+
+        const result = [...keywords];
+        let removed: string[] = [];
+
+        // Check and remove from beginning
+        while (
+            result.length > 0 &&
+            propertyTriggerWords.has(result[0].toLowerCase())
+        ) {
+            removed.push(result[0]);
+            result.shift();
+        }
+
+        // Check and remove from end
+        while (
+            result.length > 0 &&
+            propertyTriggerWords.has(result[result.length - 1].toLowerCase())
+        ) {
+            removed.push(result[result.length - 1]);
+            result.pop();
+        }
+
+        // Log removal if any words were removed
+        if (removed.length > 0) {
+            console.log(
+                `[Task Chat] Removed property trigger words (positional): [${removed.join(", ")}]`,
+            );
+            console.log(
+                `[Task Chat] Keywords after property trigger removal: ${keywords.length} → ${result.length}`,
+            );
+        }
+
+        return result;
+    }
+
+    /**
      * Check if query is asking about task search/finding
      */
     static isSearchQuery(query: string): boolean {
@@ -615,7 +676,11 @@ export class TaskSearchService {
         const extractedStatus = this.extractStatusFromQuery(query, settings);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
-        const keywords = this.extractKeywords(query);
+        let keywords = this.extractKeywords(query);
+
+        // Apply smart positional filtering to remove property trigger words
+        // Only removes if at beginning or end (e.g., "task chat due" → ["task", "chat"])
+        keywords = this.removePropertyTriggerWords(keywords, settings);
 
         // Count how many filters are present
         const filterCount =
