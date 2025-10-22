@@ -122,9 +122,9 @@ export class TaskSearchService {
             "",
         );
 
-        // Remove due date keywords (due, today, tomorrow, etc.)
+        // Remove due date keywords (dynamically generated, multilingual)
         cleanedQuery = cleanedQuery.replace(
-            TaskPropertyService.QUERY_PATTERNS.dueDateKeywords,
+            TaskPropertyService.getDueDateKeywordsPattern(),
             "",
         );
 

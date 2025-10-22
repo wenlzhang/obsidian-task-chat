@@ -141,7 +141,6 @@ export class TaskPropertyService {
             "到期",
             "期限",
             "förfallodatum",
-            "deadline",
         ],
         today: ["today", "今天", "今日", "idag"],
         tomorrow: ["tomorrow", "明天", "imorgon"],
@@ -157,6 +156,8 @@ export class TaskPropertyService {
         ],
         thisWeek: ["this week", "本周", "这周", "denna vecka"],
         nextWeek: ["next week", "下周", "nästa vecka"],
+        thisMonth: ["this month", "本月", "这月", "denna månad"],
+        nextMonth: ["next month", "下月", "nästa månad"],
         future: [
             "future",
             "upcoming",
@@ -249,15 +250,40 @@ export class TaskPropertyService {
         dateBeforeRange: /(?<!due\s)date\s+before:\s*[^&|]+/gi,
         dateAfterRange: /(?<!due\s)date\s+after:\s*[^&|]+/gi,
         operators: /[&|!]/g,
-        // Due date keywords (must be removed before AI parsing to save tokens)
-        dueDateKeywords:
-            /\b(due|today|tomorrow|this\s+week|next\s+week|this\s+month|next\s+month)\b/gi,
+        // Note: dueDateKeywords is dynamically generated from BASE_DUE_DATE_TERMS
+        // See getDueDateKeywordsPattern() method below
         specialKeywordOverdue: /\b(overdue|over\s+due|od)\b/gi,
         specialKeywordRecurring: /\brecurring\b/gi,
         specialKeywordSubtask: /\bsubtask\b/gi,
         specialKeywordNoDate: /\bno\s+date\b/gi,
         specialKeywordNoPriority: /\bno\s+priority\b/gi,
     } as const;
+
+    /**
+     * Dynamically generate due date keywords regex pattern from BASE_DUE_DATE_TERMS
+     * This ensures consistency between regex-based and array-based property recognition
+     * Supports multilingual terms (English, Chinese, Swedish)
+     */
+    static getDueDateKeywordsPattern(): RegExp {
+        // Collect all due date terms from BASE_DUE_DATE_TERMS
+        const allTerms: string[] = [];
+
+        for (const category of Object.values(this.BASE_DUE_DATE_TERMS)) {
+            allTerms.push(...category);
+        }
+
+        // Remove duplicates and escape special regex characters
+        const uniqueTerms = [...new Set(allTerms)].map((term) =>
+            term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        );
+
+        // Sort by length (longest first) to match "this week" before "this"
+        uniqueTerms.sort((a, b) => b.length - a.length);
+
+        // Build regex pattern
+        const pattern = uniqueTerms.join("|");
+        return new RegExp(`\\b(${pattern})\\b`, "gi");
+    }
 
     /**
      * Special keywords recognized in queries
