@@ -808,7 +808,12 @@ export class TaskSearchService {
 
     /**
      * Remove overlapping/substring keywords to avoid double-counting
-     * Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
+     *
+     * CJK-AWARE DEDUPLICATION:
+     * - CJK text: Aggressive substring removal (handles character splitting)
+     *   Example: ["如何", "如", "何"] → ["如何"] ✅
+     * - Non-CJK text: Conservative (only remove if BOTH are CJK)
+     *   Example: ["chat", "chatt"] → ["chat", "chatt"] ✅ (different words!)
      */
     private static deduplicateOverlappingKeywords(
         keywords: string[],
@@ -819,14 +824,27 @@ export class TaskSearchService {
 
         for (const keyword of sorted) {
             // Check if this keyword is a substring of any already-kept keyword
-            const isSubstring = deduplicated.some((kept) =>
+            const isSubstringOf = deduplicated.find((kept) =>
                 kept.includes(keyword),
             );
 
-            // Keep this keyword only if it's not a substring of a longer keyword
-            if (!isSubstring) {
-                deduplicated.push(keyword);
+            if (isSubstringOf) {
+                // CJK-AWARE LOGIC:
+                // Only remove if BOTH the keyword and its container are CJK
+                // This handles CJK character splitting: "如" ⊂ "如何" → remove "如"
+                // But preserves different words: "chat" ⊂ "chatt" → keep both
+                const keywordIsCJK = StopWords.isCJK(keyword);
+                const containerIsCJK = StopWords.isCJK(isSubstringOf);
+
+                if (keywordIsCJK && containerIsCJK) {
+                    // Both CJK: This is character splitting → remove substring
+                    continue; // Skip this keyword
+                }
+                // else: Non-CJK or mixed → keep both (different words)
             }
+
+            // Keep this keyword
+            deduplicated.push(keyword);
         }
 
         return deduplicated;

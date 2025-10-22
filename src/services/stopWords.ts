@@ -1,5 +1,5 @@
 /**
- * Shared stop word list for both direct search and AI-powered search modes
+ * Shared stop word list and language utilities for text processing
  *
  * Stop words are common words that add no semantic value to search queries.
  * Removing them improves:
@@ -7,9 +7,27 @@
  * - Consistency between search modes
  * - Threshold calculations (fewer keywords = more appropriate thresholds)
  *
+ * Also provides CJK (Chinese/Japanese/Korean) character detection for
+ * language-aware text processing (e.g., deduplication logic).
+ *
  * Supports user-configurable stop words that merge with internal stop words.
  */
 export class StopWords {
+    /**
+     * CJK (Chinese/Japanese/Korean) character ranges
+     * Used for language-aware text processing
+     */
+    private static readonly CJK_REGEX =
+        /[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}\u3040-\u309f\u30a0-\u30ff]/u;
+
+    /**
+     * Unicode ranges covered:
+     * - \u4e00-\u9fff: CJK Unified Ideographs (most common Chinese characters)
+     * - \u3400-\u4dbf: CJK Extension A
+     * - \u{20000}-\u{2a6df}: CJK Extension B
+     * - \u3040-\u309f: Hiragana (Japanese)
+     * - \u30a0-\u30ff: Katakana (Japanese)
+     */
     /**
      * Internal stop word list covering multiple languages
      * These are always active and cannot be disabled
@@ -19,13 +37,7 @@ export class StopWords {
         "the",
         "a",
         "an",
-        "and",
-        "or",
         "but",
-        "in",
-        "on",
-        "at",
-        "to",
         "for",
         "of",
         "with",
@@ -38,12 +50,6 @@ export class StopWords {
         "were",
 
         // English query/question words
-        "show",
-        "find",
-        "get",
-        "list",
-        "tell",
-        "give",
         "me",
         "my",
         "all",
@@ -68,32 +74,7 @@ export class StopWords {
         "has",
         "had",
 
-        // Generic task-related words (too broad, match everything)
-        "task",
-        "tasks",
-        "work",
-        "item",
-        "items",
-        "thing",
-        "things",
-        "stuff",
-        "assignment",
-        "assignments",
-        "job",
-        "jobs",
-        "任务", // "task" in Chinese
-        "工作", // "work" in Chinese
-        "事项", // "item" in Chinese
-        "项目", // "item/project" in Chinese (too generic)
-        "作业", // "assignment" in Chinese
-        "uppgift", // "task" in Swedish
-        "arbete", // "work" in Swedish
-        "göra", // "do" in Swedish (way too generic!)
-        "uppdrag", // "assignment" in Swedish
-        "ärende", // "matter/item" in Swedish
-
         // Chinese stop words (common particles and question words)
-        "给", // "give"
         "我", // "me/I"
         "的", // possessive particle
         "了", // completion particle
@@ -197,5 +178,20 @@ export class StopWords {
      */
     static getUserStopWords(): string[] {
         return Array.from(this.userStopWords);
+    }
+
+    /**
+     * Check if a string contains CJK (Chinese/Japanese/Korean) characters
+     *
+     * Used for language-aware text processing, such as:
+     * - Deduplication logic (CJK character splitting vs different words)
+     * - Text segmentation
+     * - Language detection
+     *
+     * @param text Text to check
+     * @returns true if text contains any CJK characters
+     */
+    static isCJK(text: string): boolean {
+        return this.CJK_REGEX.test(text);
     }
 }
