@@ -459,12 +459,38 @@ export class TaskSearchService {
         query: string,
         settings: PluginSettings,
     ): string | null {
-        // Use PropertyDetectionService for consistent behavior across all modes
-        const combined =
-            PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
-        // Check all status categories dynamically (supports custom categories!)
+        // Priority 1: Check for explicit syntax "s:value" or "status:value"
+        // Use centralized pattern from TaskPropertyService.QUERY_PATTERNS
+        const explicitMatch = lowerQuery.match(
+            TaskPropertyService.QUERY_PATTERNS.status,
+        );
+        if (explicitMatch) {
+            const value = explicitMatch[1];
+
+            // Use centralized resolution from TaskPropertyService
+            const resolved = TaskPropertyService.resolveStatusValue(
+                value,
+                settings,
+            );
+
+            if (resolved) {
+                return resolved;
+            }
+
+            // If explicit syntax was used but no match found, log warning
+            console.warn(
+                `[Task Chat] Status value "${value}" not found in any category`,
+            );
+            return null;
+        }
+
+        // Priority 2: Check for category terms (natural language)
+        // Uses combined terms from PropertyDetectionService
+        const combined =
+            PropertyDetectionService.getCombinedPropertyTerms(settings);
+
         for (const [categoryKey, terms] of Object.entries(combined.status)) {
             if (categoryKey === "general") continue; // Skip general terms
 

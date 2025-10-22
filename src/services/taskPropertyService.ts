@@ -175,14 +175,7 @@ export class TaskPropertyService {
      * Note: For status, we also have user's custom categories with their own terms!
      */
     private static readonly BASE_STATUS_TERMS = {
-        general: [
-            "status",
-            "progress",
-            "状态",
-            "进度",
-            "情况",
-            "tillstånd",
-        ],
+        general: ["status", "progress", "状态", "进度", "情况", "tillstånd"],
         open: [
             "open",
             "todo",
@@ -248,7 +241,7 @@ export class TaskPropertyService {
      */
     static readonly QUERY_PATTERNS = {
         priority: /\bp[1-4]\b/gi,
-        status: /\bs:[^\s&|]+/gi,
+        status: /\b(?:s|status):([^\s&|,]+)/gi, // Supports both s: and status: syntax
         project: /##+[A-Za-z0-9_-]+/g,
         search: /search:\s*["']?[^"'&|]+["']?/gi,
         hashtag: /#([\w-]+)/g,
@@ -1288,5 +1281,74 @@ export class TaskPropertyService {
         });
 
         return triggerWords;
+    }
+
+    /**
+     * Resolve status value to category key
+     * Handles: category names, aliases, and symbols
+     *
+     * Used across all modes (Simple Search, Smart Search, Task Chat) for consistent status resolution
+     *
+     * Examples:
+     * - "open" → "open" (category key)
+     * - "o" → "open" (alias)
+     * - "x" → "completed" (symbol)
+     * - "all" → "open" (alias)
+     *
+     * @param value - Status value to resolve (from s:value syntax or natural language)
+     * @param settings - Plugin settings with status mapping
+     * @returns Category key if found, null otherwise
+     */
+    static resolveStatusValue(
+        value: string,
+        settings: PluginSettings,
+    ): string | null {
+        const lowerValue = value.toLowerCase();
+
+        // Check each category in the status mapping
+        for (const [categoryKey, config] of Object.entries(
+            settings.taskStatusMapping,
+        )) {
+            // Check if value matches category key
+            if (categoryKey.toLowerCase() === lowerValue) {
+                return categoryKey;
+            }
+
+            // Check if value matches any alias
+            const aliases = config.aliases
+                .split(",")
+                .map((a) => a.trim().toLowerCase());
+            if (aliases.includes(lowerValue)) {
+                return categoryKey;
+            }
+
+            // Check if value matches any symbol
+            const symbols = config.symbols.map((s) => s.toLowerCase());
+            if (symbols.includes(lowerValue)) {
+                return categoryKey;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve multiple status values to category keys
+     * Used for multi-value status queries (e.g., s:open,wip)
+     *
+     * @param values - Array of status values to resolve
+     * @param settings - Plugin settings with status mapping
+     * @returns Array of resolved category keys (duplicates removed)
+     */
+    static resolveStatusValues(
+        values: string[],
+        settings: PluginSettings,
+    ): string[] {
+        const resolved = values
+            .map((v) => this.resolveStatusValue(v, settings))
+            .filter((v) => v !== null) as string[];
+
+        // Remove duplicates
+        return [...new Set(resolved)];
     }
 }

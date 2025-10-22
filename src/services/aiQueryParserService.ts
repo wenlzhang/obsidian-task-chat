@@ -89,7 +89,10 @@ export class QueryParserService {
         settings: PluginSettings,
     ): Promise<ParsedQuery> {
         // Step 1: Try to extract standard property syntax via regex
-        const standardProperties = this.extractStandardProperties(query);
+        const standardProperties = this.extractStandardProperties(
+            query,
+            settings,
+        );
 
         // Step 2: Remove standard property syntax from query
         let remainingQuery = this.removeStandardProperties(query);
@@ -221,6 +224,7 @@ export class QueryParserService {
      */
     private static extractStandardProperties(
         query: string,
+        settings: PluginSettings,
     ): Partial<ParsedQuery> {
         // Import DataviewService at runtime to avoid circular dependency
         const { DataviewService } = require("./dataviewService");
@@ -243,12 +247,21 @@ export class QueryParserService {
         }
 
         // Status from statusValues array (s:value syntax)
+        // Resolve raw values (aliases, symbols, category names) to category keys
         if (
             standardParsed.statusValues &&
             standardParsed.statusValues.length > 0
         ) {
-            // Take first status value (most common case)
-            result.status = standardParsed.statusValues[0];
+            // Use centralized resolution from TaskPropertyService
+            const resolved = TaskPropertyService.resolveStatusValues(
+                standardParsed.statusValues,
+                settings,
+            );
+
+            if (resolved.length > 0) {
+                // Single value or multiple values
+                result.status = resolved.length === 1 ? resolved[0] : resolved;
+            }
         }
 
         // Due date from either dueDate field or special keywords
