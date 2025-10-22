@@ -583,6 +583,7 @@ export class AIService {
                 TaskSortService.sortTasksMultiCriteria(
                     qualityFilteredTasks,
                     sortOrder,
+                    settings,
                     comprehensiveScores,
                 );
 
@@ -742,6 +743,7 @@ export class AIService {
             const sortedTasks = TaskSortService.sortTasksMultiCriteria(
                 tasks,
                 sortOrder,
+                settings,
                 undefined, // No relevance scores (no keyword search)
             );
 

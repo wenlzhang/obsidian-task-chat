@@ -1,5 +1,6 @@
 import { Task } from "../models/task";
 import { PluginSettings, SortCriterion } from "../settings";
+import { TaskPropertyService } from "./taskPropertyService";
 
 export class TaskSortService {
     /**
@@ -11,18 +12,20 @@ export class TaskSortService {
      * - Relevance: DESC (higher scores = more relevant, shown first)
      * - Priority: ASC (1=highest priority shown first, then 2, 3, 4)
      * - Due Date: ASC (overdue/earliest = most urgent, shown first)
-     * - Status: Smart order (open > inProgress > completed > cancelled)
+     * - Status: Smart order based on user's configured categories (active > finished)
      * - Created: DESC (newest tasks shown first)
      * - Alphabetical: ASC (A → Z natural order)
      *
      * @param tasks - Tasks to sort
      * @param sortOrder - Ordered array of sort criteria (e.g., ["relevance", "dueDate", "priority"])
+     * @param settings - Plugin settings (required for status/priority sorting to respect user configuration)
      * @param relevanceScores - Optional map of task IDs to relevance scores (required if "relevance" in sortOrder)
      * @returns Sorted tasks
      */
     static sortTasksMultiCriteria(
         tasks: Task[],
         sortOrder: SortCriterion[],
+        settings: PluginSettings,
         relevanceScores?: Map<string, number>,
     ): Task[] {
         // If no sort order specified, return tasks as-is
@@ -52,7 +55,7 @@ export class TaskSortService {
                         // Direction: ASC (2025-10-15 before 2025-10-20)
                         // Rationale: Overdue and soon-due tasks should appear first
                         // Special: Tasks without due dates appear last
-                        comparison = this.compareDates(a.dueDate, b.dueDate); // ASC
+                        comparison = TaskPropertyService.compareDates(a.dueDate, b.dueDate); // ASC
                         break;
 
                     case "priority":
@@ -60,7 +63,8 @@ export class TaskSortService {
                         // Direction: ASC (1 before 2 before 3 before 4)
                         // Rationale: Highest priority (1) should appear first
                         // Note: Priority values map to user-defined strings (e.g., "high", "medium", "low")
-                        comparison = this.comparePriority(
+                        // Uses TaskPropertyService to respect user's dataviewPriorityMapping
+                        comparison = TaskPropertyService.comparePriority(
                             a.priority,
                             b.priority,
                         ); // ASC
@@ -68,19 +72,19 @@ export class TaskSortService {
 
                     case "status":
                         // STATUS: Smart ordering for task workflow
-                        // Direction: open > inProgress > completed > cancelled
-                        // Rationale: Active tasks (open/inProgress) should appear before finished tasks
-                        comparison = this.compareStatus(
-                            a.statusCategory,
-                            b.statusCategory,
-                        );
+                        // Direction: Active work (open/inProgress) > finished work (completed/cancelled)
+                        // Rationale: Active tasks should appear before finished tasks
+                        // Uses TaskPropertyService to respect user's custom status categories
+                        const aOrder = TaskPropertyService.getStatusOrder(a.statusCategory, settings);
+                        const bOrder = TaskPropertyService.getStatusOrder(b.statusCategory, settings);
+                        comparison = aOrder - bOrder;
                         break;
 
                     case "created":
                         // CREATED DATE: Newer = more relevant
                         // Direction: DESC (2025-10-20 before 2025-10-15)
                         // Rationale: Recently created tasks are usually more relevant
-                        comparison = this.compareDates(
+                        comparison = TaskPropertyService.compareDates(
                             a.createdDate,
                             b.createdDate,
                         );
@@ -109,67 +113,6 @@ export class TaskSortService {
         return sorted;
     }
 
-    /**
-     * Compare dates (undefined dates go to the end)
-     */
-    private static compareDates(
-        a: string | undefined,
-        b: string | undefined,
-    ): number {
-        if (!a && !b) return 0;
-        if (!a) return 1; // a goes to end
-        if (!b) return -1; // b goes to end
-
-        return a.localeCompare(b);
-    }
-
-    /**
-     * Compare priorities (undefined = lowest priority)
-     * Priority 1 = highest, 4 = lowest
-     */
-    private static comparePriority(
-        a: number | undefined,
-        b: number | undefined,
-    ): number {
-        // Treat undefined as priority 5 (lowest)
-        const aPriority = a ?? 5;
-        const bPriority = b ?? 5;
-
-        return aPriority - bPriority;
-    }
-
-    /**
-     * Compare status with smart workflow ordering
-     * Order: open (1) > inProgress (2) > completed (3) > cancelled (4) > other (5)
-     * Rationale: Active work appears before finished work
-     */
-    private static compareStatus(
-        a: string | undefined,
-        b: string | undefined,
-    ): number {
-        const getStatusOrder = (status: string | undefined): number => {
-            if (!status) return 5; // Unknown/other goes last
-            switch (status.toLowerCase()) {
-                case "open":
-                    return 1; // Highest priority - new work
-                case "inprogress":
-                case "in-progress":
-                case "in progress":
-                    return 2; // Active work
-                case "completed":
-                case "done":
-                    return 3; // Finished work
-                case "cancelled":
-                case "canceled":
-                    return 4; // Abandoned work
-                default:
-                    return 5; // Other/unknown
-            }
-        };
-
-        const aOrder = getStatusOrder(a);
-        const bOrder = getStatusOrder(b);
-
-        return aOrder - bOrder;
-    }
+    // Note: All comparison methods have been moved to TaskPropertyService
+    // This eliminates duplication and ensures user settings are respected consistently
 }
