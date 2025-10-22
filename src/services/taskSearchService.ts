@@ -88,12 +88,14 @@ export class TaskSearchService {
     }
 
     /**
-     * Extract keywords from user query with improved multilingual word segmentation
-     * Uses TextSplitter for better handling of mixed-language text
+     * Remove property syntax from query string (for AI preprocessing)
+     * Returns cleaned query string WITHOUT splitting into words or filtering stop words
+     * This is used before sending query to AI to save tokens
+     *
+     * @param query - Original user query
+     * @returns Query with property syntax removed, preserving original phrasing
      */
-    static extractKeywords(query: string): string[] {
-        // First, remove filter-related phrases from the query
-        // Use centralized patterns from TaskPropertyService
+    static removePropertySyntax(query: string): string {
         let cleanedQuery = query;
 
         // Remove priority syntax using centralized pattern
@@ -172,6 +174,21 @@ export class TaskSearchService {
             "",
         );
 
+        // Clean up extra whitespace
+        cleanedQuery = cleanedQuery.replace(/\s+/g, " ").trim();
+
+        return cleanedQuery;
+    }
+
+    /**
+     * Extract keywords from user query with improved multilingual word segmentation
+     * Uses TextSplitter for better handling of mixed-language text
+     * This is used for Simple Search mode (splits into words and filters stop words)
+     */
+    static extractKeywords(query: string): string[] {
+        // Remove property syntax using shared function
+        const cleanedQuery = this.removePropertySyntax(query);
+
         // Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
@@ -197,21 +214,10 @@ export class TaskSearchService {
     /**
      * Remove property trigger words from keywords using smart positional filtering
      *
-     * STRATEGY: Only remove property trigger words if they appear at the BEGINNING or END
-     * of the query, as users typically type: "keywords + properties" or "properties + keywords"
-     *
-     * Examples:
-     * - "task chat due" → remove "due" (at end) → ["task", "chat"]
-     * - "due task chat" → remove "due" (at beginning) → ["task", "chat"]
-     * - "task due chat" → keep "due" (in middle) → ["task", "due", "chat"]
-     *
-     * This prevents over-aggressive removal while handling common query patterns.
-     *
-     * @param keywords - Keywords extracted from query (after stop word filtering)
      * @param settings - Plugin settings with user-configured property terms
      * @returns Keywords with property trigger words removed (if at beginning/end)
      */
-    private static removePropertyTriggerWords(
+    static removePropertyTriggerWords(
         keywords: string[],
         settings: PluginSettings,
     ): string[] {

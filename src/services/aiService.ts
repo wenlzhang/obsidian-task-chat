@@ -115,11 +115,53 @@ export class AIService {
             console.log(
                 `[Task Chat] Mode: ${chatMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
             );
+
+            // OPTIMIZATION: Pre-extract standard property syntax before AI parsing
+            // This saves tokens and prevents AI from trying to expand property terms like "p1", "due", etc.
+            // Step 1: Extract properties using regex (fast, reliable)
+            const preExtractedIntent = TaskSearchService.analyzeQueryIntent(
+                message,
+                settings,
+            );
+
+            // Step 2: Remove property syntax from query string
+            // This ONLY removes syntax, does NOT split words or filter stop words
+            // AI will handle word splitting, stop word filtering, and semantic expansion
+            const cleanedQuery =
+                TaskSearchService.removePropertySyntax(message);
+
+            console.log(
+                `[Task Chat] Pre-extracted properties, cleaned query: "${message}" → "${cleanedQuery}"`,
+            );
+
             try {
                 parsedQuery = await QueryParserService.parseQuery(
-                    message,
+                    cleanedQuery, // Send cleaned query to AI
                     settings,
                 );
+
+                // Merge pre-extracted properties with AI-parsed properties
+                // Pre-extracted properties take precedence (more reliable)
+                if (preExtractedIntent.extractedPriority) {
+                    parsedQuery.priority = preExtractedIntent.extractedPriority;
+                }
+                if (preExtractedIntent.extractedDueDateFilter) {
+                    parsedQuery.dueDate =
+                        preExtractedIntent.extractedDueDateFilter;
+                }
+                if (preExtractedIntent.extractedStatus) {
+                    parsedQuery.status = preExtractedIntent.extractedStatus;
+                }
+                if (preExtractedIntent.extractedFolder) {
+                    parsedQuery.folder = preExtractedIntent.extractedFolder;
+                }
+                if (
+                    preExtractedIntent.extractedTags &&
+                    preExtractedIntent.extractedTags.length > 0
+                ) {
+                    parsedQuery.tags = preExtractedIntent.extractedTags;
+                }
+
                 console.log("[Task Chat] AI parsed query:", parsedQuery);
                 usingAIParsing = true; // AI parsing succeeded
             } catch (error) {
@@ -144,12 +186,28 @@ export class AIService {
                 );
 
                 // If nothing was extracted, treat entire query as keyword search
-                const keywords =
+                let keywords =
                     parsedQuery.keywords && parsedQuery.keywords.length > 0
                         ? parsedQuery.keywords
                         : hasAnyFilter
                           ? []
                           : [message];
+
+                // Safety net: Remove any remaining property trigger words
+                // (Should be rare since we pre-cleaned the query, but AI might still return some)
+                keywords = TaskSearchService.removePropertyTriggerWords(
+                    keywords,
+                    settings,
+                );
+
+                // Safety net: Also clean up core keywords
+                if (parsedQuery.coreKeywords) {
+                    parsedQuery.coreKeywords =
+                        TaskSearchService.removePropertyTriggerWords(
+                            parsedQuery.coreKeywords,
+                            settings,
+                        );
+                }
 
                 intent = {
                     isSearch: keywords.length > 0,

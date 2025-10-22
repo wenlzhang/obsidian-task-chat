@@ -160,9 +160,7 @@ export class ChatView extends ItemView {
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
-        // Note: renderMessages is async but we don't await here as it's called from constructor
-        // Messages will render asynchronously
-        this.renderMessages();
+        // Note: Messages will be rendered by onOpen() which calls renderMessages() with proper await
 
         // Input area
         const inputContainerEl = this.contentEl.createDiv(
