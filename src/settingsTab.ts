@@ -530,32 +530,39 @@ export class SettingsTab extends PluginSettingTab {
         });
         aiEnhancementInfo.innerHTML = `
             <p><strong>🤖 AI Features (Automatic in Smart Search & Task Chat)</strong></p>
-            <p>When you use Smart Search or Task Chat modes, the following AI features are <strong>always active</strong>:</p>
+            <p>AI is used for two purposes in Smart Search and Task Chat modes:</p>
             
             <ul style="margin-left: 20px;">
-                <li>✅ <strong>Natural Language Understanding:</strong> Type "urgent tasks" instead of "p:1"</li>
-                <li>✅ <strong>Automatic Typo Correction:</strong> "urgant taks" → "urgent tasks" (automatic)</li>
-                <li>✅ <strong>Multilingual Support:</strong> Works in 100+ languages (semantic concept recognition)</li>
-                <li>✅ <strong>Property Recognition:</strong> Understands "working on" → status:inprogress</li>
-                <li>✅ <strong>Auto-Fallback:</strong> Falls back to Simple Search if confidence is low</li>
+                <li><strong>1. Keyword Semantic Expansion:</strong> Better recall - "fix" → "fix, repair, solve, correct..."</li>
+                <li><strong>2. Property Concept Recognition:</strong> Convert natural language to DataView format
+                    <ul style="margin-left: 15px; margin-top: 5px;">
+                        <li>✅ Type "urgent tasks" → AI converts to priority:1</li>
+                        <li>✅ Type "working on" → AI converts to status:inprogress</li>
+                        <li>✅ Type "过期任务" (Chinese: overdue) → AI converts to dueDate:overdue</li>
+                        <li>✅ Works in ANY language - AI recognizes concepts, not phrases</li>
+                    </ul>
+                </li>
+                <li>✅ <strong>Automatic Typo Correction:</strong> "urgant taks" → "urgent tasks"</li>
             </ul>
             
-            <p style="margin-top: 10px;"><strong>Examples:</strong></p>
+            <p style="margin-top: 10px;"><strong>Standard Syntax (Skip AI):</strong></p>
             <ul style="margin-left: 20px; font-family: monospace; font-size: 12px;">
-                <li>"show me urgent open tasks" → priority:1, status:open</li>
-                <li>"tasks I'm working on" → status:inprogress</li>
-                <li>"urgent complated taks" → priority:1, status:completed (typos fixed!)</li>
-                <li>"紧急任务" (Chinese) → priority:1</li>
-                <li>"срочные задачи" (Russian) → priority:1</li>
+                <li>"P1", "priority 1", "s:open", "overdue" → Parsed instantly (no AI call)</li>
             </ul>
             
-            <p style="margin-top: 10px;"><strong>Note:</strong> Simple Search mode uses regex parsing (no AI) and is unaffected by these settings.</p>
+            <p style="margin-top: 10px;"><strong>Natural Language (Use AI):</strong></p>
+            <ul style="margin-left: 20px; font-family: monospace; font-size: 12px;">
+                <li>"urgent open tasks" → priority:1, status:open + keywords expanded</li>
+                <li>"紧急未完成任务" → priority:1, status:open + keywords expanded</li>
+            </ul>
+            
+            <p style="margin-top: 10px;"><strong>Note:</strong> Simple Search mode uses regex only (no AI).</p>
         `;
 
         new Setting(containerEl)
             .setName("Show AI understanding (Task Chat only)")
             .setDesc(
-                "Display what AI understood from your query in Task Chat mode. Shows detected language, corrected typos, semantic mappings, and confidence score. Helps you understand how your natural language query was interpreted.",
+                "Display what AI understood from your query in Task Chat mode. Shows detected language, corrected typos, and how properties were recognized/converted. Helps you understand how your natural language query was interpreted.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -564,52 +571,6 @@ export class SettingsTab extends PluginSettingTab {
                     )
                     .onChange(async (value) => {
                         this.plugin.settings.aiEnhancement.showAIUnderstanding =
-                            value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        // Confidence threshold with dynamic description
-        const confidenceSetting = new Setting(containerEl)
-            .setName("AI confidence threshold")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(30, 90, 5)
-                    .setValue(
-                        this.plugin.settings.aiEnhancement.confidenceThreshold *
-                            100,
-                    )
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.aiEnhancement.confidenceThreshold =
-                            value / 100;
-                        // Update description dynamically
-                        confidenceSetting.setDesc(
-                            this.getConfidenceDescription(value),
-                        );
-                        await this.plugin.saveSettings();
-                    }),
-            );
-        // Set initial description
-        confidenceSetting.setDesc(
-            this.getConfidenceDescription(
-                this.plugin.settings.aiEnhancement.confidenceThreshold * 100,
-            ),
-        );
-
-        new Setting(containerEl)
-            .setName("Fallback to Simple Search")
-            .setDesc(
-                "If AI confidence is below the threshold, fall back to Simple Search parsing (regex-based, no AI). Ensures reliable results even when AI is uncertain. Recommended: ON.",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(
-                        this.plugin.settings.aiEnhancement
-                            .fallbackToSimpleSearch,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.aiEnhancement.fallbackToSimpleSearch =
                             value;
                         await this.plugin.saveSettings();
                     }),
@@ -2204,21 +2165,6 @@ Examples:
                 return "Local model name. Must be pulled first with 'ollama pull <model>'.";
             default:
                 return "AI model to use";
-        }
-    }
-
-    /**
-     * Get confidence threshold description based on value
-     */
-    private getConfidenceDescription(value: number): string {
-        if (value >= 80) {
-            return `🔒 Strict (${value}%): Only use AI for very clear queries. Falls back frequently to Simple Search. Good if you prefer regex reliability.`;
-        } else if (value >= 60) {
-            return `⚖️ Balanced (${value}%): Use AI for clear queries, fall back when ambiguous. Recommended for most users. Default: 70%.`;
-        } else if (value >= 40) {
-            return `🤖 Moderate (${value}%): Use AI even with some ambiguity. Fewer fallbacks. Good if you trust AI interpretation.`;
-        } else {
-            return `🚀 Aggressive (${value}%): Use AI for almost everything. Rare fallbacks. Maximum natural language flexibility.`;
         }
     }
 

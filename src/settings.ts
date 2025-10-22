@@ -145,12 +145,12 @@ export interface PluginSettings {
     userStopWords: string[]; // User's additional stop words (e.g., ["项目", "project", "mitt"])
 
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
-    // Note: NLU and typo correction are ALWAYS active in Smart Search and Task Chat modes
-    // These settings control UI display and fallback behavior
+    // AI is used for two purposes:
+    // 1. Keyword semantic expansion (for better recall)
+    // 2. Property concept recognition (converting natural language to DataView format)
+    // Standard syntax (P1, s:open, overdue) skips AI entirely
     aiEnhancement: {
-        showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood)
-        confidenceThreshold: number; // 0-1, minimum confidence level (default: 0.7). Below this = "low confidence"
-        fallbackToSimpleSearch: boolean; // If true, fall back to Simple Search when confidence < threshold
+        showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood and how properties were converted)
     };
 
     // Task Display Settings
@@ -336,11 +336,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     userStopWords: [], // User can add domain-specific or language-specific stop words
 
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
-    // NLU and typo correction are ALWAYS active in Smart Search and Task Chat modes
+    // AI active in Smart Search and Task Chat for keyword expansion + property recognition
     aiEnhancement: {
-        showAIUnderstanding: true, // Show AI understanding in Task Chat by default
-        confidenceThreshold: 0.7, // 70% confidence threshold (balanced)
-        fallbackToSimpleSearch: true, // Fall back to Simple Search if low confidence
+        showAIUnderstanding: true, // Show AI understanding box in Task Chat (how properties were recognized/converted)
     },
 
     // Task Display Settings

@@ -72,19 +72,48 @@ export interface ParsedQuery {
 export class QueryParserService {
     /**
      * Use AI to parse user query into structured filters
+     *
+     * Strategy:
+     * 1. Extract standard property syntax (P1, s:open, overdue) via regex
+     * 2. Remove extracted properties from query
+     * 3. If remaining text has keywords → Use AI to expand those
+     * 4. Combine results
+     *
+     * This ensures:
+     * - Pure properties ("P1 overdue") → Skip AI entirely
+     * - Mixed queries ("Fix bug P1") → Use AI only for keywords
+     * - Pure keywords ("Fix bug") → Use AI for expansion
      */
     static async parseQuery(
         query: string,
         settings: PluginSettings,
     ): Promise<ParsedQuery> {
-        // Skip AI for very simple queries (optimization)
-        const simpleResult = this.trySimpleParse(query);
-        if (simpleResult) {
-            return simpleResult;
+        // Step 1: Try to extract standard property syntax via regex
+        const standardProperties = this.extractStandardProperties(query);
+
+        // Step 2: Remove standard property syntax from query
+        let remainingQuery = this.removeStandardProperties(query);
+        remainingQuery = remainingQuery.trim();
+
+        // Step 3: If no remaining keywords, return pure properties result
+        if (!remainingQuery || remainingQuery.length === 0) {
+            // Pure property query - no AI needed
+            return {
+                ...standardProperties,
+                originalQuery: query,
+            };
         }
 
-        // Use AI to parse complex queries
-        return this.parseWithAI(query, settings);
+        // Step 4: Use AI to parse remaining keywords (and detect natural language properties)
+        const aiResult = await this.parseWithAI(remainingQuery, settings);
+
+        // Step 5: Merge standard properties with AI results
+        // Standard properties take precedence (user was explicit)
+        return {
+            ...aiResult,
+            ...standardProperties, // Override with standard syntax if present
+            originalQuery: query,
+        };
     }
 
     /**
@@ -184,76 +213,81 @@ export class QueryParserService {
     }
 
     /**
-     * Try to parse simple queries without AI (fast path)
+     * Extract standard property syntax from query
+     * Uses existing DataviewService.parseTodoistSyntax() to avoid code duplication
+     *
+     * This is a lightweight wrapper that delegates to the comprehensive Todoist parser
+     * which already handles all standard syntax patterns (p1-p4, s:status, dates, etc.)
      */
-    private static trySimpleParse(query: string): ParsedQuery | null {
-        const lowerQuery = query.toLowerCase().trim();
+    private static extractStandardProperties(
+        query: string,
+    ): Partial<ParsedQuery> {
+        // Import DataviewService at runtime to avoid circular dependency
+        const { DataviewService } = require("./dataviewService");
 
-        // Very simple priority queries
-        if (/^(priority\s*1|p1)$/i.test(lowerQuery)) {
-            return {
-                priority: 1,
-                originalQuery: query,
-            };
-        }
-        if (/^(priority\s*2|p2)$/i.test(lowerQuery)) {
-            return {
-                priority: 2,
-                originalQuery: query,
-            };
-        }
+        // Use existing Todoist syntax parser - it handles:
+        // - Priority: p1, p2, p3, p4
+        // - Status: s:open, s:completed, s:inprogress, etc.
+        // - Due dates: overdue, today, tomorrow, and more
+        // - Special keywords: no date, recurring, etc.
+        const todoistParsed = DataviewService.parseTodoistSyntax(query);
 
-        // Very simple due date queries
-        if (
-            /^(due\s*tasks?|tasks?\s*due|has\s*due\s*date)$/i.test(lowerQuery)
-        ) {
-            return {
-                dueDate: "any",
-                originalQuery: query,
-            };
-        }
-        if (
-            /^(today|due\s*today|tasks?\s*due\s*today|today'?s?\s*tasks?)$/i.test(
-                lowerQuery,
-            )
-        ) {
-            return {
-                dueDate: "today",
-                originalQuery: query,
-            };
-        }
-        if (
-            /^(overdue|past\s*due|overdue\s*tasks?|tasks?\s*overdue)$/i.test(
-                lowerQuery,
-            )
-        ) {
-            return {
-                dueDate: "overdue",
-                originalQuery: query,
-            };
-        }
-        if (
-            /^(tomorrow|due\s*tomorrow|tasks?\s*due\s*tomorrow)$/i.test(
-                lowerQuery,
-            )
-        ) {
-            return {
-                dueDate: "tomorrow",
-                originalQuery: query,
-            };
-        }
-        if (
-            /^(future|future\s*tasks?|upcoming|upcoming\s*tasks?)$/i.test(
-                lowerQuery,
-            )
-        ) {
-            return {
-                dueDate: "future",
-                originalQuery: query,
-            };
+        const result: Partial<ParsedQuery> = {};
+
+        // Extract only the properties we need (priority, status, dueDate)
+        // Leave keywords to AI for semantic expansion
+        if (todoistParsed.priority !== undefined) {
+            result.priority = todoistParsed.priority;
         }
 
-        return null; // Complex query, needs AI
+        // Status from statusValues array (s:value syntax)
+        if (
+            todoistParsed.statusValues &&
+            todoistParsed.statusValues.length > 0
+        ) {
+            // Take first status value (most common case)
+            result.status = todoistParsed.statusValues[0];
+        }
+
+        // Due date from either dueDate field or special keywords
+        if (todoistParsed.dueDate) {
+            result.dueDate = todoistParsed.dueDate;
+        } else if (todoistParsed.specialKeywords) {
+            // Map special keywords to dueDate values
+            if (todoistParsed.specialKeywords.includes("overdue")) {
+                result.dueDate = "overdue";
+            } else if (todoistParsed.specialKeywords.includes("no_date")) {
+                result.dueDate = "no date";
+            } else if (todoistParsed.specialKeywords.includes("has_date")) {
+                result.dueDate = "any";
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Remove standard property syntax from query to get remaining keywords
+     */
+    private static removeStandardProperties(query: string): string {
+        let cleaned = query;
+
+        // Remove priority syntax
+        cleaned = cleaned.replace(/\b(p[1-4]|priority\s*[1-4])\b/gi, "");
+
+        // Remove status syntax
+        cleaned = cleaned.replace(/\bs:\w+\b/gi, "");
+
+        // Remove due date terms (only if they're standalone)
+        cleaned = cleaned.replace(
+            /\b(overdue|today|tomorrow|this\s*week|next\s*week)\b/gi,
+            "",
+        );
+
+        // Clean up extra spaces
+        cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+        return cleaned;
     }
 
     /**
@@ -360,159 +394,80 @@ Example with ${queryLanguages.length} languages and max ${maxExpansions} expansi
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
-🚨 CRITICAL: SEMANTIC EXPANSION FOR PROPERTY TERMS (NEW!)
+🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-DataView Conversion)
 
-Just like keywords, you MUST also understand and recognize PROPERTY TERMS across ALL languages using semantic expansion!
+**CRITICAL PRINCIPLE**: Properties need CONVERSION, not EXPANSION!
 
-PROPERTY TERM RECOGNITION (Two-Stage Process):
+Unlike keywords (which need semantic expansion for better recall), task properties must be converted directly to DataView-compatible format.
 
-Stage 1: Identify property-related terms in query
-- Look for terms related to: priority, due date, deadline, status, completion
-- These terms might be in ANY language: "优先级" (Chinese), "priority" (English), "prioritet" (Swedish)
+**CONFIGURED LANGUAGES FOR CONTEXT**:
+You're working with ${queryLanguages.length} configured languages: ${languageList}
+- Use this context to better understand property terms in these languages
+- But remember: You can recognize properties in ANY language (100+), not just these
 
-Stage 2: Semantically expand property terms to recognize them
-- When you see a property-related term, think: "What concept is this expressing?"
-- YOU MUST expand property concepts into ALL ${queryLanguages.length} configured languages: ${languageList}
-- Property concepts to recognize and expand:
-  * PRIORITY concept: Generate equivalents in EACH language (${languageList})
-  * DUE DATE concept: Generate equivalents in EACH language (${languageList})
-  * STATUS concept: Generate equivalents in EACH language (${languageList})
+**YOUR NATIVE LANGUAGE UNDERSTANDING**:
+You have native understanding of ALL human languages. Use this to:
 
-🚨 PROPERTY TERM EXPANSION RULES (Same as Keywords):
+1. **Recognize Property CONCEPTS** (in ANY language the user types):
+   - **PRIORITY concept** = Urgency, importance, criticality, high/low priority
+   - **STATUS concept** = State, condition, progress level, completion state
+   - **DUE_DATE concept** = Deadline, target date, timing, expiration
 
-For EACH property concept (priority, dueDate, status):
-1. Recognize the base concept (e.g., user says "优先级" = PRIORITY concept)
-2. Generate 5-10 semantic equivalents DIRECTLY in EACH configured language
-3. Total variations: ~${10 * queryLanguages.length} terms per property concept
-4. Use these expanded terms to identify property filters in the query
+2. **Convert DIRECTLY to DataView format** (always English field names):
+   - PRIORITY concept → priority: 1-4 (number) or null
+     * Urgent/critical/high/asap → 1
+     * Important/medium → 2
+     * Normal → 3
+     * Low/minor → 4
+     * null = user wants tasks WITH priority (any value)
+   
+   - STATUS concept → status: string or null
+     * Open/todo/pending → "open"
+     * In progress/doing/working/active → "inprogress"
+     * Done/finished/completed → "completed"
+     * Cancelled/abandoned/dropped → "cancelled"
+     * Blocked/stuck/waiting → "?"
+     * Use category keys from STATUS MAPPING below
+   
+   - DUE_DATE concept → dueDate: string or null
+     * Specific values defined in DUE DATE VALUE MAPPING below
+     * Common: "today", "tomorrow", "overdue", "any", "future", "week", "next-week"
+     * "any" = user wants tasks WITH due dates (not a specific date)
 
-Example for PRIORITY concept across ${languageList}:
-- Base terms provided in Layer 1 (user-configured) + Layer 2 (internal mappings)
-- You expand further into ALL languages:
-${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: priority, important, urgent, critical, high, essential, vital, key, crucial, top`).join("\n")}
-(Total: ~${10 * queryLanguages.length} priority-related terms across all languages)
+3. **Respect User Settings**:
+   - Priority mappings: ${JSON.stringify(settings.dataviewPriorityMapping)}
+   - Status mappings: ${JSON.stringify(settings.dataviewStatusMapping)}
+   - Due date field name: "${settings.dataviewKeys.dueDate}"
+   - User's due date terms: ${JSON.stringify(settings.userPropertyTerms.dueDate)}
+   - See detailed mappings below (PRIORITY VALUE MAPPING, STATUS MAPPING, DUE DATE VALUE MAPPING)
+   - These provide complete property recognition rules and normalization values
 
-Example for DUE DATE concept across ${languageList}:
-${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: due, deadline, scheduled, target, expire, finish by, complete by, time limit, cutoff, end date`).join("\n")}
-(Total: ~${10 * queryLanguages.length} due date-related terms across all languages)
+**PROCESS FOR PROPERTIES**:
+1. Read user's query in ANY language
+2. Recognize which concepts are expressed (priority? status? due date?)
+3. Convert directly to DataView format
+4. DO NOT expand properties - just convert!
 
-Example for STATUS concept across ${languageList}:
-${queryLanguages.map((lang, idx) => `  ${idx + 1}. ${lang}: status, state, open, completed, done, cancelled, in progress, finished, abandoned, active`).join("\n")}
-(Total: ~${10 * queryLanguages.length} status-related terms across all languages)
+**Examples of Direct Conversion**:
 
-⚠️ CRITICAL: Just like keywords, property terms MUST be expanded across ALL ${queryLanguages.length} languages!
-- No language should be skipped
-- Generate semantic equivalents DIRECTLY in each target language
-- This enables cross-language property recognition
+English: "urgent tasks" → priority: 1, keywords: ["tasks"]
+中文: "紧急任务" → priority: 1, keywords: ["任务"]  
+русский: "срочные задачи" → priority: 1, keywords: ["задачи"]
+العربية: "مهام عاجلة" → priority: 1, keywords: ["مهام"]
 
-🚨 CRITICAL PROPERTY EXPANSION EXAMPLES:
+English: "in progress" → status: "inprogress", keywords: []
+中文: "进行中" → status: "inprogress", keywords: []
+Svenska: "pågående" → status: "inprogress", keywords: []
 
-Example 1: Chinese priority query
-  Query: "包含优先级的任务" (tasks containing priority)
-  
-  Step 1: Identify property term "优先级" (priority in Chinese)
-  Step 2: Recognize this as PRIORITY concept
-  Step 3: Extract structured filter → priority: null (user wants tasks WITH priority, not specific value)
-  Step 4: Extract content keywords: ["包含", "任务"] → expand normally
-  
-  Result:
-  {
-    "coreKeywords": ["包含", "任务"],
-    "keywords": [<expanded versions of 包含 and 任务>],
-    "priority": null,  // Asking for tasks with ANY priority
-    "dueDate": null
-  }
+English: "overdue tasks" → dueDate: "overdue", keywords: ["tasks"]
+中文: "过期任务" → dueDate: "overdue", keywords: ["任务"]
+русский: "просроченные задачи" → dueDate: "overdue", keywords: ["задачи"]
 
-Example 2: Swedish due date query
-  Query: "uppgifter med förfallodatum" (tasks with due date)
-  
-  Step 1: Identify property term "förfallodatum" (due date in Swedish)
-  Step 2: Recognize this as DUE DATE concept
-  Step 3: Extract structured filter → dueDate: "any"
-  Step 4: Extract content keywords: ["uppgifter"] → expand normally
-  
-  Result:
-  {
-    "coreKeywords": ["uppgifter"],
-    "keywords": [<expanded versions of uppgifter>],
-    "priority": null,
-    "dueDate": "any"  // Asking for tasks with due dates
-  }
-
-Example 3: Mixed language with specific priority
-  Query: "high priority 任务" (high priority tasks)
-  
-  Step 1: Identify "high priority" as PRIORITY concept with value
-  Step 2: Map to priority level → 1 (high)
-  Step 3: Extract content keywords: ["任务"] → expand normally
-  
-  Result:
-  {
-    "coreKeywords": ["任务"],
-    "keywords": [<expanded versions of 任务>],
-    "priority": 1,  // Specific priority level
-    "dueDate": null,
-    "status": null
-  }
-
-Example 4: Chinese status query
-  Query: "已完成的任务" (completed tasks)
-  
-  Step 1: Identify property term "已完成" (completed in Chinese)
-  Step 2: Recognize this as STATUS concept
-  Step 3: Extract structured filter → status: "completed"
-  Step 4: Extract content keywords: ["任务"] → expand normally
-  
-  Result:
-  {
-    "coreKeywords": ["任务"],
-    "keywords": [<expanded versions of 任务>],
-    "priority": null,
-    "dueDate": null,
-    "status": "completed"  // Specific status value
-  }
-
-Example 5: Swedish status query
-  Query: "pågående projekt" (ongoing projects)
-  
-  Step 1: Identify property term "pågående" (ongoing in Swedish)
-  Step 2: Recognize this as STATUS concept → in progress
-  Step 3: Extract structured filter → status: "inProgress"
-  Step 4: Extract content keywords: ["projekt"] → expand normally
-  
-  Result:
-  {
-    "coreKeywords": ["projekt"],
-    "keywords": [<expanded versions of projekt>],
-    "priority": null,
-    "dueDate": null,
-    "status": "inProgress"  // Active work
-  }
-
-🚨 KEY PROPERTY RECOGNITION RULES:
-
-1. Property terms indicate USER WANTS TO FILTER by that property
-   - "优先级任务" = tasks WITH priority (priority field exists)
-   - "高优先级" = tasks with HIGH priority (priority = 1)
-   - "截止日期任务" = tasks WITH due dates (dueDate = "any")
-   - "今天到期" = tasks due TODAY (dueDate = "today")
-   - "已完成任务" = COMPLETED tasks (status = "completed")
-   - "进行中的工作" = IN PROGRESS tasks (status = "inProgress")
-   - "open tasks" = OPEN tasks (status = "open")
-   - "cancelled projects" = CANCELLED tasks (status = "cancelled")
-
-2. Separate property terms from content keywords
-   - Property terms → structured filters (priority, dueDate, status fields)
-   - Content keywords → keywords array (for text matching)
-   - Example: "urgent bug fix" → priority:1 (from "urgent"), keywords:["bug", "fix"]
-   - Example: "done tasks for project" → status:"completed" (from "done"), keywords:["tasks", "project"]
-
-3. Multiple properties in one query
-   - "高优先级的过期任务" = priority:1 + dueDate:"overdue"
-   - "含有截止日期的重要工作" = dueDate:"any" + keywords:[重要, 工作]
-   - "open high priority tasks" = status:"open" + priority:1
-   - "已完成的重要项目" = status:"completed" + keywords:[重要, 项目]
-   - "overdue open tasks" = dueDate:"overdue" + status:"open"
+**Key Points**:
+- Properties = semantic concept recognition + direct mapping (NO expansion)
+- Keywords = semantic expansion across languages (YES expansion)
+- You already know all languages - no pre-programming needed
+- Map meaning → internal code (same for all languages)
 
 ${propertyTermMappings}
 
