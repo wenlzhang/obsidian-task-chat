@@ -463,6 +463,118 @@ export class ChatView extends ItemView {
     }
 
     /**
+     * Render AI understanding box (Phase 3: UI Feedback)
+     */
+    private renderAIUnderstanding(
+        container: HTMLElement,
+        message: ChatMessage,
+    ): void {
+        // Only show for Task Chat mode with AI understanding enabled
+        if (
+            message.role !== "chat" ||
+            !message.parsedQuery?.aiUnderstanding ||
+            !this.plugin.settings.aiEnhancement.showAIUnderstanding
+        ) {
+            return;
+        }
+
+        const aiUnderstanding = message.parsedQuery.aiUnderstanding;
+        const box = container.createDiv({ cls: "ai-understanding-box" });
+
+        // Header
+        box.createEl("h4", {
+            text: "🤖 Query Understanding",
+            cls: "ai-understanding-header",
+        });
+
+        // Detected language
+        if (aiUnderstanding.detectedLanguage) {
+            const langDiv = box.createDiv({ cls: "ai-understanding-item" });
+            langDiv.createEl("strong", { text: "Language: " });
+            langDiv.createSpan({ text: aiUnderstanding.detectedLanguage });
+        }
+
+        // Corrected typos
+        if (
+            aiUnderstanding.correctedTypos &&
+            aiUnderstanding.correctedTypos.length > 0
+        ) {
+            const typosDiv = box.createDiv({ cls: "ai-understanding-item" });
+            typosDiv.createEl("strong", { text: "✏️ Typo Corrections:" });
+            const typosList = typosDiv.createEl("ul", {
+                cls: "ai-understanding-list",
+            });
+            aiUnderstanding.correctedTypos.forEach((correction: string) => {
+                typosList.createEl("li", { text: correction });
+            });
+        }
+
+        // Semantic mappings
+        if (
+            aiUnderstanding.semanticMappings &&
+            Object.keys(aiUnderstanding.semanticMappings).length > 0
+        ) {
+            const mappingsDiv = box.createDiv({ cls: "ai-understanding-item" });
+            mappingsDiv.createEl("strong", { text: "Understood as:" });
+            const mappingsList = mappingsDiv.createEl("ul", {
+                cls: "ai-understanding-list",
+            });
+
+            if (aiUnderstanding.semanticMappings.priority) {
+                mappingsList.createEl("li", {
+                    text: `Priority: ${aiUnderstanding.semanticMappings.priority}`,
+                });
+            }
+            if (aiUnderstanding.semanticMappings.status) {
+                mappingsList.createEl("li", {
+                    text: `Status: ${aiUnderstanding.semanticMappings.status}`,
+                });
+            }
+            if (aiUnderstanding.semanticMappings.dueDate) {
+                mappingsList.createEl("li", {
+                    text: `Due Date: ${aiUnderstanding.semanticMappings.dueDate}`,
+                });
+            }
+        }
+
+        // Confidence indicator
+        if (aiUnderstanding.confidence !== undefined) {
+            const confidenceDiv = box.createDiv({
+                cls: "ai-understanding-item ai-understanding-confidence",
+            });
+            const percent = Math.round(aiUnderstanding.confidence * 100);
+
+            // Confidence level indicator
+            let emoji = "🎯";
+            let level = "High";
+            if (percent < 50) {
+                emoji = "⚠️";
+                level = "Low";
+            } else if (percent < 70) {
+                emoji = "📊";
+                level = "Medium";
+            }
+
+            confidenceDiv.createEl("strong", {
+                text: `${emoji} Confidence: `,
+            });
+            confidenceDiv.createSpan({
+                text: `${percent}% (${level})`,
+                cls: `confidence-${level.toLowerCase()}`,
+            });
+        }
+
+        // Natural language indicator
+        if (aiUnderstanding.naturalLanguageUsed) {
+            const nlDiv = box.createDiv({ cls: "ai-understanding-item" });
+            nlDiv.createEl("span", {
+                text: "💬 Natural language query detected",
+                cls: "ai-understanding-note",
+            });
+        }
+    }
+
+    /**
      * Render a single message
      */
     private async renderMessage(message: ChatMessage): Promise<void> {
@@ -548,6 +660,9 @@ export class ChatView extends ItemView {
                 this.handleLinkClick(target as HTMLAnchorElement, contextPath);
             }
         });
+
+        // AI Understanding box (Phase 3: UI Feedback)
+        this.renderAIUnderstanding(messageEl, message);
 
         // Recommended tasks
         if (message.recommendedTasks && message.recommendedTasks.length > 0) {
@@ -878,6 +993,7 @@ export class ChatView extends ItemView {
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,
+                    parsedQuery: result.parsedQuery,
                 };
 
                 this.plugin.sessionManager.addMessage(directMessage);
@@ -891,6 +1007,7 @@ export class ChatView extends ItemView {
                     timestamp: Date.now(),
                     recommendedTasks: result.recommendedTasks,
                     tokenUsage: result.tokenUsage,
+                    parsedQuery: result.parsedQuery,
                 };
 
                 this.plugin.sessionManager.addMessage(aiMessage);

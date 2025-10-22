@@ -58,6 +58,7 @@ export class AIService {
         recommendedTasks?: Task[];
         tokenUsage?: TokenUsage;
         directResults?: Task[];
+        parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata
     }> {
         // API key not required for local Ollama
         if (settings.aiProvider !== "ollama") {
@@ -631,6 +632,7 @@ export class AIService {
                         settings.maxDirectResults,
                     ),
                     tokenUsage,
+                    parsedQuery: usingAIParsing ? parsedQuery : undefined,
                 };
             }
 
@@ -722,6 +724,7 @@ export class AIService {
                     response: processedResponse,
                     recommendedTasks,
                     tokenUsage,
+                    parsedQuery: usingAIParsing ? parsedQuery : undefined,
                 };
             } catch (error) {
                 console.error("AI Service Error:", error);

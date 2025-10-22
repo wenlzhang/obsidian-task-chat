@@ -144,6 +144,15 @@ export interface PluginSettings {
     // Used in: Simple Search, Smart Search, Task Chat, AI parsing, AI responses
     userStopWords: string[]; // User's additional stop words (e.g., ["项目", "project", "mitt"])
 
+    // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
+    // Note: NLU and typo correction are ALWAYS active in Smart Search and Task Chat modes
+    // These settings control UI display and fallback behavior
+    aiEnhancement: {
+        showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood)
+        confidenceThreshold: number; // 0-1, minimum confidence level (default: 0.7). Below this = "low confidence"
+        fallbackToSimpleSearch: boolean; // If true, fall back to Simple Search when confidence < threshold
+    };
+
     // Task Display Settings
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
@@ -325,6 +334,14 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // User-Configurable Stop Words
     userStopWords: [], // User can add domain-specific or language-specific stop words
+
+    // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
+    // NLU and typo correction are ALWAYS active in Smart Search and Task Chat modes
+    aiEnhancement: {
+        showAIUnderstanding: true, // Show AI understanding in Task Chat by default
+        confidenceThreshold: 0.7, // 70% confidence threshold (balanced)
+        fallbackToSimpleSearch: true, // Fall back to Simple Search if low confidence
+    },
 
     // Task Display Settings
     maxDirectResults: 20, // Direct results have no token cost, can be higher

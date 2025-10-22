@@ -36,6 +36,7 @@ export interface ChatMessage {
     timestamp: number;
     recommendedTasks?: Task[];
     tokenUsage?: TokenUsage;
+    parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata (for AI enhancement display)
 }
 
 export interface TokenUsage {

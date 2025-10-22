@@ -784,3 +784,68 @@
 .task-chat-sort-tag-add select:hover {
     color: var(--text-normal);
 }
+
+/* AI Understanding Box (Phase 3: UI Feedback) */
+.ai-understanding-box {
+    background: var(--background-secondary);
+    border: 1px solid var(--interactive-accent);
+    border-left: 4px solid var(--interactive-accent);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    font-size: 13px;
+}
+
+.ai-understanding-header {
+    margin: 0 0 12px 0 !important;
+    font-size: 14px !important;
+    font-weight: 600;
+    color: var(--interactive-accent);
+}
+
+.ai-understanding-item {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+.ai-understanding-item strong {
+    color: var(--text-normal);
+    font-weight: 600;
+}
+
+.ai-understanding-list {
+    margin: 4px 0 4px 20px;
+    padding: 0;
+    list-style: disc;
+}
+
+.ai-understanding-list li {
+    margin: 2px 0;
+    color: var(--text-muted);
+}
+
+.ai-understanding-confidence {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.confidence-high {
+    color: var(--text-success);
+    font-weight: 600;
+}
+
+.confidence-medium {
+    color: var(--text-warning);
+    font-weight: 600;
+}
+
+.confidence-low {
+    color: var(--text-error);
+    font-weight: 600;
+}
+
+.ai-understanding-note {
+    color: var(--text-muted);
+    font-style: italic;
+}

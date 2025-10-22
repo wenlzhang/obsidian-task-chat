@@ -860,6 +860,17 @@ With typos: "urgant complated taks in paymant system"
 → Understand: priority:1 (urgent), status:"completed"
 → Extract: priority: 1, status: "completed", keywords: ["tasks", "payment", "system"]
 
+🔧 TYPO CORRECTION (Always Active):
+Before parsing, automatically correct common spelling errors in the query.
+Examples:
+- "urgant" → "urgent"
+- "taks" → "tasks"
+- "complated" → "completed"
+- "priorit" → "priority"
+- "importent" → "important"
+
+If you correct any typos, record them in the aiUnderstanding.correctedTypos array.
+
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
@@ -869,7 +880,18 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "dueDateRange": <{start: string, end: string} or null>,
   "status": <string or array of strings or null>,
   "folder": <string or null>,
-  "tags": [<hashtags from query, WITHOUT the # symbol>]
+  "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "aiUnderstanding": {
+    "detectedLanguage": <string, primary language detected (e.g., "en", "zh", "sv")>,
+    "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
+    "semanticMappings": {
+      "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
+      "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
+      "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
+    },
+    "confidence": <number 0-1, how confident you are in the parsing>,
+    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
+  }
 }
 
 🚨 CRITICAL JSON FORMAT RULES:
@@ -1495,6 +1517,49 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 enabled: expansionEnabled,
             });
 
+            // Log AI Understanding metadata if present
+            if (parsed.aiUnderstanding) {
+                console.log(
+                    "[Task Chat] ========== AI UNDERSTANDING ==========",
+                );
+                console.log(
+                    "[Task Chat] Detected language:",
+                    parsed.aiUnderstanding.detectedLanguage || "unknown",
+                );
+                console.log(
+                    "[Task Chat] Confidence:",
+                    parsed.aiUnderstanding.confidence !== undefined
+                        ? `${(parsed.aiUnderstanding.confidence * 100).toFixed(0)}%`
+                        : "unknown",
+                );
+                console.log(
+                    "[Task Chat] Natural language used:",
+                    parsed.aiUnderstanding.naturalLanguageUsed || false,
+                );
+                if (
+                    parsed.aiUnderstanding.correctedTypos &&
+                    parsed.aiUnderstanding.correctedTypos.length > 0
+                ) {
+                    console.log(
+                        "[Task Chat] Typos corrected:",
+                        parsed.aiUnderstanding.correctedTypos,
+                    );
+                }
+                if (
+                    parsed.aiUnderstanding.semanticMappings &&
+                    Object.keys(parsed.aiUnderstanding.semanticMappings)
+                        .length > 0
+                ) {
+                    console.log(
+                        "[Task Chat] Semantic mappings:",
+                        parsed.aiUnderstanding.semanticMappings,
+                    );
+                }
+                console.log(
+                    "[Task Chat] ===========================================",
+                );
+            }
+
             const result: ParsedQuery = {
                 // PART 1: Task Content
                 coreKeywords: coreKeywords,
@@ -1510,6 +1575,9 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 // Metadata
                 originalQuery: query,
                 expansionMetadata: expansionMetadata,
+
+                // AI Understanding (for UI display and fallback decisions)
+                aiUnderstanding: parsed.aiUnderstanding || undefined,
             };
 
             console.log(
