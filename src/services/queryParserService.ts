@@ -214,10 +214,10 @@ export class QueryParserService {
 
     /**
      * Extract standard property syntax from query
-     * Uses existing DataviewService.parseTodoistSyntax() to avoid code duplication
+     * Uses existing DataviewService.parseStandardQuerySyntax() to avoid code duplication
      *
-     * This is a lightweight wrapper that delegates to the comprehensive Todoist parser
-     * which already handles all standard syntax patterns (p1-p4, s:status, dates, etc.)
+     * This is a lightweight wrapper that delegates to the comprehensive standard parser
+     * which handles: Todoist patterns, chrono-node dates, DataView compatibility, and more.
      */
     private static extractStandardProperties(
         query: string,
@@ -225,40 +225,42 @@ export class QueryParserService {
         // Import DataviewService at runtime to avoid circular dependency
         const { DataviewService } = require("./dataviewService");
 
-        // Use existing Todoist syntax parser - it handles:
+        // Use existing comprehensive standard syntax parser - it handles:
         // - Priority: p1, p2, p3, p4
         // - Status: s:open, s:completed, s:inprogress, etc.
-        // - Due dates: overdue, today, tomorrow, and more
+        // - Due dates: overdue, today, tomorrow, "next Friday" (chrono-node)
         // - Special keywords: no date, recurring, etc.
-        const todoistParsed = DataviewService.parseTodoistSyntax(query);
+        // - Projects: ##project
+        // - Date ranges: due before:, due after:
+        const standardParsed = DataviewService.parseStandardQuerySyntax(query);
 
         const result: Partial<ParsedQuery> = {};
 
         // Extract only the properties we need (priority, status, dueDate)
         // Leave keywords to AI for semantic expansion
-        if (todoistParsed.priority !== undefined) {
-            result.priority = todoistParsed.priority;
+        if (standardParsed.priority !== undefined) {
+            result.priority = standardParsed.priority;
         }
 
         // Status from statusValues array (s:value syntax)
         if (
-            todoistParsed.statusValues &&
-            todoistParsed.statusValues.length > 0
+            standardParsed.statusValues &&
+            standardParsed.statusValues.length > 0
         ) {
             // Take first status value (most common case)
-            result.status = todoistParsed.statusValues[0];
+            result.status = standardParsed.statusValues[0];
         }
 
         // Due date from either dueDate field or special keywords
-        if (todoistParsed.dueDate) {
-            result.dueDate = todoistParsed.dueDate;
-        } else if (todoistParsed.specialKeywords) {
+        if (standardParsed.dueDate) {
+            result.dueDate = standardParsed.dueDate;
+        } else if (standardParsed.specialKeywords) {
             // Map special keywords to dueDate values
-            if (todoistParsed.specialKeywords.includes("overdue")) {
+            if (standardParsed.specialKeywords.includes("overdue")) {
                 result.dueDate = "overdue";
-            } else if (todoistParsed.specialKeywords.includes("no_date")) {
+            } else if (standardParsed.specialKeywords.includes("no_date")) {
                 result.dueDate = "no date";
-            } else if (todoistParsed.specialKeywords.includes("has_date")) {
+            } else if (standardParsed.specialKeywords.includes("has_date")) {
                 result.dueDate = "any";
             }
         }
@@ -268,21 +270,41 @@ export class QueryParserService {
 
     /**
      * Remove standard property syntax from query to get remaining keywords
+     * Uses patterns that match parseStandardQuerySyntax to ensure consistency
      */
     private static removeStandardProperties(query: string): string {
         let cleaned = query;
 
-        // Remove priority syntax
-        cleaned = cleaned.replace(/\b(p[1-4]|priority\s*[1-4])\b/gi, "");
+        // Use patterns that match parseStandardQuerySyntax (comprehensive and tested)
+        // This ensures we remove exactly what parseStandardQuerySyntax recognizes
 
-        // Remove status syntax
-        cleaned = cleaned.replace(/\bs:\w+\b/gi, "");
+        // Remove priority syntax (p1-p4)
+        cleaned = cleaned.replace(/\bp[1-4]\b/gi, "");
 
-        // Remove due date terms (only if they're standalone)
-        cleaned = cleaned.replace(
-            /\b(overdue|today|tomorrow|this\s*week|next\s*week)\b/gi,
-            "",
-        );
+        // Remove status syntax (s:value or s:value1,value2)
+        cleaned = cleaned.replace(/\bs:[^\s&|]+/gi, "");
+
+        // Remove project syntax (##project)
+        cleaned = cleaned.replace(/##+[A-Za-z0-9_-]+/g, "");
+
+        // Remove search syntax (search:"term" or search:term)
+        cleaned = cleaned.replace(/search:\s*["']?[^"'&|]+["']?/gi, "");
+
+        // Remove special keywords (that parseTodoistSyntax recognizes)
+        cleaned = cleaned.replace(/\b(overdue|over\s+due|od)\b/gi, "");
+        cleaned = cleaned.replace(/\brecurring\b/gi, "");
+        cleaned = cleaned.replace(/\bsubtask\b/gi, "");
+        cleaned = cleaned.replace(/\bno\s+date\b/gi, "");
+        cleaned = cleaned.replace(/\bno\s+priority\b/gi, "");
+
+        // Remove date range syntax (due before:, due after:, date before:, date after:)
+        cleaned = cleaned.replace(/due\s+before:\s*[^&|]+/gi, "");
+        cleaned = cleaned.replace(/due\s+after:\s*[^&|]+/gi, "");
+        cleaned = cleaned.replace(/(?<!due\s)date\s+before:\s*[^&|]+/gi, "");
+        cleaned = cleaned.replace(/(?<!due\s)date\s+after:\s*[^&|]+/gi, "");
+
+        // Remove operators (handled separately by parseTodoistSyntax)
+        cleaned = cleaned.replace(/[&|!]/g, "");
 
         // Clean up extra spaces
         cleaned = cleaned.replace(/\s+/g, " ").trim();

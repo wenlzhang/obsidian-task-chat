@@ -860,24 +860,23 @@ export class DataviewService {
     }
 
     /**
-     * Parse Todoist-style query syntax (ENHANCED: Phase 3A + Unified Status)
-     * Comprehensive support for Todoist patterns:
-     * - "search: meeting" → extract keywords
-     * - "p1", "p2", "p3", "p4" → priority
-     * - "##project" → project filter
-     * - "s:open" → status category (by internal name or alias)
-     * - "s:x" → status symbol (exact match)
-     * - "s:x,/" → multiple statuses (comma-separated)
-     * - "date before: May 5", "due before: May 5" → date ranges (distinguished)
-     * - "overdue", "recurring", "subtask", "no date", "no priority" → special keywords
-     * - "&" (AND), "|" (OR), "!" (NOT) → operators
-     * NOTE: Time components (e.g., "today at 2pm") are parsed but ignored
-     * because filtering uses date-only comparisons
+     * Parse standard query syntax (comprehensive parser)
      *
-     * @param query Todoist-style query string
+     * Handles multiple syntax types:
+     * - Todoist patterns: p1-p4, s:value, ##project, search:term
+     * - Natural language dates: "next Friday", "in 3 days" (via chrono-node)
+     * - Special keywords: overdue, recurring, no date, etc.
+     * - Date ranges: due before:, due after:
+     * - DataView field compatibility
+     * - Operators: &, |, !
+     *
+     * This is the standard parser used by all three modes (Simple Search, Smart Search, Task Chat)
+     * for extracting explicitly-specified task properties from queries.
+     *
+     * @param query Query string with standard syntax
      * @returns Parsed query components compatible with our system
      */
-    static parseTodoistSyntax(query: string): {
+    static parseStandardQuerySyntax(query: string): {
         keywords?: string[];
         priority?: number;
         dueDate?: string;

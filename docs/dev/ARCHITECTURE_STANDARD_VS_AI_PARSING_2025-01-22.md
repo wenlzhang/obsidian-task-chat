@@ -13,7 +13,7 @@
 **Uses existing modules for everything:**
 
 ```typescript
-parseTodoistSyntax(query) // Comprehensive standard syntax parser
+parseStandardQuerySyntax(query) // Comprehensive standard syntax parser
 
 Handles:
 → Priority: p1, p2, p3, p4, "priority 1", "no priority"
@@ -25,9 +25,10 @@ Handles:
 → Operators: &, |, !
 
 All powered by:
-✅ Regex patterns (Todoist-style)
+✅ Todoist patterns (p1-p4, s:value, etc.)
 ✅ chrono-node (natural language dates)
 ✅ DataView API integration
+✅ Custom extensions (special keywords, date ranges)
 ✅ No AI required
 ```
 
@@ -38,13 +39,13 @@ All powered by:
 ```typescript
 extractStandardProperties(query) {
     // ✅ Uses SAME parser as Simple Search
-    const todoistParsed = DataviewService.parseTodoistSyntax(query);
+    const standardParsed = DataviewService.parseStandardQuerySyntax(query);
     
     // Extract standard properties
     return {
-        priority: todoistParsed.priority,      // P1-P4
-        status: todoistParsed.statusValues,    // s:value
-        dueDate: todoistParsed.dueDate,       // Standard dates
+        priority: standardParsed.priority,      // P1-P4
+        status: standardParsed.statusValues,    // s:value
+        dueDate: standardParsed.dueDate,       // Standard dates
         // ... special keywords
     };
 }
@@ -144,7 +145,7 @@ Then sends results to AI for analysis and recommendations.
 
 ## Existing Modules We Use
 
-### 1. Todoist Syntax Parser (`parseTodoistSyntax`)
+### 1. Standard Query Syntax Parser (`parseStandardQuerySyntax`)
 
 **Location:** `dataviewService.ts`
 
@@ -174,9 +175,9 @@ Then sends results to AI for analysis and recommendations.
 - Complex date expressions
 
 **Used by:**
-- ✅ Simple Search (via parseTodoistSyntax)
-- ✅ Smart Search (via parseTodoistSyntax)
-- ✅ Task Chat (via parseTodoistSyntax)
+- ✅ Simple Search (via parseStandardQuerySyntax)
+- ✅ Smart Search (via parseStandardQuerySyntax)
+- ✅ Task Chat (via parseStandardQuerySyntax)
 
 ### 3. DataView API
 
@@ -214,7 +215,7 @@ Then sends results to AI for analysis and recommendations.
 ```
 User Query: "Fix bug P1 overdue"
     ↓
-parseTodoistSyntax()
+parseStandardQuerySyntax()
     ↓ (ALL handled by existing modules)
 Result: {
     keywords: ["Fix", "bug"],
@@ -274,7 +275,7 @@ Filter, Score, Display/Analyze
 Query: "P1 s:open overdue"
 
 extractStandardProperties():
-→ Uses parseTodoistSyntax()
+→ Uses parseStandardQuerySyntax()
 → Result: {priority: 1, status: "open", dueDate: "overdue"}
 
 removeStandardProperties():
@@ -290,7 +291,7 @@ Speed: Instant
 Query: "Fix urgent bug P1"
 
 extractStandardProperties():
-→ Uses parseTodoistSyntax()
+→ Uses parseStandardQuerySyntax()
 → Result: {priority: 1}
 
 removeStandardProperties():
@@ -315,7 +316,7 @@ Speed: ~300ms
 Query: "urgent tasks I'm working on"
 
 extractStandardProperties():
-→ Uses parseTodoistSyntax()
+→ Uses parseStandardQuerySyntax()
 → Result: {} (nothing standard)
 
 removeStandardProperties():
@@ -341,8 +342,8 @@ Speed: ~400ms
 Query: "Fix bug due next Friday"
 
 extractStandardProperties():
-→ Uses parseTodoistSyntax()
-→ parseTodoistSyntax uses chrono-node
+→ Uses parseStandardQuerySyntax()
+→ parseStandardQuerySyntax uses chrono-node
 → Result: {dueDate: "2025-01-31"} (calculated)
 
 removeStandardProperties():
@@ -367,7 +368,7 @@ Speed: ~300ms
 ### Standard Syntax Processing
 ```
 src/services/dataviewService.ts
-    └─ parseTodoistSyntax()          // Main parser
+    └─ parseStandardQuerySyntax()          // Main parser
         ├─ Priority patterns          // p1-p4
         ├─ Status patterns            // s:value
         ├─ Date keywords              // overdue, today
@@ -380,7 +381,7 @@ src/services/dataviewService.ts
 ```
 src/services/queryParserService.ts
     └─ parseQuery()
-        ├─ extractStandardProperties() // Uses parseTodoistSyntax
+        ├─ extractStandardProperties() // Uses parseStandardQuerySyntax
         ├─ removeStandardProperties()  // Clean query
         └─ parseWithAI()               // Only for non-standard
             ├─ Natural language props  // "urgent" → priority:1
@@ -440,7 +441,7 @@ src/services/queryParserService.ts
 ## Key Principles
 
 1. **Use Existing Modules First**
-   - Todoist syntax → `parseTodoistSyntax()`
+   - Todoist syntax → `parseStandardQuerySyntax()`
    - Natural dates → chrono-node
    - Task queries → DataView API
    - Don't reinvent the wheel
@@ -473,7 +474,7 @@ src/services/queryParserService.ts
 - [x] Simple Search uses existing modules only
 - [x] Smart/Task Chat use same modules for standard syntax
 - [x] AI only used for non-standard properties
-- [x] All modes use `parseTodoistSyntax()`
+- [x] All modes use `parseStandardQuerySyntax()`
 - [x] chrono-node used consistently
 - [x] No code duplication
 - [x] Standard syntax precedence over AI
