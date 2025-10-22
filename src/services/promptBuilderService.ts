@@ -128,14 +128,22 @@ Users may reference tasks by any of these dates.`;
     /**
      * Build date field names for query parser
      * Used in QueryParserService to recognize field name variations
+     * Uses centralized field names from TaskPropertyService
      */
     static buildDateFieldNamesForParser(settings: PluginSettings): string {
         const keys = settings.dataviewKeys;
+        // Use centralized date field names from TaskPropertyService
+        const dueDateFields = TaskPropertyService.DATE_FIELDS.due.join('", "');
+        const createdFields =
+            TaskPropertyService.DATE_FIELDS.created.join('", "');
+        const completedFields =
+            TaskPropertyService.DATE_FIELDS.completion.join('", "');
+
         return `DATE FIELD NAMES (User-Configured):
 Users may use these field names in queries - recognize all variations:
-- Due date: "${keys.dueDate}", "due", "deadline", "dueDate"
-- Created date: "${keys.createdDate}", "created", "createdDate"
-- Completed date: "${keys.completedDate}", "completed", "completedDate", "done"`;
+- Due date: "${keys.dueDate}", "${dueDateFields}"
+- Created date: "${keys.createdDate}", "${createdFields}"
+- Completed date: "${keys.completedDate}", "${completedFields}"`;
     }
 
     /**

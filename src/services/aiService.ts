@@ -1,4 +1,4 @@
-import { App, Notice, requestUrl } from "obsidian";
+import { App, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
 import { PluginSettings, SortCriterion } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
@@ -1102,7 +1102,7 @@ MUST: (1) Reference tasks using [TASK_X] IDs, (2) Explain strategy
 
 QUERY UNDERSTANDING:
 - The system has ALREADY extracted and applied ALL filters from the user's query
-- Tasks below have been PRE-FILTERED to match the query (keywords, due dates, priorities, etc.)
+- Tasks below have been PRE-FILTERED to match the query (keywords, due dates, priorities, status, etc.)
 - You are seeing ONLY tasks that match - don't second-guess the filtering
 - Your job is to recommend MOST of these pre-filtered tasks (80%+) with helpful prioritization${filterContext}
 

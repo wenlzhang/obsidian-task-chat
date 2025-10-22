@@ -68,8 +68,12 @@ export class PropertyRecognitionService {
     /**
      * Build DUE DATE VALUE MAPPING for AI parser
      * Maps various phrases to normalized dueDate values
+     * Uses centralized constants from TaskPropertyService
      */
     static buildDueDateValueMapping(): string {
+        // Use centralized due date keywords
+        const keywords = TaskPropertyService.DUE_DATE_KEYWORDS;
+
         return `
 DUE DATE VALUE MAPPING (normalize to these values):
 
@@ -77,25 +81,25 @@ IMPORTANT: There's a difference between:
 1. Asking for tasks WITH a property (any value)
 2. Asking for tasks with SPECIFIC property value
 
-DUE DATE NORMALIZATION:
-- "any" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "scheduled tasks", "with due date")
-- "today" = tasks due TODAY only (今天, today, due today, 今天到期, idag)
-- "tomorrow" = tasks due TOMORROW only (明天, tomorrow, imorgon, due tomorrow)
-- "overdue" = past due tasks (过期, 逾期, 延迟, overdue, past due, late, försenad)
-- "future" = future tasks (未来, 将来, future, upcoming, later, framtida, kommande)
-- "week" = this week (本周, this week, 这周, denna vecka, 本周内)
-- "next-week" = next week (下周, next week, nästa vecka, 下周内)
+DUE DATE NORMALIZATION (using centralized keywords):
+- "${keywords.any}" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "scheduled tasks", "with due date")
+- "${keywords.today}" = tasks due TODAY only (今天, today, due today, 今天到期, idag)
+- "${keywords.tomorrow}" = tasks due TOMORROW only (明天, tomorrow, imorgon, due tomorrow)
+- "${keywords.overdue}" = past due tasks (过期, 逾期, 延迟, overdue, past due, late, försenad)
+- "${keywords.future}" = future tasks (未来, 将来, future, upcoming, later, framtida, kommande)
+- "${keywords.week}" = this week (本周, this week, 这周, denna vecka, 本周内)
+- "${keywords.nextWeek}" = next week (下周, next week, nästa vecka, 下周内)
 - Specific dates in YYYY-MM-DD format
 
 KEY DISTINCTION:
-- "due tasks" or "deadline tasks" = "any" (has a due date) ✅
-- "overdue tasks" = "overdue" (specific value) ✅
-- "tasks due today" = "today" (specific value) ✅
+- "due tasks" or "deadline tasks" = "${keywords.any}" (has a due date) ✅
+- "overdue tasks" = "${keywords.overdue}" (specific value) ✅
+- "tasks due today" = "${keywords.today}" (specific value) ✅
 
 Be smart about implied meanings:
-- "deadline" alone → "any" (has deadline)
-- "expired" → "overdue" (past due)
-- "upcoming" → "future" (future tasks)
+- "deadline" alone → "${keywords.any}" (has deadline)
+- "expired" → "${keywords.overdue}" (past due)
+- "upcoming" → "${keywords.future}" (future tasks)
 `;
     }
 

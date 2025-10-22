@@ -486,17 +486,16 @@ You have native understanding of ALL human languages. Use this to:
      * null = user wants tasks WITH priority (any value)
    
    - STATUS concept → status: string or null
-     * Open/todo/pending → "open"
-     * In progress/doing/working/active → "inprogress"
-     * Done/finished/completed → "completed"
-     * Cancelled/abandoned/dropped → "cancelled"
-     * Blocked/stuck/waiting → "?"
-     * Use category keys from STATUS MAPPING below
+     * Open/todo/pending → "${TaskPropertyService.STATUS_CATEGORY.open}"
+     * In progress/doing/working/active → "${TaskPropertyService.STATUS_CATEGORY.inProgress}"
+     * Done/finished/completed → "${TaskPropertyService.STATUS_CATEGORY.completed}"
+     * Cancelled/abandoned/dropped → "${TaskPropertyService.STATUS_CATEGORY.cancelled}"
+     * Use category keys from STATUS MAPPING below (supports custom categories)
    
    - DUE_DATE concept → dueDate: string or null
      * Specific values defined in DUE DATE VALUE MAPPING below
-     * Common: "today", "tomorrow", "overdue", "any", "future", "week", "next-week"
-     * "any" = user wants tasks WITH due dates (not a specific date)
+     * Common: "${TaskPropertyService.DUE_DATE_KEYWORDS.today}", "${TaskPropertyService.DUE_DATE_KEYWORDS.tomorrow}", "${TaskPropertyService.DUE_DATE_KEYWORDS.overdue}", "${TaskPropertyService.DUE_DATE_KEYWORDS.any}", "${TaskPropertyService.DUE_DATE_KEYWORDS.future}", "${TaskPropertyService.DUE_DATE_KEYWORDS.week}", "${TaskPropertyService.DUE_DATE_KEYWORDS.nextWeek}"
+     * "${TaskPropertyService.DUE_DATE_KEYWORDS.any}" = user wants tasks WITH due dates (not a specific date)
 
 3. **Respect User Settings**:
    - Priority mappings: ${JSON.stringify(settings.dataviewPriorityMapping)}
@@ -783,17 +782,16 @@ When you see a query in ANY language:
      * Low/minor → 4
    
    - STATUS concept → status code:
-     * Open/todo/pending → "open"
-     * In progress/doing/working on → "inprogress"
-     * Done/finished/completed → "completed"
-     * Cancelled/abandoned → "cancelled"
-     * Blocked/stuck/waiting → "?"
+     * Open/todo/pending → "${TaskPropertyService.STATUS_CATEGORY.open}"
+     * In progress/doing/working on → "${TaskPropertyService.STATUS_CATEGORY.inProgress}"
+     * Done/finished/completed → "${TaskPropertyService.STATUS_CATEGORY.completed}"
+     * Cancelled/abandoned → "${TaskPropertyService.STATUS_CATEGORY.cancelled}"
    
    - DUE_DATE concept → date string:
      * Today → today's date
      * Tomorrow → tomorrow's date
-     * Overdue/late → "overdue"
-     * No deadline → "no date"
+     * Overdue/late → "${TaskPropertyService.DUE_DATE_KEYWORDS.overdue}"
+     * No deadline → "no date" (special keyword)
 
 3. **Be language-agnostic**:
    - Don't rely on pre-programmed translations
