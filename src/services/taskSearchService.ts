@@ -466,24 +466,35 @@ export class TaskSearchService {
         const explicitMatch = lowerQuery.match(
             TaskPropertyService.QUERY_PATTERNS.status,
         );
+
         if (explicitMatch) {
-            const value = explicitMatch[1];
+            console.log("[Task Chat] Status regex matched:", explicitMatch);
 
-            // Use centralized resolution from TaskPropertyService
-            const resolved = TaskPropertyService.resolveStatusValue(
-                value,
-                settings,
-            );
+            if (explicitMatch[1]) {
+                const value = explicitMatch[1];
+                console.log("[Task Chat] Extracted status value:", value);
 
-            if (resolved) {
-                return resolved;
+                // Use centralized resolution from TaskPropertyService
+                const resolved = TaskPropertyService.resolveStatusValue(
+                    value,
+                    settings,
+                );
+
+                if (resolved) {
+                    console.log("[Task Chat] Resolved to category:", resolved);
+                    return resolved;
+                }
+
+                // If explicit syntax was used but no match found, log warning
+                console.warn(
+                    `[Task Chat] Status value "${value}" not found in any category`,
+                );
+                return null;
+            } else {
+                console.warn(
+                    "[Task Chat] Status regex matched but capture group is undefined",
+                );
             }
-
-            // If explicit syntax was used but no match found, log warning
-            console.warn(
-                `[Task Chat] Status value "${value}" not found in any category`,
-            );
-            return null;
         }
 
         // Priority 2: Check for category terms (natural language)

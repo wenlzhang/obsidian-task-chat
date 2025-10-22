@@ -241,7 +241,7 @@ export class TaskPropertyService {
      */
     static readonly QUERY_PATTERNS = {
         priority: /\bp[1-4]\b/gi,
-        status: /\b(?:s|status):([^\s&|,]+)/gi, // Supports both s: and status: syntax
+        status: /\b(?:s|status):([^\s&|,]+)/i, // Supports both s: and status: syntax (no 'g' flag to preserve capture groups)
         project: /##+[A-Za-z0-9_-]+/g,
         search: /search:\s*["']?[^"'&|]+["']?/gi,
         hashtag: /#([\w-]+)/g,
@@ -1303,6 +1303,11 @@ export class TaskPropertyService {
         value: string,
         settings: PluginSettings,
     ): string | null {
+        // Handle null/undefined values
+        if (!value) {
+            return null;
+        }
+
         const lowerValue = value.toLowerCase();
 
         // Check each category in the status mapping
