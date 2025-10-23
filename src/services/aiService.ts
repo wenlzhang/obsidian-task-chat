@@ -1,6 +1,11 @@
 import { App, requestUrl } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
-import { PluginSettings, SortCriterion } from "../settings";
+import {
+    PluginSettings,
+    SortCriterion,
+    StatusMapping,
+    getCurrentProviderConfig,
+} from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
 import { PricingService } from "./pricingService";
@@ -724,7 +729,7 @@ export class AIService {
                         completionTokens: 50,
                         totalTokens: 250,
                         estimatedCost: 0.0001,
-                        model: settings.model,
+                        model: getCurrentProviderConfig(settings).model,
                         provider: settings.aiProvider,
                         isEstimated: true,
                         directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
@@ -1315,7 +1320,8 @@ ${taskContext}`;
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
-        const endpoint = settings.apiEndpoint;
+        const providerConfig = getCurrentProviderConfig(settings);
+        const endpoint = providerConfig.apiEndpoint;
 
         if (settings.aiProvider === "ollama") {
             return this.callOllama(messages, settings, onStream, abortSignal);
@@ -1340,10 +1346,10 @@ ${taskContext}`;
                 Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: messages,
-                temperature: settings.temperature,
-                max_tokens: settings.maxTokensChat || 2000, // User-configurable response length
+                temperature: providerConfig.temperature,
+                max_tokens: providerConfig.maxTokens || 2000, // User-configurable response length
             }),
         });
 
@@ -1373,11 +1379,11 @@ ${taskContext}`;
             estimatedCost: this.calculateCost(
                 promptTokens,
                 completionTokens,
-                settings.model,
+                providerConfig.model,
                 settings.aiProvider,
                 settings.pricingCache.data,
             ),
-            model: settings.model,
+            model: providerConfig.model,
             provider: settings.aiProvider,
             isEstimated: false, // Real token counts from API
         };
@@ -1397,8 +1403,10 @@ ${taskContext}`;
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
+        const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
-            settings.apiEndpoint || "https://api.anthropic.com/v1/messages";
+            providerConfig.apiEndpoint ||
+            "https://api.anthropic.com/v1/messages";
 
         // Separate system message from conversation messages
         const systemMessage = messages.find((m: any) => m.role === "system");
@@ -1416,11 +1424,11 @@ ${taskContext}`;
                 "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: conversationMessages,
                 system: systemMessage?.content || "",
-                temperature: settings.temperature,
-                max_tokens: settings.maxTokensChat || 2000, // User-configurable response length
+                temperature: providerConfig.temperature,
+                max_tokens: providerConfig.maxTokens || 2000, // User-configurable response length
             }),
         });
 
@@ -1449,11 +1457,11 @@ ${taskContext}`;
             estimatedCost: this.calculateCost(
                 promptTokens,
                 completionTokens,
-                settings.model,
+                providerConfig.model,
                 settings.aiProvider,
                 settings.pricingCache.data,
             ),
-            model: settings.model,
+            model: providerConfig.model,
             provider: settings.aiProvider,
             isEstimated: false, // Real token counts from API
         };
@@ -1473,8 +1481,9 @@ ${taskContext}`;
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
+        const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
-            settings.apiEndpoint || "http://localhost:11434/api/chat";
+            providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
         const response = await requestUrl({
             url: endpoint,
@@ -1483,11 +1492,11 @@ ${taskContext}`;
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: messages,
                 stream: false,
                 options: {
-                    temperature: settings.temperature,
+                    temperature: providerConfig.temperature,
                 },
             }),
         });
@@ -1515,7 +1524,7 @@ ${taskContext}`;
                 estimatedPromptTokens + estimatedCompletionTokens,
             ),
             estimatedCost: 0, // Ollama is local, no cost
-            model: settings.model,
+            model: providerConfig.model,
             provider: "ollama",
             isEstimated: true, // Ollama doesn't return real token counts
         };
@@ -1761,17 +1770,6 @@ ${taskContext}`;
      * Get API key for the current provider
      */
     private static getApiKeyForProvider(settings: PluginSettings): string {
-        switch (settings.aiProvider) {
-            case "openai":
-                return settings.openaiApiKey || "";
-            case "anthropic":
-                return settings.anthropicApiKey || "";
-            case "openrouter":
-                return settings.openrouterApiKey || "";
-            case "ollama":
-                return ""; // No API key needed
-            default:
-                return "";
-        }
+        return getCurrentProviderConfig(settings).apiKey || "";
     }
 }

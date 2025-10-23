@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { PluginSettings } from "../settings";
+import { PluginSettings, getCurrentProviderConfig } from "../settings";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
@@ -1651,16 +1651,18 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             );
         }
 
+        const providerConfig = getCurrentProviderConfig(settings);
+
         // OpenAI-compatible API (OpenAI and OpenRouter)
         const response = await requestUrl({
-            url: settings.apiEndpoint,
+            url: providerConfig.apiEndpoint,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: messages,
                 temperature: 0.1, // Low temperature for consistent parsing
                 max_tokens: 1000, // Increased for full semantic expansion (60 keywords)
@@ -1686,8 +1688,10 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             throw new Error("Anthropic API key is not configured");
         }
 
+        const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
-            settings.apiEndpoint || "https://api.anthropic.com/v1/messages";
+            providerConfig.apiEndpoint ||
+            "https://api.anthropic.com/v1/messages";
 
         // Separate system message from conversation messages
         const systemMessage = messages.find((m: any) => m.role === "system");
@@ -1704,11 +1708,11 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
                 temperature: 0.1,
-                max_tokens: 1000, // Increased for full semantic expansion (60 keywords)
+                max_tokens: 1000,
             }),
         });
 
@@ -1723,18 +1727,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
      * Get API key for the current provider
      */
     private static getApiKeyForProvider(settings: PluginSettings): string {
-        switch (settings.aiProvider) {
-            case "openai":
-                return settings.openaiApiKey || "";
-            case "anthropic":
-                return settings.anthropicApiKey || "";
-            case "openrouter":
-                return settings.openrouterApiKey || "";
-            case "ollama":
-                return ""; // No API key needed
-            default:
-                return "";
-        }
+        return getCurrentProviderConfig(settings).apiKey || "";
     }
 
     /**
@@ -1744,8 +1737,9 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
         messages: any[],
         settings: PluginSettings,
     ): Promise<string> {
+        const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
-            settings.apiEndpoint || "http://localhost:11434/api/chat";
+            providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
         const response = await requestUrl({
             url: endpoint,
@@ -1754,7 +1748,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: settings.model,
+                model: providerConfig.model,
                 messages: messages,
                 stream: false,
             }),

@@ -107,9 +107,9 @@ export class SettingsTab extends PluginSettingTab {
             }
 
             dropdown
-                .setValue(this.plugin.settings.model)
+                .setValue(this.getCurrentProviderConfig().model)
                 .onChange(async (value) => {
-                    this.plugin.settings.model = value;
+                    this.getCurrentProviderConfig().model = value;
                     await this.plugin.saveSettings();
                 });
         });
@@ -168,10 +168,10 @@ export class SettingsTab extends PluginSettingTab {
             .addSlider((slider) =>
                 slider
                     .setLimits(0, 2, 0.1)
-                    .setValue(this.plugin.settings.temperature)
+                    .setValue(this.getCurrentProviderConfig().temperature)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.temperature = value;
+                        this.getCurrentProviderConfig().temperature = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -184,10 +184,10 @@ export class SettingsTab extends PluginSettingTab {
             .addSlider((slider) =>
                 slider
                     .setLimits(500, 64000, 100)
-                    .setValue(this.plugin.settings.maxTokensChat)
+                    .setValue(this.getCurrentProviderConfig().maxTokens)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.maxTokensChat = value;
+                        this.getCurrentProviderConfig().maxTokens = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -198,9 +198,9 @@ export class SettingsTab extends PluginSettingTab {
             .addText((text) =>
                 text
                     .setPlaceholder(this.getEndpointPlaceholder())
-                    .setValue(this.plugin.settings.apiEndpoint)
+                    .setValue(this.getCurrentProviderConfig().apiEndpoint)
                     .onChange(async (value) => {
-                        this.plugin.settings.apiEndpoint = value;
+                        this.getCurrentProviderConfig().apiEndpoint = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -1929,77 +1929,12 @@ export class SettingsTab extends PluginSettingTab {
 
     /**
      * Configure provider-specific defaults
+     * Note: With per-provider configs, this is no longer needed as each provider
+     * maintains its own settings. Keeping empty for backward compatibility.
      */
     private configureProviderDefaults(provider: string): void {
-        switch (provider) {
-            case "openai":
-                if (
-                    !this.plugin.settings.apiEndpoint ||
-                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
-                    this.plugin.settings.apiEndpoint.includes("openrouter") ||
-                    this.plugin.settings.apiEndpoint.includes("localhost") ||
-                    this.plugin.settings.apiEndpoint.includes("11434")
-                ) {
-                    this.plugin.settings.apiEndpoint =
-                        "https://api.openai.com/v1/chat/completions";
-                }
-                if (
-                    this.plugin.settings.model.includes("claude") ||
-                    this.plugin.settings.model.includes("llama") ||
-                    this.plugin.settings.model.includes("mistral")
-                ) {
-                    this.plugin.settings.model = "gpt-4o-mini";
-                }
-                break;
-            case "anthropic":
-                if (
-                    !this.plugin.settings.apiEndpoint ||
-                    this.plugin.settings.apiEndpoint.includes("openai") ||
-                    this.plugin.settings.apiEndpoint.includes("openrouter") ||
-                    this.plugin.settings.apiEndpoint.includes("localhost") ||
-                    this.plugin.settings.apiEndpoint.includes("11434")
-                ) {
-                    this.plugin.settings.apiEndpoint =
-                        "https://api.anthropic.com/v1/messages";
-                }
-                if (
-                    this.plugin.settings.model.includes("gpt") ||
-                    this.plugin.settings.model.includes("llama") ||
-                    this.plugin.settings.model.includes("mistral")
-                ) {
-                    this.plugin.settings.model = "claude-3-5-sonnet-20241022";
-                }
-                break;
-            case "openrouter":
-                if (
-                    !this.plugin.settings.apiEndpoint ||
-                    this.plugin.settings.apiEndpoint.includes("openai") ||
-                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
-                    this.plugin.settings.apiEndpoint.includes("localhost") ||
-                    this.plugin.settings.apiEndpoint.includes("11434")
-                ) {
-                    this.plugin.settings.apiEndpoint =
-                        "https://openrouter.ai/api/v1/chat/completions";
-                }
-                break;
-            case "ollama":
-                if (
-                    !this.plugin.settings.apiEndpoint ||
-                    this.plugin.settings.apiEndpoint.includes("openai") ||
-                    this.plugin.settings.apiEndpoint.includes("anthropic") ||
-                    this.plugin.settings.apiEndpoint.includes("openrouter")
-                ) {
-                    this.plugin.settings.apiEndpoint =
-                        "http://localhost:11434/api/chat";
-                }
-                if (
-                    this.plugin.settings.model.includes("gpt") ||
-                    this.plugin.settings.model.includes("claude")
-                ) {
-                    this.plugin.settings.model = "llama3.2";
-                }
-                break;
-        }
+        // No longer needed - each provider has its own configuration
+        // Settings are preserved when switching between providers
     }
 
     /**
@@ -2089,36 +2024,26 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
+     * Get current provider configuration
+     */
+    private getCurrentProviderConfig() {
+        return this.plugin.settings.providerConfigs[
+            this.plugin.settings.aiProvider
+        ];
+    }
+
+    /**
      * Get current API key for selected provider
      */
     private getCurrentApiKey(): string {
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                return this.plugin.settings.openaiApiKey || "";
-            case "anthropic":
-                return this.plugin.settings.anthropicApiKey || "";
-            case "openrouter":
-                return this.plugin.settings.openrouterApiKey || "";
-            default:
-                return "";
-        }
+        return this.getCurrentProviderConfig().apiKey || "";
     }
 
     /**
      * Set current API key for selected provider
      */
     private setCurrentApiKey(value: string): void {
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                this.plugin.settings.openaiApiKey = value;
-                break;
-            case "anthropic":
-                this.plugin.settings.anthropicApiKey = value;
-                break;
-            case "openrouter":
-                this.plugin.settings.openrouterApiKey = value;
-                break;
-        }
+        this.getCurrentProviderConfig().apiKey = value;
     }
 
     /**
@@ -2126,7 +2051,8 @@ export class SettingsTab extends PluginSettingTab {
      */
     private getAvailableModels(): string[] {
         const provider = this.plugin.settings.aiProvider;
-        const cached = this.plugin.settings.availableModels[provider];
+        const providerConfig = this.getCurrentProviderConfig();
+        const cached = providerConfig.availableModels;
 
         // Return cached models if available
         if (cached && cached.length > 0) {
@@ -2190,13 +2116,13 @@ export class SettingsTab extends PluginSettingTab {
                 case "ollama":
                     new Notice("Fetching local Ollama models...");
                     models = await ModelProviderService.fetchOllamaModels(
-                        this.plugin.settings.apiEndpoint,
+                        this.getCurrentProviderConfig().apiEndpoint,
                     );
                     break;
             }
 
             if (models.length > 0) {
-                this.plugin.settings.availableModels[provider] = models;
+                this.getCurrentProviderConfig().availableModels = models;
                 await this.plugin.saveSettings();
                 new Notice(`Loaded ${models.length} models`);
             } else {
@@ -2238,7 +2164,7 @@ export class SettingsTab extends PluginSettingTab {
     }> {
         const provider = this.plugin.settings.aiProvider;
         const apiKey = this.getCurrentApiKey();
-        const model = this.plugin.settings.model;
+        const model = this.getCurrentProviderConfig().model;
 
         // Validate inputs
         if (provider !== "ollama" && !apiKey) {
@@ -2277,7 +2203,7 @@ export class SettingsTab extends PluginSettingTab {
 
                 case "ollama":
                     return await ModelProviderService.testOllamaConnection(
-                        this.plugin.settings.apiEndpoint,
+                        this.getCurrentProviderConfig().apiEndpoint,
                         model,
                     );
 

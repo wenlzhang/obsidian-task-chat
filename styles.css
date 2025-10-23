@@ -369,6 +369,64 @@
     color: var(--text-faint);
 }
 
+/* Input Toolbar - Model Selector */
+.task-chat-input-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+}
+
+.task-chat-provider-selector,
+.task-chat-model-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.task-chat-provider-icon {
+    font-size: 16px;
+}
+
+.task-chat-provider-dropdown,
+.task-chat-model-dropdown {
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.task-chat-provider-dropdown:hover,
+.task-chat-model-dropdown:hover {
+    border-color: var(--interactive-accent);
+}
+
+.task-chat-provider-dropdown:focus,
+.task-chat-model-dropdown:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.task-chat-model-dropdown {
+    min-width: 150px;
+    max-width: 250px;
+}
+
+.task-chat-token-estimate {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+}
+
 /* Send Button - Modern style */
 .task-chat-send-button {
     padding: 10px 20px;

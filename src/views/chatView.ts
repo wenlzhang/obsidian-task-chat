@@ -23,6 +23,9 @@ export class ChatView extends ItemView {
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
     private abortController: AbortController | null = null; // For canceling AI requests
     private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
+    private providerSelectEl: HTMLSelectElement | null = null; // Provider dropdown
+    private modelSelectEl: HTMLSelectElement | null = null; // Model dropdown
+    private tokenEstimateEl: HTMLElement | null = null; // Token estimate display
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -183,6 +186,72 @@ export class ChatView extends ItemView {
                 this.sendMessage();
             }
         });
+
+        // Model selector toolbar (provider + model dropdowns)
+        const toolbarEl = inputContainerEl.createDiv("task-chat-input-toolbar");
+
+        // Provider selector
+        const providerContainer = toolbarEl.createDiv(
+            "task-chat-provider-selector",
+        );
+        providerContainer.createSpan({
+            text: "🤖",
+            cls: "task-chat-provider-icon",
+        });
+
+        const providerSelect = providerContainer.createEl("select", {
+            cls: "task-chat-provider-dropdown",
+        });
+        providerSelect.createEl("option", {
+            value: "openai",
+            text: "OpenAI",
+        });
+        providerSelect.createEl("option", {
+            value: "anthropic",
+            text: "Anthropic",
+        });
+        providerSelect.createEl("option", {
+            value: "openrouter",
+            text: "OpenRouter",
+        });
+        providerSelect.createEl("option", {
+            value: "ollama",
+            text: "Ollama",
+        });
+        providerSelect.value = this.plugin.settings.aiProvider;
+
+        providerSelect.addEventListener("change", async () => {
+            this.plugin.settings.aiProvider = providerSelect.value as any;
+            await this.plugin.saveSettings();
+            this.updateModelSelector();
+        });
+
+        // Model selector
+        const modelContainer = toolbarEl.createDiv("task-chat-model-selector");
+        const modelSelect = modelContainer.createEl("select", {
+            cls: "task-chat-model-dropdown",
+        });
+
+        // Store reference for updates
+        this.providerSelectEl = providerSelect;
+        this.modelSelectEl = modelSelect;
+
+        // Initialize model selector
+        this.updateModelSelector();
+
+        modelSelect.addEventListener("change", async () => {
+            const providerConfig =
+                this.plugin.settings.providerConfigs[
+                    this.plugin.settings.aiProvider
+                ];
+            providerConfig.model = modelSelect.value;
+            await this.plugin.saveSettings();
+        });
+
+        // Token estimate display
+        const tokenEstimate = toolbarEl.createDiv("task-chat-token-estimate");
+        tokenEstimate.setText("~0 tokens");
+        this.tokenEstimateEl = tokenEstimate;
 
         this.sendButtonEl = inputContainerEl.createEl("button", {
             text: "Send (Cmd/Ctrl+Enter)",
@@ -1182,5 +1251,38 @@ export class ChatView extends ItemView {
                 });
             });
         });
+    }
+
+    /**
+     * Update model selector dropdown based on current provider
+     */
+    private updateModelSelector(): void {
+        if (!this.modelSelectEl) return;
+
+        const provider = this.plugin.settings.aiProvider;
+        const providerConfig = this.plugin.settings.providerConfigs[provider];
+        const availableModels = providerConfig.availableModels;
+
+        // Clear existing options
+        this.modelSelectEl.empty();
+
+        // Add available models
+        if (availableModels && availableModels.length > 0) {
+            availableModels.forEach((model) => {
+                const option = this.modelSelectEl!.createEl("option", {
+                    value: model,
+                    text: model,
+                });
+            });
+        } else {
+            // Show loading/default message if no models cached
+            this.modelSelectEl.createEl("option", {
+                value: providerConfig.model,
+                text: providerConfig.model || "Loading models...",
+            });
+        }
+
+        // Set current model as selected
+        this.modelSelectEl.value = providerConfig.model;
     }
 }

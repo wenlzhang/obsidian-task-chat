@@ -54,23 +54,41 @@ export function isStatusCategoryFullyLocked(categoryKey: string): boolean {
     ).includes(categoryKey);
 }
 
+// AI Provider configuration type - each provider has its own settings
+export interface ProviderConfig {
+    apiKey: string;
+    model: string;
+    apiEndpoint: string;
+    temperature: number; // 0.0-2.0, lower = more consistent
+    maxTokens: number; // Max tokens for responses
+    availableModels: string[]; // Cached list of available models
+}
+
+// Helper to get current provider's configuration
+export function getCurrentProviderConfig(
+    settings: PluginSettings,
+): ProviderConfig {
+    return settings.providerConfigs[settings.aiProvider];
+}
+
+// Helper to update current provider's configuration
+export function updateCurrentProviderConfig(
+    settings: PluginSettings,
+    updates: Partial<ProviderConfig>,
+): void {
+    Object.assign(settings.providerConfigs[settings.aiProvider], updates);
+}
+
 export interface PluginSettings {
     // AI Provider Settings
     aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
-    // Separate API keys for each provider
-    openaiApiKey: string;
-    anthropicApiKey: string;
-    openrouterApiKey: string;
-    model: string;
-    apiEndpoint: string;
-    temperature: number; // AI temperature (0.0-2.0, lower = more consistent)
-    maxTokensChat: number; // Max tokens for Task Chat AI responses (300-4000, higher = longer responses)
-    // Cached available models per provider
-    availableModels: {
-        openai: string[];
-        anthropic: string[];
-        openrouter: string[];
-        ollama: string[];
+
+    // Per-provider configurations (each provider saves its own settings)
+    providerConfigs: {
+        openai: ProviderConfig;
+        anthropic: ProviderConfig;
+        openrouter: ProviderConfig;
+        ollama: ProviderConfig;
     };
 
     // Cached pricing data (fetched from APIs)
@@ -210,19 +228,43 @@ export interface PluginSettings {
 export const DEFAULT_SETTINGS: PluginSettings = {
     // AI Provider Settings
     aiProvider: "openai",
-    openaiApiKey: "",
-    anthropicApiKey: "",
-    openrouterApiKey: "",
-    model: "gpt-4o-mini",
-    apiEndpoint: "https://api.openai.com/v1/chat/completions",
-    temperature: 0.1, // Low temperature for consistent, deterministic responses
-    maxTokensChat: 2000, // Default to 2000 tokens to match user's preference and provide more detailed responses by default
-    availableModels: {
-        openai: [],
-        anthropic: [],
-        openrouter: [],
-        ollama: [],
+
+    // Per-provider configurations
+    providerConfigs: {
+        openai: {
+            apiKey: "",
+            model: "gpt-4o-mini",
+            apiEndpoint: "https://api.openai.com/v1/chat/completions",
+            temperature: 0.1,
+            maxTokens: 2000,
+            availableModels: [],
+        },
+        anthropic: {
+            apiKey: "",
+            model: "claude-3-5-sonnet-20241022",
+            apiEndpoint: "https://api.anthropic.com/v1/messages",
+            temperature: 0.1,
+            maxTokens: 2000,
+            availableModels: [],
+        },
+        openrouter: {
+            apiKey: "",
+            model: "openai/gpt-4o-mini",
+            apiEndpoint: "https://openrouter.ai/api/v1/chat/completions",
+            temperature: 0.1,
+            maxTokens: 2000,
+            availableModels: [],
+        },
+        ollama: {
+            apiKey: "", // Not needed for Ollama but kept for consistency
+            model: "llama3.2",
+            apiEndpoint: "http://localhost:11434/api/chat",
+            temperature: 0.1,
+            maxTokens: 2000,
+            availableModels: [],
+        },
     },
+
     pricingCache: {
         data: {},
         lastUpdated: 0,

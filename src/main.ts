@@ -101,11 +101,13 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     async loadSettings(): Promise<void> {
-        this.settings = Object.assign(
-            {},
-            DEFAULT_SETTINGS,
-            await this.loadData(),
-        );
+        const loadedData = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+
+        // Migrate old settings structure to new per-provider configuration
+        if (loadedData) {
+            this.migrateOldSettings(loadedData);
+        }
 
         // Initialize user stop words (combines with internal stop words)
         StopWords.setUserStopWords(this.settings.userStopWords || []);
@@ -115,13 +117,127 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
+     * Migrate old settings structure to new per-provider configuration
+     * This ensures backward compatibility when users update the plugin
+     */
+    private migrateOldSettings(loadedData: any): void {
+        // Check if old settings exist (before per-provider config was added)
+        if (loadedData.openaiApiKey !== undefined) {
+            console.log(
+                "[Task Chat] Migrating old settings to per-provider configuration...",
+            );
+
+            // Migrate OpenAI settings
+            if (loadedData.openaiApiKey) {
+                this.settings.providerConfigs.openai.apiKey =
+                    loadedData.openaiApiKey;
+            }
+            if (loadedData.aiProvider === "openai") {
+                if (loadedData.model)
+                    this.settings.providerConfigs.openai.model =
+                        loadedData.model;
+                if (loadedData.apiEndpoint)
+                    this.settings.providerConfigs.openai.apiEndpoint =
+                        loadedData.apiEndpoint;
+                if (loadedData.temperature !== undefined)
+                    this.settings.providerConfigs.openai.temperature =
+                        loadedData.temperature;
+                if (loadedData.maxTokensChat !== undefined)
+                    this.settings.providerConfigs.openai.maxTokens =
+                        loadedData.maxTokensChat;
+            }
+
+            // Migrate Anthropic settings
+            if (loadedData.anthropicApiKey) {
+                this.settings.providerConfigs.anthropic.apiKey =
+                    loadedData.anthropicApiKey;
+            }
+            if (loadedData.aiProvider === "anthropic") {
+                if (loadedData.model)
+                    this.settings.providerConfigs.anthropic.model =
+                        loadedData.model;
+                if (loadedData.apiEndpoint)
+                    this.settings.providerConfigs.anthropic.apiEndpoint =
+                        loadedData.apiEndpoint;
+                if (loadedData.temperature !== undefined)
+                    this.settings.providerConfigs.anthropic.temperature =
+                        loadedData.temperature;
+                if (loadedData.maxTokensChat !== undefined)
+                    this.settings.providerConfigs.anthropic.maxTokens =
+                        loadedData.maxTokensChat;
+            }
+
+            // Migrate OpenRouter settings
+            if (loadedData.openrouterApiKey) {
+                this.settings.providerConfigs.openrouter.apiKey =
+                    loadedData.openrouterApiKey;
+            }
+            if (loadedData.aiProvider === "openrouter") {
+                if (loadedData.model)
+                    this.settings.providerConfigs.openrouter.model =
+                        loadedData.model;
+                if (loadedData.apiEndpoint)
+                    this.settings.providerConfigs.openrouter.apiEndpoint =
+                        loadedData.apiEndpoint;
+                if (loadedData.temperature !== undefined)
+                    this.settings.providerConfigs.openrouter.temperature =
+                        loadedData.temperature;
+                if (loadedData.maxTokensChat !== undefined)
+                    this.settings.providerConfigs.openrouter.maxTokens =
+                        loadedData.maxTokensChat;
+            }
+
+            // Migrate Ollama settings
+            if (loadedData.aiProvider === "ollama") {
+                if (loadedData.model)
+                    this.settings.providerConfigs.ollama.model =
+                        loadedData.model;
+                if (loadedData.apiEndpoint)
+                    this.settings.providerConfigs.ollama.apiEndpoint =
+                        loadedData.apiEndpoint;
+                if (loadedData.temperature !== undefined)
+                    this.settings.providerConfigs.ollama.temperature =
+                        loadedData.temperature;
+                if (loadedData.maxTokensChat !== undefined)
+                    this.settings.providerConfigs.ollama.maxTokens =
+                        loadedData.maxTokensChat;
+            }
+
+            // Migrate available models
+            if (loadedData.availableModels) {
+                if (loadedData.availableModels.openai) {
+                    this.settings.providerConfigs.openai.availableModels =
+                        loadedData.availableModels.openai;
+                }
+                if (loadedData.availableModels.anthropic) {
+                    this.settings.providerConfigs.anthropic.availableModels =
+                        loadedData.availableModels.anthropic;
+                }
+                if (loadedData.availableModels.openrouter) {
+                    this.settings.providerConfigs.openrouter.availableModels =
+                        loadedData.availableModels.openrouter;
+                }
+                if (loadedData.availableModels.ollama) {
+                    this.settings.providerConfigs.ollama.availableModels =
+                        loadedData.availableModels.ollama;
+                }
+            }
+
+            // Save migrated settings
+            this.saveSettings();
+            console.log("[Task Chat] Migration completed successfully");
+        }
+    }
+
+    /**
      * Load models and pricing in background without blocking startup
      */
     private async loadModelsInBackground(): Promise<void> {
         // Wait a bit for the plugin to fully initialize
         setTimeout(async () => {
             const provider = this.settings.aiProvider;
-            const cached = this.settings.availableModels[provider];
+            const providerConfig = this.settings.providerConfigs[provider];
+            const cached = providerConfig.availableModels;
 
             // Auto-refresh pricing if stale (older than 24 hours)
             if (
@@ -159,10 +275,10 @@ export default class TaskChatPlugin extends Plugin {
 
                     switch (provider) {
                         case "openai":
-                            if (this.settings.openaiApiKey) {
+                            if (providerConfig.apiKey) {
                                 models =
                                     await ModelProviderService.fetchOpenAIModels(
-                                        this.settings.openaiApiKey,
+                                        providerConfig.apiKey,
                                     );
                             } else {
                                 models =
@@ -174,10 +290,10 @@ export default class TaskChatPlugin extends Plugin {
                                 ModelProviderService.getDefaultAnthropicModels();
                             break;
                         case "openrouter":
-                            if (this.settings.openrouterApiKey) {
+                            if (providerConfig.apiKey) {
                                 models =
                                     await ModelProviderService.fetchOpenRouterModels(
-                                        this.settings.openrouterApiKey,
+                                        providerConfig.apiKey,
                                     );
                             } else {
                                 models =
@@ -187,13 +303,13 @@ export default class TaskChatPlugin extends Plugin {
                         case "ollama":
                             models =
                                 await ModelProviderService.fetchOllamaModels(
-                                    this.settings.apiEndpoint,
+                                    providerConfig.apiEndpoint,
                                 );
                             break;
                     }
 
                     if (models.length > 0) {
-                        this.settings.availableModels[provider] = models;
+                        providerConfig.availableModels = models;
                         await this.saveSettings();
                         console.log(
                             `Loaded ${models.length} ${provider} models`,

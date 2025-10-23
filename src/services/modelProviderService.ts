@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { PluginSettings, getCurrentProviderConfig } from "../settings";
 
 /**
  * Service for fetching available AI models from different providers
@@ -149,9 +150,7 @@ export class ModelProviderService {
         return [
             "openai/gpt-4o",
             "openai/gpt-4o-mini",
-            "anthropic/claude-3.5-sonnet",
-            "anthropic/claude-3-opus",
-            "anthropic/claude-3-haiku",
+            "anthropic/claude-sonnet-4",
             "google/gemini-pro-1.5",
             "meta-llama/llama-3.1-70b-instruct",
             "meta-llama/llama-3.1-8b-instruct",
@@ -216,20 +215,11 @@ export class ModelProviderService {
     /**
      * Get current API key for provider
      */
-    static getCurrentApiKey(
-        provider: "openai" | "anthropic" | "openrouter" | "ollama",
-        settings: any,
+    private static getApiKey(
+        provider: string,
+        settings: PluginSettings,
     ): string {
-        switch (provider) {
-            case "openai":
-                return settings.openaiApiKey || "";
-            case "anthropic":
-                return settings.anthropicApiKey || "";
-            case "openrouter":
-                return settings.openrouterApiKey || "";
-            case "ollama":
-                return ""; // No API key needed
-        }
+        return getCurrentProviderConfig(settings).apiKey || "";
     }
 
     /**
