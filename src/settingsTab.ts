@@ -38,7 +38,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // AI Provider Settings
-        containerEl.createEl("h3", { text: "AI provider" });
+        containerEl.createEl("h2", { text: "AI provider" });
 
         new Setting(containerEl)
             .setName("AI provider")
@@ -215,21 +215,21 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Chat Settings
-        containerEl.createEl("h3", { text: "Task chat" });
+        containerEl.createEl("h2", { text: "Task chat" });
 
         new Setting(containerEl)
             .setName("Max chat history")
-            .setDesc("Maximum number of messages to keep in chat history")
-            .addText((text) =>
-                text
-                    .setPlaceholder("50")
-                    .setValue(String(this.plugin.settings.maxChatHistory))
+            .setDesc(
+                "Maximum number of messages to keep in chat history (10-200)",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(10, 200, 10)
+                    .setValue(this.plugin.settings.maxChatHistory)
+                    .setDynamicTooltip()
                     .onChange(async (value) => {
-                        const num = parseInt(value);
-                        if (!isNaN(num) && num > 0) {
-                            this.plugin.settings.maxChatHistory = num;
-                            await this.plugin.saveSettings();
-                        }
+                        this.plugin.settings.maxChatHistory = value;
+                        await this.plugin.saveSettings();
                     }),
             );
 
@@ -258,7 +258,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Chat mode
-        containerEl.createEl("h3", { text: "Chat mode" });
+        containerEl.createEl("h2", { text: "Chat mode" });
 
         new Setting(containerEl)
             .setName("Default chat mode")
@@ -293,7 +293,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Semantic Expansion
-        containerEl.createEl("h3", { text: "Semantic expansion" });
+        containerEl.createEl("h2", { text: "Semantic expansion" });
 
         const semanticExpansionInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -434,7 +434,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Smart search & Task chat
-        containerEl.createEl("h3", { text: "Smart search & Task chat" });
+        containerEl.createEl("h2", { text: "Smart search & Task chat" });
 
         const aiEnhancementInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -560,7 +560,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // DataView Settings
-        containerEl.createEl("h3", { text: "DataView integration" });
+        containerEl.createEl("h2", { text: "DataView integration" });
 
         const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -720,7 +720,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Status Category
-        containerEl.createEl("h3", { text: "Status category" });
+        containerEl.createEl("h2", { text: "Status category" });
 
         const statusCategoriesDesc = containerEl.createDiv({
             cls: "setting-item-description",
@@ -837,7 +837,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task filtering
-        containerEl.createEl("h3", { text: "Task filtering" });
+        containerEl.createEl("h2", { text: "Task filtering" });
 
         const filteringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -913,7 +913,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task scoring
-        containerEl.createEl("h3", { text: "Task scoring" });
+        containerEl.createEl("h2", { text: "Task scoring" });
 
         const scoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1048,7 +1048,7 @@ export class SettingsTab extends PluginSettingTab {
         this.updateMaxScoreDisplay();
 
         // Advanced Scoring Coefficients Section
-        containerEl.createEl("h4", { text: "Advanced scoring coefficients" });
+        containerEl.createEl("h3", { text: "Advanced scoring coefficients" });
 
         const advancedScoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1058,7 +1058,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Relevance Sub-Coefficients
-        containerEl.createEl("h4", { text: "Relevance sub-coefficients" });
+        containerEl.createEl("h3", { text: "Relevance sub-coefficients" });
 
         new Setting(containerEl)
             .setName("Core keyword match bonus")
@@ -1079,7 +1079,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Due Date Sub-Coefficients
-        containerEl.createEl("h4", { text: "Due date sub-coefficients" });
+        containerEl.createEl("h3", { text: "Due date sub-coefficients" });
 
         new Setting(containerEl)
             .setName("Overdue tasks")
@@ -1162,7 +1162,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Priority Sub-Coefficients
-        containerEl.createEl("h4", { text: "Priority sub-coefficients" });
+        containerEl.createEl("h3", { text: "Priority sub-coefficients" });
 
         new Setting(containerEl)
             .setName("Priority 1 (Highest)")
@@ -1237,7 +1237,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Status Sub-Coefficients - MOVED TO STATUS MAPPING
-        containerEl.createEl("h4", { text: "Status scores" });
+        containerEl.createEl("h3", { text: "Status scores" });
 
         const statusScoreNote = containerEl.createDiv({
             cls: "setting-item-description task-chat-info-box",
@@ -1247,7 +1247,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Reset Buttons Section
-        containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
+        containerEl.createEl("h3", { text: "Reset coefficients to defaults" });
 
         // Reset all advanced coefficients
         new Setting(containerEl)
@@ -1400,7 +1400,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task Display
-        containerEl.createEl("h3", { text: "Task display" });
+        containerEl.createEl("h2", { text: "Task display" });
 
         // Store the container for this setting so we can refresh it
         // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
@@ -1425,7 +1425,7 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        containerEl.createEl("h3", { text: "Advanced" });
+        containerEl.createEl("h2", { text: "Advanced" });
 
         new Setting(containerEl)
             .setName("System prompt")
@@ -1461,7 +1461,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Pricing Information
-        containerEl.createEl("h4", { text: "Pricing data" });
+        containerEl.createEl("h3", { text: "Pricing data" });
 
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
@@ -1508,7 +1508,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Usage Statistics
-        containerEl.createEl("h4", { text: "Usage statistics" });
+        containerEl.createEl("h3", { text: "Usage statistics" });
 
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
@@ -2289,15 +2289,14 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
         sortingInfo.innerHTML = `
-            <p><strong>🔀 Task sorting:</strong> Select criteria for tiebreaking. Coefficients (R×20, D×4, P×1) determine importance, not order.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md">→ Learn more about multi-criteria sorting</a></p>
+            <p>Select sorting criteria for tiebreaking. <a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md">→ Learn more</a></p>
         `;
 
         // Unified sort settings (tag-based UI)
         const sortSetting = new Setting(this.sortByContainerEl)
             .setName("Task sort order")
             .setDesc(
-                "Relevance is always first and cannot be removed. Click ✕ to remove other criteria. Coefficients (R×20, D×4, P×1) determine importance, not order.",
+                "Relevance is always first. Click ✕ to remove other criteria.",
             );
 
         // Create container for tag badges

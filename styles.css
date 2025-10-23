@@ -631,9 +631,10 @@
     border-radius: 6px;
 }
 
-/* Priority mapping text inputs - full width */
+/* Priority mapping text inputs - full width and left-aligned */
 .priority-mapping-input {
     width: 100%;
+    text-align: left;
 }
 
 /* Connection test result container */
