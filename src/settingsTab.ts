@@ -34,11 +34,19 @@ export class SettingsTab extends PluginSettingTab {
         });
         overviewBox.innerHTML = `
             <p><strong>👉 Start with Defaults:</strong> Most settings are pre-configured with recommended values. Most users don't need to change anything!</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#settings">→ Learn more about settings and how they affect your results</a></p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md">→ Complete settings guide with examples and best practices</a></p>
         `;
 
         // AI Provider Settings
         new Setting(containerEl).setName("AI provider").setHeading();
+
+        const aiProviderInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        aiProviderInfo.innerHTML = `
+            <p>Choose your AI provider and configure API key, model selection, and connection settings.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#1-ai-provider">→ Learn more about AI provider setup</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("Provider")
@@ -216,6 +224,14 @@ export class SettingsTab extends PluginSettingTab {
 
         // Chat Settings
         new Setting(containerEl).setName("Task chat").setHeading();
+
+        const taskChatInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        taskChatInfo.innerHTML = `
+            <p>Configure chat interface behavior, history length, response tokens, and temperature.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#2-task-chat">→ Learn more about task chat settings</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("Max chat history")
@@ -571,7 +587,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("DataView task properties")
             .setDesc(
-                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration">→ Learn more about DataView integration and troubleshooting</a>',
+                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration">→ Learn more about DataView integration and field configuration</a>',
             )
             .setClass("setting-subsection-heading");
 
@@ -851,7 +867,7 @@ export class SettingsTab extends PluginSettingTab {
         });
         filteringInfo.innerHTML = `
             <p>Control which tasks appear in results.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#task-filtering">→ Learn more about filtering options</a></p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering">→ Learn more about filtering options</a></p>
         `;
 
         new Setting(containerEl)
@@ -1423,6 +1439,14 @@ export class SettingsTab extends PluginSettingTab {
         // Task Display
         new Setting(containerEl).setName("Task display").setHeading();
 
+        const taskDisplayInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        taskDisplayInfo.innerHTML = `
+            <p>Configure result limits, sorting order, and display preferences.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#9-task-display">→ Learn more about task display options</a></p>
+        `;
+
         // Store the container for this setting so we can refresh it
         // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
         this.sortByContainerEl = containerEl.createDiv(
@@ -1447,6 +1471,14 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl).setName("Advanced").setHeading();
+
+        const advancedInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        advancedInfo.innerHTML = `
+            <p>Advanced settings for system prompts and pricing data management.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#10-advanced">→ Learn more about advanced settings</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("System prompt")
