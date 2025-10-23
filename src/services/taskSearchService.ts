@@ -871,16 +871,13 @@ export class TaskSearchService {
             query,
             settings,
         );
-        let extractedDueDateFilter = this.extractDueDateFilter(
-            query,
-            settings,
-        );
+        let extractedDueDateFilter = this.extractDueDateFilter(query, settings);
         let extractedDueDateRange = this.extractDueDateRange(query); // Changed to let for vague query range conversion
-        
+
         // Track timeContext (same as dueDate) for consistency with Smart/Chat mode
         // Used for debugging/logging and external conversion
         let timeContext: string | string[] | null = extractedDueDateFilter;
-        
+
         const extractedStatus = this.extractStatusFromQuery(query, settings);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
@@ -1552,6 +1549,49 @@ export class TaskSearchService {
 
         // Sort by final weighted score (highest first)
         const sorted = scored.sort((a, b) => b.score - a.score);
+
+        // ========== COMPREHENSIVE VAGUE QUERY DEBUGGING ==========
+        // Analyze status distribution and scores
+        const byStatus = scored.reduce(
+            (acc, item) => {
+                const status = item.task.statusCategory || "unknown";
+                if (!acc[status]) acc[status] = [];
+                acc[status].push(item);
+                return acc;
+            },
+            {} as Record<string, typeof scored>,
+        );
+
+        console.log(
+            "[Task Chat] ========== SCORE DISTRIBUTION BY STATUS ==========",
+        );
+        console.log(`[Task Chat] Total tasks scored: ${scored.length}`);
+        Object.entries(byStatus).forEach(([status, tasks]) => {
+            const avgScore =
+                tasks.reduce((sum, t) => sum + t.score, 0) / tasks.length;
+            const maxScore = Math.max(...tasks.map((t) => t.score));
+            const minScore = Math.min(...tasks.map((t) => t.score));
+            console.log(
+                `[Task Chat] ${status}: ${tasks.length} tasks | avg: ${avgScore.toFixed(2)} | max: ${maxScore.toFixed(2)} | min: ${minScore.toFixed(2)}`,
+            );
+        });
+
+        // Show top 20 with status
+        console.log("[Task Chat] ========== TOP 20 TASKS ==========");
+        sorted.slice(0, 20).forEach((item, i) => {
+            const statusLabel = item.task.statusCategory || "?";
+            const priorityLabel = item.task.priority || "none";
+            const dueDateLabel =
+                item.task.dueDate?.toString().substring(0, 10) || "none";
+            console.log(
+                `[Task Chat] ${String(i + 1).padStart(2)}. [${statusLabel.padEnd(11)}] ` +
+                    `P:${priorityLabel.toString().padEnd(4)} D:${dueDateLabel.padEnd(10)} ` +
+                    `Score:${item.score.toFixed(1).padStart(5)} | ${item.task.text.substring(0, 40)}...`,
+            );
+        });
+        console.log(
+            "[Task Chat] ================================================",
+        );
 
         // Log top 5 scores for debugging
         console.log(

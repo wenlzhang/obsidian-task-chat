@@ -452,7 +452,7 @@ export class QueryParserService {
         // Get COMPLETE stop words list dynamically from StopWords class
         const stopWordsList = StopWords.getStopWordsList();
         const stopWordsDisplay = stopWordsList.join('", "');
-        
+
         // Get generic query words for vague detection (separate from stop words)
         const genericQueryWords = Array.from(StopWords.GENERIC_QUERY_WORDS);
         const genericWordCount = genericQueryWords.length;
@@ -1012,14 +1012,27 @@ Use your semantic understanding to recognize these types of generic words:
 **LANGUAGE CONTEXT:** Configured languages: ${languageList}
 Recognize time terms, properties, and keywords in ALL these languages!
 
-1. **Extract dueDate** - If query mentions time/deadlines in ANY of the ${queryLanguages.length} configured languages
-   - Recognize: today/今天/idag, tomorrow/明天/imorgon, this week/本周/denna vecka
-   - Examples: "tasks due today", "What can I do today?", "Fix bug tomorrow"
-   - Set: dueDate = "today" (external code converts if vague)
+⚠️ CRITICAL TIME EXTRACTION RULES:
+
+When query mentions time/deadlines in ANY language (today/今天/idag, tomorrow/明天/imorgon, etc.):
+
+1. **ALWAYS convert to English** - Never use original language!
+   ✅ CORRECT: "今天可以做什么？" → dueDate: "today"
+   ✅ CORRECT: "imorgon" → dueDate: "tomorrow"
+   ❌ WRONG: "今天可以做什么？" → dueDate: "今天"
+   ❌ WRONG: "idag" → dueDate: "idag"
+
+2. **Set BOTH dueDate and timeContext to SAME English value:**
+   - dueDate: "today" (for filtering - REQUIRED)
+   - timeContext: "today" (in aiUnderstanding - MUST MATCH)
+   - ⚠️ These fields MUST be IDENTICAL! Never set only one!
    
-2. **Set timeContext** - Same as dueDate, for metadata/logging
-   - Always set when time word detected
-   - Used for debugging, not filtering
+   Examples:
+   ✅ "今天可以做什么？" → dueDate: "today", timeContext: "today"
+   ✅ "What should I do tomorrow?" → dueDate: "tomorrow", timeContext: "tomorrow"
+   ✅ "tasks due idag" → dueDate: "today", timeContext: "today"
+   ❌ "今天可以做什么？" → dueDate: null, timeContext: "今天" (WRONG - missing dueDate + not English)
+   ❌ "What should I do today?" → dueDate: "today", timeContext: null (WRONG - missing timeContext)
 
 3. **Determine isVague** - Analyze coreKeywords AFTER extraction
    - If ${Math.round(settings.vagueQueryThreshold * 100)}%+ are generic words → isVague: true
@@ -1032,6 +1045,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
   "priority": <number or array of numbers or null>,
   "dueDate": <string or null, extract if query mentions time/deadlines>,
+  "timeContext": <string or null, detected time term (for metadata) (same value as dueDate)>,
   "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
@@ -1044,7 +1058,6 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
       "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
       "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
     },
-    "timeContext": <string or null, detected time term (for metadata) (e.g., "today", "this week", "tomorrow")>,
     "confidence": <number 0-1, how confident you are in the parsing>,
     "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>,
     "isVagueReasoning": <string or null, brief explanation why isVague is true/false>
@@ -1450,6 +1463,51 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             const jsonString = this.extractJSON(response);
             const parsed = JSON.parse(jsonString);
             console.log("[Task Chat] AI query parser parsed:", parsed);
+
+            // ========== VALIDATE AND SYNC DUEDDATE ↔ TIMECONTEXT ==========
+            // These fields MUST match - if one is set, sync to the other
+            // This handles cases where AI doesn't follow prompt correctly
+            const dueDate = parsed.dueDate;
+            const timeContext = parsed.aiUnderstanding?.timeContext;
+
+            if (dueDate || timeContext) {
+                if (dueDate && timeContext) {
+                    // Both set - ensure they match
+                    if (dueDate !== timeContext) {
+                        console.warn(
+                            `[Task Chat] ⚠️ AI returned mismatched time fields:`,
+                        );
+                        console.warn(`[Task Chat]   dueDate: "${dueDate}"`);
+                        console.warn(
+                            `[Task Chat]   timeContext: "${timeContext}"`,
+                        );
+                        console.warn(
+                            `[Task Chat]   Using dueDate for both (dueDate takes precedence)`,
+                        );
+                        if (!parsed.aiUnderstanding)
+                            parsed.aiUnderstanding = {};
+                        parsed.aiUnderstanding.timeContext = dueDate;
+                    }
+                } else if (dueDate && !timeContext) {
+                    // Only dueDate set - sync to timeContext
+                    console.log(
+                        `[Task Chat] ⚠️ AI didn't set timeContext, syncing from dueDate: "${dueDate}"`,
+                    );
+                    if (!parsed.aiUnderstanding) parsed.aiUnderstanding = {};
+                    parsed.aiUnderstanding.timeContext = dueDate;
+                } else if (!dueDate && timeContext) {
+                    // Only timeContext set - sync to dueDate
+                    console.log(
+                        `[Task Chat] ⚠️ AI didn't set dueDate, syncing from timeContext: "${timeContext}"`,
+                    );
+                    parsed.dueDate = timeContext;
+                }
+
+                console.log(
+                    `[Task Chat] ✅ Time fields validated: dueDate="${parsed.dueDate}", timeContext="${parsed.aiUnderstanding?.timeContext}"`,
+                );
+            }
+            // ===============================================================
 
             // If AI didn't extract any keywords but also didn't extract any filters,
             // split the query into words as fallback
