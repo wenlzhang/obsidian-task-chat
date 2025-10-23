@@ -24,7 +24,7 @@ Task Chat settings are organized into 10 main sections:
 Choose from four AI providers:
 
 - **OpenAI** - GPT-4o, GPT-5, o-series models
-- **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus
+- **Anthropic** - Claude Sonnet 4.0, Claude Sonnet 4.5
 - **OpenRouter** - Access 100+ models from one API
 - **Ollama** - Run models locally (free, private)
 
@@ -37,9 +37,7 @@ Required for OpenAI, Anthropic, and OpenRouter. Not needed for Ollama.
 ### Model Selection
 
 **Recommended models:**
-- **GPT-4o-mini** - Fast, cheap, excellent quality
-- **Claude 3.5 Sonnet** - Best reasoning, higher cost
-- **gpt-4o** - Flagship model, balanced performance
+- **GPT-4o-mini** - Fast, cheap, good performance
 - **Local (Ollama)** - Free, private, slower
 
 ### Connection Test
@@ -57,18 +55,9 @@ Click "Refresh" to fetch latest models from your provider's API.
 
 ### Max Chat History
 
-**What it does:** Number of previous messages to include as context
+**What it does:** Max number of chat sessions to keep in history
 
-**Default:** 10 messages
-
-**Impact:**
-- Higher = Better context, higher token cost
-- Lower = Less context, cheaper queries
-
-**Recommended:**
-- 5-10 for most use
-- 15-20 for complex conversations
-- 3-5 to minimize costs
+**Default:** 50 sessions
 
 ### Max Response Length (Max Tokens)
 
@@ -76,21 +65,12 @@ Click "Refresh" to fetch latest models from your provider's API.
 
 **Default:** 2000 tokens
 
-**Impact:**
-- Higher = More detailed responses, slower, more expensive
-- Lower = Concise responses, faster, cheaper
-
-**Recommended:**
-- 1000 - Concise answers
-- 2000 - Balanced (default)
-- 4000 - Detailed analysis
-
 ### Temperature
 
 **What it does:** Controls AI creativity vs consistency
 
 **Range:** 0.0-2.0  
-**Default:** 0.7
+**Default:** 0.1
 
 **Guide:**
 - **0.0-0.3** - Precise, factual, consistent
@@ -104,8 +84,8 @@ Click "Refresh" to fetch latest models from your provider's API.
 
 **Options:**
 - **Simple Search** - Free, regex-based matching
-- **Smart Search** - AI keyword expansion (~$0.0001/query)
-- **Task Chat** - Full AI analysis (~$0.0021/query)
+- **Smart Search** - AI keyword expansion
+- **Task Chat** - Full AI analysis
 
 **Can override per-query** using dropdown in chat interface.
 
@@ -146,11 +126,6 @@ Languages: English + 中文 (2 languages)
 Total: 2 × 5 × 2 = 20 keywords
 ```
 
-**Recommended:**
-- 3-4 for fast queries
-- 5 for balanced (default)
-- 7-10 for comprehensive matching
-
 ### Query Languages
 
 **What it does:** Languages to generate synonyms in
@@ -166,50 +141,40 @@ English, 中文, Japanese
 English, Spanish, French
 ```
 
-**Tip:** Use English names (e.g., "Chinese" not "中文") for better AI recognition
+## 5. Dataview Integration
 
-## 5. DataView Integration
+### Dataview Task Properties
 
-### DataView Task Properties
-
-Configure field names that DataView uses for task properties.
+Configure field names that Dataview uses for task properties.
 
 ### Due Date Field
 
-**Default:** `due, due_date`
+**Default:** `due`
 
-**What it does:** Field names for due dates in DataView
+**What it does:** Field names for due dates in Dataview
 
 **Format:** Comma-separated
 
 ### Completed Date Field
 
-**Default:** `completion, completion_date`
+**Default:** `completion`
 
 ### Created Date Field
 
 **Default:** `created`
 
-### Start Date Field
-
-**Default:** `start, start_date`
-
-### Scheduled Date Field
-
-**Default:** `scheduled`
-
 ### Priority Field
 
-**Default:** `priority, p`
+**Default:** `p`
 
 ### Priority Mapping
 
 Define which values map to each priority level:
 
-**Priority 1 (highest):** `1, high, ⏫, urgent`  
-**Priority 2 (high):** `2, 🔼, important`  
-**Priority 3 (medium):** `3, medium, 🔽`  
-**Priority 4 (low):** `4, low, 🔻`
+**Priority 1 (highest):** `1, high`  
+**Priority 2 (high):** `2, medium`  
+**Priority 3 (medium):** `3, low`  
+**Priority 4 (low):** `4, none`
 
 ## 6. Status Category
 
@@ -230,7 +195,7 @@ See [Status Categories](STATUS_CATEGORIES.md) for complete guide.
 Add your own categories:
 
 **Examples:**
-- **Blocked** - Waiting on dependencies (symbol: `?`)
+- **Question** - Waiting on dependencies (symbol: `?`)
 - **Review** - Under review (symbol: `R`)
 - **Important** - High priority (symbol: `!`)
 
@@ -254,15 +219,9 @@ Control which tasks appear in results.
 
 **What it does:** Generic words filtered out during search
 
-**Built-in:** ~100 words (the, a, task, work, etc.)
+**Built-in:** the, a, that, etc.
 
 **Custom stop words:** Add domain-specific terms
-
-**Examples:**
-```
-plugin, feature, module, component
-项目, 任务, 工作
-```
 
 **Impact:** Filtering, Scoring, AI Prompts
 
@@ -279,15 +238,15 @@ Threshold = Max Score × Quality Filter %
 **Default:** 0% (adaptive)
 
 **Levels:**
-- **0%** - Adaptive (auto-adjusts, recommended)
+- **0%** - Adaptive (auto-adjusts)
 - **1-25%** - Permissive (broad results)
 - **26-50%** - Balanced
 - **51-75%** - Strict (focused results)
 - **76-100%** - Very strict (near-perfect matches)
 
 **When to adjust:**
-- Too many results? Increase to 20-30%
-- Too few results? Decrease to 0-10%
+- Too many results? Increase value
+- Too few results? Decrease value
 
 ### Minimum Relevance Score
 
@@ -325,19 +284,15 @@ Final Score = (Relevance × R) + (Due Date × D) + (Priority × P) + (Status × 
 
 **Keyword-focused (R:30, D:2, P:1, S:1):**
 - Emphasizes keyword matching
-- Best for: Content searches
 
 **Urgency-focused (R:20, D:10, P:5, S:1):**
 - Emphasizes deadlines
-- Best for: Deadline-driven work
 
 **Importance-focused (R:15, D:3, P:10, S:1):**
 - Emphasizes priority
-- Best for: Goal-driven work
 
 **Balanced (R:10, D:10, P:10, S:1):**
 - Equal weight to all factors
-- Best for: General use
 
 ### Relevance Sub-Coefficients
 
@@ -350,7 +305,7 @@ Final Score = (Relevance × R) + (Due Date × D) + (Priority × P) + (Status × 
 
 Control urgency curve:
 
-- **Overdue:** 1.5 (most urgent)
+- **Overdue:** 1.2 (most urgent)
 - **Within 7 days:** 1.0
 - **Within 1 month:** 0.5
 - **Later:** 0.2
@@ -387,9 +342,9 @@ Control result limits and sorting behavior.
 ### Result Limits
 
 **Max direct results (default: 20):**
-- Simple/Smart Search display limit
+- Simple Search display limit
 - Increase for more comprehensive results
-- Decrease for faster display
+- Decrease for more relevant results
 
 **Max tasks for AI (default: 100):**
 - Context sent to AI in Task Chat mode
@@ -402,7 +357,7 @@ Control result limits and sorting behavior.
 
 ### Task Sort Order
 
-**What it does:** Multi-criteria sorting for tiebreaking
+**What it does:** Multi-criteria sorting
 
 **Default:** [Relevance, Due date, Priority, Status]
 
@@ -445,13 +400,6 @@ Toggle display of token usage statistics in chat interface.
 - Domain expertise required
 - Custom output format desired
 
-**Examples:**
-```
-"You are a project manager. Focus on deadlines and dependencies."
-"You are a productivity coach. Emphasize time management."
-"Respond in Chinese. Be concise and action-oriented."
-```
-
 ### Pricing Data
 
 View and manage token usage costs.
@@ -459,7 +407,6 @@ View and manage token usage costs.
 **Shows:**
 - Total tokens used
 - Total cost (USD)
-- Per-provider breakdown
 
 **Reset:** Clear statistics to start fresh
 
@@ -471,14 +418,14 @@ View and manage token usage costs.
 
 **Solutions:**
 1. Add custom stop words: `task, work, item`
-2. Increase quality filter: 20%
-3. Add minimum relevance: 30%
+2. Increase quality filter
+3. Add minimum relevance
 
 ### Scenario 2: Urgent Tasks Overwhelming Keywords
 
 **Problem:** Query "implement feature" shows overdue docs/meetings
 
-**Solution:** Add minimum relevance score 30-40%
+**Solution:** Add minimum relevance score
 
 ### Scenario 3: Keywords Dominate Too Much
 
@@ -496,7 +443,7 @@ View and manage token usage costs.
 **Solutions:**
 1. Enable semantic expansion
 2. Add Chinese to query languages
-3. Increase max keyword expansions to 7-10
+3. Increase max keyword expansions
 
 ### Scenario 5: Domain-Specific Generic Terms
 
@@ -522,21 +469,21 @@ View and manage token usage costs.
 ### Cost Management
 
 1. **Use Simple Search** - Free (no AI)
-2. **Smart Search** - ~$0.0001/query (keyword expansion only)
-3. **Task Chat** - ~$0.0021/query (full analysis)
+2. **Smart Search** - ~$0.0001/query (depending on query length and model selection)
+3. **Task Chat** - ~$0.0021/query (depending on query length, task count, and model selection)
 4. **Monitor pricing data** - Track usage over time
 
 ### Troubleshooting
 
 **No/Few Results:**
-- Quality filter too strict → Decrease to 0-20%
+- Quality filter too strict → Decrease value
 - Minimum relevance too high → Decrease or disable
 - Stop words too aggressive → Remove domain terms
 
 **Wrong Tasks Appearing:**
 - Generic keywords → Add custom stop words
 - Urgent tasks overwhelming → Add minimum relevance
-- Quality filter too permissive → Increase to 10-30%
+- Quality filter too permissive → Increase value
 
 **Wrong Task Order:**
 - Check scoring coefficients (R, D, P, S)

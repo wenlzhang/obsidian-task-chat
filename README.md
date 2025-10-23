@@ -7,9 +7,112 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 - **🤖 Three Chat Modes** - Free simple search, smart semantic matching, or full AI analysis
 - **🌐 Multilingual Support** - Search in English, 中文, and other languages
 - **🎯 Smart Filtering** - Priority, due date, status, tags, folders
-- **📊 Intelligent Scoring** - Customizable relevance, urgency, and importance weights
+- **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
 - **💬 Natural Language** - Ask questions in plain language
-- **🔄 DataView Integration** - Works seamlessly with DataView tasks
+- **🔄 Dataview Integration** - Works seamlessly with Dataview syntax
+
+## 🎯 Three Chat Modes
+
+| Mode | AI Usage | Cost | Best For |
+|------|----------|------|----------|
+| **🚀 Simple Search** | None | None | Quick searches, free operation |
+| **🧠 Smart Search** | Keyword expansion | Very low | Multilingual, broader results |
+| **💬 Task Chat** | Full AI assistant | Higher | AI insights, prioritization |
+
+**Default**: Simple Search (free). Switch anytime using the dropdown in chat interface.
+
+→ [Learn more about chat modes](docs/CHAT_MODES.md)
+
+## 🔍 Search Examples
+
+### Simple Search (Free)
+
+```
+# Priority and status
+s:open priority:1
+status:done p:1,2,3
+p1 p2 & overdue
+
+# Due dates
+due:today
+next week
+overdue
+
+# Combined filters
+s:open p1 due:today
+```
+
+### Smart Search (AI Expansion)
+
+```
+# English
+fix → finds "repair", "solve", "correct", "resolve"
+urgent → finds "critical", "important", "high-priority"
+
+# 中文
+修复 → finds "修理", "解决", "修正", "纠正"
+紧急 → finds "关键", "重要", "高优先级"
+
+# Natural language
+tasks I need to finish today
+show me incomplete high priority items
+fix bug p1 due:today s:open,?
+```
+
+### Task Chat (AI Analysis)
+
+```
+# English
+What should I work on next?
+Show me urgent tasks that are overdue
+Analyze my high-priority tasks
+fix bug p:1 p:2 due s:open,?
+
+# 中文
+我接下来应该做什么？
+显示过期的紧急任务
+分析我的高优先级任务
+```
+
+## 📊 Query Syntax
+
+### Status Filters
+
+```
+s:open          → Open tasks
+s:completed     → Completed tasks
+s:inprogress    → In-progress tasks
+s:open,wip      → Open OR in-progress
+s:x             → Completed (by symbol)
+s:/             → In-progress (by symbol)
+```
+
+### Priority Filters
+
+```
+p1, p2, p3, p4            → Priority levels
+priority:1                → High priority
+urgent, critical          → Natural language (Smart Search/Task Chat)
+```
+
+### Due Date Filters
+
+```
+due:today, due:tomorrow   → Specific days
+overdue                   → Past due
+next week, this month     → Relative dates
+7d, -2w, 3m               → Relative dates
+due before: Friday        → Before specific date
+```
+
+### Combined Filters
+
+```
+s:open p1 overdue
+fix bug s:inprogress due:today
+s:blocked priority:1
+urgent s:open
+```
 
 ## Quick Start
 
@@ -24,18 +127,17 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 
 1. **Open Task Chat** - Click the chat icon in the left sidebar or use command palette
 2. **Choose a Mode** - Select your preferred chat mode from the dropdown
-3. **Start Searching** - Type your query and press Enter
+3. **Start Chatting** - Type your query and press Enter
 
 **Example queries:**
 ```
-# Simple searches
+# Simple Search
 s:open priority:1 due:today
-urgent tasks
 fix bug
 
-# Smart search (with AI expansion)
-修复错误 (finds "fix", "repair", "solve" in multiple languages)
-urgent incomplete tasks
+# Smart Search (with AI expansion)
+fix bug (finds "fix", "repair", "solve" in multiple languages)
+urgent open tasks
 
 # Task Chat (with AI analysis)
 What should I work on today?
@@ -43,21 +145,53 @@ Show me overdue high-priority tasks
 Analyze my tasks for this week
 ```
 
+## ⚙️ Configuration
+
+### Quick Setup
+
+1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
+2. **API Key** - Enter your API key (not needed for Ollama)
+3. **Model Selection** - Pick a model (GPT-4o-mini recommended for balance between performance and cost)
+4. **Test Connection** - Verify setup works
+
+**Recommended models:**
+- **GPT-4o-mini** - Fast, cheap, good performance (default)
+- **Local (Ollama)** - Free, private, slower
+
+→ [Complete settings guide](docs/SETTINGS_GUIDE.md)
+
+### Common Adjustments
+
+**Too many results?**
+- Increase quality filter (Settings → Task Filtering)
+- Add minimum relevance score
+
+**Missing relevant tasks?**
+- Enable semantic expansion (Settings → Semantic Expansion)
+- Increase max keyword expansions
+- Add more query languages
+
+**Wrong task priority?**
+- Adjust scoring coefficients (Settings → Task Scoring)
+- Customize priority/due date weights
+
+→ [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
+
 ## 📖 Documentation
 
 ### Core Concepts
 
 - **[Chat Modes](docs/CHAT_MODES.md)** - Choose the right mode for your needs
   - Simple Search - Free, fast, regex-based
-  - Smart Search - AI keyword expansion (~$0.0001/query)
-  - Task Chat - Full AI analysis (~$0.0021/query)
+  - Smart Search - AI keyword expansion (~$0.0001/query, depending on query length and model selection)
+  - Task Chat - Full AI analysis (~$0.0021/query, depending on query length and model selection)
 
 - **[Settings Guide](docs/SETTINGS_GUIDE.md)** - Complete configuration reference
   - AI Provider setup
   - Chat mode configuration
   - Semantic expansion
   - Task filtering and scoring
-  - Display and sorting options
+  - Display and sorting
 
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
   - Built-in categories (Open, In Progress, Completed, Cancelled)
@@ -81,145 +215,7 @@ Analyze my tasks for this week
 
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
   - Sort criteria (relevance, due date, priority, status, created, alphabetical)
-  - Tiebreaking logic
   - Performance considerations
-
-## 🎯 Three Chat Modes
-
-| Mode | AI Usage | Cost | Best For |
-|------|----------|------|----------|
-| **🚀 Simple Search** | None | $0 | Quick searches, free operation |
-| **🧠 Smart Search** | Keyword expansion | ~$0.0001 | Multilingual, broader results |
-| **💬 Task Chat** | Full AI assistant | ~$0.0021 | AI insights, prioritization |
-
-**Default**: Simple Search (free). Switch anytime using the dropdown in chat interface.
-
-→ [Learn more about chat modes](docs/CHAT_MODES.md)
-
-## 🔍 Search Examples
-
-### Simple Search (Free)
-
-```
-# Priority and status
-s:open priority:1
-p1 & overdue
-
-# Due dates
-due:today
-next week
-overdue tasks
-
-# Combined filters
-s:open & p1 & due:today
-urgent tasks in ##Work folder
-```
-
-### Smart Search (AI Expansion)
-
-```
-# English
-fix → finds "repair", "solve", "correct", "resolve"
-urgent → finds "critical", "important", "high-priority"
-
-# 中文
-修复 → finds "修理", "解决", "修正", "纠正"
-紧急 → finds "关键", "重要", "高优先级"
-
-# Natural language
-tasks I need to finish today
-show me incomplete high priority items
-```
-
-### Task Chat (AI Analysis)
-
-```
-# English
-What should I work on next?
-Show me urgent tasks that are overdue
-Analyze my high-priority tasks
-
-# 中文
-我接下来应该做什么？
-显示过期的紧急任务
-分析我的高优先级任务
-```
-
-## ⚙️ Configuration
-
-### Quick Setup
-
-1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
-2. **API Key** - Enter your API key (not needed for Ollama)
-3. **Model Selection** - Pick a model (GPT-4o-mini recommended)
-4. **Test Connection** - Verify setup works
-
-**Recommended models:**
-- **GPT-4o-mini** - Fast, cheap, excellent quality (default)
-- **gpt-4o** - Flagship model, balanced performance
-- **Claude 3.5 Sonnet** - Best reasoning, higher cost
-- **Local (Ollama)** - Free, private, slower
-
-→ [Complete settings guide](docs/SETTINGS_GUIDE.md)
-
-### Common Adjustments
-
-**Too many results?**
-- Increase quality filter (Settings → Task Filtering)
-- Add minimum relevance score
-
-**Missing relevant tasks?**
-- Enable semantic expansion (Settings → Semantic Expansion)
-- Add more query languages
-- Increase max keyword expansions
-
-**Wrong task priority?**
-- Adjust scoring coefficients (Settings → Task Scoring)
-- Customize priority/due date weights
-
-→ [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
-
-## 📊 Query Syntax
-
-### Status Filters
-
-```
-s:open          → Open tasks
-s:completed     → Completed tasks
-s:inprogress    → In-progress tasks
-s:open,wip      → Open OR in-progress
-s:x             → Completed (by symbol)
-s:/             → In-progress (by symbol)
-```
-
-### Priority Filters
-
-```
-p1, p2, p3, p4           → Priority levels
-priority:1                → High priority
-urgent, critical          → Natural language (Smart Search/Task Chat)
-```
-
-### Due Date Filters
-
-```
-due:today, due:tomorrow   → Specific days
-overdue, od               → Past due
-next week, this month     → Relative dates
-7d, 2w, 3mo               → Duration format
-due before: Friday        → Before specific date
-```
-
-### Combined Filters
-
-```
-s:open & p1 & overdue
-fix bug s:inprogress due:today
-s:blocked priority:1
-urgent s:open & ##ProjectName
-```
-
-→ [Complete query syntax in README sections 66-343](README.md#advanced-query-syntax)
 
 ## 🎚️ Customization
 
@@ -228,7 +224,7 @@ urgent s:open & ##ProjectName
 Create custom task states that match your workflow:
 
 **Examples:**
-- **Blocked** - Waiting on dependencies (symbol: `?`)
+- **Question** - Waiting on dependencies (symbol: `?`)
 - **Review** - Under code review (symbol: `R`)
 - **Important** - High-priority flag (symbol: `!`)
 
@@ -250,9 +246,9 @@ Balanced:        R:10, D:10, P:10 → Equal weight to all
 
 Configure DataView field names:
 
-- Due date fields: `due, due_date, deadline`
-- Priority fields: `priority, p, importance`
-- Status fields: `status, state`
+- Due date fields: `due, deadline`
+- Priority fields: `priority, p`
+- Status fields: `status`
 
 → [DataView integration settings](docs/SETTINGS_GUIDE.md#5-dataview-integration)
 
@@ -295,8 +291,8 @@ fix bug → finds "repair error", "solve issue", "correct problem"
 
 ### Paid Options
 
-- **Smart Search** - ~$0.0001 per query (keyword expansion only)
-- **Task Chat** - ~$0.0021 per query (full AI analysis)
+- **Smart Search** - ~$0.0001 per query (depending on query length and model selection)
+- **Task Chat** - ~$0.0021 per query (depending on query length and model selection)
 
 **Cost optimization tips:**
 1. Use Simple Search for exact keyword matches
@@ -335,16 +331,16 @@ fix bug → finds "repair error", "solve issue", "correct problem"
 
 ## 🤝 Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome!
 
 ## 📜 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
 - Built for [Obsidian](https://obsidian.md/)
-- Compatible with [DataView](https://github.com/blacksmithgu/obsidian-dataview)
+- Compatible with [Dataview](https://github.com/blacksmithgu/obsidian-dataview)
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
 
@@ -359,10 +355,29 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/wenlzhang/obsidian-task-chat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/wenlzhang/obsidian-task-chat/discussions)
-- **Documentation**: [docs/](docs/)
+This plugin is a labor of love, developed and maintained during my free time after work and on weekends. A lot of thought, energy, and care goes into making it reliable and user-friendly.
 
----
+If you find this plugin valuable in your daily workflow:
 
-**Made with ❤️ for the Obsidian community**
+- If it helps you manage tasks more effectively
+- If it saves you time and mental energy
+
+Please consider supporting my work. Your support would mean the world to me and would help me dedicate more time and energy to:
+
+- Developing new features
+- Maintaining code quality
+- Providing support and documentation
+- Making the plugin even better for everyone
+
+### Ways to Support
+
+You can support this project in several ways:
+
+- ⭐ Star the project on GitHub
+- 💝 <a href='https://ko-fi.com/C0C66C1TB' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=3' border='0' alt='Buy Me a Coffee' /></a>
+- [Sponsor](https://github.com/sponsors/wenlzhang) my work on GitHub
+- 💌 Share your success stories and feedback
+- 📢 Spread the word about the plugin
+- 🐛 [Report issues](https://github.com/wenlzhang/obsidian-task-chat/issues) to help improve the plugin
+
+Thank you for being part of this journey! 🙏

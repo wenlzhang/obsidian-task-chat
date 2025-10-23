@@ -16,7 +16,7 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **How it works:**
 - Uses regex pattern matching
-- Removes stop words (the, task, work, etc.)
+- Removes stop words (the, a, that, etc.)
 - Fast and free (no AI calls)
 
 **Best for:**
@@ -28,7 +28,6 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 **Example queries:**
 - `fix bug priority:1`
 - `s:open due:today`
-- `urgent tasks`
 
 ## Smart Search
 
@@ -48,12 +47,12 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 *English:*
 - `fix` → Finds "repair", "solve", "correct", "resolve"
-- `urgent` → Finds "critical", "important", "high-priority"
+- `urgent` → Finds "critical", "high-priority"
 - "tasks I need to finish today"
 
 *中文:*
 - `修复` → Finds "修理", "解决", "修正", "纠正"
-- `紧急` → Finds "关键", "重要", "高优先级"
+- `紧急` → Finds "关键", "高优先级"
 - "我今天需要完成的任务"
 
 **AI features:**
@@ -120,13 +119,13 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **Smart Search:** Very low cost
 - Only expands keywords (small prompt)
-- Example: ~100-200 tokens per query
-- Estimated: $0.0001-0.0002 per query (with GPT-4o-mini)
+- Example: ~100-200 tokens per query (depending on query length)
+- Estimated: $0.0001-0.0002 per query (depending on query length and model selection)
 
 **Task Chat:** Higher cost
 - Expands keywords + analyzes tasks + generates recommendations
-- Example: ~1000-5000 tokens per query (depends on task count)
-- Estimated: $0.001-0.01 per query (with GPT-4o-mini)
+- Example: ~1000-5000 tokens per query (depending on query length and task count)
+- Estimated: $0.001-0.01 per query (depending on query length, task count, and model selection)
 
 **Tip:** Use Smart Search for most queries, Task Chat for complex analysis.
 
