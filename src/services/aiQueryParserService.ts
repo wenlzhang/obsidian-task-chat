@@ -1075,26 +1075,34 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 
 ⚠️ CRITICAL: Time words in vague queries are CONTEXT, not always filters!
 
-**When to extract dueDate/dueDateRange:**
+**When to extract exact dueDate (specific queries):**
 1. ✅ User explicitly asks for tasks DUE on a date: "tasks due today", "due tomorrow"
 2. ✅ User mentions deadline/expiration: "deadline today", "expires tomorrow"
 3. ✅ Specific query with time: "Deploy API today", "Fix bug tomorrow"
+→ Use dueDate: "today" (exact match)
 
-**When NOT to extract dueDate/dueDateRange:**
-1. ❌ Vague query with time context: "今天可以做什么？" (What can I do today?)
-   - "今天" (today) is CONTEXT (asking about today's workload), not a filter
-   - User wants to see ALL tasks, not just tasks due today
-   - Don't set dueDate: "today"
+**When to extract dueDateRange (vague queries with time context):**
+1. ✅ Vague query with time word: "What can I do today?", "今天可以做什么？"
+   - Detect time context semantically (today, tomorrow, this week, etc.)
+   - Use dueDateRange: { "operator": "<=", "date": "today" }
+   - Includes overdue tasks (what needs attention by that time)
+   - Set aiUnderstanding.timeContext: "today"
+2. ✅ Open-ended questions with time: "What should I work on this week?"
+   - Use dueDateRange: { "operator": "<=", "date": "end-of-week" }
+   - Set aiUnderstanding.timeContext: "this week"
 
-2. ❌ Generic questions about time: "What's next?", "What should I work on?"
-   - No explicit time constraint
-   - User wants recommendations, not date filtering
+**When NOT to extract any date filters:**
+1. ❌ Pure generic questions: "What's next?", "What should I work on?"
+   - NO time words at all
+   - No dueDate, no dueDateRange
+   - Return tasks by priority/urgency only
 
-**How to handle time in vague queries:**
-- Recognize all time context terms from TaskPropertyService (today, tomorrow, yesterday, this/last/next week/month/year, etc.)
-- **For vague queries, convert time context to dueDateRange with appropriate operator**
-- This includes OVERDUE tasks (what needs attention by that time)
-- **Record ALSO in aiUnderstanding.timeContext** for AI prioritization
+**🔑 KEY PRINCIPLE - Semantic Time Detection:**
+- Recognize time words in ANY language: today/今天/idag, week/周/vecka, etc.
+- Time word in vague query → dueDateRange with "<=" operator
+- Time word in specific query → exact dueDate
+- No time word → no date filter
+- ALWAYS set aiUnderstanding.timeContext when time word detected
 
 ${this.buildTimeContextExamples(settings)}
 
@@ -1107,6 +1115,13 @@ ${this.buildTimeContextExamples(settings)}
 **EXAMPLES:**
 
 Query: "今天可以做什么？" (What can I do today?)
+→ isVague: true
+→ dueDate: null
+→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
+→ aiUnderstanding.timeContext: "today"
+→ Strategy: Return tasks due today + overdue (what needs attention today)
+
+Query: "What should I do today?"
 → isVague: true
 → dueDate: null
 → dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!

@@ -287,6 +287,7 @@ export class AIService {
         if (
             intent.extractedPriority ||
             intent.extractedDueDateFilter ||
+            intent.extractedDueDateRange ||
             intent.extractedStatus ||
             intent.extractedFolder ||
             intent.extractedTags.length > 0 ||
@@ -295,6 +296,7 @@ export class AIService {
             console.log("[Task Chat] Extracted intent:", {
                 priority: intent.extractedPriority,
                 dueDate: intent.extractedDueDateFilter,
+                dueDateRange: intent.extractedDueDateRange,
                 status: intent.extractedStatus,
                 folder: intent.extractedFolder,
                 tags: intent.extractedTags,
