@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import TaskChatPlugin from "./main";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
+import { TaskPropertyService } from "./services/taskPropertyService";
 import {
     DEFAULT_SETTINGS,
     isStatusCategoryProtected,
@@ -1697,6 +1698,58 @@ Examples:
             </ul>
         `;
 
+        // Validate status orders and show warnings if duplicates found
+        const validation = TaskPropertyService.validateStatusOrders(
+            this.plugin.settings.taskStatusMapping,
+        );
+
+        if (!validation.valid) {
+            const warningBox = containerEl.createDiv({
+                cls: "task-chat-warning-box",
+            });
+            warningBox.style.cssText =
+                "background: var(--background-modifier-error); border: 1px solid var(--background-modifier-error-hover); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
+
+            const warningTitle = warningBox.createEl("div");
+            warningTitle.style.cssText =
+                "font-weight: 600; margin-bottom: 8px; color: var(--text-error);";
+            warningTitle.innerHTML = "⚠️ Duplicate Sort Orders Detected";
+
+            for (const warning of validation.warnings) {
+                const warningText = warningBox.createEl("p");
+                warningText.style.cssText = "margin: 4px 0; font-size: 13px;";
+                warningText.textContent = warning;
+            }
+
+            const warningExplanation = warningBox.createEl("p");
+            warningExplanation.style.cssText =
+                "margin: 8px 0 12px 0; font-size: 13px; font-style: italic;";
+            warningExplanation.textContent =
+                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...).";
+
+            new Setting(warningBox)
+                .setName("Auto-Fix Duplicates")
+                .setDesc(
+                    "Automatically renumber all categories to remove conflicts",
+                )
+                .addButton((button) =>
+                    button
+                        .setButtonText("Auto-Fix Now")
+                        .setCta()
+                        .onClick(async () => {
+                            this.plugin.settings.taskStatusMapping =
+                                TaskPropertyService.autoFixStatusOrders(
+                                    this.plugin.settings.taskStatusMapping,
+                                );
+                            await this.plugin.saveSettings();
+                            new Notice(
+                                "Status orders fixed! Categories renumbered with gaps (10, 20, 30...)",
+                            );
+                            this.display(); // Refresh UI
+                        }),
+                );
+        }
+
         // Add column headers
         const headerDiv = containerEl.createDiv();
         headerDiv.style.cssText =
@@ -2097,12 +2150,19 @@ Examples:
             }
         });
 
-        // Order field
+        // Order field with effective order display
+        const effectiveOrder = TaskPropertyService.getStatusOrder(
+            categoryKey,
+            this.plugin.settings,
+        );
+        const orderDesc =
+            order !== undefined
+                ? `Sort priority (1=highest). Controls task order when sorting by status. Current effective order: ${effectiveOrder}. Leave empty for smart defaults.`
+                : `Sort priority (1=highest). Controls task order when sorting by status. Currently using default: ${effectiveOrder}. Built-in: open=1, inProgress=2, completed=6, cancelled=7. Custom=8.`;
+
         new Setting(advancedFields)
             .setName("Sort order")
-            .setDesc(
-                `Sort priority (1=highest). Controls task order when sorting by status. Leave empty for smart defaults. Built-in categories: open=1, inProgress=2, completed=6, cancelled=7. Custom categories default to 8.`,
-            )
+            .setDesc(orderDesc)
             .addText((text) => {
                 text.setPlaceholder("e.g., 3")
                     .setValue(order !== undefined ? String(order) : "")

@@ -1685,4 +1685,123 @@ export class TaskPropertyService {
 
         return targetDate.format("YYYY-MM-DD");
     }
+
+    /**
+     * Validate status orders for duplicates and conflicts
+     * Checks if multiple categories share the same order number
+     *
+     * @param statusMapping - Task status mapping from settings
+     * @returns Validation result with duplicates and warnings
+     */
+    static validateStatusOrders(
+        statusMapping: Record<
+            string,
+            {
+                symbols: string[];
+                score: number;
+                displayName: string;
+                aliases: string;
+                order?: number;
+                description?: string;
+                terms?: string;
+            }
+        >,
+    ): {
+        valid: boolean;
+        duplicates: Array<{ order: number; categories: string[] }>;
+        warnings: string[];
+    } {
+        const orderMap = new Map<number, string[]>();
+
+        // Group categories by order number
+        for (const [key, config] of Object.entries(statusMapping)) {
+            if (config.order !== undefined) {
+                const existing = orderMap.get(config.order) || [];
+                existing.push(key);
+                orderMap.set(config.order, existing);
+            }
+        }
+
+        // Find duplicates (orders used by multiple categories)
+        const duplicates: Array<{ order: number; categories: string[] }> = [];
+        for (const [order, categories] of orderMap.entries()) {
+            if (categories.length > 1) {
+                duplicates.push({ order, categories });
+            }
+        }
+
+        // Generate user-friendly warnings
+        const warnings: string[] = [];
+        for (const dup of duplicates) {
+            const categoryNames = dup.categories
+                .map((key) => statusMapping[key]?.displayName || key)
+                .join(", ");
+            warnings.push(
+                `Order ${dup.order} is used by multiple categories: ${categoryNames}. ` +
+                    `This may cause unpredictable sorting behavior when sorting by status.`,
+            );
+        }
+
+        return {
+            valid: duplicates.length === 0,
+            duplicates,
+            warnings,
+        };
+    }
+
+    /**
+     * Auto-fix duplicate status orders by renumbering with gaps
+     * Assigns new order numbers: 10, 20, 30... (leaves gaps for future insertions)
+     *
+     * @param statusMapping - Task status mapping from settings
+     * @returns Updated status mapping with fixed orders
+     */
+    static autoFixStatusOrders(
+        statusMapping: Record<
+            string,
+            {
+                symbols: string[];
+                score: number;
+                displayName: string;
+                aliases: string;
+                order?: number;
+                description?: string;
+                terms?: string;
+            }
+        >,
+    ): Record<
+        string,
+        {
+            symbols: string[];
+            score: number;
+            displayName: string;
+            aliases: string;
+            order?: number;
+            description?: string;
+            terms?: string;
+        }
+    > {
+        // Get all categories sorted by their current effective order
+        const categories = Object.entries(statusMapping);
+
+        // Sort by effective order (respecting defaults)
+        categories.sort(([keyA, configA], [keyB, configB]) => {
+            const orderA =
+                configA.order ?? this.DEFAULT_STATUS_CONFIG[keyA]?.order ?? 999;
+            const orderB =
+                configB.order ?? this.DEFAULT_STATUS_CONFIG[keyB]?.order ?? 999;
+            return orderA - orderB;
+        });
+
+        // Assign new orders with gaps: 10, 20, 30...
+        const fixed = { ...statusMapping };
+        categories.forEach(([key], index) => {
+            fixed[key] = {
+                ...fixed[key],
+                order: (index + 1) * 10,
+            };
+        });
+
+        return fixed;
+    }
 }
