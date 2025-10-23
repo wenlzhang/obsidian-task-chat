@@ -233,7 +233,9 @@ export class AIService {
                 intent = {
                     isSearch: keywords.length > 0,
                     isPriority: !!parsedQuery.priority,
-                    isDueDate: !!(parsedQuery.dueDate || parsedQuery.dueDateRange),
+                    isDueDate: !!(
+                        parsedQuery.dueDate || parsedQuery.dueDateRange
+                    ),
                     keywords: keywords,
                     extractedPriority: parsedQuery.priority || null,
                     extractedDueDateFilter: parsedQuery.dueDate || null,
@@ -350,7 +352,8 @@ export class AIService {
                         intent.extractedDueDateFilter ||
                         intent.extractedStatus ||
                         intent.extractedFolder ||
-                        (intent.extractedTags && intent.extractedTags.length > 0)
+                        (intent.extractedTags &&
+                            intent.extractedTags.length > 0)
                     ), // Indicates if original query had properties
                 },
             );

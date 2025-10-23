@@ -959,42 +959,43 @@ export class TaskSearchService {
             // Imports TimeContextService for detecting "today", "this week", "last month", etc.
             if (!extractedDueDateFilter && !extractedDueDateRange) {
                 const { TimeContextService } = require("./timeContextService");
-                const timeContextResult = TimeContextService.detectAndConvertTimeContext(
-                    query,
-                    settings
-                );
+                const timeContextResult =
+                    TimeContextService.detectAndConvertTimeContext(
+                        query,
+                        settings,
+                    );
 
                 if (timeContextResult) {
                     extractedDueDateRange = timeContextResult.range;
                     console.log(
-                        `[Simple Search] Time context detected: "${timeContextResult.matchedTerm}" → ${timeContextResult.description}`
+                        `[Simple Search] Time context detected: "${timeContextResult.matchedTerm}" → ${timeContextResult.description}`,
                     );
                     console.log(
-                        `[Simple Search] Range: ${JSON.stringify(timeContextResult.range)}`
+                        `[Simple Search] Range: ${JSON.stringify(timeContextResult.range)}`,
                     );
                 }
             }
 
             // 2. Filter generic words from keywords (for mixed vague queries)
             const rawKeywords = [...keywords];
-            keywords = keywords.filter(kw => !StopWords.isGenericWord(kw));
+            keywords = keywords.filter((kw) => !StopWords.isGenericWord(kw));
 
             if (rawKeywords.length > keywords.length) {
                 console.log(
-                    `[Simple Search] Filtered generic words: ${rawKeywords.length} → ${keywords.length} keywords remain`
+                    `[Simple Search] Filtered generic words: ${rawKeywords.length} → ${keywords.length} keywords remain`,
                 );
                 console.log(
-                    `[Simple Search] Removed: [${rawKeywords.filter(k => !keywords.includes(k)).join(", ")}]`
+                    `[Simple Search] Removed: [${rawKeywords.filter((k) => !keywords.includes(k)).join(", ")}]`,
                 );
             }
 
             if (keywords.length > 0) {
                 console.log(
-                    `[Simple Search] Mixed vague query: ${keywords.length} meaningful keywords: [${keywords.join(", ")}]`
+                    `[Simple Search] Mixed vague query: ${keywords.length} meaningful keywords: [${keywords.join(", ")}]`,
                 );
             } else {
                 console.log(
-                    `[Simple Search] Pure vague query: No meaningful keywords (all generic)`
+                    `[Simple Search] Pure vague query: No meaningful keywords (all generic)`,
                 );
             }
         }

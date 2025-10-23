@@ -27,7 +27,7 @@ export interface DateRange {
     // For vague queries: operator-based (e.g., "<= today" includes overdue)
     operator?: "<" | "<=" | ">" | ">=" | "=" | "between";
     date?: string; // Primary date: "today", "tomorrow", "end-of-week", etc.
-    
+
     // For specific range queries: start/end dates (legacy support)
     start?: string;
     end?: string;

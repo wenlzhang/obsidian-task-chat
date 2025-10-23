@@ -308,7 +308,7 @@ export class SettingsTab extends PluginSettingTab {
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md">→ Learn more about chat modes</a></p>
         `;
 
-        // Generic Question Detection        
+        // Generic Question Detection
         new Setting(containerEl)
             .setName("Generic question detection")
             .setClass("setting-subsection-heading");

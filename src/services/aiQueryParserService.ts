@@ -401,6 +401,72 @@ export class QueryParserService {
     }
 
     /**
+     * Build time context examples dynamically from TaskPropertyService
+     * This ensures examples use actual configured terms (single source of truth)
+     */
+    private static buildTimeContextExamples(settings: PluginSettings): string {
+        const dueDateTerms =
+            TaskPropertyService.getCombinedDueDateTerms(settings);
+
+        // Helper to format terms for display (show first 3 terms max)
+        const formatTerms = (terms: string[]): string => {
+            return terms.slice(0, 3).join(", ");
+        };
+
+        return `**Time Context → Range Mapping (VAGUE QUERIES ONLY):**
+
+TODAY (${formatTerms(dueDateTerms.today)}):
+→ dueDateRange: { "operator": "<=", "date": "today" }
+→ Includes: Overdue + Due today
+
+TOMORROW (${formatTerms(dueDateTerms.tomorrow)}):
+→ dueDateRange: { "operator": "<=", "date": "tomorrow" }
+→ Includes: Overdue + Today + Tomorrow
+
+YESTERDAY (${formatTerms(dueDateTerms.yesterday)}):
+→ dueDateRange: { "operator": "=", "date": "yesterday" }
+→ Includes: Only yesterday (specific date)
+
+LAST WEEK (${formatTerms(dueDateTerms.lastWeek)}):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-week", "endDate": "end-of-last-week" }
+→ Includes: Only last week (specific range)
+
+THIS WEEK (${formatTerms(dueDateTerms.thisWeek)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-week" }
+→ Includes: Everything up to end of this week
+
+NEXT WEEK (${formatTerms(dueDateTerms.nextWeek)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-week" }
+→ Includes: Everything up to end of next week
+
+LAST MONTH (${formatTerms(dueDateTerms.lastMonth)}):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-month", "endDate": "end-of-last-month" }
+→ Includes: Only last month (specific range)
+
+THIS MONTH (${formatTerms(dueDateTerms.thisMonth)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-month" }
+→ Includes: Everything up to end of this month
+
+NEXT MONTH (${formatTerms(dueDateTerms.nextMonth)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-month" }
+→ Includes: Everything up to end of next month
+
+LAST YEAR (${formatTerms(dueDateTerms.lastYear)}):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-year", "endDate": "end-of-last-year" }
+→ Includes: Only last year (specific range)
+
+THIS YEAR (${formatTerms(dueDateTerms.thisYear)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-year" }
+→ Includes: Everything up to end of this year
+
+NEXT YEAR (${formatTerms(dueDateTerms.nextYear)}):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-year" }
+→ Includes: Everything up to end of next year
+
+**Note:** Above examples show sample terms from TaskPropertyService. System recognizes ALL configured terms in ALL languages for each context. Examples are for JSON format guidance only.`;
+    }
+
+    /**
      * Use AI to parse query into structured format
      * Uses shared PromptBuilderService for consistent prompt generation
      */
@@ -1025,62 +1091,14 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
    - User wants recommendations, not date filtering
 
 **How to handle time in vague queries:**
-- Recognize time words: today, tomorrow, yesterday, this week, this month, next week, next month, last week, last month, last year, this year, next year
-- **For vague queries, convert time context to dueDateRange with "<=" operator**
+- Recognize all time context terms from TaskPropertyService (today, tomorrow, yesterday, this/last/next week/month/year, etc.)
+- **For vague queries, convert time context to dueDateRange with appropriate operator**
 - This includes OVERDUE tasks (what needs attention by that time)
 - **Record ALSO in aiUnderstanding.timeContext** for AI prioritization
 
-**Time Context → Range Mapping (VAGUE QUERIES ONLY):**
+${this.buildTimeContextExamples(settings)}
 
-TODAY (今天, idag):
-→ dueDateRange: { "operator": "<=", "date": "today" }
-→ Includes: Overdue + Due today
-
-TOMORROW (明天, imorgon):
-→ dueDateRange: { "operator": "<=", "date": "tomorrow" }
-→ Includes: Overdue + Today + Tomorrow
-
-YESTERDAY (昨天, igår):
-→ dueDateRange: { "operator": "=", "date": "yesterday" }
-→ Includes: Only yesterday (specific date)
-
-LAST WEEK (上周, förra veckan):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-week", "endDate": "end-of-last-week" }
-→ Includes: Only last week (specific range)
-
-THIS WEEK (本周, denna vecka):
-→ dueDateRange: { "operator": "<=", "date": "end-of-week" }
-→ Includes: Everything up to end of this week
-
-NEXT WEEK (下周, nästa vecka):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-week" }
-→ Includes: Everything up to end of next week
-
-LAST MONTH (上月, förra månaden):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-month", "endDate": "end-of-last-month" }
-→ Includes: Only last month (specific range)
-
-THIS MONTH (本月, denna månad):
-→ dueDateRange: { "operator": "<=", "date": "end-of-month" }
-→ Includes: Everything up to end of this month
-
-NEXT MONTH (下月, nästa månad):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-month" }
-→ Includes: Everything up to end of next month
-
-LAST YEAR (去年, förra året):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-year", "endDate": "end-of-last-year" }
-→ Includes: Only last year (specific range)
-
-THIS YEAR (今年, detta år):
-→ dueDateRange: { "operator": "<=", "date": "end-of-year" }
-→ Includes: Everything up to end of this year
-
-NEXT YEAR (明年, nästa år):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-year" }
-→ Includes: Everything up to end of next year
-
-**ALWAYS use "<=" operator for vague queries with time context!**
+**ALWAYS use "<=" operator for vague "this/next" queries, "between" for "last" queries, "=" for specific dates!**
 
 **When NOT to use dueDateRange:**
 - Specific queries: "Complete tasks due today" → use exact dueDate: "today"
