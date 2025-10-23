@@ -388,79 +388,14 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Mode comparison section
-        containerEl.createDiv("task-chat-info-box", (el) => {
-            el.createEl("div", {
-                text: "ℹ️ Chat mode comparison",
-                cls: "task-chat-info-box-title",
-            });
-
-            // Simple Search mode
-            el.createEl("div", {
-                text: "Simple Search:",
-                cls: "task-chat-info-box-subtitle",
-            });
-            const simpleList = el.createEl("ul");
-            simpleList.createEl("li", {
-                text: "Keyword matching: Regex-based (stop words removed)",
-            });
-            simpleList.createEl("li", {
-                text: "AI usage: None",
-            });
-            simpleList.createEl("li", {
-                text: "Sorting: By user preference (relevance, due date, priority, etc.)",
-            });
-            simpleList.createEl("li", {
-                text: "Cost: Free (no AI used)",
-            });
-            simpleList.createEl("li", {
-                text: "Best for: Quick searches, simple filters, cost-free operation",
-            });
-
-            // Smart Search mode
-            el.createEl("div", {
-                text: "Smart Search:",
-                cls: "task-chat-info-box-subtitle",
-            });
-            const smartList = el.createEl("ul");
-            smartList.createEl("li", {
-                text: "Keyword matching: AI-expanded multilingual synonyms",
-            });
-            smartList.createEl("li", {
-                text: "AI usage: Keyword expansion only",
-            });
-            smartList.createEl("li", {
-                text: "Sorting: By user preference (relevance, due date, priority, etc.)",
-            });
-            smartList.createEl("li", {
-                text: "Cost: Very low (AI expands search keywords)",
-            });
-            smartList.createEl("li", {
-                text: "Best for: Multilingual searches, broader results, semantic matching",
-            });
-
-            // Task Chat mode
-            el.createEl("div", {
-                text: "Task Chat:",
-                cls: "task-chat-info-box-subtitle",
-            });
-            const chatList = el.createEl("ul");
-            chatList.createEl("li", {
-                text: "Keyword matching: AI-expanded multilingual synonyms",
-            });
-            chatList.createEl("li", {
-                text: "AI usage: Keyword expansion + Analysis + Recommendations",
-            });
-            chatList.createEl("li", {
-                text: "Sorting: By user preference + Auto mode available (AI-driven)",
-            });
-            chatList.createEl("li", {
-                text: "Cost: Higher (AI analyzes tasks and provides insights)",
-            });
-            chatList.createEl("li", {
-                text: "Best for: Complex queries, task prioritization, AI insights",
-            });
+        // Mode comparison - link to documentation
+        const modeComparisonInfo = containerEl.createDiv({
+            cls: "setting-item-description",
         });
+        modeComparisonInfo.innerHTML = `
+            <p><strong>ℹ️ Search mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEARCH_MODES.md">→ Learn more about search modes</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("Query languages for semantic search")
@@ -527,37 +462,11 @@ export class SettingsTab extends PluginSettingTab {
         });
 
         const aiEnhancementInfo = containerEl.createDiv({
-            cls: "task-chat-info-box",
+            cls: "setting-item-description",
         });
         aiEnhancementInfo.innerHTML = `
-            <p><strong>🤖 AI Features (Automatic in Smart Search & Task Chat)</strong></p>
-            <p>AI is used for two purposes in Smart Search and Task Chat modes:</p>
-            
-            <ul style="margin-left: 20px;">
-                <li><strong>1. Keyword Semantic Expansion:</strong> Better recall - "fix" → "fix, repair, solve, correct..."</li>
-                <li><strong>2. Property Concept Recognition:</strong> Convert natural language to DataView format
-                    <ul style="margin-left: 15px; margin-top: 5px;">
-                        <li>✅ Type "urgent tasks" → AI converts to priority:1</li>
-                        <li>✅ Type "working on" → AI converts to status:inprogress</li>
-                        <li>✅ Type "过期任务" (Chinese: overdue) → AI converts to dueDate:overdue</li>
-                        <li>✅ Works in ANY language - AI recognizes concepts, not phrases</li>
-                    </ul>
-                </li>
-                <li>✅ <strong>Automatic Typo Correction:</strong> "urgant taks" → "urgent tasks"</li>
-            </ul>
-            
-            <p style="margin-top: 10px;"><strong>Standard Syntax (Skip AI):</strong></p>
-            <ul style="margin-left: 20px; font-family: monospace; font-size: 12px;">
-                <li>"P1", "priority 1", "s:open", "overdue" → Parsed instantly (no AI call)</li>
-            </ul>
-            
-            <p style="margin-top: 10px;"><strong>Natural Language (Use AI):</strong></p>
-            <ul style="margin-left: 20px; font-family: monospace; font-size: 12px;">
-                <li>"urgent open tasks" → priority:1, status:open + keywords expanded</li>
-                <li>"紧急未完成任务" → priority:1, status:open + keywords expanded</li>
-            </ul>
-            
-            <p style="margin-top: 10px;"><strong>Note:</strong> Simple Search mode uses regex only (no AI).</p>
+            <p><strong>🤖 AI features (automatic in Smart Search & Task Chat):</strong> Keyword expansion, property recognition, typo correction.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
         `;
 
         new Setting(containerEl)
@@ -822,10 +731,12 @@ Recommended values:
         // Scoring Coefficients Section
         containerEl.createEl("h3", { text: "Scoring coefficients" });
 
-        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
-            <p><strong>📊 Control Scoring Weights</strong></p>
-            <p>Adjust how much each factor affects task scores. All search modes use these coefficients.</p>
-            <p><strong>Score Formula:</strong> (Relevance × R) + (Due Date × D) + (Priority × P)</p>
+        const scoringInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        scoringInfo.innerHTML = `
+            <p><strong>📊 Task scoring:</strong> Control how much each factor (relevance, due date, priority, status) affects task scores.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md">→ Learn more about the scoring system</a></p>
         `;
 
         new Setting(containerEl)
@@ -992,12 +903,11 @@ Examples:
         // Advanced Scoring Coefficients Section
         containerEl.createEl("h3", { text: "Advanced scoring coefficients" });
 
-        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
-            <p><strong>🔧 Fine-Grained Scoring Control (Optional)</strong></p>
-            <p>These settings control scoring at a detailed level within each factor. 
-            <strong>Most users don't need to change these</strong> - the main coefficients above are sufficient.</p>
-            <p>Advanced users can fine-tune how each specific level (e.g., "overdue" vs "due within 7 days") 
-            affects scoring.</p>
+        const advancedScoringInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        advancedScoringInfo.innerHTML = `
+            <p><strong>🔧 Advanced:</strong> Fine-tune specific score components (optional). Most users don't need to change these.</p>
         `;
 
         // Relevance Sub-Coefficients
@@ -1653,49 +1563,12 @@ Examples:
         containerEl.createEl("h3", { text: "Status categories" });
 
         const statusCategoriesDesc = containerEl.createDiv({
-            cls: "setting-item-description task-chat-info-box",
+            cls: "setting-item-description",
         });
         statusCategoriesDesc.innerHTML = `
-            <p><strong>📋 Flexible Status Categories</strong></p>
-            <p>Define custom status categories with their checkbox symbols, scores, and query aliases. You can add categories like "Important", "Bookmark", "Waiting", etc.</p>
-            <p><strong>Protected categories (cannot be deleted):</strong></p>
-            <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Fully locked (displayName + symbols locked):</strong>
-                    <ul style="margin-left: 20px; margin-top: 3px;">
-                        <li><strong>Open:</strong> Default Markdown open task (space character)</li>
-                        <li><strong>Other:</strong> Catches all unassigned symbols automatically</li>
-                    </ul>
-                </li>
-                <li><strong>Partially locked (displayName + symbols can be modified):</strong>
-                    <ul style="margin-left: 20px; margin-top: 3px;">
-                        <li><strong>Completed:</strong> Finished tasks</li>
-                        <li><strong>In Progress:</strong> Tasks being worked on</li>
-                        <li><strong>Cancelled:</strong> Abandoned tasks</li>
-                    </ul>
-                </li>
-            </ul>
-            <p><strong>Field descriptions:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Category key:</strong> Internal identifier (e.g., "important", "tendency"). No spaces or special characters. camelCase recommended. Editable for custom categories.</li>
-                <li><strong>Display name:</strong> Human-readable name shown in UI (sentence case recommended).</li>
-                <li><strong>Query aliases:</strong> Comma-separated names for querying (NO SPACES). Example: <code>completed,done,finished</code> allows queries like <code>s:done</code>, <code>s:completed</code>, or <code>s:finished</code>. Case-insensitive and hyphen-tolerant (<code>in-progress</code> = <code>inprogress</code>).</li>
-                <li><strong>Symbols:</strong> Checkbox characters that map to this category (comma-separated, e.g., "x,X" or "!,I,b").</li>
-                <li><strong>Score:</strong> Weight for scoring (0.0-1.0, higher = more important).</li>
-            </ul>
-            <p><strong>✨ Advanced fields (optional - click ⚙️ to configure):</strong></p>
-            <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Order:</strong> Sort priority (1=highest). Controls which tasks appear first when sorting by status. Custom categories default to 8 (after built-in).</li>
-                <li><strong>Description:</strong> Explains this category's meaning for AI prompts. Helps AI understand your custom categories better in Smart Search and Task Chat.</li>
-                <li><strong>Terms:</strong> Comma-separated semantic terms for recognition (e.g., "urgent, critical, important, high-priority"). Used in Smart Search and Task Chat for better matching. Add terms in multiple languages for multilingual support.</li>
-            </ul>
-            <p><strong>💡 Tips:</strong></p>
-            <ul style="margin-left: 20px; margin-top: 5px;">
-                <li><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:value1,value2</code> for multiple statuses. Works with category names, aliases, or symbols!</li>
-                <li><strong>Mix freely:</strong> Combine categories and symbols: <code>s:open,/,?</code> matches open tasks OR in-progress OR blocked. Very flexible!</li>
-                <li><strong>Aliases benefit:</strong> Add multiple ways to query the same category (e.g., <code>wip,doing,active</code> for "In Progress").</li>
-                <li>Compatible with <a href="https://github.com/wenlzhang/obsidian-task-marker">Task Marker</a> and similar plugins.</li>
-                <li>For proper status symbol display, use a compatible theme like <a href="https://github.com/kepano/obsidian-minimal">Minimal</a>.</li>
-            </ul>
+            <p><strong>📋 Status categories:</strong> Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
+            <p><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:open,/,?</code> to mix categories and symbols.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories</a></p>
         `;
 
         // Add Score vs Order clarification info box
@@ -2735,61 +2608,12 @@ Examples:
             text: "Multi-criteria sorting",
         });
 
-        this.sortByContainerEl.createEl("p", {
-            text: "Select which properties to include in sorting. With user-configurable coefficients, weights determine importance (not order). Order only matters for breaking rare ties when tasks have identical final scores. Use ✕ to remove and + to add criteria.",
+        const sortingInfo = this.sortByContainerEl.createDiv({
             cls: "setting-item-description",
         });
-
-        // Sort behavior explanation box
-        const explanationBox = this.sortByContainerEl.createDiv({
-            cls: "task-chat-info-box",
-        });
-
-        explanationBox.createEl("div", {
-            text: "How sort criteria work:",
-            cls: "task-chat-info-box-title",
-        });
-
-        const explanationList = explanationBox.createEl("ul");
-
-        explanationList.createEl("li").innerHTML =
-            "<strong>Relevance:</strong> Best matches first (based on keyword similarity scores, 100 = perfect match, 0 = no match)";
-
-        explanationList.createEl("li").innerHTML =
-            "<strong>Priority:</strong> Highest priority first (internal values 1→2→3→4, where 1 is highest and maps to your priority settings like 'high', 'urgent', etc.)";
-
-        explanationList.createEl("li").innerHTML =
-            "<strong>Due date:</strong> Most urgent first (overdue → today → tomorrow → future; tasks without due dates appear last)";
-
-        explanationList.createEl("li").innerHTML =
-            "<strong>Created date:</strong> Newest first (recently created tasks appear before older ones)";
-
-        explanationList.createEl("li").innerHTML =
-            "<strong>Alphabetical:</strong> Standard A → Z order (case-insensitive natural sorting)";
-
-        explanationBox.createEl("div", {
-            text: "Note: Sort directions are automatically optimized for each criterion to provide the most intuitive results. For example, Priority 1 (highest) always appears before Priority 4 (lowest), regardless of other settings.",
-            cls: "task-chat-info-box-description",
-        });
-
-        // Important note about coefficients
-        this.sortByContainerEl.createDiv({
-            cls: "task-chat-info-box",
-        }).innerHTML = `
-            <p><strong>⚠️ Important: Multi-Criteria Sorting with User Coefficients</strong></p>
-            <p>Since you can now configure coefficient values (Relevance, Due Date, Priority), 
-            <strong>property ORDER is less important</strong>. The <strong>COEFFICIENT VALUES</strong> 
-            determine importance, not the sort order.</p>
-            <p><strong>Example:</strong></p>
-            <ul>
-                <li>Relevance coefficient: 20 → Gets 20× weight in final score</li>
-                <li>Due Date coefficient: 4 → Gets 4× weight in final score</li>
-                <li>Priority coefficient: 1 → Gets 1× weight in final score</li>
-                <li>Status coefficient: 1 → Gets 1× weight in final score</li>
-            </ul>
-            <p>Tasks are scored as: <code>(Relevance × 20) + (Due Date × 4) + (Priority × 1) + (Status × 1)</code></p>
-            <p><strong>Below settings control:</strong> Which properties to INCLUDE in scoring (not their importance).
-            Use coefficient sliders above to control how much each property matters.</p>
+        sortingInfo.innerHTML = `
+            <p><strong>🔀 Task sorting:</strong> Select criteria for tiebreaking. Coefficients (R×20, D×4, P×1) determine importance, not order.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md">→ Learn more about multi-criteria sorting</a></p>
         `;
 
         // Unified sort settings (tag-based UI)
