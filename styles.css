@@ -637,6 +637,13 @@
     text-align: left;
 }
 
+/* Subsection headings - consistent with Obsidian plugin patterns */
+.setting-subsection-heading {
+    font-size: 14px;
+    font-weight: 500;
+    padding-top: 12px;
+}
+
 /* Connection test result container */
 .connection-test-result {
     margin-top: 12px;

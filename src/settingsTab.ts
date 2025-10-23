@@ -38,7 +38,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // AI Provider Settings
-        containerEl.createEl("h2", { text: "AI provider" });
+        new Setting(containerEl).setName("AI provider").setHeading();
 
         new Setting(containerEl)
             .setName("AI provider")
@@ -215,7 +215,7 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Chat Settings
-        containerEl.createEl("h2", { text: "Task chat" });
+        new Setting(containerEl).setName("Task chat").setHeading();
 
         new Setting(containerEl)
             .setName("Max chat history")
@@ -258,7 +258,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Chat mode
-        containerEl.createEl("h2", { text: "Chat mode" });
+        new Setting(containerEl).setName("Chat mode").setHeading();
 
         new Setting(containerEl)
             .setName("Default chat mode")
@@ -293,7 +293,7 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Semantic Expansion
-        containerEl.createEl("h2", { text: "Semantic expansion" });
+        new Setting(containerEl).setName("Semantic expansion").setHeading();
 
         const semanticExpansionInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -434,7 +434,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Smart search & Task chat
-        containerEl.createEl("h2", { text: "Smart search & Task chat" });
+        new Setting(containerEl)
+            .setName("Smart search & Task chat")
+            .setHeading();
 
         const aiEnhancementInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -560,7 +562,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // DataView Settings
-        containerEl.createEl("h2", { text: "DataView integration" });
+        new Setting(containerEl).setName("DataView integration").setHeading();
 
         const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -720,7 +722,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Status Category
-        containerEl.createEl("h2", { text: "Status category" });
+        new Setting(containerEl).setName("Status category").setHeading();
 
         const statusCategoriesDesc = containerEl.createDiv({
             cls: "setting-item-description",
@@ -837,7 +839,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task filtering
-        containerEl.createEl("h2", { text: "Task filtering" });
+        new Setting(containerEl).setName("Task filtering").setHeading();
 
         const filteringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -913,7 +915,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task scoring
-        containerEl.createEl("h2", { text: "Task scoring" });
+        new Setting(containerEl).setName("Task scoring").setHeading();
 
         const scoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1048,7 +1050,9 @@ export class SettingsTab extends PluginSettingTab {
         this.updateMaxScoreDisplay();
 
         // Advanced Scoring Coefficients Section
-        containerEl.createEl("h3", { text: "Advanced scoring coefficients" });
+        new Setting(containerEl)
+            .setName("Advanced scoring coefficients")
+            .setClass("setting-subsection-heading");
 
         const advancedScoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1058,7 +1062,9 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Relevance Sub-Coefficients
-        containerEl.createEl("h3", { text: "Relevance sub-coefficients" });
+        new Setting(containerEl)
+            .setName("Relevance sub-coefficients")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Core keyword match bonus")
@@ -1079,7 +1085,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Due Date Sub-Coefficients
-        containerEl.createEl("h3", { text: "Due date sub-coefficients" });
+        new Setting(containerEl)
+            .setName("Due date sub-coefficients")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Overdue tasks")
@@ -1162,7 +1170,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Priority Sub-Coefficients
-        containerEl.createEl("h3", { text: "Priority sub-coefficients" });
+        new Setting(containerEl)
+            .setName("Priority sub-coefficients")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Priority 1 (Highest)")
@@ -1237,7 +1247,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Status Sub-Coefficients - MOVED TO STATUS MAPPING
-        containerEl.createEl("h3", { text: "Status scores" });
+        new Setting(containerEl)
+            .setName("Status scores")
+            .setClass("setting-subsection-heading");
 
         const statusScoreNote = containerEl.createDiv({
             cls: "setting-item-description task-chat-info-box",
@@ -1247,7 +1259,9 @@ export class SettingsTab extends PluginSettingTab {
         `;
 
         // Reset Buttons Section
-        containerEl.createEl("h3", { text: "Reset coefficients to defaults" });
+        new Setting(containerEl)
+            .setName("Reset coefficients to defaults")
+            .setClass("setting-subsection-heading");
 
         // Reset all advanced coefficients
         new Setting(containerEl)
@@ -1400,7 +1414,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task Display
-        containerEl.createEl("h2", { text: "Task display" });
+        new Setting(containerEl).setName("Task display").setHeading();
 
         // Store the container for this setting so we can refresh it
         // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
@@ -1425,7 +1439,7 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        containerEl.createEl("h2", { text: "Advanced" });
+        new Setting(containerEl).setName("Advanced").setHeading();
 
         new Setting(containerEl)
             .setName("System prompt")
@@ -1461,7 +1475,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Pricing Information
-        containerEl.createEl("h3", { text: "Pricing data" });
+        new Setting(containerEl)
+            .setName("Pricing data")
+            .setClass("setting-subsection-heading");
 
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
@@ -1508,7 +1524,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Usage Statistics
-        containerEl.createEl("h3", { text: "Usage statistics" });
+        new Setting(containerEl)
+            .setName("Usage statistics")
+            .setClass("setting-subsection-heading");
 
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
@@ -2281,9 +2299,9 @@ export class SettingsTab extends PluginSettingTab {
         if (!this.sortByContainerEl) return;
 
         // Header with explanation
-        this.sortByContainerEl.createEl("h3", {
-            text: "Multi-criteria sorting",
-        });
+        new Setting(this.sortByContainerEl)
+            .setName("Multi-criteria sorting")
+            .setClass("setting-subsection-heading");
 
         const sortingInfo = this.sortByContainerEl.createDiv({
             cls: "setting-item-description",
