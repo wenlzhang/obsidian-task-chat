@@ -627,6 +627,21 @@ export class DataviewService {
             return false;
         }
 
+        // Check for "tomorrow"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.tomorrow) {
+            const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const formatted = this.formatDate(value);
+                    if (formatted === tomorrow) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         // Check for "overdue"
         if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.overdue) {
             const today = moment();
@@ -635,6 +650,59 @@ export class DataviewService {
                 if (value) {
                     const taskDate = moment(this.formatDate(value));
                     if (taskDate.isBefore(today, "day")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for "future"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.future) {
+            const today = moment();
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const taskDate = moment(this.formatDate(value));
+                    if (taskDate.isAfter(today, "day")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for "week" (this week)
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.week) {
+            const startOfWeek = moment().startOf("week");
+            const endOfWeek = moment().endOf("week");
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const taskDate = moment(this.formatDate(value));
+                    if (
+                        taskDate.isSameOrAfter(startOfWeek, "day") &&
+                        taskDate.isSameOrBefore(endOfWeek, "day")
+                    ) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for "next-week"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.nextWeek) {
+            const startOfNextWeek = moment().add(1, "week").startOf("week");
+            const endOfNextWeek = moment().add(1, "week").endOf("week");
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const taskDate = moment(this.formatDate(value));
+                    if (
+                        taskDate.isSameOrAfter(startOfNextWeek, "day") &&
+                        taskDate.isSameOrBefore(endOfNextWeek, "day")
+                    ) {
                         return true;
                     }
                 }
