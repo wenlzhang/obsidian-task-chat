@@ -583,6 +583,7 @@ export class DataviewService {
 
     /**
      * Helper: Check if a task matches a specific due date value
+     * Uses centralized keyword matching from TaskPropertyService
      */
     private static matchesDueDateValue(
         dvTask: any,
@@ -590,170 +591,58 @@ export class DataviewService {
         dueDateFields: string[],
         settings: PluginSettings,
     ): boolean {
-        // Check for special value "any"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.any) {
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value !== undefined && value !== null) {
-                    return true;
-                }
-            }
-            return false;
+        // Check for special value "any" or "all" - has any due date
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.any ||
+            dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.all
+        ) {
+            return dueDateFields.some(
+                (field) =>
+                    dvTask[field] !== undefined && dvTask[field] !== null,
+            );
         }
 
-        // Check for special value "none"
-        if (dueDateValue === "none") {
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value !== undefined && value !== null) {
-                    return false; // Has a due date
-                }
-            }
-            return true; // No due date found
+        // Check for special value "none" - no due date
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none
+        ) {
+            return !dueDateFields.some(
+                (field) =>
+                    dvTask[field] !== undefined && dvTask[field] !== null,
+            );
         }
 
-        // Check for "today"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.today) {
-            const today = moment().format("YYYY-MM-DD");
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const formatted = this.formatDate(value);
-                    if (formatted === today) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+        // Check for standard due date keywords (today, tomorrow, overdue, future, week, next-week, month, next-month, year, next-year)
+        // Use centralized matching from TaskPropertyService
+        const dueDateKeywords = Object.values(
+            TaskPropertyService.DUE_DATE_KEYWORDS,
+        ) as string[];
+        if (dueDateKeywords.includes(dueDateValue)) {
+            return dueDateFields.some((field) =>
+                TaskPropertyService.matchesDueDateKeyword(
+                    dvTask[field],
+                    dueDateValue as keyof typeof TaskPropertyService.DUE_DATE_KEYWORDS,
+                    this.formatDate.bind(this),
+                ),
+            );
         }
 
-        // Check for "tomorrow"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.tomorrow) {
-            const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const formatted = this.formatDate(value);
-                    if (formatted === tomorrow) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Check for "overdue"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.overdue) {
-            const today = moment();
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const taskDate = moment(this.formatDate(value));
-                    if (taskDate.isBefore(today, "day")) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Check for "future"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.future) {
-            const today = moment();
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const taskDate = moment(this.formatDate(value));
-                    if (taskDate.isAfter(today, "day")) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Check for "week" (this week)
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.week) {
-            const startOfWeek = moment().startOf("week");
-            const endOfWeek = moment().endOf("week");
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const taskDate = moment(this.formatDate(value));
-                    if (
-                        taskDate.isSameOrAfter(startOfWeek, "day") &&
-                        taskDate.isSameOrBefore(endOfWeek, "day")
-                    ) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Check for "next-week"
-        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.nextWeek) {
-            const startOfNextWeek = moment().add(1, "week").startOf("week");
-            const endOfNextWeek = moment().add(1, "week").endOf("week");
-            for (const field of dueDateFields) {
-                const value = dvTask[field];
-                if (value) {
-                    const taskDate = moment(this.formatDate(value));
-                    if (
-                        taskDate.isSameOrAfter(startOfNextWeek, "day") &&
-                        taskDate.isSameOrBefore(endOfNextWeek, "day")
-                    ) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Check for relative date (+Nd, +Nw, +Nm)
-        if (dueDateValue.startsWith("+")) {
-            const match = dueDateValue.match(/^\+(\d+)([dwm])$/);
-            if (match) {
-                const amount = parseInt(match[1]);
-                const unit = match[2];
-                let targetDate: moment.Moment;
-
-                if (unit === "d") {
-                    targetDate = moment().add(amount, "days");
-                } else if (unit === "w") {
-                    targetDate = moment().add(amount, "weeks");
-                } else if (unit === "m") {
-                    targetDate = moment().add(amount, "months");
-                } else {
-                    targetDate = moment();
-                }
-
-                const targetDateStr = targetDate.format("YYYY-MM-DD");
-                for (const field of dueDateFields) {
-                    const value = dvTask[field];
-                    if (value) {
-                        const formatted = this.formatDate(value);
-                        if (formatted === targetDateStr) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
+        // Check for relative date with enhanced syntax
+        // Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
+        const parsedRelativeDate =
+            TaskPropertyService.parseRelativeDate(dueDateValue);
+        if (parsedRelativeDate) {
+            return dueDateFields.some((field) => {
+                const formatted = this.formatDate(dvTask[field]);
+                return formatted === parsedRelativeDate;
+            });
         }
 
         // Check for specific date (YYYY-MM-DD format or other formats)
-        for (const field of dueDateFields) {
-            const value = dvTask[field];
-            if (value) {
-                const formatted = this.formatDate(value);
-                if (formatted === dueDateValue) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return dueDateFields.some((field) => {
+            const formatted = this.formatDate(dvTask[field]);
+            return formatted === dueDateValue;
+        });
     }
 
     /**
@@ -788,37 +677,35 @@ export class DataviewService {
             const priorityFields =
                 TaskPropertyService.getAllPriorityFieldNames(settings);
 
-            if (intent.priority === "all") {
+            if (
+                intent.priority ===
+                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+            ) {
                 // Tasks with ANY priority (P1-P4)
                 filters.push((dvTask: any) => {
-                    for (const field of priorityFields) {
+                    return priorityFields.some((field) => {
                         const value = dvTask[field];
-                        if (value !== undefined && value !== null) {
-                            const mapped = this.mapPriority(value, settings);
-                            if (
-                                mapped !== undefined &&
-                                mapped >= 1 &&
-                                mapped <= 4
-                            ) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                        if (value === undefined || value === null) return false;
+
+                        const mapped = this.mapPriority(value, settings);
+                        return (
+                            mapped !== undefined && mapped >= 1 && mapped <= 4
+                        );
+                    });
                 });
-            } else if (intent.priority === "none") {
+            } else if (
+                intent.priority ===
+                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
+            ) {
                 // Tasks with NO priority
                 filters.push((dvTask: any) => {
-                    for (const field of priorityFields) {
+                    return !priorityFields.some((field) => {
                         const value = dvTask[field];
-                        if (value !== undefined && value !== null) {
-                            const mapped = this.mapPriority(value, settings);
-                            if (mapped !== undefined) {
-                                return false; // Has a priority
-                            }
-                        }
-                    }
-                    return true; // No priority found
+                        if (value === undefined || value === null) return false;
+
+                        const mapped = this.mapPriority(value, settings);
+                        return mapped !== undefined;
+                    });
                 });
             } else {
                 // Specific priority values
@@ -881,52 +768,21 @@ export class DataviewService {
                 TaskPropertyService.getAllDueDateFieldNames(settings);
             const { start, end } = intent.dueDateRange;
 
-            // Parse range keywords using centralized constants from TaskPropertyService
-            let startDate: moment.Moment;
-            let endDate: moment.Moment;
-
-            if (start === TaskPropertyService.DATE_RANGE_KEYWORDS.weekStart) {
-                startDate = moment().startOf("week");
-            } else if (
-                start === TaskPropertyService.DATE_RANGE_KEYWORDS.nextWeekStart
-            ) {
-                startDate = moment().add(1, "week").startOf("week");
-            } else if (
-                start === TaskPropertyService.DATE_RANGE_KEYWORDS.monthStart
-            ) {
-                startDate = moment().startOf("month");
-            } else {
-                startDate = moment(start);
-            }
-
-            if (end === TaskPropertyService.DATE_RANGE_KEYWORDS.weekEnd) {
-                endDate = moment().endOf("week");
-            } else if (
-                end === TaskPropertyService.DATE_RANGE_KEYWORDS.nextWeekEnd
-            ) {
-                endDate = moment().add(1, "week").endOf("week");
-            } else if (
-                end === TaskPropertyService.DATE_RANGE_KEYWORDS.monthEnd
-            ) {
-                endDate = moment().endOf("month");
-            } else {
-                endDate = moment(end);
-            }
+            // Parse range keywords using centralized method from TaskPropertyService
+            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
+            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
 
             filters.push((dvTask: any) => {
-                for (const field of dueDateFields) {
+                return dueDateFields.some((field) => {
                     const value = dvTask[field];
-                    if (value) {
-                        const taskDate = moment(this.formatDate(value));
-                        if (
-                            taskDate.isSameOrAfter(startDate, "day") &&
-                            taskDate.isSameOrBefore(endDate, "day")
-                        ) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+                    if (!value) return false;
+
+                    const taskDate = moment(this.formatDate(value));
+                    return (
+                        taskDate.isSameOrAfter(startDate, "day") &&
+                        taskDate.isSameOrBefore(endDate, "day")
+                    );
+                });
             });
         }
 

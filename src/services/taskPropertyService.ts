@@ -381,6 +381,7 @@ export class TaskPropertyService {
      * Used for special date filtering (any, today, overdue, etc.)
      */
     static readonly DUE_DATE_KEYWORDS = {
+        all: "all", // Has any due date (alias for "any")
         any: "any", // Has any due date
         today: "today", // Due today
         tomorrow: "tomorrow", // Due tomorrow
@@ -388,6 +389,10 @@ export class TaskPropertyService {
         future: "future", // Future dates
         week: "week", // This week
         nextWeek: "next-week", // Next week
+        month: "month", // This month
+        nextMonth: "next-month", // Next month
+        year: "year", // This year
+        nextYear: "next-year", // Next year
     } as const;
 
     /**
@@ -401,6 +406,12 @@ export class TaskPropertyService {
         nextWeekEnd: "next-week-end",
         monthStart: "month-start",
         monthEnd: "month-end",
+        nextMonthStart: "next-month-start",
+        nextMonthEnd: "next-month-end",
+        yearStart: "year-start",
+        yearEnd: "year-end",
+        nextYearStart: "next-year-start",
+        nextYearEnd: "next-year-end",
     } as const;
 
     /**
@@ -434,6 +445,24 @@ export class TaskPropertyService {
         p2: "2", // Medium-high priority
         p3: "3", // Medium-low priority
         p4: "4", // Low priority
+    } as const;
+
+    /**
+     * Priority filter keywords
+     * Used for special priority filtering (all, none)
+     */
+    static readonly PRIORITY_FILTER_KEYWORDS = {
+        all: "all", // Has any priority (P1-P4)
+        none: "none", // No priority
+    } as const;
+
+    /**
+     * Due date filter keywords (including "none")
+     * Extended version with "none" for completeness
+     */
+    static readonly DUE_DATE_FILTER_KEYWORDS = {
+        ...this.DUE_DATE_KEYWORDS,
+        none: "none", // No due date
     } as const;
 
     // ==========================================
@@ -1397,5 +1426,187 @@ export class TaskPropertyService {
 
         // Remove duplicates
         return [...new Set(resolved)];
+    }
+
+    /**
+     * Check if a date value matches a due date keyword
+     * Centralized date matching logic for all due date keywords
+     *
+     * @param dateValue - The date value from task field (DataView format)
+     * @param keyword - The keyword to match against (today, tomorrow, overdue, etc.)
+     * @param formatDate - Function to format date value to YYYY-MM-DD
+     * @returns True if the date matches the keyword
+     */
+    static matchesDueDateKeyword(
+        dateValue: any,
+        keyword: string,
+        formatDate: (date: any) => string | undefined,
+    ): boolean {
+        if (!dateValue) return false;
+
+        const moment = (window as any).moment;
+        const formatted = formatDate(dateValue);
+        if (!formatted) return false;
+
+        const taskDate = moment(formatted);
+        if (!taskDate.isValid()) return false;
+
+        // Match against all defined keywords
+        switch (keyword) {
+            case this.DUE_DATE_KEYWORDS.today:
+                return formatted === moment().format("YYYY-MM-DD");
+
+            case this.DUE_DATE_KEYWORDS.tomorrow:
+                return (
+                    formatted === moment().add(1, "day").format("YYYY-MM-DD")
+                );
+
+            case this.DUE_DATE_KEYWORDS.overdue:
+                return taskDate.isBefore(moment(), "day");
+
+            case this.DUE_DATE_KEYWORDS.future:
+                return taskDate.isAfter(moment(), "day");
+
+            case this.DUE_DATE_KEYWORDS.week: {
+                const startOfWeek = moment().startOf("week");
+                const endOfWeek = moment().endOf("week");
+                return (
+                    taskDate.isSameOrAfter(startOfWeek, "day") &&
+                    taskDate.isSameOrBefore(endOfWeek, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.nextWeek: {
+                const startOfNextWeek = moment().add(1, "week").startOf("week");
+                const endOfNextWeek = moment().add(1, "week").endOf("week");
+                return (
+                    taskDate.isSameOrAfter(startOfNextWeek, "day") &&
+                    taskDate.isSameOrBefore(endOfNextWeek, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.month: {
+                const startOfMonth = moment().startOf("month");
+                const endOfMonth = moment().endOf("month");
+                return (
+                    taskDate.isSameOrAfter(startOfMonth, "day") &&
+                    taskDate.isSameOrBefore(endOfMonth, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.nextMonth: {
+                const startOfNextMonth = moment()
+                    .add(1, "month")
+                    .startOf("month");
+                const endOfNextMonth = moment().add(1, "month").endOf("month");
+                return (
+                    taskDate.isSameOrAfter(startOfNextMonth, "day") &&
+                    taskDate.isSameOrBefore(endOfNextMonth, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.year: {
+                const startOfYear = moment().startOf("year");
+                const endOfYear = moment().endOf("year");
+                return (
+                    taskDate.isSameOrAfter(startOfYear, "day") &&
+                    taskDate.isSameOrBefore(endOfYear, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.nextYear: {
+                const startOfNextYear = moment().add(1, "year").startOf("year");
+                const endOfNextYear = moment().add(1, "year").endOf("year");
+                return (
+                    taskDate.isSameOrAfter(startOfNextYear, "day") &&
+                    taskDate.isSameOrBefore(endOfNextYear, "day")
+                );
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Parse date range keyword to moment date
+     * Centralized date range parsing for week-start, month-end, etc.
+     *
+     * @param keyword - The date range keyword
+     * @returns Moment date object
+     */
+    static parseDateRangeKeyword(keyword: string): any {
+        const moment = (window as any).moment;
+
+        switch (keyword) {
+            case this.DATE_RANGE_KEYWORDS.weekStart:
+                return moment().startOf("week");
+            case this.DATE_RANGE_KEYWORDS.weekEnd:
+                return moment().endOf("week");
+            case this.DATE_RANGE_KEYWORDS.nextWeekStart:
+                return moment().add(1, "week").startOf("week");
+            case this.DATE_RANGE_KEYWORDS.nextWeekEnd:
+                return moment().add(1, "week").endOf("week");
+            case this.DATE_RANGE_KEYWORDS.monthStart:
+                return moment().startOf("month");
+            case this.DATE_RANGE_KEYWORDS.monthEnd:
+                return moment().endOf("month");
+            case this.DATE_RANGE_KEYWORDS.nextMonthStart:
+                return moment().add(1, "month").startOf("month");
+            case this.DATE_RANGE_KEYWORDS.nextMonthEnd:
+                return moment().add(1, "month").endOf("month");
+            case this.DATE_RANGE_KEYWORDS.yearStart:
+                return moment().startOf("year");
+            case this.DATE_RANGE_KEYWORDS.yearEnd:
+                return moment().endOf("year");
+            case this.DATE_RANGE_KEYWORDS.nextYearStart:
+                return moment().add(1, "year").startOf("year");
+            case this.DATE_RANGE_KEYWORDS.nextYearEnd:
+                return moment().add(1, "year").endOf("year");
+            default:
+                return moment(keyword);
+        }
+    }
+
+    /**
+     * Parse relative date string with enhanced syntax support
+     * Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
+     * Compatible with DataView API relative date syntax
+     *
+     * @param relativeDate - Relative date string (e.g., "1d", "+2w", "-3m", "1y")
+     * @returns Formatted date string (YYYY-MM-DD) or null if invalid
+     */
+    static parseRelativeDate(relativeDate: string): string | null {
+        const moment = (window as any).moment;
+
+        // Match pattern: optional +/-, number, unit (d/w/m/y)
+        // Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
+        const match = relativeDate.match(/^([+-]?)(\d+)([dwmy])$/i);
+        if (!match) return null;
+
+        const sign = match[1] || "+"; // Default to + if no sign
+        const amount = parseInt(match[2]);
+        const unit = match[3].toLowerCase();
+
+        // Map unit to moment unit
+        const unitMap: { [key: string]: any } = {
+            d: "days",
+            w: "weeks",
+            m: "months",
+            y: "years",
+        };
+
+        const momentUnit = unitMap[unit];
+        if (!momentUnit) return null;
+
+        // Calculate target date
+        let targetDate: any;
+        if (sign === "-") {
+            targetDate = moment().subtract(amount, momentUnit);
+        } else {
+            targetDate = moment().add(amount, momentUnit);
+        }
+
+        return targetDate.format("YYYY-MM-DD");
     }
 }
