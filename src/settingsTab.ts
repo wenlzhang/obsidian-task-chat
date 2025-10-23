@@ -26,8 +26,6 @@ export class SettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl("h2", { text: "Task Chat settings" });
-
         // ========================================
         // UNDERSTANDING SETTINGS OVERVIEW
         // ========================================
@@ -274,7 +272,7 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Chat Settings
-        containerEl.createEl("h3", { text: "Chat" });
+        containerEl.createEl("h3", { text: "Task chat" });
 
         new Setting(containerEl)
             .setName("Max chat history")
@@ -316,54 +314,8 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl)
-            .setName("Show token usage")
-            .setDesc("Display API usage and cost information in chat")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showTokenUsage)
-                    .onChange(async (value) => {
-                        this.plugin.settings.showTokenUsage = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Response language")
-            .setDesc(
-                "Choose the language for AI responses. Use 'Auto' to match user input language. For multi-language support, configure 'Query languages for semantic search' below.",
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("auto", "Auto (match user input)")
-                    .addOption("english", "English")
-                    .addOption("custom", "Custom instruction")
-                    .setValue(this.plugin.settings.responseLanguage)
-                    .onChange(async (value) => {
-                        this.plugin.settings.responseLanguage = value as any;
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh to show/hide custom instruction
-                    }),
-            );
-
-        // Show custom language instruction if custom is selected
-        if (this.plugin.settings.responseLanguage === "custom") {
-            new Setting(containerEl)
-                .setName("Custom language instruction")
-                .setDesc("Specify how the AI should choose response language")
-                .addText((text) =>
-                    text
-                        .setPlaceholder("e.g., Always respond in English")
-                        .setValue(
-                            this.plugin.settings.customLanguageInstruction,
-                        )
-                        .onChange(async (value) => {
-                            this.plugin.settings.customLanguageInstruction =
-                                value;
-                            await this.plugin.saveSettings();
-                        }),
-                );
-        }
+        // Chat mode
+        containerEl.createEl("h3", { text: "Chat mode" });
 
         new Setting(containerEl)
             .setName("Default chat mode")
@@ -396,9 +348,48 @@ export class SettingsTab extends PluginSettingTab {
             <p><strong>ℹ️ Search mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEARCH_MODES.md">→ Learn more about search modes</a></p>
         `;
+        
+        // Semantic Expansion
+        containerEl.createEl("h3", { text: "Semantic expansion" });
+
+        containerEl.createEl("p", {
+            text: "Control how AI expands keywords for better task matching in Smart Search and Task Chat modes. Expansion multiplies keywords across configured languages to find tasks written in any language.",
+            cls: "setting-item-description",
+        });
+
+        const propertyTermsInfo = containerEl.createEl("div", {
+            cls: "setting-item-description",
+        });
+        propertyTermsInfo.createEl("p", {
+            text: "Add your own terms for task properties (priority, due date, status). These combine with built-in terms for enhanced recognition across all search modes. The system uses a three-layer approach:",
+        });
+        const layersList = propertyTermsInfo.createEl("ol");
+        layersList.createEl("li", {
+            text: "Your custom terms (highest priority)",
+        });
+        layersList.createEl("li", {
+            text: "Built-in multi-language mappings (fallback)",
+        });
+        layersList.createEl("li", {
+            text: "AI semantic expansion (broadest coverage)",
+        });
 
         new Setting(containerEl)
-            .setName("Query languages for semantic search")
+            .setName("Enable semantic expansion")
+            .setDesc(
+                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic equivalents across all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', 'utveckla', etc. This is NOT translation but direct cross-language semantic equivalence generation. Improves recall but may increase token usage.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableSemanticExpansion)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableSemanticExpansion = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        new Setting(containerEl)
+            .setName("Query language")
             .setDesc(
                 "Languages to use for semantic keyword expansion and AI response. Used by Smart Search and Task Chat modes. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, semantic equivalents are automatically generated in all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
             )
@@ -419,29 +410,8 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Semantic Expansion Settings
-        containerEl.createEl("h4", { text: "Semantic expansion" });
-        containerEl.createEl("p", {
-            text: "Control how AI expands keywords for better task matching in Smart Search and Task Chat modes. Expansion multiplies keywords across configured languages to find tasks written in any language.",
-            cls: "setting-item-description",
-        });
-
         new Setting(containerEl)
-            .setName("Enable semantic expansion")
-            .setDesc(
-                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic equivalents across all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', 'utveckla', etc. This is NOT translation but direct cross-language semantic equivalence generation. Improves recall but may increase token usage.",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableSemanticExpansion)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableSemanticExpansion = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Max keyword expansions per language")
+            .setName("Max keyword expansions")
             .setDesc(
                 "Maximum semantic variations to generate per keyword per language. Default: 5. Total keywords = (max expansions × number of languages). Example: 5 expansions × 2 languages = 10 keywords per core keyword. Higher values improve recall but increase AI token usage.",
             )
@@ -455,84 +425,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-
-        // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
-        containerEl.createEl("h4", {
-            text: "AI enhancement (Natural language & typo correction)",
-        });
-
-        const aiEnhancementInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        aiEnhancementInfo.innerHTML = `
-            <p><strong>🤖 AI features (automatic in Smart Search & Task Chat):</strong> Keyword expansion, property recognition, typo correction.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
-        `;
-
-        new Setting(containerEl)
-            .setName("Show AI understanding (Task Chat only)")
-            .setDesc(
-                "Display what AI understood from your query in Task Chat mode. Shows detected language, corrected typos, and how properties were recognized/converted. Helps you understand how your natural language query was interpreted.",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(
-                        this.plugin.settings.aiEnhancement.showAIUnderstanding,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.aiEnhancement.showAIUnderstanding =
-                            value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Enable streaming responses")
-            .setDesc(
-                "Show AI responses as they're being generated (like ChatGPT). Provides better user experience and allows you to see progress. You can stop generation at any time by clicking the Stop button. Works with all AI providers (OpenAI, Anthropic, OpenRouter, Ollama).",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(
-                        this.plugin.settings.aiEnhancement.enableStreaming,
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.aiEnhancement.enableStreaming =
-                            value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        // Reference to configured languages
-        const languagesDisplay = this.plugin.settings.queryLanguages.join(", ");
-        const languagesRef = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        languagesRef.innerHTML = `
-            <p style="margin-top: 16px;"><strong>📚 Supported Languages:</strong></p>
-            <p>Currently configured: <strong>${languagesDisplay}</strong></p>
-            <p>Configure languages in "Query languages for semantic search" above. AI recognizes properties in ANY language using semantic concept recognition, not hardcoded phrase matching. Works with 100+ languages!</p>
-        `;
-
-        // User-Configurable Property Terms Section
-        containerEl.createEl("h4", { text: "Custom property terms" });
-
-        const propertyTermsInfo = containerEl.createEl("div", {
-            cls: "setting-item-description",
-        });
-        propertyTermsInfo.createEl("p", {
-            text: "Add your own terms for task properties (priority, due date, status). These combine with built-in terms for enhanced recognition across all search modes. The system uses a three-layer approach:",
-        });
-        const layersList = propertyTermsInfo.createEl("ol");
-        layersList.createEl("li", {
-            text: "Your custom terms (highest priority)",
-        });
-        layersList.createEl("li", {
-            text: "Built-in multi-language mappings (fallback)",
-        });
-        layersList.createEl("li", {
-            text: "AI semantic expansion (broadest coverage)",
-        });
 
         new Setting(containerEl)
             .setName("Priority terms")
@@ -612,8 +504,452 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Stop Words Section
-        containerEl.createEl("h3", { text: "Stop words" });
+        // Smart search & Task chat
+        containerEl.createEl("h3", { text: "Smart search & Task chat" });
+
+        const aiEnhancementInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        aiEnhancementInfo.innerHTML = `
+            <p><strong>🤖 AI features (automatic in Smart Search & Task Chat):</strong> Keyword expansion, property recognition, typo correction.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
+        `;        
+        
+        new Setting(containerEl)
+            .setName("Response language")
+            .setDesc(
+                "Choose the language for AI responses. Use 'Auto' to match user input language. For multi-language support, configure 'Query languages for semantic search' below.",
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("auto", "Auto (match user input)")
+                    .addOption("english", "English")
+                    .addOption("custom", "Custom instruction")
+                    .setValue(this.plugin.settings.responseLanguage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.responseLanguage = value as any;
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh to show/hide custom instruction
+                    }),
+            );
+
+        // Show custom language instruction if custom is selected
+        if (this.plugin.settings.responseLanguage === "custom") {
+            new Setting(containerEl)
+                .setName("Custom language instruction")
+                .setDesc("Specify how the AI should choose response language")
+                .addText((text) =>
+                    text
+                        .setPlaceholder("e.g., Always respond in English")
+                        .setValue(
+                            this.plugin.settings.customLanguageInstruction,
+                        )
+                        .onChange(async (value) => {
+                            this.plugin.settings.customLanguageInstruction =
+                                value;
+                            await this.plugin.saveSettings();
+                        }),
+                );
+        }
+
+        // Reference to configured languages
+        const languagesDisplay = this.plugin.settings.queryLanguages.join(", ");
+        const languagesRef = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        languagesRef.innerHTML = `
+            <p style="margin-top: 16px;"><strong>📚 Supported Languages:</strong></p>
+            <p>Currently configured: <strong>${languagesDisplay}</strong></p>
+            <p>Configure languages in "Query languages for semantic search" above. AI recognizes properties in ANY language using semantic concept recognition, not hardcoded phrase matching. Works with 100+ languages!</p>
+        `;
+
+        new Setting(containerEl)
+            .setName("Show AI understanding")
+            .setDesc(
+                "Display what AI understood from your query in Task Chat mode. Shows detected language, corrected typos, and how properties were recognized/converted. Helps you understand how your natural language query was interpreted.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(
+                        this.plugin.settings.aiEnhancement.showAIUnderstanding,
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.aiEnhancement.showAIUnderstanding =
+                            value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        new Setting(containerEl)
+            .setName("Show token usage")
+            .setDesc("Display API usage and cost information in chat")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showTokenUsage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showTokenUsage = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Enable streaming responses")
+            .setDesc(
+                "Show AI responses as they're being generated (like ChatGPT). Provides better user experience and allows you to see progress. You can stop generation at any time by clicking the Stop button. Works with all AI providers (OpenAI, Anthropic, OpenRouter, Ollama).",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(
+                        this.plugin.settings.aiEnhancement.enableStreaming,
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.aiEnhancement.enableStreaming =
+                            value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+        
+        // DataView Settings
+        containerEl.createEl("h3", { text: "DataView integration" });
+
+        containerEl.createDiv({
+            text: "Configure how task properties are read from DataView. These settings should match your task metadata fields.",
+            cls: "setting-item-description",
+        });
+
+        // DataView Status and Troubleshooting Info
+        const dataviewInfoBox = containerEl.createDiv({
+            cls: "setting-item-description task-chat-info-box",
+        });
+
+        dataviewInfoBox.createEl("strong", {
+            text: "💡 DataView Status & Troubleshooting",
+        });
+        dataviewInfoBox.createEl("br");
+        dataviewInfoBox.createEl("br");
+
+        dataviewInfoBox.appendText(
+            "If searches return 0 results but you have tasks in your vault:",
+        );
+        dataviewInfoBox.createEl("br");
+
+        const troubleshootingList = dataviewInfoBox.createEl("ul", {
+            cls: "task-chat-troubleshooting-list",
+        });
+
+        troubleshootingList.createEl("li", {
+            text: "⏱️ DataView may still be indexing - wait 10-30 seconds and click Refresh tasks",
+        });
+        troubleshootingList.createEl("li", {
+            text: "⚙️ DataView index delay may be too long - go to DataView settings and reduce 'Index delay' from default 2000ms to 500ms",
+        });
+        troubleshootingList.createEl("li", {
+            text: "✅ Verify task syntax - tasks must use proper Markdown format (e.g., - [ ] Task name)",
+        });
+        troubleshootingList.createEl("li", {
+            text: "🔄 Check DataView is enabled - go to Community Plugins and ensure DataView is enabled",
+        });
+
+        new Setting(containerEl)
+            .setName("Due date field")
+            .setDesc("DataView field name for due dates")
+            .addText((text) =>
+                text
+                    .setPlaceholder("due")
+                    .setValue(this.plugin.settings.dataviewKeys.dueDate)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewKeys.dueDate = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Created date field")
+            .setDesc("DataView field name for creation dates")
+            .addText((text) =>
+                text
+                    .setPlaceholder("created")
+                    .setValue(this.plugin.settings.dataviewKeys.createdDate)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewKeys.createdDate = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Completed date field")
+            .setDesc("DataView field name for completion dates")
+            .addText((text) =>
+                text
+                    .setPlaceholder("completed")
+                    .setValue(this.plugin.settings.dataviewKeys.completedDate)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewKeys.completedDate = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority field")
+            .setDesc("DataView field name for priority")
+            .addText((text) =>
+                text
+                    .setPlaceholder("p")
+                    .setValue(this.plugin.settings.dataviewKeys.priority)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewKeys.priority = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        containerEl.createDiv({
+            text: "Define which DataView values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1].",
+            cls: "setting-item-description",
+        });
+
+        new Setting(containerEl)
+            .setName("Priority 1 (highest) values")
+            .setDesc("Values that indicate priority 1 (e.g., 1, p1, high)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("1, p1, high")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping[1].join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping[1] = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("priority-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 2 (high) values")
+            .setDesc("Values that indicate priority 2 (e.g., 2, p2, medium)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("2, p2, medium")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping[2].join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping[2] = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("priority-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 3 (medium) values")
+            .setDesc("Values that indicate priority 3 (e.g., 3, p3, low)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("3, p3, low")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping[3].join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping[3] = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("priority-mapping-input");
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Priority 4 (low) values")
+            .setDesc("Values that indicate priority 4 (e.g., 4, p4, none)")
+            .addText((text) =>
+                text
+                    .setPlaceholder("4, p4, none")
+                    .setValue(
+                        this.plugin.settings.dataviewPriorityMapping[4].join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.dataviewPriorityMapping[4] = value
+                            .split(",")
+                            .map((v) => v.trim())
+                            .filter((v) => v);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.addClass("priority-mapping-input");
+                    }),
+            );
+
+        // Status Categories (Dynamic)
+        containerEl.createEl("h3", { text: "Status categories" });
+
+        const statusCategoriesDesc = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        statusCategoriesDesc.innerHTML = `
+            <p><strong>📋 Status categories:</strong> Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
+            <p><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:open,/,?</code> to mix categories and symbols.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories</a></p>
+        `;
+
+        // Add Score vs Order clarification info box
+        const scoreVsOrderBox = containerEl.createDiv({
+            cls: "task-chat-info-box",
+        });
+        scoreVsOrderBox.style.cssText =
+            "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
+
+        scoreVsOrderBox.innerHTML = `
+            <p style="font-weight: 600; margin-bottom: 8px;">📊 Score vs Order - What's the Difference?</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
+                    <p style="font-weight: 600; margin-bottom: 4px;">🎯 Score (0.0-1.0)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Relevance weight in search ranking</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> Scoring formula (finalScore = R×20 + D×4 + P×1 + <strong>S×1</strong>)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Higher score = more relevant in searches</p>
+                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1.0 (high), completed=0.3 (low)</p>
+                </div>
+                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
+                    <p style="font-weight: 600; margin-bottom: 4px;">📋 Order (1, 2, 3...)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Display position when sorting by status</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> TaskSortService (multi-criteria sorting)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Lower order = appears first in list</p>
+                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1 (first), completed=6 (last)</p>
+                </div>
+            </div>
+            <p style="margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-accent);">
+                ✅ They are completely independent! Changing score doesn't affect order, and vice versa.
+            </p>
+        `;
+
+        // Validate status orders and show warnings if duplicates found
+        const validation = TaskPropertyService.validateStatusOrders(
+            this.plugin.settings.taskStatusMapping,
+        );
+
+        if (!validation.valid) {
+            const warningBox = containerEl.createDiv({
+                cls: "task-chat-warning-box",
+            });
+            warningBox.style.cssText =
+                "background: var(--background-modifier-error); border: 1px solid var(--background-modifier-error-hover); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
+
+            const warningTitle = warningBox.createEl("div");
+            warningTitle.style.cssText =
+                "font-weight: 600; margin-bottom: 8px; color: var(--text-error);";
+            warningTitle.innerHTML = "⚠️ Duplicate Sort Orders Detected";
+
+            for (const warning of validation.warnings) {
+                const warningText = warningBox.createEl("p");
+                warningText.style.cssText = "margin: 4px 0; font-size: 13px;";
+                warningText.textContent = warning;
+            }
+
+            const warningExplanation = warningBox.createEl("p");
+            warningExplanation.style.cssText =
+                "margin: 8px 0 12px 0; font-size: 13px; font-style: italic;";
+            warningExplanation.textContent =
+                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...).";
+
+            new Setting(warningBox)
+                .setName("Auto-Fix Duplicates")
+                .setDesc(
+                    "Automatically renumber all categories to remove conflicts",
+                )
+                .addButton((button) =>
+                    button
+                        .setButtonText("Auto-Fix Now")
+                        .setCta()
+                        .onClick(async () => {
+                            this.plugin.settings.taskStatusMapping =
+                                TaskPropertyService.autoFixStatusOrders(
+                                    this.plugin.settings.taskStatusMapping,
+                                );
+                            await this.plugin.saveSettings();
+                            new Notice(
+                                "Status orders fixed! Categories renumbered with gaps (10, 20, 30...)",
+                            );
+                            this.display(); // Refresh UI
+                        }),
+                );
+        }
+
+        // Add column headers
+        const headerDiv = containerEl.createDiv();
+        headerDiv.style.cssText =
+            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
+        headerDiv.createDiv({ text: "Category key" });
+        headerDiv.createDiv({ text: "Display name" });
+        headerDiv.createDiv({ text: "Query aliases" });
+        headerDiv.createDiv({ text: "Symbols" });
+        headerDiv.createDiv({ text: "Score" });
+        headerDiv.createDiv({ text: "" }); // For remove button
+
+        // Render all existing categories
+        const categories = Object.entries(
+            this.plugin.settings.taskStatusMapping,
+        );
+        for (const [categoryKey, config] of categories) {
+            this.renderStatusCategory(containerEl, categoryKey, config);
+        }
+
+        // Add new category button
+        new Setting(containerEl)
+            .setName("Add status category")
+            .setDesc("Create a new custom status category")
+            .addButton((button) =>
+                button
+                    .setButtonText("+ Add Category")
+                    .setCta()
+                    .onClick(async () => {
+                        // Generate unique category name
+                        let categoryNum = 1;
+                        let newCategoryKey = `custom${categoryNum}`;
+                        while (
+                            this.plugin.settings.taskStatusMapping[
+                                newCategoryKey
+                            ]
+                        ) {
+                            categoryNum++;
+                            newCategoryKey = `custom${categoryNum}`;
+                        }
+
+                        // Add new category with defaults
+                        this.plugin.settings.taskStatusMapping[newCategoryKey] =
+                            {
+                                symbols: [],
+                                score: 0.5,
+                                displayName: `Custom ${categoryNum}`,
+                                aliases: `custom${categoryNum}`,
+                            };
+
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh UI
+                        new Notice(`Added new category: Custom ${categoryNum}`);
+                    }),
+            );
+
+        // Task filtering
+        containerEl.createEl("h3", { text: "Task filtering" });
 
         const stopWordsInfo = containerEl.createEl("div", {
             cls: "setting-item-description",
@@ -655,7 +991,7 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Task Display Settings Section
+        // Task Display
         containerEl.createEl("h3", { text: "Task display" });
 
         new Setting(containerEl)
@@ -728,8 +1064,8 @@ Recommended values:
                     });
             });
 
-        // Scoring Coefficients Section
-        containerEl.createEl("h3", { text: "Scoring coefficients" });
+        // Task scoring
+        containerEl.createEl("h3", { text: "Task scoring" });
 
         const scoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -901,7 +1237,7 @@ Examples:
         this.updateMaxScoreDisplay();
 
         // Advanced Scoring Coefficients Section
-        containerEl.createEl("h3", { text: "Advanced scoring coefficients" });
+        containerEl.createEl("h4", { text: "Advanced scoring coefficients" });
 
         const advancedScoringInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1363,348 +1699,6 @@ Examples:
                         await this.plugin.saveSettings();
                         this.display(); // Refresh settings to show reset value
                         new Notice("System prompt reset to default");
-                    }),
-            );
-
-        // DataView Settings
-        containerEl.createEl("h3", { text: "DataView integration" });
-
-        containerEl.createDiv({
-            text: "Configure how task properties are read from DataView. These settings should match your task metadata fields.",
-            cls: "setting-item-description",
-        });
-
-        // DataView Status and Troubleshooting Info
-        const dataviewInfoBox = containerEl.createDiv({
-            cls: "setting-item-description task-chat-info-box",
-        });
-
-        dataviewInfoBox.createEl("strong", {
-            text: "💡 DataView Status & Troubleshooting",
-        });
-        dataviewInfoBox.createEl("br");
-        dataviewInfoBox.createEl("br");
-
-        dataviewInfoBox.appendText(
-            "If searches return 0 results but you have tasks in your vault:",
-        );
-        dataviewInfoBox.createEl("br");
-
-        const troubleshootingList = dataviewInfoBox.createEl("ul", {
-            cls: "task-chat-troubleshooting-list",
-        });
-
-        troubleshootingList.createEl("li", {
-            text: "⏱️ DataView may still be indexing - wait 10-30 seconds and click Refresh tasks",
-        });
-        troubleshootingList.createEl("li", {
-            text: "⚙️ DataView index delay may be too long - go to DataView settings and reduce 'Index delay' from default 2000ms to 500ms",
-        });
-        troubleshootingList.createEl("li", {
-            text: "✅ Verify task syntax - tasks must use proper Markdown format (e.g., - [ ] Task name)",
-        });
-        troubleshootingList.createEl("li", {
-            text: "🔄 Check DataView is enabled - go to Community Plugins and ensure DataView is enabled",
-        });
-
-        new Setting(containerEl)
-            .setName("Due date field")
-            .setDesc("DataView field name for due dates")
-            .addText((text) =>
-                text
-                    .setPlaceholder("due")
-                    .setValue(this.plugin.settings.dataviewKeys.dueDate)
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.dueDate = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Created date field")
-            .setDesc("DataView field name for creation dates")
-            .addText((text) =>
-                text
-                    .setPlaceholder("created")
-                    .setValue(this.plugin.settings.dataviewKeys.createdDate)
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.createdDate = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Completed date field")
-            .setDesc("DataView field name for completion dates")
-            .addText((text) =>
-                text
-                    .setPlaceholder("completed")
-                    .setValue(this.plugin.settings.dataviewKeys.completedDate)
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.completedDate = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Priority field")
-            .setDesc("DataView field name for priority")
-            .addText((text) =>
-                text
-                    .setPlaceholder("p")
-                    .setValue(this.plugin.settings.dataviewKeys.priority)
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.priority = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        // Priority Mapping
-        containerEl.createEl("h3", { text: "Priority mapping" });
-
-        containerEl.createDiv({
-            text: "Define which DataView values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1].",
-            cls: "setting-item-description",
-        });
-
-        new Setting(containerEl)
-            .setName("Priority 1 (highest) values")
-            .setDesc("Values that indicate priority 1 (e.g., 1, p1, high)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("1, p1, high")
-                    .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[1].join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[1] = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("priority-mapping-input");
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Priority 2 (high) values")
-            .setDesc("Values that indicate priority 2 (e.g., 2, p2, medium)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("2, p2, medium")
-                    .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[2].join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[2] = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("priority-mapping-input");
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Priority 3 (medium) values")
-            .setDesc("Values that indicate priority 3 (e.g., 3, p3, low)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("3, p3, low")
-                    .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[3].join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[3] = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("priority-mapping-input");
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Priority 4 (low) values")
-            .setDesc("Values that indicate priority 4 (e.g., 4, p4, none)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("4, p4, none")
-                    .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[4].join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[4] = value
-                            .split(",")
-                            .map((v) => v.trim())
-                            .filter((v) => v);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.addClass("priority-mapping-input");
-                    }),
-            );
-
-        // Status Categories (Dynamic)
-        containerEl.createEl("h3", { text: "Status categories" });
-
-        const statusCategoriesDesc = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        statusCategoriesDesc.innerHTML = `
-            <p><strong>📋 Status categories:</strong> Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
-            <p><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:open,/,?</code> to mix categories and symbols.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories</a></p>
-        `;
-
-        // Add Score vs Order clarification info box
-        const scoreVsOrderBox = containerEl.createDiv({
-            cls: "task-chat-info-box",
-        });
-        scoreVsOrderBox.style.cssText =
-            "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
-
-        scoreVsOrderBox.innerHTML = `
-            <p style="font-weight: 600; margin-bottom: 8px;">📊 Score vs Order - What's the Difference?</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
-                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
-                    <p style="font-weight: 600; margin-bottom: 4px;">🎯 Score (0.0-1.0)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Relevance weight in search ranking</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> Scoring formula (finalScore = R×20 + D×4 + P×1 + <strong>S×1</strong>)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Higher score = more relevant in searches</p>
-                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1.0 (high), completed=0.3 (low)</p>
-                </div>
-                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
-                    <p style="font-weight: 600; margin-bottom: 4px;">📋 Order (1, 2, 3...)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Display position when sorting by status</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> TaskSortService (multi-criteria sorting)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Lower order = appears first in list</p>
-                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1 (first), completed=6 (last)</p>
-                </div>
-            </div>
-            <p style="margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-accent);">
-                ✅ They are completely independent! Changing score doesn't affect order, and vice versa.
-            </p>
-        `;
-
-        // Validate status orders and show warnings if duplicates found
-        const validation = TaskPropertyService.validateStatusOrders(
-            this.plugin.settings.taskStatusMapping,
-        );
-
-        if (!validation.valid) {
-            const warningBox = containerEl.createDiv({
-                cls: "task-chat-warning-box",
-            });
-            warningBox.style.cssText =
-                "background: var(--background-modifier-error); border: 1px solid var(--background-modifier-error-hover); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
-
-            const warningTitle = warningBox.createEl("div");
-            warningTitle.style.cssText =
-                "font-weight: 600; margin-bottom: 8px; color: var(--text-error);";
-            warningTitle.innerHTML = "⚠️ Duplicate Sort Orders Detected";
-
-            for (const warning of validation.warnings) {
-                const warningText = warningBox.createEl("p");
-                warningText.style.cssText = "margin: 4px 0; font-size: 13px;";
-                warningText.textContent = warning;
-            }
-
-            const warningExplanation = warningBox.createEl("p");
-            warningExplanation.style.cssText =
-                "margin: 8px 0 12px 0; font-size: 13px; font-style: italic;";
-            warningExplanation.textContent =
-                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...).";
-
-            new Setting(warningBox)
-                .setName("Auto-Fix Duplicates")
-                .setDesc(
-                    "Automatically renumber all categories to remove conflicts",
-                )
-                .addButton((button) =>
-                    button
-                        .setButtonText("Auto-Fix Now")
-                        .setCta()
-                        .onClick(async () => {
-                            this.plugin.settings.taskStatusMapping =
-                                TaskPropertyService.autoFixStatusOrders(
-                                    this.plugin.settings.taskStatusMapping,
-                                );
-                            await this.plugin.saveSettings();
-                            new Notice(
-                                "Status orders fixed! Categories renumbered with gaps (10, 20, 30...)",
-                            );
-                            this.display(); // Refresh UI
-                        }),
-                );
-        }
-
-        // Add column headers
-        const headerDiv = containerEl.createDiv();
-        headerDiv.style.cssText =
-            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
-        headerDiv.createDiv({ text: "Category key" });
-        headerDiv.createDiv({ text: "Display name" });
-        headerDiv.createDiv({ text: "Query aliases" });
-        headerDiv.createDiv({ text: "Symbols" });
-        headerDiv.createDiv({ text: "Score" });
-        headerDiv.createDiv({ text: "" }); // For remove button
-
-        // Render all existing categories
-        const categories = Object.entries(
-            this.plugin.settings.taskStatusMapping,
-        );
-        for (const [categoryKey, config] of categories) {
-            this.renderStatusCategory(containerEl, categoryKey, config);
-        }
-
-        // Add new category button
-        new Setting(containerEl)
-            .setName("Add status category")
-            .setDesc("Create a new custom status category")
-            .addButton((button) =>
-                button
-                    .setButtonText("+ Add Category")
-                    .setCta()
-                    .onClick(async () => {
-                        // Generate unique category name
-                        let categoryNum = 1;
-                        let newCategoryKey = `custom${categoryNum}`;
-                        while (
-                            this.plugin.settings.taskStatusMapping[
-                                newCategoryKey
-                            ]
-                        ) {
-                            categoryNum++;
-                            newCategoryKey = `custom${categoryNum}`;
-                        }
-
-                        // Add new category with defaults
-                        this.plugin.settings.taskStatusMapping[newCategoryKey] =
-                            {
-                                symbols: [],
-                                score: 0.5,
-                                displayName: `Custom ${categoryNum}`,
-                                aliases: `custom${categoryNum}`,
-                            };
-
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh UI
-                        new Notice(`Added new category: Custom ${categoryNum}`);
                     }),
             );
 
@@ -2255,66 +2249,6 @@ Examples:
                 return "Local model name. Must be pulled first with 'ollama pull <model>'.";
             default:
                 return "AI model to use";
-        }
-    }
-
-    /**
-     * Get model placeholder based on provider
-     */
-    private getModelPlaceholder(): string {
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                return "gpt-4o-mini";
-            case "anthropic":
-                return "claude-3-5-sonnet-20241022";
-            case "openrouter":
-                return "openai/gpt-4o-mini";
-            case "ollama":
-                return "llama3.2";
-            default:
-                return "Enter model name";
-        }
-    }
-
-    /**
-     * Get model suggestions based on provider
-     */
-    private getModelSuggestions(): string {
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                return `<strong>Popular models:</strong>
-                    <ul style="margin: 4px 0; padding-left: 20px;">
-                        <li><code>gpt-4o-mini</code> - Fast, affordable, great for most tasks</li>
-                        <li><code>gpt-4o</code> - More capable, better reasoning</li>
-                        <li><code>gpt-4-turbo</code> - Previous generation, still powerful</li>
-                    </ul>`;
-            case "anthropic":
-                return `<strong>Popular models:</strong>
-                    <ul style="margin: 4px 0; padding-left: 20px;">
-                        <li><code>claude-3-5-sonnet-20241022</code> - Latest, most capable</li>
-                        <li><code>claude-3-haiku-20240307</code> - Fast and affordable</li>
-                        <li><code>claude-3-opus-20240229</code> - Most powerful (expensive)</li>
-                    </ul>`;
-            case "openrouter":
-                return `<strong>Access models from multiple providers:</strong>
-                    <ul style="margin: 4px 0; padding-left: 20px;">
-                        <li><code>openai/gpt-4o-mini</code> - OpenAI's affordable model</li>
-                        <li><code>anthropic/claude-3.5-sonnet</code> - Claude's latest</li>
-                        <li><code>meta-llama/llama-3.1-70b-instruct</code> - Open source</li>
-                    </ul>
-                    Visit <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a> for the complete list.`;
-            case "ollama":
-                return `<strong>Popular local models (pull with <code>ollama pull &lt;model&gt;</code>):</strong>
-                    <ul style="margin: 4px 0; padding-left: 20px;">
-                        <li><code>llama3.2</code> - Meta's latest (3B or 1B, very fast)</li>
-                        <li><code>llama3.1</code> - More capable (8B, 70B, 405B)</li>
-                        <li><code>mistral</code> - Excellent performance (7B)</li>
-                        <li><code>phi3</code> - Microsoft's efficient model</li>
-                        <li><code>qwen2.5</code> - Strong multilingual support</li>
-                    </ul>
-                    Browse all models at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>`;
-            default:
-                return "";
         }
     }
 
