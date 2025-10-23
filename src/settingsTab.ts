@@ -576,6 +576,23 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        new Setting(containerEl)
+            .setName("Enable streaming responses")
+            .setDesc(
+                "Show AI responses as they're being generated (like ChatGPT). Provides better user experience and allows you to see progress. You can stop generation at any time by clicking the Stop button. Works with all AI providers (OpenAI, Anthropic, OpenRouter, Ollama).",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(
+                        this.plugin.settings.aiEnhancement.enableStreaming,
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.aiEnhancement.enableStreaming =
+                            value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Reference to configured languages
         const languagesDisplay = this.plugin.settings.queryLanguages.join(", ");
         const languagesRef = containerEl.createDiv({

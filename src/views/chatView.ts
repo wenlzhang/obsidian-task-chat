@@ -21,6 +21,8 @@ export class ChatView extends ItemView {
     private typingIndicator: HTMLElement | null = null;
     private chatModeSelect: HTMLSelectElement | null = null;
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
+    private abortController: AbortController | null = null; // For canceling AI requests
+    private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -184,9 +186,16 @@ export class ChatView extends ItemView {
 
         this.sendButtonEl = inputContainerEl.createEl("button", {
             text: "Send (Cmd/Ctrl+Enter)",
+            cls: "task-chat-send-button",
         });
 
-        this.sendButtonEl.addEventListener("click", () => this.sendMessage());
+        this.sendButtonEl.addEventListener("click", () => {
+            if (this.isProcessing) {
+                this.stopGeneration();
+            } else {
+                this.sendMessage();
+            }
+        });
 
         // Initial welcome message
         const messages = this.plugin.sessionManager.getCurrentMessages();
@@ -878,7 +887,12 @@ export class ChatView extends ItemView {
         this.isProcessing = true;
         this.inputEl.value = "";
         this.inputEl.disabled = true;
-        this.sendButtonEl.disabled = true;
+        this.sendButtonEl.disabled = false; // Keep enabled so user can click to stop
+        this.sendButtonEl.setText("Stop");
+        this.sendButtonEl.addClass("task-chat-stop-button");
+
+        // Create abort controller for canceling request
+        this.abortController = new AbortController();
 
         // Add user message
         const userMessage: ChatMessage = {
@@ -977,8 +991,37 @@ export class ChatView extends ItemView {
             this.isProcessing = false;
             this.inputEl.disabled = false;
             this.sendButtonEl.disabled = false;
+            this.sendButtonEl.setText("Send (Cmd/Ctrl+Enter)");
+            this.sendButtonEl.removeClass("task-chat-stop-button");
+            this.abortController = null;
+            this.streamingMessageEl = null;
             this.inputEl.focus();
         }
+    }
+
+    /**
+     * Stop AI generation
+     */
+    private stopGeneration(): void {
+        if (this.abortController) {
+            console.log("[Task Chat] Stopping AI generation...");
+            this.abortController.abort();
+            this.abortController = null;
+        }
+
+        // Hide typing indicator
+        this.hideTypingIndicator();
+
+        // Reset UI state
+        this.isProcessing = false;
+        this.inputEl.disabled = false;
+        this.sendButtonEl.disabled = false;
+        this.sendButtonEl.setText("Send (Cmd/Ctrl+Enter)");
+        this.sendButtonEl.removeClass("task-chat-stop-button");
+        this.streamingMessageEl = null;
+        this.inputEl.focus();
+
+        new Notice("AI generation stopped");
     }
 
     /**

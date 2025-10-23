@@ -53,6 +53,8 @@ export class AIService {
         tasks: Task[],
         chatHistory: ChatMessage[],
         settings: PluginSettings,
+        onStream?: (chunk: string) => void, // Optional streaming callback
+        abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
         response: string;
         recommendedTasks?: Task[];
@@ -799,6 +801,8 @@ export class AIService {
                 const { response, tokenUsage } = await this.callAI(
                     messages,
                     settings,
+                    onStream,
+                    abortSignal,
                 );
 
                 console.log("[Task Chat] AI response:", response);
@@ -1308,15 +1312,22 @@ ${taskContext}`;
     private static async callAI(
         messages: any[],
         settings: PluginSettings,
+        onStream?: (chunk: string) => void,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const endpoint = settings.apiEndpoint;
 
         if (settings.aiProvider === "ollama") {
-            return this.callOllama(messages, settings);
+            return this.callOllama(messages, settings, onStream, abortSignal);
         }
 
         if (settings.aiProvider === "anthropic") {
-            return this.callAnthropic(messages, settings);
+            return this.callAnthropic(
+                messages,
+                settings,
+                onStream,
+                abortSignal,
+            );
         }
 
         // OpenAI-compatible API call (OpenAI and OpenRouter)
@@ -1383,6 +1394,8 @@ ${taskContext}`;
     private static async callAnthropic(
         messages: any[],
         settings: PluginSettings,
+        onStream?: (chunk: string) => void,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const endpoint =
             settings.apiEndpoint || "https://api.anthropic.com/v1/messages";
@@ -1457,6 +1470,8 @@ ${taskContext}`;
     private static async callOllama(
         messages: any[],
         settings: PluginSettings,
+        onStream?: (chunk: string) => void,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const endpoint =
             settings.apiEndpoint || "http://localhost:11434/api/chat";

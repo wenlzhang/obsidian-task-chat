@@ -154,6 +154,7 @@ export interface PluginSettings {
     // Standard syntax (P1, s:open, overdue) skips AI entirely
     aiEnhancement: {
         showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood and how properties were converted)
+        enableStreaming: boolean; // Enable streaming AI responses (show text as it's generated, like ChatGPT)
     };
 
     // Task Display Settings
@@ -342,6 +343,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // AI active in Smart Search and Task Chat for keyword expansion + property recognition
     aiEnhancement: {
         showAIUnderstanding: true, // Show AI understanding box in Task Chat (how properties were recognized/converted)
+        enableStreaming: true, // Enable streaming responses by default (better UX, feels more responsive)
     },
 
     // Task Display Settings

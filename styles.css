@@ -335,44 +335,69 @@
     opacity: 0.8;
 }
 
-/* Input Container */
+/* Input Container - Modern ChatGPT-style */
 .task-chat-input-container {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-top: 10px;
+    gap: 8px;
+    padding: 12px;
     border-top: 1px solid var(--background-modifier-border);
 }
 
 .task-chat-input-container textarea {
     width: 100%;
-    min-height: 60px;
-    padding: 8px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+    min-height: 80px;
+    max-height: 200px;
+    padding: 12px 16px;
+    border: 2px solid var(--background-modifier-border);
+    border-radius: 8px;
     resize: vertical;
     font-family: var(--font-interface);
     font-size: 14px;
+    line-height: 1.5;
+    background: var(--background-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.task-chat-input-container button {
-    padding: 8px 16px;
+.task-chat-input-container textarea:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 3px var(--interactive-accent-hover);
+}
+
+.task-chat-input-container textarea::placeholder {
+    color: var(--text-faint);
+}
+
+/* Send Button - Modern style */
+.task-chat-send-button {
+    padding: 10px 20px;
     cursor: pointer;
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     border: none;
-    border-radius: 4px;
-    font-weight: 500;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.task-chat-input-container button:hover {
-    opacity: 0.9;
+.task-chat-send-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.task-chat-input-container button:disabled {
+.task-chat-send-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.task-chat-send-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Stop Button - Inherits all styling from .task-chat-send-button */
 
 /* Filter Modal */
 .modal-button-container {
