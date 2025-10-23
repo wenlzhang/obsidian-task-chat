@@ -612,7 +612,7 @@ export class DataviewService {
             );
         }
 
-        // Check for standard due date keywords (today, tomorrow, overdue, future, week, next-week, month, next-month, year, next-year)
+        // Check for standard due date keywords (today, tomorrow, yesterday, overdue, future, week, last-week, next-week, month, last-month, next-month, year, last-year, next-year)
         // Use centralized matching from TaskPropertyService
         const dueDateKeywords = Object.values(
             TaskPropertyService.DUE_DATE_KEYWORDS,

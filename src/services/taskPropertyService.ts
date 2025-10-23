@@ -377,22 +377,44 @@ export class TaskPropertyService {
     } as const;
 
     /**
-     * Due date filter keywords
-     * Used for special date filtering (any, today, overdue, etc.)
+     * Due date filter keywords (special filters)
+     * Used for filtering by presence/absence of due dates
      */
-    static readonly DUE_DATE_KEYWORDS = {
+    static readonly DUE_DATE_FILTER_KEYWORDS = {
         all: "all", // Has any due date (alias for "any")
         any: "any", // Has any due date
+        none: "none", // No due date
+    } as const;
+
+    /**
+     * Due date time keywords (time-based filters)
+     * Used for filtering by specific time periods
+     */
+    static readonly DUE_DATE_TIME_KEYWORDS = {
         today: "today", // Due today
         tomorrow: "tomorrow", // Due tomorrow
+        yesterday: "yesterday", // Due yesterday
         overdue: "overdue", // Past due
         future: "future", // Future dates
         week: "week", // This week
+        lastWeek: "last-week", // Last week
         nextWeek: "next-week", // Next week
         month: "month", // This month
+        lastMonth: "last-month", // Last month
         nextMonth: "next-month", // Next month
         year: "year", // This year
+        lastYear: "last-year", // Last year
         nextYear: "next-year", // Next year
+    } as const;
+
+    /**
+     * Combined due date keywords (all filters + time keywords)
+     * Used for comprehensive due date filtering
+     * Provides backward compatibility and convenient access to all keywords
+     */
+    static readonly DUE_DATE_KEYWORDS = {
+        ...this.DUE_DATE_FILTER_KEYWORDS,
+        ...this.DUE_DATE_TIME_KEYWORDS,
     } as const;
 
     /**
@@ -402,14 +424,20 @@ export class TaskPropertyService {
     static readonly DATE_RANGE_KEYWORDS = {
         weekStart: "week-start",
         weekEnd: "week-end",
+        lastWeekStart: "last-week-start",
+        lastWeekEnd: "last-week-end",
         nextWeekStart: "next-week-start",
         nextWeekEnd: "next-week-end",
         monthStart: "month-start",
         monthEnd: "month-end",
+        lastMonthStart: "last-month-start",
+        lastMonthEnd: "last-month-end",
         nextMonthStart: "next-month-start",
         nextMonthEnd: "next-month-end",
         yearStart: "year-start",
         yearEnd: "year-end",
+        lastYearStart: "last-year-start",
+        lastYearEnd: "last-year-end",
         nextYearStart: "next-year-start",
         nextYearEnd: "next-year-end",
     } as const;
@@ -454,15 +482,6 @@ export class TaskPropertyService {
     static readonly PRIORITY_FILTER_KEYWORDS = {
         all: "all", // Has any priority (P1-P4)
         none: "none", // No priority
-    } as const;
-
-    /**
-     * Due date filter keywords (including "none")
-     * Extended version with "none" for completeness
-     */
-    static readonly DUE_DATE_FILTER_KEYWORDS = {
-        ...this.DUE_DATE_KEYWORDS,
-        none: "none", // No due date
     } as const;
 
     // ==========================================
@@ -1461,6 +1480,12 @@ export class TaskPropertyService {
                     formatted === moment().add(1, "day").format("YYYY-MM-DD")
                 );
 
+            case this.DUE_DATE_KEYWORDS.yesterday:
+                return (
+                    formatted ===
+                    moment().subtract(1, "day").format("YYYY-MM-DD")
+                );
+
             case this.DUE_DATE_KEYWORDS.overdue:
                 return taskDate.isBefore(moment(), "day");
 
@@ -1473,6 +1498,19 @@ export class TaskPropertyService {
                 return (
                     taskDate.isSameOrAfter(startOfWeek, "day") &&
                     taskDate.isSameOrBefore(endOfWeek, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.lastWeek: {
+                const startOfLastWeek = moment()
+                    .subtract(1, "week")
+                    .startOf("week");
+                const endOfLastWeek = moment()
+                    .subtract(1, "week")
+                    .endOf("week");
+                return (
+                    taskDate.isSameOrAfter(startOfLastWeek, "day") &&
+                    taskDate.isSameOrBefore(endOfLastWeek, "day")
                 );
             }
 
@@ -1494,6 +1532,19 @@ export class TaskPropertyService {
                 );
             }
 
+            case this.DUE_DATE_KEYWORDS.lastMonth: {
+                const startOfLastMonth = moment()
+                    .subtract(1, "month")
+                    .startOf("month");
+                const endOfLastMonth = moment()
+                    .subtract(1, "month")
+                    .endOf("month");
+                return (
+                    taskDate.isSameOrAfter(startOfLastMonth, "day") &&
+                    taskDate.isSameOrBefore(endOfLastMonth, "day")
+                );
+            }
+
             case this.DUE_DATE_KEYWORDS.nextMonth: {
                 const startOfNextMonth = moment()
                     .add(1, "month")
@@ -1511,6 +1562,19 @@ export class TaskPropertyService {
                 return (
                     taskDate.isSameOrAfter(startOfYear, "day") &&
                     taskDate.isSameOrBefore(endOfYear, "day")
+                );
+            }
+
+            case this.DUE_DATE_KEYWORDS.lastYear: {
+                const startOfLastYear = moment()
+                    .subtract(1, "year")
+                    .startOf("year");
+                const endOfLastYear = moment()
+                    .subtract(1, "year")
+                    .endOf("year");
+                return (
+                    taskDate.isSameOrAfter(startOfLastYear, "day") &&
+                    taskDate.isSameOrBefore(endOfLastYear, "day")
                 );
             }
 
@@ -1543,6 +1607,10 @@ export class TaskPropertyService {
                 return moment().startOf("week");
             case this.DATE_RANGE_KEYWORDS.weekEnd:
                 return moment().endOf("week");
+            case this.DATE_RANGE_KEYWORDS.lastWeekStart:
+                return moment().subtract(1, "week").startOf("week");
+            case this.DATE_RANGE_KEYWORDS.lastWeekEnd:
+                return moment().subtract(1, "week").endOf("week");
             case this.DATE_RANGE_KEYWORDS.nextWeekStart:
                 return moment().add(1, "week").startOf("week");
             case this.DATE_RANGE_KEYWORDS.nextWeekEnd:
@@ -1551,6 +1619,10 @@ export class TaskPropertyService {
                 return moment().startOf("month");
             case this.DATE_RANGE_KEYWORDS.monthEnd:
                 return moment().endOf("month");
+            case this.DATE_RANGE_KEYWORDS.lastMonthStart:
+                return moment().subtract(1, "month").startOf("month");
+            case this.DATE_RANGE_KEYWORDS.lastMonthEnd:
+                return moment().subtract(1, "month").endOf("month");
             case this.DATE_RANGE_KEYWORDS.nextMonthStart:
                 return moment().add(1, "month").startOf("month");
             case this.DATE_RANGE_KEYWORDS.nextMonthEnd:
@@ -1559,6 +1631,10 @@ export class TaskPropertyService {
                 return moment().startOf("year");
             case this.DATE_RANGE_KEYWORDS.yearEnd:
                 return moment().endOf("year");
+            case this.DATE_RANGE_KEYWORDS.lastYearStart:
+                return moment().subtract(1, "year").startOf("year");
+            case this.DATE_RANGE_KEYWORDS.lastYearEnd:
+                return moment().subtract(1, "year").endOf("year");
             case this.DATE_RANGE_KEYWORDS.nextYearStart:
                 return moment().add(1, "year").startOf("year");
             case this.DATE_RANGE_KEYWORDS.nextYearEnd:
