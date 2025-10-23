@@ -33,8 +33,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "task-chat-info-box",
         });
         overviewBox.innerHTML = `
-            <h3>📚 Understanding Settings</h3>
-            <p><strong>👉 Start with Defaults:</strong> All settings are pre-configured with recommended values. Most users don't need to change anything!</p>
+            <p><strong>👉 Start with Defaults:</strong> Most settings are pre-configured with recommended values. Most users don't need to change anything!</p>
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#settings">→ Learn more about settings and how they affect your results</a></p>
         `;
 
@@ -307,7 +306,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable semantic expansion")
             .setDesc(
-                "Expand keywords with semantic equivalents across configured languages. Example: 'develop' → 'build', 'create', '开发', 'utveckla'. Improves recall but increases token usage.",
+                "Expand keywords with semantic equivalents across configured languages. Example: 'develop' → 'build', 'create'. Improves recall but increases token usage.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -321,7 +320,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query language")
             .setDesc(
-                "Languages for keyword expansion and AI responses. Examples: English, Español. Separate with commas.",
+                "Languages for keyword semantic expansion. Used by Smart Search and Task Chat modes. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text
@@ -851,7 +850,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Relevance score")
             .setDesc(
-                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches regardless of urgency/priority.`,
+                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches regardless of task properties.`,
             )
             .addSlider((slider) => {
                 // Dynamic maximum based on actual max relevance score
@@ -1244,16 +1243,11 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description task-chat-info-box",
         });
         statusScoreNote.innerHTML = `
-            <p><strong>ℹ️ Status scores are now configured in the Status Mapping section above.</strong></p>
-            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status mapping" section to manage categories and their scores.</p>
+            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their scores.</p>
         `;
 
         // Reset Buttons Section
         containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
-
-        containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
-            <p>Quickly reset coefficient values to recommended defaults.</p>
-        `;
 
         // Reset all advanced coefficients
         new Setting(containerEl)
@@ -1418,7 +1412,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
-                "Maximum tasks to show without AI (no token cost). Default: 20.",
+                "Maximum tasks to show in Simple Search mode (no token cost). Default: 20.",
             )
             .addSlider((slider) =>
                 slider
@@ -1436,7 +1430,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("System prompt")
             .setDesc(
-                "Customize AI behavior and personality. Technical instructions are automatically appended.",
+                "Customize AI behavior and personality. Internally, technical instructions are automatically appended.",
             )
             .addTextArea((text) =>
                 text
