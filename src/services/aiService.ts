@@ -233,10 +233,11 @@ export class AIService {
                 intent = {
                     isSearch: keywords.length > 0,
                     isPriority: !!parsedQuery.priority,
-                    isDueDate: !!parsedQuery.dueDate,
+                    isDueDate: !!(parsedQuery.dueDate || parsedQuery.dueDateRange),
                     keywords: keywords,
                     extractedPriority: parsedQuery.priority || null,
                     extractedDueDateFilter: parsedQuery.dueDate || null,
+                    extractedDueDateRange: parsedQuery.dueDateRange || null,
                     extractedStatus: parsedQuery.status || null,
                     extractedFolder: parsedQuery.folder || null,
                     extractedTags: parsedQuery.tags || [],
@@ -244,7 +245,7 @@ export class AIService {
                     hasMultipleFilters:
                         [
                             parsedQuery.priority,
-                            parsedQuery.dueDate,
+                            parsedQuery.dueDate || parsedQuery.dueDateRange,
                             parsedQuery.status,
                             parsedQuery.folder,
                             parsedQuery.tags?.length,

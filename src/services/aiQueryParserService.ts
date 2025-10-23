@@ -28,9 +28,10 @@ export interface ParsedQuery {
     priority?: number | number[]; // Single: 1, Multi: [1, 2, 3]
     dueDate?: string; // Single date: "today", "overdue", "+5d" (relative)
     dueDateRange?: {
-        // Date range: "this week", "next month"
-        start: string;
-        end: string;
+        // Date range with operator (for vague queries: "<= today" includes overdue)
+        operator: "<" | "<=" | ">" | ">=" | "=" | "between";
+        date: string; // "today", "tomorrow", "end-of-week", "end-of-month", etc.
+        endDate?: string; // Only for "between" operator
     };
     status?: string | string[]; // Single: "open", Multi: ["open", "inProgress"]
     folder?: string;
@@ -1024,33 +1025,96 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
    - User wants recommendations, not date filtering
 
 **How to handle time in vague queries:**
-- Recognize time words: today, tomorrow, this week (今天, 明天, 本周, idag, imorgon)
-- **Record in aiUnderstanding.timeContext** (not dueDate/dueDateRange)
-- Let the AI use this context for prioritization/analysis
-- Don't create date filters for vague queries unless EXPLICITLY about due dates
+- Recognize time words: today, tomorrow, this week, this month, next week, next month，last week, last month, last year, this year, next year
+- **For vague queries, convert time context to dueDateRange with "<=" operator**
+- This includes OVERDUE tasks (what needs attention by that time)
+- **Record ALSO in aiUnderstanding.timeContext** for AI prioritization
+
+**Time Context → Range Mapping (VAGUE QUERIES ONLY):**
+
+TODAY (今天, idag):
+→ dueDateRange: { "operator": "<=", "date": "today" }
+→ Includes: Overdue + Due today
+
+TOMORROW (明天, imorgon):
+→ dueDateRange: { "operator": "<=", "date": "tomorrow" }
+→ Includes: Overdue + Today + Tomorrow
+
+LAST WEEK (上周, förra veckan):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-week", "endDate": "end-of-last-week" }
+→ Includes: Only last week (specific range)
+
+THIS WEEK (本周, denna vecka):
+→ dueDateRange: { "operator": "<=", "date": "end-of-week" }
+→ Includes: Everything up to end of this week
+
+NEXT WEEK (下周, nästa vecka):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-week" }
+→ Includes: Everything up to end of next week
+
+LAST MONTH (上月, förra månaden):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-month", "endDate": "end-of-last-month" }
+→ Includes: Only last month (specific range)
+
+THIS MONTH (本月, denna månad):
+→ dueDateRange: { "operator": "<=", "date": "end-of-month" }
+→ Includes: Everything up to end of this month
+
+NEXT MONTH (下月, nästa månad):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-month" }
+→ Includes: Everything up to end of next month
+
+LAST YEAR (去年, förra året):
+→ dueDateRange: { "operator": "between", "date": "start-of-last-year", "endDate": "end-of-last-year" }
+→ Includes: Only last year (specific range)
+
+THIS YEAR (今年, detta år):
+→ dueDateRange: { "operator": "<=", "date": "end-of-year" }
+→ Includes: Everything up to end of this year
+
+NEXT YEAR (明年, nästa år):
+→ dueDateRange: { "operator": "<=", "date": "end-of-next-year" }
+→ Includes: Everything up to end of next year
+
+**ALWAYS use "<=" operator for vague queries with time context!**
+
+**When NOT to use dueDateRange:**
+- Specific queries: "Complete tasks due today" → use exact dueDate: "today"
+- Explicit deadline queries: "What's due this week?" → use exact dueDate: "this-week"
 
 **EXAMPLES:**
 
 Query: "今天可以做什么？" (What can I do today?)
 → isVague: true
-→ dueDate: null (don't filter by date!)
+→ dueDate: null
+→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
 → aiUnderstanding.timeContext: "today"
-→ Strategy: Return ALL tasks, let AI prioritize based on "today" context
+→ Strategy: Return tasks due today + overdue (what needs attention today)
+
+Query: "What should I work on this week?"
+→ isVague: true
+→ dueDate: null
+→ dueDateRange: { "operator": "<=", "date": "end-of-week" }  ← NEW!
+→ aiUnderstanding.timeContext: "this week"
+→ Strategy: Return everything up to end of week (includes overdue)
 
 Query: "今天 API 项目应该做什么？" (What should I do in API project today?)
-→ isVague: false (has specific content: API project)
+→ isVague: true (generic question structure)
 → coreKeywords: ["API", "项目"]
-→ dueDate: null (context, not explicit due date)
+→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
 → aiUnderstanding.timeContext: "today"
+→ Strategy: API tasks needing attention today (includes overdue)
 
 Query: "完成今天到期的任务" (Complete tasks due today)
 → isVague: false (specific action: complete)
-→ dueDate: "today" (explicit due date mentioned)
+→ dueDate: "today" (explicit due date, NOT range)
 → status: "open" (implied: not completed yet)
+→ Strategy: Exact filter (only tasks due today)
 
 Query: "What's due today?"
 → isVague: false (explicitly asking for due dates)
-→ dueDate: "today"
+→ dueDate: "today" (exact filter)
+→ Strategy: Only tasks with exact dueDate = today
 
 **Set isVague field:**
 - Analyze coreKeywords AFTER extraction
@@ -1063,8 +1127,8 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
   "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
   "priority": <number or array of numbers or null>,
-  "dueDate": <string or null>,
-  "dueDateRange": <{start: string, end: string} or null>,
+  "dueDate": <string or null, for exact date filters in specific queries>,
+  "dueDateRange": <{"operator": "<=", "date": "today"} or null, for vague queries with time context>,
   "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
@@ -1077,7 +1141,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
       "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
       "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
     },
-    "timeContext": <string or null, time context in vague queries (e.g., "today", "this week") - NOT a filter>,
+    "timeContext": <string or null, time context in vague queries (e.g., "today", "this week")>,
     "confidence": <number 0-1, how confident you are in the parsing>,
     "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>,
     "isVagueReasoning": <string or null, brief explanation why isVague is true/false>

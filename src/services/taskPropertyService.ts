@@ -154,10 +154,15 @@ export class TaskPropertyService {
             "försenad",
             "sen",
         ],
-        thisWeek: ["this week", "本周", "这周", "denna vecka"],
+        thisWeek: ["this week", "本周", "这周", "当周", "denna vecka"],
+        lastWeek: ["last week", "上周", "förra veckan"],
         nextWeek: ["next week", "下周", "nästa vecka"],
-        thisMonth: ["this month", "本月", "这月", "denna månad"],
-        nextMonth: ["next month", "下月", "nästa månad"],
+        thisMonth: ["this month", "本月", "这月", "这个月", "当月", "denna månad"],
+        lastMonth: ["last month", "上月", "上个月", "förra månaden"],
+        nextMonth: ["next month", "下月", "下个月", "nästa månad"],
+        thisYear: ["this year", "今年", "本年", "当年", "detta år", "i år"],
+        lastYear: ["last year", "去年", "去年", "förra året"],
+        nextYear: ["next year", "明年", "明年", "nästa år"],
         future: [
             "future",
             "upcoming",
@@ -525,7 +530,14 @@ export class TaskPropertyService {
         tomorrow: string[];
         overdue: string[];
         thisWeek: string[];
+        lastWeek: string[];
         nextWeek: string[];
+        thisMonth: string[];
+        lastMonth: string[];
+        nextMonth: string[];
+        thisYear: string[];
+        lastYear: string[];
+        nextYear: string[];
         future: string[];
     } {
         return {
@@ -537,7 +549,14 @@ export class TaskPropertyService {
             tomorrow: [...this.BASE_DUE_DATE_TERMS.tomorrow],
             overdue: [...this.BASE_DUE_DATE_TERMS.overdue],
             thisWeek: [...this.BASE_DUE_DATE_TERMS.thisWeek],
+            lastWeek: [...this.BASE_DUE_DATE_TERMS.lastWeek],
             nextWeek: [...this.BASE_DUE_DATE_TERMS.nextWeek],
+            thisMonth: [...this.BASE_DUE_DATE_TERMS.thisMonth],
+            lastMonth: [...this.BASE_DUE_DATE_TERMS.lastMonth],
+            nextMonth: [...this.BASE_DUE_DATE_TERMS.nextMonth],
+            thisYear: [...this.BASE_DUE_DATE_TERMS.thisYear],
+            lastYear: [...this.BASE_DUE_DATE_TERMS.lastYear],
+            nextYear: [...this.BASE_DUE_DATE_TERMS.nextYear],
             future: [...this.BASE_DUE_DATE_TERMS.future],
         };
     }

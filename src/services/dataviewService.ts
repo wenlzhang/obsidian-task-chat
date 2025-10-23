@@ -663,7 +663,15 @@ export class DataviewService {
         intent: {
             priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
             dueDate?: string | string[] | null; // Support multi-value
-            dueDateRange?: { start: string; end: string } | null;
+            dueDateRange?: { 
+                // NEW: Operator-based format (for vague queries)
+                operator?: "<" | "<=" | ">" | ">=" | "=" | "between";
+                date?: string;
+                endDate?: string;
+                // LEGACY: start/end format (backward compatibility)
+                start?: string;
+                end?: string;
+            } | null;
             status?: string | string[] | null; // Support multi-value
             statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
@@ -761,29 +769,98 @@ export class DataviewService {
             });
         }
 
-        // Build date range filter
+        // Build date range filter (supports operator-based ranges for vague queries)
         if (intent.dueDateRange) {
             // Use centralized date field names
             const dueDateFields =
                 TaskPropertyService.getAllDueDateFieldNames(settings);
-            const { start, end } = intent.dueDateRange;
+            
+            // Check if this is operator-based range (new format) or legacy start/end
+            if (intent.dueDateRange.operator && intent.dueDateRange.date) {
+                // NEW: Operator-based range for vague queries
+                const { operator, date, endDate: rangeEndDate } = intent.dueDateRange;
+                
+                // Convert relative date keywords to actual dates
+                const convertDateKeyword = (keyword: string): moment.Moment => {
+                    const now = moment();
+                    switch (keyword) {
+                        case 'today': return moment().startOf('day');
+                        case 'tomorrow': return moment().add(1, 'day').startOf('day');
+                        case 'end-of-week': return moment().endOf('week');
+                        case 'start-of-last-week': return moment().subtract(1, 'week').startOf('week');
+                        case 'end-of-last-week': return moment().subtract(1, 'week').endOf('week');
+                        case 'end-of-next-week': return moment().add(1, 'week').endOf('week');
+                        case 'end-of-month': return moment().endOf('month');
+                        case 'start-of-last-month': return moment().subtract(1, 'month').startOf('month');
+                        case 'end-of-last-month': return moment().subtract(1, 'month').endOf('month');
+                        case 'end-of-next-month': return moment().add(1, 'month').endOf('month');
+                        case 'end-of-year': return moment().endOf('year');
+                        case 'start-of-last-year': return moment().subtract(1, 'year').startOf('year');
+                        case 'end-of-last-year': return moment().subtract(1, 'year').endOf('year');
+                        case 'end-of-next-year': return moment().add(1, 'year').endOf('year');
+                        default: return TaskPropertyService.parseDateRangeKeyword(keyword);
+                    }
+                };
+                
+                const targetDate = convertDateKeyword(date);
+                
+                filters.push((dvTask: any) => {
+                    return dueDateFields.some((field) => {
+                        const value = dvTask[field];
+                        
+                        // For vague queries with "<=" operator, tasks without due dates should be included
+                        // (they need attention too!)
+                        if (!value) {
+                            return operator === '<=' || operator === '<';
+                        }
 
-            // Parse range keywords using centralized method from TaskPropertyService
-            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
-            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
-
-            filters.push((dvTask: any) => {
-                return dueDateFields.some((field) => {
-                    const value = dvTask[field];
-                    if (!value) return false;
-
-                    const taskDate = moment(this.formatDate(value));
-                    return (
-                        taskDate.isSameOrAfter(startDate, "day") &&
-                        taskDate.isSameOrBefore(endDate, "day")
-                    );
+                        const taskDate = moment(this.formatDate(value));
+                        
+                        // Apply operator
+                        switch (operator) {
+                            case '<=':
+                                return taskDate.isSameOrBefore(targetDate, 'day');
+                            case '<':
+                                return taskDate.isBefore(targetDate, 'day');
+                            case '>=':
+                                return taskDate.isSameOrAfter(targetDate, 'day');
+                            case '>':
+                                return taskDate.isAfter(targetDate, 'day');
+                            case '=':
+                                return taskDate.isSame(targetDate, 'day');
+                            case 'between':
+                                if (rangeEndDate) {
+                                    const endMoment = convertDateKeyword(rangeEndDate);
+                                    return taskDate.isSameOrAfter(targetDate, 'day') && 
+                                           taskDate.isSameOrBefore(endMoment, 'day');
+                                }
+                                return false;
+                            default:
+                                return false;
+                        }
+                    });
                 });
-            });
+            } else {
+                // LEGACY: start/end format (for backward compatibility)
+                const { start, end } = intent.dueDateRange;
+
+                // Parse range keywords using centralized method from TaskPropertyService
+                const startDate = TaskPropertyService.parseDateRangeKeyword(start!);
+                const endDate = TaskPropertyService.parseDateRangeKeyword(end!);
+
+                filters.push((dvTask: any) => {
+                    return dueDateFields.some((field) => {
+                        const value = dvTask[field];
+                        if (!value) return false;
+
+                        const taskDate = moment(this.formatDate(value));
+                        return (
+                            taskDate.isSameOrAfter(startDate, "day") &&
+                            taskDate.isSameOrBefore(endDate, "day")
+                        );
+                    });
+                });
+            }
         }
 
         // Build status filter (supports multi-value)

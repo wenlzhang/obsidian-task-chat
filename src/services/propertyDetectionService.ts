@@ -63,7 +63,7 @@ export class PropertyDetectionService {
                 lowerQuery.includes(term.toLowerCase()),
             );
 
-        // Check for due date terms
+        // Check for due date terms (all time contexts)
         const hasDueDate =
             combined.dueDate.general.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
@@ -77,10 +77,31 @@ export class PropertyDetectionService {
             combined.dueDate.overdue.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
+            combined.dueDate.lastWeek.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
             combined.dueDate.thisWeek.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
             combined.dueDate.nextWeek.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.lastMonth.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.thisMonth.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.nextMonth.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.lastYear.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.thisYear.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
+            combined.dueDate.nextYear.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
             combined.dueDate.future.some((term) =>
