@@ -81,6 +81,7 @@ export interface QueryIntent {
     isPriority: boolean;
     isDueDate: boolean;
     hasMultipleFilters: boolean;
+    isVague?: boolean; // Indicates generic/vague query (e.g., "What should I do?")
 
     // Content keywords for semantic matching
     keywords: string[];

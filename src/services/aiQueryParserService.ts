@@ -43,6 +43,7 @@ export interface ParsedQuery {
 
     // Metadata
     originalQuery?: string;
+    isVague?: boolean; // Indicates generic/vague query (e.g., "What should I do?")
     expansionMetadata?: {
         enabled: boolean;
         maxExpansionsPerKeyword: number;
@@ -61,8 +62,10 @@ export interface ParsedQuery {
             priority?: string; // e.g., "urgent" → 1
             dueDate?: string; // e.g., "tomorrow" → specific date
         };
+        timeContext?: string; // Time context in vague queries (e.g., "today") - NOT a filter
         confidence?: number; // 0-1, how confident AI is in the parsing
         naturalLanguageUsed?: boolean; // Whether user used natural language vs exact syntax
+        isVagueReasoning?: string; // Why AI classified query as vague/specific
     };
 }
 
@@ -365,6 +368,30 @@ export class QueryParserService {
         cleaned = cleaned.replace(/\s+/g, " ").trim();
 
         return cleaned;
+    }
+
+    /**
+     * Detect if a query is vague/generic based on core keywords
+     * 
+     * Vague queries contain generic question words/verbs rather than specific task content.
+     * Examples: "What should I do?", "今天可以做什么？", "Vad ska jag göra?"
+     * 
+     * Strategy: Use shared generic words from StopWords service
+     * If 70%+ of core keywords are generic, it's vague.
+     * 
+     * Note: This is a fallback heuristic. The AI also classifies vagueness during parsing
+     * for more accurate detection across languages.
+     */
+    private static isVagueQuery(coreKeywords: string[]): boolean {
+        if (!coreKeywords || coreKeywords.length === 0) {
+            return false;
+        }
+
+        // Use shared generic words service
+        const vaguenessRatio = StopWords.calculateVaguenessRatio(coreKeywords);
+        
+        // If 70%+ of keywords are generic, it's a vague query
+        return vaguenessRatio >= 0.7;
     }
 
     /**
@@ -901,6 +928,92 @@ Examples:
 
 If you correct any typos, record them in the aiUnderstanding.correctedTypos array.
 
+🚨 VAGUE/GENERAL QUERY DETECTION 🚨
+
+**CRITICAL TASK: Detect if the query is vague/general vs specific**
+
+**Vague queries** are open-ended questions asking "what to do" without specifying concrete task content:
+- Generic question words: what, when, where, how (什么, 怎么, 哪里, vad, när, var, etc.)
+- Generic verbs: do, make, work, should, can (做, 可以, 能, göra, kan, ska, etc.)
+- Generic nouns: task, item, thing, work (任务, 事情, 东西, uppgift, sak, etc.)
+- **Little to no specific task content**
+
+**Specific queries** mention concrete tasks, projects, or actions:
+- Specific actions: fix, deploy, write, review, update (修复, 部署, 编写)
+- Specific objects: authentication, API, documentation, bug (认证, 接口, 文档, 错误)
+- Project/feature names: backend, payment system, user login (后端, 支付系统, 用户登录)
+
+**EXAMPLES OF VAGUE QUERIES:**
+
+✅ Vague (isVague: true):
+- "What should I do?" → No specific content, just asking
+- "今天可以做什么？" (What can I do today?) → Generic, even with time
+- "今天应该做什么？" (What should I do today?) → Generic, even with time
+- "Vad ska jag göra?" → Generic Swedish
+- "What's urgent?" → Only property, no task content
+- "Show me tasks" → Only generic noun, no specific content
+
+❌ Specific (isVague: false):
+- "Fix authentication bug" → Specific action + object
+- "Deploy backend API" → Specific actions
+- "今天 API 项目应该做什么？" → Has specific content (API project)
+- "What can I do today to complete the payment system?" → Specific object (payment system)
+- "Write documentation for authentication" → Specific actions + objects
+
+**TIME CONTEXT VS DUE DATE FILTER:**
+
+⚠️ CRITICAL: Time words in vague queries are CONTEXT, not always filters!
+
+**When to extract dueDate/dueDateRange:**
+1. ✅ User explicitly asks for tasks DUE on a date: "tasks due today", "due tomorrow"
+2. ✅ User mentions deadline/expiration: "deadline today", "expires tomorrow"
+3. ✅ Specific query with time: "Deploy API today", "Fix bug tomorrow"
+
+**When NOT to extract dueDate/dueDateRange:**
+1. ❌ Vague query with time context: "今天可以做什么？" (What can I do today?)
+   - "今天" (today) is CONTEXT (asking about today's workload), not a filter
+   - User wants to see ALL tasks, not just tasks due today
+   - Don't set dueDate: "today"
+
+2. ❌ Generic questions about time: "What's next?", "What should I work on?"
+   - No explicit time constraint
+   - User wants recommendations, not date filtering
+
+**How to handle time in vague queries:**
+- Recognize time words: today, tomorrow, this week (今天, 明天, 本周, idag, imorgon)
+- **Record in aiUnderstanding.timeContext** (not dueDate/dueDateRange)
+- Let the AI use this context for prioritization/analysis
+- Don't create date filters for vague queries unless EXPLICITLY about due dates
+
+**EXAMPLES:**
+
+Query: "今天可以做什么？" (What can I do today?)
+→ isVague: true
+→ dueDate: null (don't filter by date!)
+→ aiUnderstanding.timeContext: "today"
+→ Strategy: Return ALL tasks, let AI prioritize based on "today" context
+
+Query: "今天 API 项目应该做什么？" (What should I do in API project today?)
+→ isVague: false (has specific content: API project)
+→ coreKeywords: ["API", "项目"]
+→ dueDate: null (context, not explicit due date)
+→ aiUnderstanding.timeContext: "today"
+
+Query: "完成今天到期的任务" (Complete tasks due today)
+→ isVague: false (specific action: complete)
+→ dueDate: "today" (explicit due date mentioned)
+→ status: "open" (implied: not completed yet)
+
+Query: "What's due today?"
+→ isVague: false (explicitly asking for due dates)
+→ dueDate: "today"
+
+**Set isVague field:**
+- Analyze coreKeywords AFTER extraction
+- If 70%+ are generic words → isVague: true
+- If most keywords are specific content → isVague: false
+- Time context alone doesn't make it specific!
+
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
@@ -911,6 +1024,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "isVague": <boolean, true if query is generic/open-ended, false if specific>,
   "aiUnderstanding": {
     "detectedLanguage": <string, primary language detected (e.g., "en", "zh", "sv")>,
     "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
@@ -919,8 +1033,10 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
       "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
       "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
     },
+    "timeContext": <string or null, time context in vague queries (e.g., "today", "this week") - NOT a filter>,
     "confidence": <number 0-1, how confident you are in the parsing>,
-    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
+    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>,
+    "isVagueReasoning": <string or null, brief explanation why isVague is true/false>
   }
 }
 
@@ -1533,6 +1649,47 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 "[Task Chat] ================================================",
             );
 
+            // Check for properties extracted (needed for vague detection strategy)
+            const hasProperties = !!(
+                parsed.priority ||
+                parsed.dueDate ||
+                parsed.status ||
+                parsed.folder ||
+                (parsed.tags && parsed.tags.length > 0)
+            );
+
+            // Detect vague query - prioritize AI detection, fallback to heuristic
+            // AI detection is more accurate (understands context and semantics)
+            // Heuristic is fallback (keyword-based 70% threshold)
+            const aiDetectedVague = parsed.isVague; // From AI analysis
+            const heuristicVague = this.isVagueQuery(coreKeywords); // From keyword analysis
+            
+            // Final decision: AI takes priority if provided, otherwise use heuristic
+            const isVague = aiDetectedVague !== undefined ? aiDetectedVague : heuristicVague;
+            
+            if (isVague) {
+                console.log(
+                    "[Task Chat] 🔍 VAGUE QUERY DETECTED - Generic/open-ended question",
+                );
+                console.log(
+                    `[Task Chat] Detection method: ${aiDetectedVague !== undefined ? "AI-based" : "Heuristic-based"}`,
+                );
+                if (parsed.aiUnderstanding?.isVagueReasoning) {
+                    console.log(
+                        `[Task Chat] AI reasoning: ${parsed.aiUnderstanding.isVagueReasoning}`,
+                    );
+                }
+                if (parsed.aiUnderstanding?.timeContext) {
+                    console.log(
+                        `[Task Chat] Time context detected: "${parsed.aiUnderstanding.timeContext}" (context, not filter)`,
+                    );
+                }
+                console.log("[Task Chat] Core keywords:", coreKeywords);
+                console.log(
+                    `[Task Chat] Strategy: Will ${hasProperties ? "use property filters only" : "return broad results"}, skip strict keyword matching`,
+                );
+            }
+
             // Summary
             console.log("[Task Chat] Semantic expansion summary:", {
                 core: coreKeywords.length,
@@ -1545,6 +1702,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                         : "N/A",
                 target: maxKeywordsPerCore,
                 enabled: expansionEnabled,
+                isVague: isVague,
             });
 
             // Log AI Understanding metadata if present
@@ -1604,6 +1762,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
                 // Metadata
                 originalQuery: query,
+                isVague: isVague,
                 expansionMetadata: expansionMetadata,
 
                 // AI Understanding (for UI display and fallback decisions)

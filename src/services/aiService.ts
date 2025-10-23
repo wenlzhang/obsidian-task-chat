@@ -228,6 +228,7 @@ export class AIService {
                     extractedStatus: parsedQuery.status || null,
                     extractedFolder: parsedQuery.folder || null,
                     extractedTags: parsedQuery.tags || [],
+                    isVague: parsedQuery.isVague || false,
                     hasMultipleFilters:
                         [
                             parsedQuery.priority,
@@ -330,6 +331,7 @@ export class AIService {
                         intent.keywords.length > 0
                             ? intent.keywords
                             : undefined,
+                    isVague: intent.isVague, // Pass vague query flag
                 },
             );
 

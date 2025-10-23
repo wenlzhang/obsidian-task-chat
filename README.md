@@ -62,17 +62,32 @@ fix bug p1 due:today s:open,?
 ### Task Chat (AI Analysis)
 
 ```
-# English
-What should I work on next?
-Show me urgent tasks that are overdue
-Analyze my high-priority tasks
+# Specific queries (with keywords)
 fix bug p:1 p:2 due s:open,?
+Deploy production urgent
+Write documentation for API
 
-# 中文
+# General questions (time-based)
+What should I do today?
+今天可以做什么？
+
+# General questions (priority-based)
+What's urgent?
+有什么紧急的？
+Show me important tasks
+
+# General questions (status-based)
+What should I work on next?
 我接下来应该做什么？
-显示过期的紧急任务
-分析我的高优先级任务
+What can I finish today?
+
+# Combined (general + specific)
+What's urgent in the backend?
+今天 API 项目应该做什么？
+Show me work tasks due this week
 ```
+
+→ [See more general question examples](docs/GENERAL_QUESTIONS_GUIDE.md)
 
 ## 📊 Query Syntax
 

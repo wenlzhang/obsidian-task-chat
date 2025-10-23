@@ -674,6 +674,7 @@ export class TaskSearchService {
     /**
      * Apply compound filters to tasks
      * Now supports multi-value properties (priority and status can be arrays)
+     * Handles vague queries by skipping keyword filtering when appropriate
      */
     static applyCompoundFilters(
         tasks: Task[],
@@ -684,9 +685,19 @@ export class TaskSearchService {
             folder?: string | null;
             tags?: string[];
             keywords?: string[];
+            isVague?: boolean; // Indicates generic/vague query
         },
     ): Task[] {
         let filteredTasks = [...tasks];
+
+        // Check if query has any property filters
+        const hasProperties = !!(
+            filters.priority ||
+            filters.dueDate ||
+            filters.status ||
+            filters.folder ||
+            (filters.tags && filters.tags.length > 0)
+        );
 
         // Apply priority filter (supports multi-value)
         if (filters.priority) {
@@ -761,29 +772,42 @@ export class TaskSearchService {
         }
 
         // Apply keyword search (semantic matching - ANY keyword matches)
+        // Skip keyword filtering for vague queries with properties (e.g., "What should I do today?")
         if (filters.keywords && filters.keywords.length > 0) {
-            console.log(
-                `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
-            );
+            if (filters.isVague && hasProperties) {
+                console.log(
+                    `[Task Chat] 🔍 Vague query with properties detected - SKIPPING keyword filter`,
+                );
+                console.log(
+                    `[Task Chat] Strategy: Using property filters only (${filteredTasks.length} tasks)`,
+                );
+                console.log(
+                    `[Task Chat] Let AI handle natural language understanding instead of strict keyword matching`,
+                );
+            } else {
+                console.log(
+                    `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
+                );
 
-            const matchedTasks: Task[] = [];
-            filteredTasks.forEach((task) => {
-                const taskText = task.text.toLowerCase();
-                // Match if ANY keyword appears in the task text (substring match)
-                const matched = filters.keywords!.some((keyword) => {
-                    const keywordLower = keyword.toLowerCase();
-                    return taskText.includes(keywordLower);
+                const matchedTasks: Task[] = [];
+                filteredTasks.forEach((task) => {
+                    const taskText = task.text.toLowerCase();
+                    // Match if ANY keyword appears in the task text (substring match)
+                    const matched = filters.keywords!.some((keyword) => {
+                        const keywordLower = keyword.toLowerCase();
+                        return taskText.includes(keywordLower);
+                    });
+                    if (matched) {
+                        matchedTasks.push(task);
+                    }
                 });
-                if (matched) {
-                    matchedTasks.push(task);
-                }
-            });
 
-            filteredTasks = matchedTasks;
+                filteredTasks = matchedTasks;
 
-            console.log(
-                `[Task Chat] After keyword filtering: ${filteredTasks.length} tasks remain`,
-            );
+                console.log(
+                    `[Task Chat] After keyword filtering: ${filteredTasks.length} tasks remain`,
+                );
+            }
         }
 
         return filteredTasks;
