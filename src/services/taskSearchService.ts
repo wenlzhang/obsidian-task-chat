@@ -308,29 +308,58 @@ export class TaskSearchService {
     static extractPriorityFromQuery(
         query: string,
         settings: PluginSettings,
-    ): number | null | "all" | "none" {
-        // Check for unified syntax first (p:1, p:all, p:none)
-        const unifiedMatch = query.match(/\bp:(1|2|3|4|all|none)\b/i);
-        if (unifiedMatch) {
-            const value = unifiedMatch[1].toLowerCase();
-            if (value === "all") return "all";
-            if (value === "none") return "none";
-            return parseInt(value);
+    ): number | number[] | "all" | "none" | null {
+        const allPriorities = new Set<number>();
+        let hasSpecialValue: "all" | "none" | null = null;
+
+        // Pattern 1: p:1,2,3 or priority:1,2,3 (comma-separated within single occurrence)
+        // Pattern 2: p:1 p:2 p:3 or priority:1 priority:2 (multiple occurrences)
+        const unifiedMatches = Array.from(
+            query.matchAll(/\b(?:p|priority):([^\s&|]+)/gi),
+        );
+        for (const match of unifiedMatches) {
+            const rawValues = match[1];
+            const values = rawValues
+                .split(",")
+                .map((v) => v.trim().toLowerCase());
+
+            for (const value of values) {
+                if (value === "all") {
+                    hasSpecialValue = "all";
+                } else if (value === "none") {
+                    hasSpecialValue = "none";
+                } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num) && num >= 1 && num <= 4) {
+                        allPriorities.add(num);
+                    }
+                }
+            }
         }
 
-        // Check for explicit p1-p4 patterns (legacy)
-        const explicitMatch = query.match(/\bp([1-4])\b/i);
-        if (explicitMatch) {
-            return parseInt(explicitMatch[1]);
+        // Pattern 3: p1 p2 p3 (legacy space-separated)
+        const explicitMatches = Array.from(query.matchAll(/\bp([1-4])\b/gi));
+        for (const match of explicitMatches) {
+            const num = parseInt(match[1]);
+            allPriorities.add(num);
         }
 
-        // Use PropertyDetectionService for natural language terms
+        // Return special values first
+        if (hasSpecialValue) return hasSpecialValue;
+
+        // Return collected priorities
+        if (allPriorities.size > 0) {
+            const priorityArray = Array.from(allPriorities).sort();
+            return priorityArray.length === 1
+                ? priorityArray[0]
+                : priorityArray;
+        }
+
+        // No explicit priority syntax found, check natural language
         const combined =
             PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
 
-        // Check for specific priority levels using combined terms
-        // Priority 1 (highest/high)
         if (
             combined.priority.high.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
@@ -338,8 +367,6 @@ export class TaskSearchService {
         ) {
             return 1;
         }
-
-        // Priority 2 (medium)
         if (
             combined.priority.medium.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
@@ -347,8 +374,6 @@ export class TaskSearchService {
         ) {
             return 2;
         }
-
-        // Priority 3 (low)
         if (
             combined.priority.low.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
@@ -387,29 +412,44 @@ export class TaskSearchService {
     static extractDueDateFilter(
         query: string,
         settings: PluginSettings,
-    ): string | null {
+    ): string | string[] | null {
+        const allDueDates = new Set<string>();
         const lowerQuery = query.toLowerCase();
 
-        // Check for unified syntax first (d:today, due:all, d:none, etc.)
-        const unifiedMatch = query.match(/\b(?:d|due):([^\s&|,]+)/i);
-        if (unifiedMatch) {
-            const value = unifiedMatch[1].toLowerCase();
+        // Helper function to map value to internal format
+        const mapDueDateValue = (value: string): string => {
+            const v = value.toLowerCase();
+            if (v === "all" || v === "any") return "any";
+            if (v === "none") return "none";
+            if (v === "today") return "today";
+            if (v === "tomorrow") return "tomorrow";
+            if (v === "week" || v === "thisweek") return "week";
+            if (v === "nextweek") return "next-week";
+            if (v === "overdue") return "overdue";
+            if (v === "future") return "future";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; // Date format
+            return v; // Return as-is for custom formats
+        };
 
-            // Map unified syntax to internal values
-            if (value === "all" || value === "any") return "any";
-            if (value === "none") return "none";
-            if (value === "today") return "today";
-            if (value === "tomorrow") return "tomorrow";
-            if (value === "week" || value === "thisweek") return "week";
-            if (value === "nextweek") return "next-week";
-            if (value === "overdue") return "overdue";
-            if (value === "future") return "future";
+        // Pattern 1: d:today,tomorrow or due:today,tomorrow (comma-separated within single occurrence)
+        // Pattern 2: d:today d:tomorrow or due:today due:tomorrow (multiple occurrences)
+        const unifiedMatches = Array.from(
+            query.matchAll(/\b(?:d|due):([^\s&|]+)/gi),
+        );
+        for (const match of unifiedMatches) {
+            const rawValues = match[1];
+            const values = rawValues.split(",").map((v) => v.trim());
 
-            // Check if it's a date (YYYY-MM-DD format)
-            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+            for (const value of values) {
+                const mapped = mapDueDateValue(value);
+                allDueDates.add(mapped);
+            }
+        }
 
-            // Otherwise return the value as-is (might be a custom date format)
-            return value;
+        // Return collected due dates
+        if (allDueDates.size > 0) {
+            const dueDateArray = Array.from(allDueDates);
+            return dueDateArray.length === 1 ? dueDateArray[0] : dueDateArray;
         }
 
         const combined =
@@ -512,20 +552,21 @@ export class TaskSearchService {
     static extractStatusFromQuery(
         query: string,
         settings: PluginSettings,
-    ): string | null {
+    ): string | string[] | null {
+        const allStatuses = new Set<string>();
         const lowerQuery = query.toLowerCase();
 
-        // Priority 1: Check for explicit syntax "s:value" or "status:value"
-        // Use centralized pattern from TaskPropertyService.QUERY_PATTERNS
-        const explicitMatch = lowerQuery.match(
-            TaskPropertyService.QUERY_PATTERNS.status,
+        // Pattern 1: s:open,x or status:open,x (comma-separated within single occurrence)
+        // Pattern 2: s:open s:x or status:open status:x (multiple occurrences)
+        const explicitMatches = Array.from(
+            query.matchAll(/\b(?:s|status):([^\s&|]+)/gi),
         );
 
-        if (explicitMatch) {
-            console.log("[Task Chat] Status regex matched:", explicitMatch);
+        for (const match of explicitMatches) {
+            const rawValues = match[1];
+            const values = rawValues.split(",").map((v) => v.trim());
 
-            if (explicitMatch[1]) {
-                const value = explicitMatch[1];
+            for (const value of values) {
                 console.log("[Task Chat] Extracted status value:", value);
 
                 // Use centralized resolution from TaskPropertyService
@@ -536,21 +577,23 @@ export class TaskSearchService {
 
                 if (resolved) {
                     console.log("[Task Chat] Resolved to category:", resolved);
-                    return resolved;
+                    allStatuses.add(resolved);
+                } else {
+                    // If explicit syntax was used but no match found, throw error
+                    const availableCategories = Object.keys(
+                        settings.taskStatusMapping,
+                    ).join(", ");
+                    const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
+                    console.error(`[Task Chat] ${errorMsg}`);
+                    throw new Error(errorMsg);
                 }
-
-                // If explicit syntax was used but no match found, throw error
-                const availableCategories = Object.keys(
-                    settings.taskStatusMapping,
-                ).join(", ");
-                const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
-                console.error(`[Task Chat] ${errorMsg}`);
-                throw new Error(errorMsg);
-            } else {
-                console.warn(
-                    "[Task Chat] Status regex matched but capture group is undefined",
-                );
             }
+        }
+
+        // Return collected statuses
+        if (allStatuses.size > 0) {
+            const statusArray = Array.from(allStatuses);
+            return statusArray.length === 1 ? statusArray[0] : statusArray;
         }
 
         // Priority 2: Check for category terms (natural language)
@@ -821,11 +864,8 @@ export class TaskSearchService {
             isPriority: propertyHints.hasPriority,
             isDueDate: propertyHints.hasDueDate,
             keywords,
-            extractedPriority:
-                extractedPriority === "all" || extractedPriority === "none"
-                    ? (extractedPriority as any)
-                    : extractedPriority,
-            extractedDueDateFilter,
+            extractedPriority: extractedPriority as any,
+            extractedDueDateFilter: extractedDueDateFilter as any,
             extractedDueDateRange, // NEW: Now uses actual extracted value
             extractedStatus,
             extractedFolder,
@@ -848,7 +888,7 @@ export class TaskSearchService {
      * @param specialKeywords Extracted special keywords (optional)
      */
     private static validateQueryProperties(
-        priority: number | "all" | "none" | null,
+        priority: number | number[] | "all" | "none" | null,
         dueDateRange: { start?: string; end?: string } | null,
         project?: string | null,
         specialKeywords?: string[],
@@ -860,8 +900,16 @@ export class TaskSearchService {
             (priority < 1 || priority > 4)
         ) {
             console.warn(
-                `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4, p:all, or p:none.`,
+                `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4, p:1,2,3, p:all, or p:none.`,
             );
+        }
+        if (Array.isArray(priority)) {
+            const invalid = priority.filter((p) => p < 1 || p > 4);
+            if (invalid.length > 0) {
+                console.warn(
+                    `[Simple Search] ⚠️  Invalid priorities: ${invalid.join(",")}. Valid values are 1-4.`,
+                );
+            }
         }
 
         // NEW: Validate project name

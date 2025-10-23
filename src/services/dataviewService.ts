@@ -582,6 +582,113 @@ export class DataviewService {
     // and is delegated at line 427. The implementation is no longer duplicated here.
 
     /**
+     * Helper: Check if a task matches a specific due date value
+     */
+    private static matchesDueDateValue(
+        dvTask: any,
+        dueDateValue: string,
+        dueDateFields: string[],
+        settings: PluginSettings,
+    ): boolean {
+        // Check for special value "any"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.any) {
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value !== undefined && value !== null) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check for special value "none"
+        if (dueDateValue === "none") {
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value !== undefined && value !== null) {
+                    return false; // Has a due date
+                }
+            }
+            return true; // No due date found
+        }
+
+        // Check for "today"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.today) {
+            const today = moment().format("YYYY-MM-DD");
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const formatted = this.formatDate(value);
+                    if (formatted === today) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for "overdue"
+        if (dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.overdue) {
+            const today = moment();
+            for (const field of dueDateFields) {
+                const value = dvTask[field];
+                if (value) {
+                    const taskDate = moment(this.formatDate(value));
+                    if (taskDate.isBefore(today, "day")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for relative date (+Nd, +Nw, +Nm)
+        if (dueDateValue.startsWith("+")) {
+            const match = dueDateValue.match(/^\+(\d+)([dwm])$/);
+            if (match) {
+                const amount = parseInt(match[1]);
+                const unit = match[2];
+                let targetDate: moment.Moment;
+
+                if (unit === "d") {
+                    targetDate = moment().add(amount, "days");
+                } else if (unit === "w") {
+                    targetDate = moment().add(amount, "weeks");
+                } else if (unit === "m") {
+                    targetDate = moment().add(amount, "months");
+                } else {
+                    targetDate = moment();
+                }
+
+                const targetDateStr = targetDate.format("YYYY-MM-DD");
+                for (const field of dueDateFields) {
+                    const value = dvTask[field];
+                    if (value) {
+                        const formatted = this.formatDate(value);
+                        if (formatted === targetDateStr) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for specific date (YYYY-MM-DD format or other formats)
+        for (const field of dueDateFields) {
+            const value = dvTask[field];
+            if (value) {
+                const formatted = this.formatDate(value);
+                if (formatted === dueDateValue) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Build task-level filter based on extracted intent
      * Applies to INDIVIDUAL TASKS (not pages) during recursive processing
      * This ensures child tasks are evaluated independently of their parents
@@ -598,7 +705,7 @@ export class DataviewService {
     private static buildTaskFilter(
         intent: {
             priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
-            dueDate?: string | null;
+            dueDate?: string | string[] | null; // Support multi-value
             dueDateRange?: { start: string; end: string } | null;
             status?: string | string[] | null; // Support multi-value
             statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
@@ -670,102 +777,33 @@ export class DataviewService {
             }
         }
 
-        // Build due date filter (checks task metadata)
+        // Build due date filter (checks task metadata, supports multi-value)
         if (intent.dueDate) {
             // Use centralized date field names
             const dueDateFields =
                 TaskPropertyService.getAllDueDateFieldNames(settings);
 
-            // Use centralized due date keywords from TaskPropertyService
-            if (intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.any) {
-                // Has any due date
-                filters.push((dvTask: any) => {
-                    for (const field of dueDateFields) {
-                        const value = dvTask[field];
-                        if (value !== undefined && value !== null) {
-                            return true;
-                        }
-                    }
-                    return false;
-                });
-            } else if (intent.dueDate === "none") {
-                // Has NO due date
-                filters.push((dvTask: any) => {
-                    for (const field of dueDateFields) {
-                        const value = dvTask[field];
-                        if (value !== undefined && value !== null) {
-                            return false; // Has a due date
-                        }
-                    }
-                    return true; // No due date found
-                });
-            } else if (
-                intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.today
-            ) {
-                const today = moment().format("YYYY-MM-DD");
-                filters.push((dvTask: any) => {
-                    for (const field of dueDateFields) {
-                        const value = dvTask[field];
-                        if (value) {
-                            const formatted = this.formatDate(value);
-                            if (formatted === today) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                });
-            } else if (
-                intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.overdue
-            ) {
-                const today = moment();
-                filters.push((dvTask: any) => {
-                    for (const field of dueDateFields) {
-                        const value = dvTask[field];
-                        if (value) {
-                            const taskDate = moment(this.formatDate(value));
-                            if (taskDate.isBefore(today, "day")) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                });
-            } else if (intent.dueDate.startsWith("+")) {
-                // Relative date: +Nd (days), +Nw (weeks), +Nm (months)
-                const match = intent.dueDate.match(/^\+(\d+)([dwm])$/);
-                if (match) {
-                    const amount = parseInt(match[1]);
-                    const unit = match[2];
-                    let targetDate: moment.Moment;
+            // Handle multi-value due dates (d:today,tomorrow,overdue)
+            const dueDateValues = Array.isArray(intent.dueDate)
+                ? intent.dueDate
+                : [intent.dueDate];
 
-                    if (unit === "d") {
-                        targetDate = moment().add(amount, "days");
-                    } else if (unit === "w") {
-                        targetDate = moment().add(amount, "weeks");
-                    } else if (unit === "m") {
-                        targetDate = moment().add(amount, "months");
-                    } else {
-                        // Invalid unit, skip this filter
-                        targetDate = moment(); // Fallback to today
+            // Build filter that matches ANY of the due date values (OR logic)
+            filters.push((dvTask: any) => {
+                for (const dueDateValue of dueDateValues) {
+                    if (
+                        this.matchesDueDateValue(
+                            dvTask,
+                            dueDateValue,
+                            dueDateFields,
+                            settings,
+                        )
+                    ) {
+                        return true; // Match ANY value
                     }
-
-                    const targetDateStr = targetDate.format("YYYY-MM-DD");
-                    filters.push((dvTask: any) => {
-                        for (const field of dueDateFields) {
-                            const value = dvTask[field];
-                            if (value) {
-                                const formatted = this.formatDate(value);
-                                if (formatted === targetDateStr) {
-                                    return true;
-                                }
-                            }
-                        }
-                        return false;
-                    });
                 }
-            }
-            // Add more due date filters as needed (tomorrow, week, etc.)
+                return false;
+            });
         }
 
         // Build date range filter

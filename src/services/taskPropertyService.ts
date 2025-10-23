@@ -242,13 +242,13 @@ export class TaskPropertyService {
     static readonly QUERY_PATTERNS = {
         // Priority patterns (unified syntax)
         priority: /\bp[1-4]\b/gi, // Legacy: p1, p2, p3, p4
-        priorityUnified: /\bp:(1|2|3|4|all|none)\b/gi, // New: p:1, p:2, p:3, p:4, p:all, p:none
+        priorityUnified: /\b(?:p|priority):([^\s&|]+)/gi, // New: p:1,2,3 or priority:1,2,3 or p:all or priority:none
 
-        // Status patterns (already unified)
-        status: /\b(?:s|status):([^\s&|,]+)/i, // Supports both s: and status: syntax (no 'g' flag to preserve capture groups)
+        // Status patterns (already unified, supports multi-value)
+        status: /\b(?:s|status):([^\s&|]+)/gi, // Supports both s: and status: syntax with comma-separated values
 
-        // Due date patterns (unified syntax)
-        dueUnified: /\b(?:d|due):([^\s&|,]+)/gi, // New: d:today, due:all, d:none, d:2025-01-22, etc.
+        // Due date patterns (unified syntax, supports multi-value)
+        dueUnified: /\b(?:d|due):([^\s&|]+)/gi, // New: d:today, due:all, d:none, d:2025-01-22, etc. (allows commas)
         dueBeforeRange: /due\s+before:\s*[^&|]+/gi,
         dueAfterRange: /due\s+after:\s*[^&|]+/gi,
         dateBeforeRange: /(?<!due\s)date\s+before:\s*[^&|]+/gi,
