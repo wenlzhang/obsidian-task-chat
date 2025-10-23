@@ -381,10 +381,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Migration: Old settings will be automatically converted to new structure
 
     // Unified multi-criteria sorting for all modes
-    // Relevance always first (weighted by coefficients: R×20, D×4, P×1)
-    // Due date and priority serve as tiebreakers for tasks with equal weighted scores
+    // Relevance always first (weighted by coefficients: R×20, D×4, P×1, S×1)
+    // Due date, priority, and status serve as tiebreakers for tasks with equal weighted scores
     // This single setting works perfectly for Simple Search, Smart Search, and Task Chat
-    taskSortOrder: ["relevance", "dueDate", "priority"],
+    taskSortOrder: ["relevance", "dueDate", "priority", "status"],
 
     // Usage Tracking
     totalTokensUsed: 0,

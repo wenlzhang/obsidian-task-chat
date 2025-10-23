@@ -571,7 +571,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("DataView task properties")
             .setDesc(
-                "Configure task property field names.\n\n<a href=\"https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration\">→ Learn more about DataView integration and troubleshooting</a>",
+                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration">→ Learn more about DataView integration and troubleshooting</a>',
             )
             .setClass("setting-subsection-heading");
 
@@ -626,10 +626,12 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("Priority mapping")
-            .setDesc("Define which priority values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1]")
+            .setDesc(
+                "Define which priority values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1]",
+            )
             .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
@@ -918,15 +920,13 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task scoring
-        new Setting(containerEl).
-            setName("Task scoring").
-            setHeading();
+        new Setting(containerEl).setName("Task scoring").setHeading();
 
         // Main weights
         new Setting(containerEl)
             .setName("Main weights")
             .setDesc(
-                "Control how much each factor (relevance, due date, priority, status) affects task scores. <a href=\"https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md\">→ Learn more</a>",
+                'Control how much each factor (relevance, due date, priority, status) affects task scores. <a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md">→ Learn more</a>',
             )
             .setClass("setting-subsection-heading");
 
@@ -1259,7 +1259,9 @@ export class SettingsTab extends PluginSettingTab {
         // Reset main coefficients
         new Setting(containerEl)
             .setName("Reset all main weights")
-            .setDesc("Reset all main weights to defaults (R:20, D:4, P:1, S:1).")
+            .setDesc(
+                "Reset all main weights to defaults (R:20, D:4, P:1, S:1).",
+            )
             .addButton((button) =>
                 button
                     .setButtonText("Reset all main weights")
@@ -1282,7 +1284,7 @@ export class SettingsTab extends PluginSettingTab {
                         this.display(); // Refresh UI
                     }),
             );
-        
+
         // Reset all advanced coefficients
         new Setting(containerEl)
             .setName("Reset all sub-coefficients")
@@ -1324,9 +1326,7 @@ export class SettingsTab extends PluginSettingTab {
                             JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
                         );
                         await this.plugin.saveSettings();
-                        new Notice(
-                            "All sub-coefficients reset to defaults",
-                        );
+                        new Notice("All sub-coefficients reset to defaults");
                         this.display(); // Refresh UI
                     }),
             );
@@ -1334,17 +1334,21 @@ export class SettingsTab extends PluginSettingTab {
         // Reset relevance sub-coefficients
         new Setting(containerEl)
             .setName("Reset relevance core keyword match bonus")
-            .setDesc("Reset relevance core keyword match bonus to default (0.2).")
+            .setDesc(
+                "Reset relevance core keyword match bonus to default (0.2).",
+            )
             .addButton((button) =>
-                button.setButtonText("Reset relevance core keyword match bonus").onClick(async () => {
-                    this.plugin.settings.relevanceCoreWeight =
-                        DEFAULT_SETTINGS.relevanceCoreWeight;
-                    await this.plugin.saveSettings();
-                    new Notice(
-                        "Relevance core keyword match bonus reset to default (0.2)",
-                    );
-                    this.display();
-                }),
+                button
+                    .setButtonText("Reset relevance core keyword match bonus")
+                    .onClick(async () => {
+                        this.plugin.settings.relevanceCoreWeight =
+                            DEFAULT_SETTINGS.relevanceCoreWeight;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "Relevance core keyword match bonus reset to default (0.2)",
+                        );
+                        this.display();
+                    }),
             );
 
         // Reset due date sub-coefficients
@@ -1352,21 +1356,25 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Reset due date sub-coefficients")
             .setDesc("Reset due date sub-coefficients to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset due date sub-coefficients").onClick(async () => {
-                    this.plugin.settings.dueDateOverdueScore =
-                        DEFAULT_SETTINGS.dueDateOverdueScore;
-                    this.plugin.settings.dueDateWithin7DaysScore =
-                        DEFAULT_SETTINGS.dueDateWithin7DaysScore;
-                    this.plugin.settings.dueDateWithin1MonthScore =
-                        DEFAULT_SETTINGS.dueDateWithin1MonthScore;
-                    this.plugin.settings.dueDateLaterScore =
-                        DEFAULT_SETTINGS.dueDateLaterScore;
-                    this.plugin.settings.dueDateNoneScore =
-                        DEFAULT_SETTINGS.dueDateNoneScore;
-                    await this.plugin.saveSettings();
-                    new Notice("Due date sub-coefficients reset to defaults");
-                    this.display();
-                }),
+                button
+                    .setButtonText("Reset due date sub-coefficients")
+                    .onClick(async () => {
+                        this.plugin.settings.dueDateOverdueScore =
+                            DEFAULT_SETTINGS.dueDateOverdueScore;
+                        this.plugin.settings.dueDateWithin7DaysScore =
+                            DEFAULT_SETTINGS.dueDateWithin7DaysScore;
+                        this.plugin.settings.dueDateWithin1MonthScore =
+                            DEFAULT_SETTINGS.dueDateWithin1MonthScore;
+                        this.plugin.settings.dueDateLaterScore =
+                            DEFAULT_SETTINGS.dueDateLaterScore;
+                        this.plugin.settings.dueDateNoneScore =
+                            DEFAULT_SETTINGS.dueDateNoneScore;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "Due date sub-coefficients reset to defaults",
+                        );
+                        this.display();
+                    }),
             );
 
         // Reset priority sub-coefficients
@@ -1374,21 +1382,25 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Reset priority sub-coefficients")
             .setDesc("Reset all priority sub-coefficients to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset priority sub-coefficients").onClick(async () => {
-                    this.plugin.settings.priorityP1Score =
-                        DEFAULT_SETTINGS.priorityP1Score;
-                    this.plugin.settings.priorityP2Score =
-                        DEFAULT_SETTINGS.priorityP2Score;
-                    this.plugin.settings.priorityP3Score =
-                        DEFAULT_SETTINGS.priorityP3Score;
-                    this.plugin.settings.priorityP4Score =
-                        DEFAULT_SETTINGS.priorityP4Score;
-                    this.plugin.settings.priorityNoneScore =
-                        DEFAULT_SETTINGS.priorityNoneScore;
-                    await this.plugin.saveSettings();
-                    new Notice("Priority sub-coefficients reset to defaults");
-                    this.display();
-                }),
+                button
+                    .setButtonText("Reset priority sub-coefficients")
+                    .onClick(async () => {
+                        this.plugin.settings.priorityP1Score =
+                            DEFAULT_SETTINGS.priorityP1Score;
+                        this.plugin.settings.priorityP2Score =
+                            DEFAULT_SETTINGS.priorityP2Score;
+                        this.plugin.settings.priorityP3Score =
+                            DEFAULT_SETTINGS.priorityP3Score;
+                        this.plugin.settings.priorityP4Score =
+                            DEFAULT_SETTINGS.priorityP4Score;
+                        this.plugin.settings.priorityNoneScore =
+                            DEFAULT_SETTINGS.priorityNoneScore;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "Priority sub-coefficients reset to defaults",
+                        );
+                        this.display();
+                    }),
             );
 
         // Reset status category
@@ -1396,14 +1408,16 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Reset status category")
             .setDesc("Reset all status categories to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset status category").onClick(async () => {
-                    this.plugin.settings.taskStatusMapping = JSON.parse(
-                        JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
-                    );
-                    await this.plugin.saveSettings();
-                    new Notice("Status categories reset to defaults");
-                    this.display();
-                }),
+                button
+                    .setButtonText("Reset status category")
+                    .onClick(async () => {
+                        this.plugin.settings.taskStatusMapping = JSON.parse(
+                            JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
+                        );
+                        await this.plugin.saveSettings();
+                        new Notice("Status categories reset to defaults");
+                        this.display();
+                    }),
             );
 
         // Task Display
@@ -2406,7 +2420,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Add helpful note
         sortSetting.descEl.createEl("div", {
-            text: "💡 Default: Relevance, Due date, Priority",
+            text: "💡 Default: Relevance, Due date, Priority, Status",
             cls: "setting-item-description",
         });
     }
