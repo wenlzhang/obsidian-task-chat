@@ -348,7 +348,7 @@ export class SettingsTab extends PluginSettingTab {
             <p><strong>ℹ️ Search mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEARCH_MODES.md">→ Learn more about search modes</a></p>
         `;
-        
+
         // Semantic Expansion
         containerEl.createEl("h3", { text: "Semantic expansion" });
 
@@ -387,7 +387,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("Query language")
             .setDesc(
@@ -513,8 +513,44 @@ export class SettingsTab extends PluginSettingTab {
         aiEnhancementInfo.innerHTML = `
             <p><strong>🤖 AI features (automatic in Smart Search & Task Chat):</strong> Keyword expansion, property recognition, typo correction.</p>
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
-        `;        
-        
+        `;
+
+        new Setting(containerEl)
+            .setName("Max tasks for AI analysis")
+            .setDesc(
+                "Maximum tasks to send to AI for analysis in Task Chat mode. " +
+                    "Default: 100 (increased from 30 to provide better context). " +
+                    "Higher values help AI see important tasks with due dates/priorities that may rank outside top 30. " +
+                    "Token cost impact: 30→$0.0006, 100→$0.0015 per query (gpt-4o-mini). " +
+                    "Recommended: 100 for comprehensive results, 50 for balanced, 30 for minimal cost.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(10, 500, 10)
+                    .setValue(this.plugin.settings.maxTasksForAI)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxTasksForAI = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Max AI recommendations")
+            .setDesc(
+                "Maximum tasks AI should recommend. Default: 20. Keeps the final task list manageable.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(5, 100, 5)
+                    .setValue(this.plugin.settings.maxRecommendations)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.maxRecommendations = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         new Setting(containerEl)
             .setName("Response language")
             .setDesc(
@@ -579,7 +615,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         new Setting(containerEl)
             .setName("Show token usage")
             .setDesc("Display API usage and cost information in chat")
@@ -608,7 +644,7 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        
+
         // DataView Settings
         containerEl.createEl("h3", { text: "DataView integration" });
 
@@ -799,8 +835,8 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Status Categories (Dynamic)
-        containerEl.createEl("h3", { text: "Status categories" });
+        // Status Category
+        containerEl.createEl("h3", { text: "Status category" });
 
         const statusCategoriesDesc = containerEl.createDiv({
             cls: "setting-item-description",
@@ -951,79 +987,8 @@ export class SettingsTab extends PluginSettingTab {
         // Task filtering
         containerEl.createEl("h3", { text: "Task filtering" });
 
-        const stopWordsInfo = containerEl.createEl("div", {
-            cls: "setting-item-description",
-        });
-        stopWordsInfo.createEl("p", {
-            text: "Stop words are common words filtered out during search to improve relevance. Your custom stop words combine with ~100 built-in stop words (including 'the', 'a', 'task', 'work', etc.). Used in all modes: Simple Search, Smart Search, Task Chat.",
-        });
-
-        // Show count of internal stop words
-        const internalCount = StopWords.getInternalStopWords().length;
-        stopWordsInfo.createEl("p", {
-            text: `Built-in stop words: ${internalCount} words.`,
-            cls: "mod-muted",
-        });
-
         new Setting(containerEl)
-            .setName("Custom stop words")
-            .setDesc(
-                "Additional stop words specific to your workflow or language. These combine with built-in stop words to filter out unwanted keywords. Example: 'project, task' for domain-specific or additional language terms. Comma-separated list.",
-            )
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("task")
-                    .setValue(this.plugin.settings.userStopWords.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.userStopWords = value
-                            .split(",")
-                            .map((term) => term.trim())
-                            .filter((term) => term.length > 0);
-                        // Update StopWords class immediately
-                        StopWords.setUserStopWords(
-                            this.plugin.settings.userStopWords,
-                        );
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 3;
-                        text.inputEl.cols = 50;
-                    }),
-            );
-
-        // Task Display
-        containerEl.createEl("h3", { text: "Task display" });
-
-        new Setting(containerEl)
-            .setName("Quality filter")
-            .setDesc(
-                `Controls task filtering strictness (0-100%). Higher = fewer but higher-quality results.
-
-Score calculation: relevance×20 + dueDate×4 + priority×1 (max: 31 points)
-
-Filter levels:
-• 0%: Adaptive (recommended) - auto-adjusts based on query complexity
-• 1-25%: Permissive - broad matching, more results
-• 26-50%: Balanced - moderate quality filtering
-• 51-75%: Strict - only strong matches
-• 76-100%: Very strict - near-perfect matches only
-
-💡 Tip: Start with 0% (adaptive) and increase if you get too many results.`,
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 100, 1)
-                    .setValue(this.plugin.settings.qualityFilterStrength * 100)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.qualityFilterStrength =
-                            value / 100;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Minimum relevance score")
+            .setName("Relevance score")
             .setDesc(
                 `Requires tasks to have a minimum keyword relevance score. Set to 0 to disable (default).
 
@@ -1063,6 +1028,74 @@ Recommended values:
                         await this.plugin.saveSettings();
                     });
             });
+
+        new Setting(containerEl)
+            .setName("Quality filter")
+            .setDesc(
+                `Controls task filtering strictness (0-100%). Higher = fewer but higher-quality results.
+
+Score calculation: relevance×20 + dueDate×4 + priority×1 (max: 31 points)
+
+Filter levels:
+• 0%: Adaptive (recommended) - auto-adjusts based on query complexity
+• 1-25%: Permissive - broad matching, more results
+• 26-50%: Balanced - moderate quality filtering
+• 51-75%: Strict - only strong matches
+• 76-100%: Very strict - near-perfect matches only
+
+💡 Tip: Start with 0% (adaptive) and increase if you get too many results.`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 100, 1)
+                    .setValue(this.plugin.settings.qualityFilterStrength * 100)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.qualityFilterStrength =
+                            value / 100;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        const stopWordsInfo = containerEl.createEl("div", {
+            cls: "setting-item-description",
+        });
+        stopWordsInfo.createEl("p", {
+            text: "Stop words are common words filtered out during search to improve relevance. Your custom stop words combine with ~100 built-in stop words (including 'the', 'a', 'task', 'work', etc.). Used in all modes: Simple Search, Smart Search, Task Chat.",
+        });
+
+        // Show count of internal stop words
+        const internalCount = StopWords.getInternalStopWords().length;
+        stopWordsInfo.createEl("p", {
+            text: `Built-in stop words: ${internalCount} words.`,
+            cls: "mod-muted",
+        });
+
+        new Setting(containerEl)
+            .setName("Custom stop words")
+            .setDesc(
+                "Additional stop words specific to your workflow or language. These combine with built-in stop words to filter out unwanted keywords. Example: 'project, task' for domain-specific or additional language terms. Comma-separated list.",
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("task")
+                    .setValue(this.plugin.settings.userStopWords.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.userStopWords = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        // Update StopWords class immediately
+                        StopWords.setUserStopWords(
+                            this.plugin.settings.userStopWords,
+                        );
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 3;
+                        text.inputEl.cols = 50;
+                    }),
+            );
 
         // Task scoring
         containerEl.createEl("h3", { text: "Task scoring" });
@@ -1591,9 +1624,9 @@ Examples:
                 }),
             );
 
-        // Reset status categories
+        // Reset status category
         new Setting(containerEl)
-            .setName("Reset status categories")
+            .setName("Reset status category")
             .setDesc(
                 "Reset all status categories (symbols, scores, names) to defaults: Open, Completed, In Progress, Cancelled, Other.",
             )
@@ -1608,6 +1641,9 @@ Examples:
                 }),
             );
 
+        // Task Display
+        containerEl.createEl("h3", { text: "Task display" });
+
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
@@ -1620,42 +1656,6 @@ Examples:
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.plugin.settings.maxDirectResults = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Max tasks for AI analysis")
-            .setDesc(
-                "Maximum tasks to send to AI for analysis in Task Chat mode. " +
-                    "Default: 100 (increased from 30 to provide better context). " +
-                    "Higher values help AI see important tasks with due dates/priorities that may rank outside top 30. " +
-                    "Token cost impact: 30→$0.0006, 100→$0.0015 per query (gpt-4o-mini). " +
-                    "Recommended: 100 for comprehensive results, 50 for balanced, 30 for minimal cost.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(10, 500, 10)
-                    .setValue(this.plugin.settings.maxTasksForAI)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.maxTasksForAI = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Max AI recommendations")
-            .setDesc(
-                "Maximum tasks AI should recommend. Default: 20. Keeps the final task list manageable.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(5, 100, 5)
-                    .setValue(this.plugin.settings.maxRecommendations)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.maxRecommendations = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -1703,7 +1703,7 @@ Examples:
             );
 
         // Pricing Information
-        containerEl.createEl("h3", { text: "Pricing data" });
+        containerEl.createEl("h4", { text: "Pricing data" });
 
         const pricingInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -1760,7 +1760,7 @@ Examples:
             );
 
         // Usage Statistics
-        containerEl.createEl("h3", { text: "Usage statistics" });
+        containerEl.createEl("h4", { text: "Usage statistics" });
 
         const statsContainer = containerEl.createDiv({
             cls: "setting-item-description",
