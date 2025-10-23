@@ -308,6 +308,58 @@ export class SettingsTab extends PluginSettingTab {
             <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md">→ Learn more about chat modes</a></p>
         `;
 
+        // Generic Question Detection        
+        new Setting(containerEl)
+            .setName("Generic question detection")
+            .setClass("setting-subsection-heading");
+
+        const genericModeInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        genericModeInfo.innerHTML = `
+            <p><strong>🔍 Generic questions:</strong> Open-ended questions like "What should I do?" vs specific searches like "Fix authentication bug".</p>
+            <p><strong>Auto mode:</strong> System detects automatically. <strong>Generic mode:</strong> Forces generic handling.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#generic-question-detection">→ Learn more about detection modes</a></p>
+        `;
+
+        new Setting(containerEl)
+            .setName("Default mode")
+            .setDesc(
+                "Choose how queries are interpreted by default:\n" +
+                    "• Auto: Detect automatically\n" +
+                    "• Generic: Always treat queries as generic questions\n" +
+                    "Override per-query using dropdown in chat interface.",
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("auto", "🤖 Auto (Detect automatically)")
+                    .addOption("generic", "🔍 Generic (Force generic mode)")
+                    .setValue(this.plugin.settings.defaultGenericMode)
+                    .onChange(async (value: "auto" | "generic") => {
+                        this.plugin.settings.defaultGenericMode = value;
+                        this.plugin.settings.currentGenericMode = value; // Sync current
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Detection threshold (Auto mode)")
+            .setDesc(
+                "Percentage of generic words to classify query as generic. " +
+                    "Range: 50-100%. Default: 70%. Higher = fewer queries classified as generic. " +
+                    "Only applies in Auto mode. Works across Simple Search, Smart Search, and Task Chat.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(50, 100, 5) // 50-100%, step 5%
+                    .setValue(this.plugin.settings.vagueQueryThreshold * 100)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.vagueQueryThreshold = value / 100;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Semantic Expansion
         new Setting(containerEl).setName("Semantic expansion").setHeading();
 

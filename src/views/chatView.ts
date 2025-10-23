@@ -22,6 +22,7 @@ export class ChatView extends ItemView {
     private typingIndicator: HTMLElement | null = null;
     private chatModeSelect: HTMLSelectElement | null = null;
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
+    private genericModeSelect: HTMLSelectElement | null = null; // Generic question mode selector
     private abortController: AbortController | null = null; // For canceling AI requests
     private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
     private providerSelectEl: HTMLSelectElement | null = null; // Provider dropdown
@@ -149,6 +150,43 @@ export class ChatView extends ItemView {
             await this.plugin.saveSettings();
 
             console.log(`[Task Chat] Chat mode changed to: ${value}`);
+        });
+
+        // Group 2.5: Generic question mode (compact dropdown)
+        const genericModeGroup = controlsEl.createDiv("task-chat-button-group");
+        const genericModeContainer = genericModeGroup.createDiv(
+            "task-chat-generic-mode",
+        );
+
+        // Dropdown with label
+        genericModeContainer.createSpan({
+            text: "Generic:",
+            cls: "task-chat-generic-mode-label",
+        });
+
+        this.genericModeSelect = genericModeContainer.createEl("select", {
+            cls: "task-chat-generic-mode-select",
+        });
+
+        // Add options
+        this.genericModeSelect.createEl("option", {
+            value: "auto",
+            text: "🤖 Auto",
+        });
+        this.genericModeSelect.createEl("option", {
+            value: "generic",
+            text: "🔍 Generic",
+        });
+
+        // Set current value from settings
+        this.genericModeSelect.value = this.plugin.settings.currentGenericMode;
+
+        // Handle changes
+        this.genericModeSelect.addEventListener("change", async () => {
+            const value = this.genericModeSelect?.value as "auto" | "generic";
+            this.plugin.settings.currentGenericMode = value;
+            await this.plugin.saveSettings();
+            console.log(`[Task Chat] Generic mode changed to: ${value}`);
         });
 
         // Group 3: Task management
@@ -1127,11 +1165,20 @@ export class ChatView extends ItemView {
      */
     private async clearChat(): Promise<void> {
         this.plugin.sessionManager.clearCurrentSession();
+
+        // Reset generic mode to default on clear
+        this.plugin.settings.currentGenericMode =
+            this.plugin.settings.defaultGenericMode;
+        if (this.genericModeSelect) {
+            this.genericModeSelect.value =
+                this.plugin.settings.currentGenericMode;
+        }
+
         await this.renderMessages();
         await this.addSystemMessage(
             "Chat cleared. How can I help you with your tasks?",
         );
-        this.plugin.saveSettings();
+        await this.plugin.saveSettings();
     }
 
     /**
@@ -1222,8 +1269,17 @@ export class ChatView extends ItemView {
             this.plugin,
             async (sessionId: string) => {
                 this.plugin.sessionManager.switchSession(sessionId);
+
+                // Reset generic mode to default on session switch
+                this.plugin.settings.currentGenericMode =
+                    this.plugin.settings.defaultGenericMode;
+                if (this.genericModeSelect) {
+                    this.genericModeSelect.value =
+                        this.plugin.settings.currentGenericMode;
+                }
+
                 await this.renderMessages();
-                this.plugin.saveSettings();
+                await this.plugin.saveSettings();
             },
         );
         modal.open();

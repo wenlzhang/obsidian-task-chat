@@ -883,6 +883,33 @@ export class TaskSearchService {
         // NEW (Enhancement #4): Validate extracted properties
         this.validateQueryProperties(extractedPriority, extractedDueDateRange);
 
+        // ========== VAGUE QUERY DETECTION (Simple Search Mode) ==========
+        // For Simple Search: Use heuristic detection only (no AI)
+        // Check user's explicit mode choice first
+        let isVague = false;
+
+        if (settings.currentGenericMode === "generic") {
+            // Generic mode: Force vague handling
+            isVague = true;
+            console.log(
+                "[Simple Search] 🔍 Generic Mode: Forcing generic handling (user override)",
+            );
+        } else {
+            // Auto mode: Heuristic detection using threshold
+            // Split query into words (RAW - keep stop words for detection!)
+            const rawWords = query.split(/\s+/).filter((w) => w.length > 0);
+            const vaguenessRatio = StopWords.calculateVaguenessRatio(rawWords);
+            const threshold = settings.vagueQueryThreshold || 0.7;
+            isVague = vaguenessRatio >= threshold;
+
+            if (isVague) {
+                console.log(
+                    `[Simple Search] 🔍 Vague query detected: ${rawWords.length} words, ` +
+                        `${(vaguenessRatio * 100).toFixed(0)}% generic (threshold: ${(threshold * 100).toFixed(0)}%)`,
+                );
+            }
+        }
+
         return {
             isSearch: this.isSearchQuery(query),
             isPriority: propertyHints.hasPriority,
@@ -895,6 +922,7 @@ export class TaskSearchService {
             extractedFolder,
             extractedTags,
             hasMultipleFilters: filterCount > 1,
+            isVague, // NEW: Vague query detection
         };
     }
 

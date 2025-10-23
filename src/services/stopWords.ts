@@ -18,7 +18,7 @@ export class StopWords {
     /**
      * Generic words that indicate vague/open-ended queries
      * Used to detect queries like "What should I do?" vs specific "Fix authentication bug"
-     * 
+     *
      * Categories:
      * 1. Question words - indicate asking/uncertainty
      * 2. Generic verbs - non-specific actions
@@ -28,125 +28,326 @@ export class StopWords {
      */
     public static readonly GENERIC_QUERY_WORDS = new Set([
         // English question words
-        'what', 'when', 'where', 'which', 'how', 'why', 'who', 'whom', 'whose',
-        
+        "what",
+        "when",
+        "where",
+        "which",
+        "how",
+        "why",
+        "who",
+        "whom",
+        "whose",
+
         // English generic verbs
-        'do', 'does', 'did', 'doing', 'done',
-        'make', 'makes', 'made', 'making',
-        'work', 'works', 'worked', 'working',
-        'get', 'gets', 'got', 'getting',
-        'go', 'goes', 'went', 'going',
-        'come', 'comes', 'came', 'coming',
-        'take', 'takes', 'took', 'taking',
-        'give', 'gives', 'gave', 'giving',
-        
+        "do",
+        "does",
+        "did",
+        "doing",
+        "done",
+        "make",
+        "makes",
+        "made",
+        "making",
+        "work",
+        "works",
+        "worked",
+        "working",
+        "get",
+        "gets",
+        "got",
+        "getting",
+        "go",
+        "goes",
+        "went",
+        "going",
+        "come",
+        "comes",
+        "came",
+        "coming",
+        "take",
+        "takes",
+        "took",
+        "taking",
+        "give",
+        "gives",
+        "gave",
+        "giving",
+
         // English modal verbs
-        'should', 'could', 'would', 'might', 'must',
-        'can', 'may', 'shall', 'will',
-        
+        "should",
+        "could",
+        "would",
+        "might",
+        "must",
+        "can",
+        "may",
+        "shall",
+        "will",
+
         // English auxiliary/helping verbs
-        'need', 'needs', 'needed', 'needing',
-        'have', 'has', 'had', 'having',
-        'want', 'wants', 'wanted', 'wanting',
-        
+        "need",
+        "needs",
+        "needed",
+        "needing",
+        "have",
+        "has",
+        "had",
+        "having",
+        "want",
+        "wants",
+        "wanted",
+        "wanting",
+
         // English generic nouns
-        'task', 'tasks', 'item', 'items', 'thing', 'things',
-        'work', 'job', 'jobs', 'stuff', 'matter', 'matters',
-        'issue', 'issues', 'problem', 'problems',
-        
+        "task",
+        "tasks",
+        "item",
+        "items",
+        "thing",
+        "things",
+        "work",
+        "job",
+        "jobs",
+        "stuff",
+        "matter",
+        "matters",
+        "issue",
+        "issues",
+        "problem",
+        "problems",
+
         // Chinese question words (什么/怎么/哪里等)
-        '什么', '怎么', '哪里', '哪个', '为什么', '怎样', '谁', '哪', '何',
-        
+        "什么",
+        "怎么",
+        "哪里",
+        "哪个",
+        "为什么",
+        "怎样",
+        "谁",
+        "哪",
+        "何",
+
         // Chinese generic verbs (做/可以/能等)
-        '做', '可以', '能', '应该', '需要', '有', '要',
-        '干', '搞', '弄', '办', '处理',
-        
+        "做",
+        "可以",
+        "能",
+        "应该",
+        "需要",
+        "有",
+        "要",
+        "干",
+        "搞",
+        "弄",
+        "办",
+        "处理",
+
         // Chinese generic nouns (任务/事情等)
-        '任务', '事情', '东西', '工作', '活',
-        '问题', '事', '事儿',
-        
+        "任务",
+        "事情",
+        "东西",
+        "工作",
+        "活",
+        "问题",
+        "事",
+        "事儿",
+
         // Swedish question words
-        'vad', 'när', 'var', 'vilken', 'vilka', 'vilket',
-        'hur', 'varför', 'vem', 'vems',
-        
+        "vad",
+        "när",
+        "var",
+        "vilken",
+        "vilka",
+        "vilket",
+        "hur",
+        "varför",
+        "vem",
+        "vems",
+
         // Swedish generic verbs
-        'göra', 'gör', 'gjorde', 'gjort',
-        'arbeta', 'arbetar', 'arbetade',
-        'ta', 'tar', 'tog', 'tagit',
-        
+        "göra",
+        "gör",
+        "gjorde",
+        "gjort",
+        "arbeta",
+        "arbetar",
+        "arbetade",
+        "ta",
+        "tar",
+        "tog",
+        "tagit",
+
         // Swedish modal/auxiliary verbs
-        'kan', 'kunde', 'kunnat',
-        'ska', 'skulle', 'skolat',
-        'behöver', 'behövde', 'behövt',
-        'har', 'hade', 'haft',
-        'vill', 'ville', 'velat',
-        
+        "kan",
+        "kunde",
+        "kunnat",
+        "ska",
+        "skulle",
+        "skolat",
+        "behöver",
+        "behövde",
+        "behövt",
+        "har",
+        "hade",
+        "haft",
+        "vill",
+        "ville",
+        "velat",
+
         // Swedish generic nouns
-        'uppgift', 'uppgifter', 'sak', 'saker',
-        'arbete', 'jobb', 'ärende',
-        
+        "uppgift",
+        "uppgifter",
+        "sak",
+        "saker",
+        "arbete",
+        "jobb",
+        "ärende",
+
         // German question words
-        'was', 'wann', 'wo', 'welche', 'welcher', 'welches',
-        'wie', 'warum', 'wer', 'wessen',
-        
+        "was",
+        "wann",
+        "wo",
+        "welche",
+        "welcher",
+        "welches",
+        "wie",
+        "warum",
+        "wer",
+        "wessen",
+
         // German generic verbs
-        'machen', 'macht', 'machte', 'gemacht',
-        'tun', 'tat', 'getan',
-        'arbeiten', 'arbeitete', 'gearbeitet',
-        
+        "machen",
+        "macht",
+        "machte",
+        "gemacht",
+        "tun",
+        "tat",
+        "getan",
+        "arbeiten",
+        "arbeitete",
+        "gearbeitet",
+
         // German modal verbs
-        'sollen', 'sollte', 'können', 'konnte',
-        'müssen', 'musste', 'dürfen', 'durfte',
-        
+        "sollen",
+        "sollte",
+        "können",
+        "konnte",
+        "müssen",
+        "musste",
+        "dürfen",
+        "durfte",
+
         // German generic nouns
-        'aufgabe', 'aufgaben', 'sache', 'sachen',
-        'arbeit', 'ding', 'dinge',
-        
+        "aufgabe",
+        "aufgaben",
+        "sache",
+        "sachen",
+        "arbeit",
+        "ding",
+        "dinge",
+
         // Spanish question words
-        'qué', 'cuándo', 'dónde', 'cuál', 'cuáles',
-        'cómo', 'por qué', 'quién', 'quiénes',
-        
+        "qué",
+        "cuándo",
+        "dónde",
+        "cuál",
+        "cuáles",
+        "cómo",
+        "por qué",
+        "quién",
+        "quiénes",
+
         // Spanish generic verbs
-        'hacer', 'hace', 'hizo', 'hecho',
-        'trabajar', 'trabaja', 'trabajó',
-        
+        "hacer",
+        "hace",
+        "hizo",
+        "hecho",
+        "trabajar",
+        "trabaja",
+        "trabajó",
+
         // Spanish modal verbs
-        'deber', 'debe', 'debería',
-        'poder', 'puede', 'podría',
-        'necesitar', 'necesita',
-        
+        "deber",
+        "debe",
+        "debería",
+        "poder",
+        "puede",
+        "podría",
+        "necesitar",
+        "necesita",
+
         // Spanish generic nouns
-        'tarea', 'tareas', 'cosa', 'cosas',
-        'trabajo', 'asunto', 'asuntos',
-        
+        "tarea",
+        "tareas",
+        "cosa",
+        "cosas",
+        "trabajo",
+        "asunto",
+        "asuntos",
+
         // French question words
-        'quoi', 'que', 'quel', 'quelle', 'quels', 'quelles',
-        'quand', 'où', 'comment', 'pourquoi', 'qui',
-        
+        "quoi",
+        "que",
+        "quel",
+        "quelle",
+        "quels",
+        "quelles",
+        "quand",
+        "où",
+        "comment",
+        "pourquoi",
+        "qui",
+
         // French generic verbs
-        'faire', 'fait', 'fais', 'font',
-        'travailler', 'travaille', 'travaillé',
-        
+        "faire",
+        "fait",
+        "fais",
+        "font",
+        "travailler",
+        "travaille",
+        "travaillé",
+
         // French modal verbs
-        'devoir', 'doit', 'devrait',
-        'pouvoir', 'peut', 'pourrait',
-        'falloir', 'faut', 'faudrait',
-        
+        "devoir",
+        "doit",
+        "devrait",
+        "pouvoir",
+        "peut",
+        "pourrait",
+        "falloir",
+        "faut",
+        "faudrait",
+
         // French generic nouns
-        'tâche', 'tâches', 'chose', 'choses',
-        'travail', 'affaire', 'affaires',
-        
+        "tâche",
+        "tâches",
+        "chose",
+        "choses",
+        "travail",
+        "affaire",
+        "affaires",
+
         // Japanese question words (hiragana)
-        'なに', 'なん', 'いつ', 'どこ', 'どれ',
-        'どう', 'なぜ', 'だれ',
-        
+        "なに",
+        "なん",
+        "いつ",
+        "どこ",
+        "どれ",
+        "どう",
+        "なぜ",
+        "だれ",
+
         // Japanese generic verbs
-        'する', 'やる', 'できる',
-        
+        "する",
+        "やる",
+        "できる",
+
         // Japanese generic nouns
-        'こと', 'もの', 'タスク', '仕事',
+        "こと",
+        "もの",
+        "タスク",
+        "仕事",
     ]);
-    
+
     /**
      * Check if a word is generic/vague
      * Case-insensitive matching
@@ -154,7 +355,7 @@ export class StopWords {
     public static isGenericWord(word: string): boolean {
         return this.GENERIC_QUERY_WORDS.has(word.toLowerCase());
     }
-    
+
     /**
      * Calculate vagueness ratio of keywords
      * Returns 0.0-1.0 representing percentage of generic words
@@ -163,13 +364,13 @@ export class StopWords {
         if (!keywords || keywords.length === 0) {
             return 0.0;
         }
-        
-        const genericCount = keywords.filter(kw => 
-            Array.from(this.GENERIC_QUERY_WORDS).some(generic =>
-                kw.toLowerCase().includes(generic.toLowerCase())
-            )
+
+        const genericCount = keywords.filter((kw) =>
+            Array.from(this.GENERIC_QUERY_WORDS).some((generic) =>
+                kw.toLowerCase().includes(generic.toLowerCase()),
+            ),
         ).length;
-        
+
         return genericCount / keywords.length;
     }
     /**

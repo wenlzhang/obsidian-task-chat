@@ -372,26 +372,31 @@ export class QueryParserService {
 
     /**
      * Detect if a query is vague/generic based on core keywords
-     * 
+     *
      * Vague queries contain generic question words/verbs rather than specific task content.
      * Examples: "What should I do?", "今天可以做什么？", "Vad ska jag göra?"
-     * 
+     *
      * Strategy: Use shared generic words from StopWords service
-     * If 70%+ of core keywords are generic, it's vague.
-     * 
+     * Threshold is configurable via settings (default: 0.7 = 70%)
+     *
      * Note: This is a fallback heuristic. The AI also classifies vagueness during parsing
      * for more accurate detection across languages.
      */
-    private static isVagueQuery(coreKeywords: string[]): boolean {
+    private static isVagueQuery(
+        coreKeywords: string[],
+        settings: PluginSettings,
+    ): boolean {
         if (!coreKeywords || coreKeywords.length === 0) {
             return false;
         }
 
         // Use shared generic words service
         const vaguenessRatio = StopWords.calculateVaguenessRatio(coreKeywords);
-        
-        // If 70%+ of keywords are generic, it's a vague query
-        return vaguenessRatio >= 0.7;
+
+        // Use configurable threshold from settings (default: 0.7)
+        const threshold = settings.vagueQueryThreshold || 0.7;
+
+        return vaguenessRatio >= threshold;
     }
 
     /**
@@ -932,16 +937,55 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 
 **CRITICAL TASK: Detect if the query is vague/general vs specific**
 
-**Vague queries** are open-ended questions asking "what to do" without specifying concrete task content:
-- Generic question words: what, when, where, how (什么, 怎么, 哪里, vad, när, var, etc.)
-- Generic verbs: do, make, work, should, can (做, 可以, 能, göra, kan, ska, etc.)
-- Generic nouns: task, item, thing, work (任务, 事情, 东西, uppgift, sak, etc.)
-- **Little to no specific task content**
+**SYSTEM REFERENCE:** The system maintains a list of 200+ generic words across 7+ languages for programmatic detection. Use your semantic understanding PLUS these indicators:
+
+**Generic word categories (key examples, not exhaustive):**
+
+1. **Question words** (indicate asking/uncertainty):
+   - English: what, when, where, which, how, why, who, whom, whose
+   - Chinese: 什么, 怎么, 哪里, 哪个, 为什么, 怎样, 谁, 哪, 何
+   - Swedish: vad, när, var, vilken, vilka, hur, varför, vem
+   - German: was, wann, wo, welche, wie, warum, wer
+   - Spanish: qué, cuándo, dónde, cuál, cómo, por qué, quién
+   - French: quoi, que, quel, quand, où, comment, pourquoi, qui
+   - Japanese: なに, いつ, どこ, どれ, どう, なぜ, だれ
+
+2. **Generic verbs** (non-specific actions):
+   - English: do, does, did, make, makes, work, works, should, could, would, can, may, need, have, want, get, go, come, take, give
+   - Chinese: 做, 可以, 能, 应该, 需要, 有, 要, 干, 搞, 弄, 办, 处理
+   - Swedish: göra, gör, arbeta, kan, ska, behöver, har, vill, ta
+   - German: machen, tun, arbeiten, sollen, können, müssen, dürfen
+   - Spanish: hacer, hace, trabajar, deber, debe, poder, puede, necesitar
+   - French: faire, fait, travailler, devoir, doit, pouvoir, peut, falloir
+   - Japanese: する, やる, できる
+
+3. **Generic nouns** (non-specific objects):
+   - English: task, tasks, item, items, thing, things, work, job, jobs, stuff, matter, matters, issue, issues, problem, problems
+   - Chinese: 任务, 事情, 东西, 工作, 活, 问题, 事, 事儿
+   - Swedish: uppgift, uppgifter, sak, saker, arbete, jobb, ärende
+   - German: aufgabe, aufgaben, sache, sachen, arbeit, ding, dinge
+   - Spanish: tarea, tareas, cosa, cosas, trabajo, asunto, asuntos
+   - French: tâche, tâches, chose, choses, travail, affaire, affaires
+   - Japanese: こと, もの, タスク, 仕事
+
+**Vague queries** are open-ended questions with these generic words and **little to no specific task content**:
+- Dominated by generic question words + generic verbs + generic nouns
+- Asking "what to do" without naming specific tasks
+- No concrete actions, objects, or project names
 
 **Specific queries** mention concrete tasks, projects, or actions:
-- Specific actions: fix, deploy, write, review, update (修复, 部署, 编写)
-- Specific objects: authentication, API, documentation, bug (认证, 接口, 文档, 错误)
-- Project/feature names: backend, payment system, user login (后端, 支付系统, 用户登录)
+- Specific actions: fix, deploy, write, review, update, implement, test, debug (修复, 部署, 编写, 实现, 测试, 调试)
+- Specific objects: authentication, API, documentation, bug, database, frontend (认证, 接口, 文档, 错误, 数据库, 前端)
+- Project/feature names: backend, payment system, user login, shopping cart (后端, 支付系统, 用户登录, 购物车)
+- Technical terms: function, class, method, endpoint, component, module
+
+**DETECTION STRATEGY:**
+1. Identify all words in query
+2. Count generic words (from categories above)
+3. Count specific content words (actions, objects, projects)
+4. If 70%+ are generic AND no specific content → isVague: true
+5. If query has specific content (even with some generic words) → isVague: false
+6. Use semantic understanding, not just word matching!
 
 **EXAMPLES OF VAGUE QUERIES:**
 
@@ -1460,33 +1504,62 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 );
             }
 
-            // Post-process keywords to remove stop words (safety net - AI should already avoid these)
-            // This catches any stop words that slipped through AI's filters
-            const filteredKeywords = StopWords.filterStopWords(keywords);
+            // ========== CRITICAL WORKFLOW: DETECTION BEFORE FILTERING ==========
+            //
+            // IMPORTANT: We maintain TWO SEPARATE keyword sets:
+            // 1. RAW keywords (with stop words) → Used for VAGUE DETECTION
+            // 2. FILTERED keywords (without stop words) → Used for TASK MATCHING
+            //
+            // WHY? Generic words like "what", "do", "should" ARE stop words
+            // If we remove them before detection, we can't identify vague queries!
+            //
+            // Example: "What should I do today?"
+            //   Raw: ["what", "should", "do", "today"] → 75% generic → VAGUE ✅
+            //   Filtered: ["today"] → 0% generic → Specific ❌ WRONG!
+            //
+            // ===================================================================
+
+            // STEP 1: Extract RAW keywords (for vague detection)
+            const rawCoreKeywords = parsed.coreKeywords || [];
+            const rawKeywords = keywords; // Before filtering
 
             console.log(
-                `[Task Chat] Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
+                `[Task Chat] RAW keywords extracted: ${rawKeywords.length} total, ${rawCoreKeywords.length} core`,
             );
-            if (keywords.length !== filteredKeywords.length) {
+
+            // STEP 2: Detect vague query using RAW keywords (BEFORE filtering!)
+            // This happens later in the flow, but we prepare raw data here
+            // Note: Don't filter stop words yet! Vague detection needs them!
+
+            // STEP 3: Filter stop words for TASK MATCHING only
+            // These filtered keywords will be used for actual task filtering
+            // But raw keywords will be kept for vague detection
+            const filteredKeywords = StopWords.filterStopWords(rawKeywords);
+            const filteredCoreKeywords =
+                StopWords.filterStopWords(rawCoreKeywords);
+
+            console.log(
+                `[Task Chat] Keywords after stop word filtering: ${rawKeywords.length} → ${filteredKeywords.length}`,
+            );
+            if (rawKeywords.length !== filteredKeywords.length) {
                 console.log(
-                    `[Task Chat] Removed stop words: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
+                    `[Task Chat] Removed stop words: [${rawKeywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
                 );
             }
 
-            // Extract core keywords and filter stop words (before expansion)
+            if (rawCoreKeywords.length !== filteredCoreKeywords.length) {
+                console.log(
+                    `[Task Chat] Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${filteredCoreKeywords.length}`,
+                );
+                console.log(
+                    `[Task Chat] Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !filteredCoreKeywords.includes(k)).join(", ")}]`,
+                );
+            }
+
+            // STEP 4: Use FILTERED keywords for expansion and matching
             // This prevents wasting tokens expanding stop words
-            const rawCoreKeywords = parsed.coreKeywords || [];
-            const coreKeywords = StopWords.filterStopWords(rawCoreKeywords);
-
-            if (rawCoreKeywords.length !== coreKeywords.length) {
-                console.log(
-                    `[Task Chat] Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${coreKeywords.length}`,
-                );
-                console.log(
-                    `[Task Chat] Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
-                );
-            }
-            const expandedKeywords = filteredKeywords;
+            const coreKeywords = filteredCoreKeywords; // For expansion
+            const expandedKeywords = filteredKeywords; // For matching
 
             // Validate expansion worked correctly
             if (expansionEnabled && coreKeywords.length > 0) {
@@ -1658,22 +1731,62 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 (parsed.tags && parsed.tags.length > 0)
             );
 
-            // Detect vague query - prioritize AI detection, fallback to heuristic
-            // AI detection is more accurate (understands context and semantics)
-            // Heuristic is fallback (keyword-based 70% threshold)
-            const aiDetectedVague = parsed.isVague; // From AI analysis
-            const heuristicVague = this.isVagueQuery(coreKeywords); // From keyword analysis
-            
-            // Final decision: AI takes priority if provided, otherwise use heuristic
-            const isVague = aiDetectedVague !== undefined ? aiDetectedVague : heuristicVague;
-            
+            // ========== VAGUE DETECTION USING RAW KEYWORDS ==========
+            // Detect vague query - three-tier priority system:
+            // 1. User's explicit mode choice (Generic mode forces vague)
+            // 2. AI detection (understands context and semantics)
+            // 3. Heuristic fallback (keyword-based threshold)
+            //
+            // CRITICAL: Use RAW coreKeywords for heuristic (includes stop words!)
+            // Generic words like "what", "do", "should" ARE the vague indicators
+
+            let isVague: boolean;
+            let aiDetectedVague: boolean | undefined;
+            let detectionMethod: string;
+
+            // Check user's explicit mode choice (highest priority)
+            if (settings.currentGenericMode === "generic") {
+                // Generic mode: Force vague handling
+                isVague = true;
+                detectionMethod = "Generic Mode (forced)";
+                console.log(
+                    "[Task Chat] 🔍 Generic Mode: Forcing generic handling (user override)",
+                );
+            } else {
+                // Auto mode: Detect automatically
+                aiDetectedVague = parsed.isVague; // From AI analysis
+                const heuristicVague = this.isVagueQuery(
+                    rawCoreKeywords,
+                    settings,
+                ); // Use RAW, not filtered!
+
+                // Final decision: AI takes priority if provided, otherwise use heuristic
+                isVague =
+                    aiDetectedVague !== undefined
+                        ? aiDetectedVague
+                        : heuristicVague;
+                detectionMethod =
+                    aiDetectedVague !== undefined
+                        ? "AI-based"
+                        : "Heuristic-based";
+            }
+
             if (isVague) {
                 console.log(
                     "[Task Chat] 🔍 VAGUE QUERY DETECTED - Generic/open-ended question",
                 );
-                console.log(
-                    `[Task Chat] Detection method: ${aiDetectedVague !== undefined ? "AI-based" : "Heuristic-based"}`,
-                );
+                console.log(`[Task Chat] Detection method: ${detectionMethod}`);
+                if (
+                    aiDetectedVague === undefined &&
+                    settings.currentGenericMode !== "generic"
+                ) {
+                    const threshold = settings.vagueQueryThreshold || 0.7;
+                    console.log(
+                        `[Task Chat] Heuristic analysis: ${rawCoreKeywords.length} raw keywords, ` +
+                            `${(StopWords.calculateVaguenessRatio(rawCoreKeywords) * 100).toFixed(0)}% generic ` +
+                            `(threshold: ${(threshold * 100).toFixed(0)}%)`,
+                    );
+                }
                 if (parsed.aiUnderstanding?.isVagueReasoning) {
                     console.log(
                         `[Task Chat] AI reasoning: ${parsed.aiUnderstanding.isVagueReasoning}`,
@@ -1684,7 +1797,14 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                         `[Task Chat] Time context detected: "${parsed.aiUnderstanding.timeContext}" (context, not filter)`,
                     );
                 }
-                console.log("[Task Chat] Core keywords:", coreKeywords);
+                console.log(
+                    "[Task Chat] Raw core keywords (for detection):",
+                    rawCoreKeywords,
+                );
+                console.log(
+                    "[Task Chat] Filtered core keywords (for matching):",
+                    coreKeywords,
+                );
                 console.log(
                     `[Task Chat] Strategy: Will ${hasProperties ? "use property filters only" : "return broad results"}, skip strict keyword matching`,
                 );

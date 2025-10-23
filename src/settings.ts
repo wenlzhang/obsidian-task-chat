@@ -165,6 +165,11 @@ export interface PluginSettings {
     // Used in: Simple Search, Smart Search, Task Chat, AI parsing, AI responses
     userStopWords: string[]; // User's additional stop words (e.g., ["项目", "project", "mitt"])
 
+    // Generic Question Detection (used across all modes)
+    defaultGenericMode: "auto" | "generic"; // Session default (all new queries). Auto=detect automatically, Generic=force generic handling
+    currentGenericMode: "auto" | "generic"; // Current session mode (per-query override, resets to default on new session)
+    vagueQueryThreshold: number; // 0.5-0.9, default: 0.7 (Auto mode only). Percentage of generic words to classify as vague
+
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
     // AI is used for two purposes:
     // 1. Keyword semantic expansion (for better recall)
@@ -380,6 +385,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // User-Configurable Stop Words
     userStopWords: [], // User can add domain-specific or language-specific stop words
+
+    // Generic Question Detection
+    defaultGenericMode: "auto", // Default: detect automatically using threshold + AI
+    currentGenericMode: "auto", // Resets to default on new session
+    vagueQueryThreshold: 0.7, // 70% threshold for auto detection (balanced for most users)
 
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
     // AI active in Smart Search and Task Chat for keyword expansion + property recognition
