@@ -452,6 +452,10 @@ export class QueryParserService {
         // Get COMPLETE stop words list dynamically from StopWords class
         const stopWordsList = StopWords.getStopWordsList();
         const stopWordsDisplay = stopWordsList.join('", "');
+        
+        // Get generic query words for vague detection (separate from stop words)
+        const genericQueryWords = Array.from(StopWords.GENERIC_QUERY_WORDS);
+        const genericWordCount = genericQueryWords.length;
 
         const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
 
@@ -952,36 +956,20 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 **CONFIGURED LANGUAGES:** You're working with ${queryLanguages.length} languages: ${languageList}
 Recognize generic words and specific content in ALL these languages!
 
-**SYSTEM REFERENCE:** The system maintains a list of 200+ generic words across 7+ languages for programmatic detection. Use your semantic understanding PLUS these indicators:
+**SYSTEM REFERENCE:** The system maintains ${genericWordCount} generic query words across 7+ languages for programmatic vague detection.
+These are stored in StopWords.GENERIC_QUERY_WORDS and used by Simple Search mode for consistent vague detection.
+Use your semantic understanding to recognize these types of generic words:
 
-**Generic word categories (key examples, not exhaustive):**
+**Generic word categories (examples only - system has full ${genericWordCount}-word list):**
 
-1. **Question words** (indicate asking/uncertainty):
-   - English: what, when, where, which, how, why, who, whom, whose
-   - Chinese: 什么, 怎么, 哪里, 哪个, 为什么, 怎样, 谁, 哪, 何
-   - Swedish: vad, när, var, vilken, vilka, hur, varför, vem
-   - German: was, wann, wo, welche, wie, warum, wer
-   - Spanish: qué, cuándo, dónde, cuál, cómo, por qué, quién
-   - French: quoi, que, quel, quand, où, comment, pourquoi, qui
-   - Japanese: なに, いつ, どこ, どれ, どう, なぜ, だれ
+1. **Question words** (indicate asking/uncertainty)
+   - Examples: what/什么/vad, when/怎么/när, where/哪里/var, how/怎样/hur, why/为什么/varför
 
-2. **Generic verbs** (non-specific actions):
-   - English: do, does, did, make, makes, work, works, should, could, would, can, may, need, have, want, get, go, come, take, give
-   - Chinese: 做, 可以, 能, 应该, 需要, 有, 要, 干, 搞, 弄, 办, 处理
-   - Swedish: göra, gör, arbeta, kan, ska, behöver, har, vill, ta
-   - German: machen, tun, arbeiten, sollen, können, müssen, dürfen
-   - Spanish: hacer, hace, trabajar, deber, debe, poder, puede, necesitar
-   - French: faire, fait, travailler, devoir, doit, pouvoir, peut, falloir
-   - Japanese: する, やる, できる
+2. **Generic verbs** (non-specific actions)
+   - Examples: do/做/göra, should/应该/ska, can/可以/kan, work/工作/arbeta, need/需要/behöver
 
-3. **Generic nouns** (non-specific objects):
-   - English: task, tasks, item, items, thing, things, work, job, jobs, stuff, matter, matters, issue, issues, problem, problems
-   - Chinese: 任务, 事情, 东西, 工作, 活, 问题, 事, 事儿
-   - Swedish: uppgift, uppgifter, sak, saker, arbete, jobb, ärende
-   - German: aufgabe, aufgaben, sache, sachen, arbeit, ding, dinge
-   - Spanish: tarea, tareas, cosa, cosas, trabajo, asunto, asuntos
-   - French: tâche, tâches, chose, choses, travail, affaire, affaires
-   - Japanese: こと, もの, タスク, 仕事
+3. **Generic nouns** (non-specific objects)
+   - Examples: task/任务/uppgift, thing/东西/sak, work/工作/arbete, issue/问题/ärende
 
 **Vague queries** are open-ended questions with these generic words and **little to no specific task content**:
 - Dominated by generic question words + generic verbs + generic nouns
@@ -998,7 +986,7 @@ Recognize generic words and specific content in ALL these languages!
 1. Identify all words in query
 2. Count generic words (from categories above)
 3. Count specific content words (actions, objects, projects)
-4. If ${Math.round((settings.vagueQueryThreshold || 0.7) * 100)}%+ are generic AND no specific content → isVague: true
+4. If ${Math.round(settings.vagueQueryThreshold * 100)}%+ are generic AND no specific content → isVague: true
 5. If query has specific content (even with some generic words) → isVague: false
 6. Use semantic understanding, not just word matching!
 
@@ -1034,7 +1022,7 @@ Recognize time terms, properties, and keywords in ALL these languages!
    - Used for debugging, not filtering
 
 3. **Determine isVague** - Analyze coreKeywords AFTER extraction
-   - If ${Math.round((settings.vagueQueryThreshold || 0.7) * 100)}%+ are generic words → isVague: true
+   - If ${Math.round(settings.vagueQueryThreshold * 100)}%+ are generic words → isVague: true
    - If most are specific content → isVague: false
    - Time context alone doesn't make it specific!
 
