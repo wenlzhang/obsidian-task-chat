@@ -514,7 +514,6 @@ export class SettingsTab extends PluginSettingTab {
                 );
         }
 
-
         new Setting(containerEl)
             .setName("Show AI understanding")
             .setDesc(
@@ -758,7 +757,7 @@ export class SettingsTab extends PluginSettingTab {
                 cls: "task-chat-warning-explanation",
             });
             warningExplanation.textContent =
-                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...)."
+                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...).";
 
             new Setting(warningBox)
                 .setName("Auto-Fix Duplicates")
@@ -887,7 +886,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-
 
         new Setting(containerEl)
             .setName("Custom stop words")
@@ -1308,9 +1306,7 @@ export class SettingsTab extends PluginSettingTab {
         // Reset main coefficients
         new Setting(containerEl)
             .setName("Reset main coefficients")
-            .setDesc(
-                "Reset weights to defaults (R:20, D:4, P:1, S:1).",
-            )
+            .setDesc("Reset weights to defaults (R:20, D:4, P:1, S:1).")
             .addButton((button) =>
                 button
                     .setButtonText("Reset Main Coefficients")
@@ -1397,9 +1393,7 @@ export class SettingsTab extends PluginSettingTab {
         // Reset status category
         new Setting(containerEl)
             .setName("Reset status category")
-            .setDesc(
-                "Reset all status categories to defaults.",
-            )
+            .setDesc("Reset all status categories to defaults.")
             .addButton((button) =>
                 button.setButtonText("Reset Status").onClick(async () => {
                     this.plugin.settings.taskStatusMapping = JSON.parse(
@@ -1593,12 +1587,13 @@ export class SettingsTab extends PluginSettingTab {
         if (isProtectedCategory) {
             keyInput.disabled = true;
             keyInput.title = "Protected category key cannot be changed";
-            keyInput.style.cssText =
-                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background: var(--background-primary); cursor: not-allowed;";
+            keyInput.classList.add(
+                "task-chat-status-input",
+                "task-chat-status-input-disabled",
+            );
         } else {
             // Custom categories: allow editing key
-            keyInput.style.cssText =
-                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            keyInput.classList.add("task-chat-status-input");
             keyInput.addEventListener("change", async () => {
                 const newKey = keyInput.value.trim();
                 if (
@@ -1634,8 +1629,10 @@ export class SettingsTab extends PluginSettingTab {
 
         if (isFullyLocked) {
             nameInput.disabled = true;
-            nameInput.style.cssText =
-                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
+            nameInput.classList.add(
+                "task-chat-status-input",
+                "task-chat-status-input-disabled",
+            );
             if (categoryKey === "open") {
                 nameInput.title =
                     "Default open task category, display name locked";
@@ -1644,8 +1641,7 @@ export class SettingsTab extends PluginSettingTab {
                     "Default catch-all category, display name locked";
             }
         } else {
-            nameInput.style.cssText =
-                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            nameInput.classList.add("task-chat-status-input");
             nameInput.addEventListener("change", async () => {
                 this.plugin.settings.taskStatusMapping[
                     categoryKey
@@ -1660,8 +1656,7 @@ export class SettingsTab extends PluginSettingTab {
         aliasesInput.placeholder = "e.g., wip,doing";
         aliasesInput.title =
             "Comma-separated aliases for querying (NO SPACES). Example: completed,done,finished";
-        aliasesInput.style.cssText =
-            "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+        aliasesInput.classList.add("task-chat-status-input");
         aliasesInput.addEventListener("change", async () => {
             const value = aliasesInput.value.trim();
             this.plugin.settings.taskStatusMapping[categoryKey].aliases =
@@ -1675,8 +1670,10 @@ export class SettingsTab extends PluginSettingTab {
 
         if (isFullyLocked) {
             symbolsInput.disabled = true;
-            symbolsInput.style.cssText =
-                "opacity: 0.6; padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px; cursor: not-allowed;";
+            symbolsInput.classList.add(
+                "task-chat-status-input",
+                "task-chat-status-input-disabled",
+            );
             if (categoryKey === "open") {
                 symbolsInput.title =
                     "Default Markdown open task (space character), cannot be changed";
@@ -1687,8 +1684,7 @@ export class SettingsTab extends PluginSettingTab {
                 symbolsInput.placeholder = "(auto)";
             }
         } else {
-            symbolsInput.style.cssText =
-                "padding: 4px 8px; border: 1px solid var(--background-modifier-border); border-radius: 4px;";
+            symbolsInput.classList.add("task-chat-status-input");
             symbolsInput.placeholder = "e.g., x,X or !,I,b";
             symbolsInput.addEventListener("change", async () => {
                 this.plugin.settings.taskStatusMapping[categoryKey].symbols =
@@ -1701,9 +1697,9 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Score slider (0-1 range)
-        const scoreContainer = rowDiv.createDiv();
-        scoreContainer.style.cssText =
-            "display: flex; align-items: center; gap: 4px;";
+        const scoreContainer = rowDiv.createDiv({
+            cls: "task-chat-status-score-container",
+        });
 
         const scoreInput = scoreContainer.createEl("input", {
             type: "range",
@@ -1714,12 +1710,12 @@ export class SettingsTab extends PluginSettingTab {
             },
         });
         scoreInput.value = score.toString();
-        scoreInput.style.cssText = "flex: 1; min-width: 60px;";
+        scoreInput.classList.add("task-chat-status-score-slider");
 
-        const scoreLabel = scoreContainer.createEl("span");
+        const scoreLabel = scoreContainer.createEl("span", {
+            cls: "task-chat-status-score-label",
+        });
         scoreLabel.textContent = score.toFixed(2);
-        scoreLabel.style.cssText =
-            "font-size: 11px; color: var(--text-muted); min-width: 32px;";
 
         scoreInput.addEventListener("input", async () => {
             const value = parseFloat(scoreInput.value);
@@ -1752,15 +1748,14 @@ export class SettingsTab extends PluginSettingTab {
                 disabledBtn.title = "Cannot delete this protected category";
             }
 
-            disabledBtn.style.cssText =
-                "padding: 2px 8px; opacity: 0.3; cursor: not-allowed;";
+            disabledBtn.classList.add("task-chat-status-btn-disabled");
         } else {
             const removeBtn = rowDiv.createEl("button", {
                 text: "✕",
                 cls: "mod-warning",
             });
             removeBtn.title = `Remove ${displayName}`;
-            removeBtn.style.cssText = "padding: 2px 8px; font-size: 14px;";
+            removeBtn.classList.add("task-chat-status-btn-remove");
             removeBtn.addEventListener("click", async () => {
                 if (
                     confirm(
@@ -1776,13 +1771,13 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Advanced fields (optional - collapsible)
-        const advancedContainer = containerEl.createDiv();
-        advancedContainer.style.cssText =
-            "padding: 8px 12px; border-left: 3px solid var(--background-modifier-border); margin-left: 12px; margin-bottom: 8px; background: var(--background-secondary);";
+        const advancedContainer = containerEl.createDiv({
+            cls: "task-chat-status-advanced",
+        });
 
-        const advancedHeader = advancedContainer.createDiv();
-        advancedHeader.style.cssText =
-            "display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 8px;";
+        const advancedHeader = advancedContainer.createDiv({
+            cls: "task-chat-status-advanced-header",
+        });
 
         const expandIcon = advancedHeader.createSpan({ text: "⚙️" });
         advancedHeader.createSpan({
