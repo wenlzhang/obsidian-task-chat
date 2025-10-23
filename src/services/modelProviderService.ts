@@ -23,23 +23,15 @@ export class ModelProviderService {
             }
 
             const data = response.json;
-            // Filter for chat models and sort by newest first
-            const chatModels = data.data
-                .filter((model: any) => {
-                    const id = model.id;
-                    return (
-                        id.includes("gpt-4") ||
-                        id.includes("gpt-3.5") ||
-                        id === "gpt-4o" ||
-                        id === "gpt-4o-mini"
-                    );
-                })
+            // Include all models - don't filter out anything
+            // OpenAI's API returns all available models including specialized ones
+            const allModels = data.data
                 .map((model: any) => model.id)
                 .sort()
                 .reverse();
 
-            return chatModels.length > 0
-                ? chatModels
+            return allModels.length > 0
+                ? allModels
                 : this.getDefaultOpenAIModels();
         } catch (error) {
             console.error("Error fetching OpenAI models:", error);
@@ -49,17 +41,51 @@ export class ModelProviderService {
 
     /**
      * Default OpenAI models (fallback)
+     * Simplified to 1-2 representative models per series
      */
     static getDefaultOpenAIModels(): string[] {
         return [
+            // GPT-5 series (latest generation)
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5-nano",
+            "gpt-5-pro",
+
+            // GPT-4.1 series
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-4.1-nano",
+
+            // GPT-4o series
             "gpt-4o",
             "gpt-4o-mini",
-            "gpt-4o-2024-08-06",
+
+            // o-series reasoning models
+            "o4-mini",
+            "o4-mini-deep-research",
+            "o3",
+            "o3-mini",
+            "o2",
+            "o2-mini",
+            "o1",
+            "o1-mini",
+            "o1-pro",
+
+            // Specialized models
+            "gpt-realtime",
+            "gpt-realtime-mini",
+            "gpt-audio",
+            "gpt-audio-mini",
+            "gpt-image-1",
+
+            // GPT-4 Turbo
             "gpt-4-turbo",
-            "gpt-4-turbo-2024-04-09",
+
+            // GPT-4 classic
             "gpt-4",
+
+            // GPT-3.5 Turbo
             "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
         ];
     }
 
