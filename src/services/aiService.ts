@@ -230,6 +230,34 @@ export class AIService {
                         );
                 }
 
+                // NEW: Convert timeContext to dueDateRange externally (deterministic conversion)
+                // AI only detects the time term, external code converts to date range
+                // This matches Simple Search architecture (reliable, consistent)
+                if (
+                    parsedQuery.isVague &&
+                    parsedQuery.aiUnderstanding?.timeContext &&
+                    !parsedQuery.dueDateRange
+                ) {
+                    const {
+                        TimeContextService,
+                    } = require("./timeContextService");
+                    const timeContextResult =
+                        TimeContextService.detectAndConvertTimeContext(
+                            message, // Original query
+                            settings,
+                        );
+
+                    if (timeContextResult) {
+                        parsedQuery.dueDateRange = timeContextResult.range;
+                        console.log(
+                            `[Smart/Chat] Time context "${timeContextResult.matchedTerm}" → ${timeContextResult.description}`,
+                        );
+                        console.log(
+                            `[Smart/Chat] Range: ${JSON.stringify(timeContextResult.range)}`,
+                        );
+                    }
+                }
+
                 intent = {
                     isSearch: keywords.length > 0,
                     isPriority: !!parsedQuery.priority,

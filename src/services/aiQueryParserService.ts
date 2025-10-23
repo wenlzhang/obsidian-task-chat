@@ -26,9 +26,11 @@ export interface ParsedQuery {
     // PART 2: Task Attributes (Structured Filters)
     // Multi-value support: Can be single value or array
     priority?: number | number[]; // Single: 1, Multi: [1, 2, 3]
-    dueDate?: string; // Single date: "today", "overdue", "+5d" (relative)
+    dueDate?: string; // Single date: "today", "overdue", "+5d" (relative) - for specific queries
     dueDateRange?: {
         // Date range with operator (for vague queries: "<= today" includes overdue)
+        // NOTE: AI does NOT set this - external code converts timeContext to dueDateRange
+        // See TimeContextService.detectAndConvertTimeContext() for conversion logic
         operator: "<" | "<=" | ">" | ">=" | "=" | "between";
         date: string; // "today", "tomorrow", "end-of-week", "end-of-month", etc.
         endDate?: string; // Only for "between" operator
@@ -398,72 +400,6 @@ export class QueryParserService {
         const threshold = settings.vagueQueryThreshold || 0.7;
 
         return vaguenessRatio >= threshold;
-    }
-
-    /**
-     * Build time context examples dynamically from TaskPropertyService
-     * This ensures examples use actual configured terms (single source of truth)
-     */
-    private static buildTimeContextExamples(settings: PluginSettings): string {
-        const dueDateTerms =
-            TaskPropertyService.getCombinedDueDateTerms(settings);
-
-        // Helper to format terms for display (show first 3 terms max)
-        const formatTerms = (terms: string[]): string => {
-            return terms.slice(0, 3).join(", ");
-        };
-
-        return `**Time Context → Range Mapping (VAGUE QUERIES ONLY):**
-
-TODAY (${formatTerms(dueDateTerms.today)}):
-→ dueDateRange: { "operator": "<=", "date": "today" }
-→ Includes: Overdue + Due today
-
-TOMORROW (${formatTerms(dueDateTerms.tomorrow)}):
-→ dueDateRange: { "operator": "<=", "date": "tomorrow" }
-→ Includes: Overdue + Today + Tomorrow
-
-YESTERDAY (${formatTerms(dueDateTerms.yesterday)}):
-→ dueDateRange: { "operator": "=", "date": "yesterday" }
-→ Includes: Only yesterday (specific date)
-
-LAST WEEK (${formatTerms(dueDateTerms.lastWeek)}):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-week", "endDate": "end-of-last-week" }
-→ Includes: Only last week (specific range)
-
-THIS WEEK (${formatTerms(dueDateTerms.thisWeek)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-week" }
-→ Includes: Everything up to end of this week
-
-NEXT WEEK (${formatTerms(dueDateTerms.nextWeek)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-week" }
-→ Includes: Everything up to end of next week
-
-LAST MONTH (${formatTerms(dueDateTerms.lastMonth)}):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-month", "endDate": "end-of-last-month" }
-→ Includes: Only last month (specific range)
-
-THIS MONTH (${formatTerms(dueDateTerms.thisMonth)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-month" }
-→ Includes: Everything up to end of this month
-
-NEXT MONTH (${formatTerms(dueDateTerms.nextMonth)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-month" }
-→ Includes: Everything up to end of next month
-
-LAST YEAR (${formatTerms(dueDateTerms.lastYear)}):
-→ dueDateRange: { "operator": "between", "date": "start-of-last-year", "endDate": "end-of-last-year" }
-→ Includes: Only last year (specific range)
-
-THIS YEAR (${formatTerms(dueDateTerms.thisYear)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-year" }
-→ Includes: Everything up to end of this year
-
-NEXT YEAR (${formatTerms(dueDateTerms.nextYear)}):
-→ dueDateRange: { "operator": "<=", "date": "end-of-next-year" }
-→ Includes: Everything up to end of next year
-
-**Note:** Above examples show sample terms from TaskPropertyService. System recognizes ALL configured terms in ALL languages for each context. Examples are for JSON format guidance only.`;
     }
 
     /**
@@ -1071,87 +1007,69 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 - "What can I do today to complete the payment system?" → Specific object (payment system)
 - "Write documentation for authentication" → Specific actions + objects
 
-**TIME CONTEXT VS DUE DATE FILTER:**
+**TIME CONTEXT DETECTION:**
 
-⚠️ CRITICAL: Time words in vague queries are CONTEXT, not always filters!
+⚠️ CRITICAL: Detect time terms semantically in ANY language, but don't convert to date ranges!
 
-**When to extract exact dueDate (specific queries):**
+**When to extract exact dueDate (specific queries only):**
 1. ✅ User explicitly asks for tasks DUE on a date: "tasks due today", "due tomorrow"
 2. ✅ User mentions deadline/expiration: "deadline today", "expires tomorrow"
 3. ✅ Specific query with time: "Deploy API today", "Fix bug tomorrow"
-→ Use dueDate: "today" (exact match)
+→ Set dueDate: "today" AND aiUnderstanding.timeContext: "today"
 
-**When to extract dueDateRange (vague queries with time context):**
+**When to detect timeContext (vague queries with time words):**
 1. ✅ Vague query with time word: "What can I do today?", "今天可以做什么？"
-   - Detect time context semantically (today, tomorrow, this week, etc.)
-   - Use dueDateRange: { "operator": "<=", "date": "today" }
-   - Includes overdue tasks (what needs attention by that time)
+   - Just detect the time term: "today"
    - Set aiUnderstanding.timeContext: "today"
+   - DON'T set dueDate or dueDateRange (external code will handle conversion!)
 2. ✅ Open-ended questions with time: "What should I work on this week?"
-   - Use dueDateRange: { "operator": "<=", "date": "end-of-week" }
    - Set aiUnderstanding.timeContext: "this week"
+   - External code will convert to appropriate date range
 
-**When NOT to extract any date filters:**
+**When NOT to detect any time context:**
 1. ❌ Pure generic questions: "What's next?", "What should I work on?"
    - NO time words at all
-   - No dueDate, no dueDateRange
-   - Return tasks by priority/urgency only
+   - Set aiUnderstanding.timeContext: null
 
-**🔑 KEY PRINCIPLE - Semantic Time Detection:**
-- Recognize time words in ANY language: today/今天/idag, week/周/vecka, etc.
-- Time word in vague query → dueDateRange with "<=" operator
-- Time word in specific query → exact dueDate
-- No time word → no date filter
-- ALWAYS set aiUnderstanding.timeContext when time word detected
-
-${this.buildTimeContextExamples(settings)}
-
-**ALWAYS use "<=" operator for vague "this/next" queries, "between" for "last" queries, "=" for specific dates!**
-
-**When NOT to use dueDateRange:**
-- Specific queries: "Complete tasks due today" → use exact dueDate: "today"
-- Explicit deadline queries: "What's due this week?" → use exact dueDate: "this-week"
+**🔑 KEY PRINCIPLE - Semantic Time Term Detection:**
+- Recognize time words in ANY language: today/今天/idag, tomorrow/明天/imorgon, week/周/vecka
+- Common time terms: today, tomorrow, yesterday, this/last/next (week/month/year)
+- Just extract the term - don't convert to dates or ranges!
+- ALWAYS set aiUnderstanding.timeContext when time word detected (regardless of language)
 
 **EXAMPLES:**
 
 Query: "今天可以做什么？" (What can I do today?)
 → isVague: true
-→ dueDate: null
-→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
-→ aiUnderstanding.timeContext: "today"
-→ Strategy: Return tasks due today + overdue (what needs attention today)
+→ dueDate: null (vague query - no exact date filter)
+→ aiUnderstanding.timeContext: "today" (just the term!)
+→ Note: External code will convert "today" to date range
 
 Query: "What should I do today?"
 → isVague: true
 → dueDate: null
-→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
 → aiUnderstanding.timeContext: "today"
-→ Strategy: Return tasks due today + overdue (what needs attention today)
 
 Query: "What should I work on this week?"
 → isVague: true
 → dueDate: null
-→ dueDateRange: { "operator": "<=", "date": "end-of-week" }  ← NEW!
 → aiUnderstanding.timeContext: "this week"
-→ Strategy: Return everything up to end of week (includes overdue)
 
 Query: "今天 API 项目应该做什么？" (What should I do in API project today?)
 → isVague: true (generic question structure)
 → coreKeywords: ["API", "项目"]
-→ dueDateRange: { "operator": "<=", "date": "today" }  ← NEW!
 → aiUnderstanding.timeContext: "today"
-→ Strategy: API tasks needing attention today (includes overdue)
 
 Query: "完成今天到期的任务" (Complete tasks due today)
 → isVague: false (specific action: complete)
-→ dueDate: "today" (explicit due date, NOT range)
+→ dueDate: "today" (explicit due date filter!)
+→ aiUnderstanding.timeContext: "today"
 → status: "open" (implied: not completed yet)
-→ Strategy: Exact filter (only tasks due today)
 
 Query: "What's due today?"
 → isVague: false (explicitly asking for due dates)
 → dueDate: "today" (exact filter)
-→ Strategy: Only tasks with exact dueDate = today
+→ aiUnderstanding.timeContext: "today"
 
 **Set isVague field:**
 - Analyze coreKeywords AFTER extraction
@@ -1164,8 +1082,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
   "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
   "priority": <number or array of numbers or null>,
-  "dueDate": <string or null, for exact date filters in specific queries>,
-  "dueDateRange": <{"operator": "<=", "date": "today"} or null, for vague queries with time context>,
+  "dueDate": <string or null, ONLY for specific queries like "tasks due today", "deadline tomorrow">,
   "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
@@ -1178,12 +1095,14 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
       "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
       "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
     },
-    "timeContext": <string or null, time context in vague queries (e.g., "today", "this week")>,
+    "timeContext": <string or null, detected time term for BOTH vague and specific queries (e.g., "today", "this week", "tomorrow")>,
     "confidence": <number 0-1, how confident you are in the parsing>,
     "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>,
     "isVagueReasoning": <string or null, brief explanation why isVague is true/false>
   }
 }
+
+⚠️ IMPORTANT: Do NOT create or set "dueDateRange" field - external code will convert timeContext to date range!
 
 🚨 CRITICAL JSON FORMAT RULES:
 - JSON does NOT support comments (no // or /* */)
