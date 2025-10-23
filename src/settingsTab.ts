@@ -1698,6 +1698,36 @@ Examples:
             </ul>
         `;
 
+        // Add Score vs Order clarification info box
+        const scoreVsOrderBox = containerEl.createDiv({
+            cls: "task-chat-info-box",
+        });
+        scoreVsOrderBox.style.cssText =
+            "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
+
+        scoreVsOrderBox.innerHTML = `
+            <p style="font-weight: 600; margin-bottom: 8px;">📊 Score vs Order - What's the Difference?</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
+                    <p style="font-weight: 600; margin-bottom: 4px;">🎯 Score (0.0-1.0)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Relevance weight in search ranking</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> Scoring formula (finalScore = R×20 + D×4 + P×1 + <strong>S×1</strong>)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Higher score = more relevant in searches</p>
+                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1.0 (high), completed=0.3 (low)</p>
+                </div>
+                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
+                    <p style="font-weight: 600; margin-bottom: 4px;">📋 Order (1, 2, 3...)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Display position when sorting by status</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> TaskSortService (multi-criteria sorting)</p>
+                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Lower order = appears first in list</p>
+                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1 (first), completed=6 (last)</p>
+                </div>
+            </div>
+            <p style="margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-accent);">
+                ✅ They are completely independent! Changing score doesn't affect order, and vice versa.
+            </p>
+        `;
+
         // Validate status orders and show warnings if duplicates found
         const validation = TaskPropertyService.validateStatusOrders(
             this.plugin.settings.taskStatusMapping,

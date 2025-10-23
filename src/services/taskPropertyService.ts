@@ -671,13 +671,63 @@ export class TaskPropertyService {
             return "open";
         }
 
-        return "other";
+        return "other"; // Catch-all for unrecognized symbols
+    }
+
+    /**
+     * Get auto-assigned order based on category position in mapping
+     * Used when order is not explicitly set
+     * Assigns orders: 10, 20, 30... (leaves gaps for future insertions)
+     *
+     * @param categoryKey - Status category key
+     * @param statusMapping - Task status mapping from settings
+     * @returns Auto-assigned order number
+     */
+    static getAutoAssignedOrder(
+        categoryKey: string,
+        statusMapping: Record<
+            string,
+            {
+                symbols: string[];
+                score: number;
+                displayName: string;
+                aliases: string;
+                order?: number;
+                description?: string;
+                terms?: string;
+            }
+        >,
+    ): number {
+        // Get all categories sorted by their effective order
+        const categories = Object.entries(statusMapping);
+
+        // Sort by effective order (respecting defaults and explicit orders)
+        categories.sort(([keyA, configA], [keyB, configB]) => {
+            // Get effective order for each category
+            const getEffective = (key: string, config: any): number => {
+                if (config.order !== undefined) return config.order;
+                const defaultConfig = this.DEFAULT_STATUS_CONFIG[key];
+                if (defaultConfig) return defaultConfig.order;
+                return 999; // Custom categories default
+            };
+
+            const orderA = getEffective(keyA, configA);
+            const orderB = getEffective(keyB, configB);
+            return orderA - orderB;
+        });
+
+        // Find position of this category
+        const position = categories.findIndex(([key]) => key === categoryKey);
+        if (position === -1) return 999; // Not found
+
+        // Assign order with gaps: 10, 20, 30...
+        return (position + 1) * 10;
     }
 
     /**
      * Get status order for sorting
-     * Uses category key (stable) instead of display name (user-defined)
-     * Priority: User config > Built-in defaults > Generic fallback
+     * Returns the sort order number for a status category
+     * Priority: User config > Built-in defaults > Auto-assigned > Generic fallback
      *
      * @param categoryKey - Status category key (e.g., "open", "inProgress", "myCustom")
      * @param settings - Plugin settings with taskStatusMapping
@@ -703,8 +753,11 @@ export class TaskPropertyService {
             return defaultConfig.order;
         }
 
-        // 3. Generic fallback for custom categories
-        return 8; // Custom categories appear after built-in ones
+        // 3. Use auto-assigned order based on position
+        return this.getAutoAssignedOrder(
+            categoryKey,
+            settings.taskStatusMapping,
+        );
     }
 
     /**
