@@ -98,15 +98,25 @@ export class TaskSearchService {
     static removePropertySyntax(query: string): string {
         let cleanedQuery = query;
 
-        // Remove priority syntax using centralized pattern
+        // Remove priority syntax (both legacy and unified)
         cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.priority,
+            "",
+        );
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.priorityUnified,
             "",
         );
 
         // Remove status syntax using centralized pattern
         cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.status,
+            "",
+        );
+
+        // Remove due date unified syntax (d:today, due:all, etc.)
+        cleanedQuery = cleanedQuery.replace(
+            TaskPropertyService.QUERY_PATTERNS.dueUnified,
             "",
         );
 
@@ -298,8 +308,23 @@ export class TaskSearchService {
     static extractPriorityFromQuery(
         query: string,
         settings: PluginSettings,
-    ): number | null {
-        // Use PropertyDetectionService for consistent behavior across all modes
+    ): number | null | "all" | "none" {
+        // Check for unified syntax first (p:1, p:all, p:none)
+        const unifiedMatch = query.match(/\bp:(1|2|3|4|all|none)\b/i);
+        if (unifiedMatch) {
+            const value = unifiedMatch[1].toLowerCase();
+            if (value === "all") return "all";
+            if (value === "none") return "none";
+            return parseInt(value);
+        }
+
+        // Check for explicit p1-p4 patterns (legacy)
+        const explicitMatch = query.match(/\bp([1-4])\b/i);
+        if (explicitMatch) {
+            return parseInt(explicitMatch[1]);
+        }
+
+        // Use PropertyDetectionService for natural language terms
         const combined =
             PropertyDetectionService.getCombinedPropertyTerms(settings);
         const lowerQuery = query.toLowerCase();
@@ -330,12 +355,6 @@ export class TaskSearchService {
             )
         ) {
             return 3;
-        }
-
-        // Check for explicit p1-p4 patterns
-        const explicitMatch = query.match(/\bp([1-4])\b/i);
-        if (explicitMatch) {
-            return parseInt(explicitMatch[1]);
         }
 
         return null;
@@ -369,9 +388,32 @@ export class TaskSearchService {
         query: string,
         settings: PluginSettings,
     ): string | null {
+        const lowerQuery = query.toLowerCase();
+
+        // Check for unified syntax first (d:today, due:all, d:none, etc.)
+        const unifiedMatch = query.match(/\b(?:d|due):([^\s&|,]+)/i);
+        if (unifiedMatch) {
+            const value = unifiedMatch[1].toLowerCase();
+
+            // Map unified syntax to internal values
+            if (value === "all" || value === "any") return "any";
+            if (value === "none") return "none";
+            if (value === "today") return "today";
+            if (value === "tomorrow") return "tomorrow";
+            if (value === "week" || value === "thisweek") return "week";
+            if (value === "nextweek") return "next-week";
+            if (value === "overdue") return "overdue";
+            if (value === "future") return "future";
+
+            // Check if it's a date (YYYY-MM-DD format)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+            // Otherwise return the value as-is (might be a custom date format)
+            return value;
+        }
+
         const combined =
             PropertyDetectionService.getCombinedPropertyTerms(settings);
-        const lowerQuery = query.toLowerCase();
 
         // Helper to check if any term matches
         const hasAnyTerm = (terms: string[]) => {
@@ -779,7 +821,10 @@ export class TaskSearchService {
             isPriority: propertyHints.hasPriority,
             isDueDate: propertyHints.hasDueDate,
             keywords,
-            extractedPriority,
+            extractedPriority:
+                extractedPriority === "all" || extractedPriority === "none"
+                    ? (extractedPriority as any)
+                    : extractedPriority,
             extractedDueDateFilter,
             extractedDueDateRange, // NEW: Now uses actual extracted value
             extractedStatus,
@@ -803,15 +848,19 @@ export class TaskSearchService {
      * @param specialKeywords Extracted special keywords (optional)
      */
     private static validateQueryProperties(
-        priority: number | null,
+        priority: number | "all" | "none" | null,
         dueDateRange: { start?: string; end?: string } | null,
         project?: string | null,
         specialKeywords?: string[],
     ): void {
-        // Validate priority (only 1-4 are valid)
-        if (priority !== null && (priority < 1 || priority > 4)) {
+        // Validate priority (only 1-4 are valid, or "all"/"none")
+        if (
+            priority !== null &&
+            typeof priority === "number" &&
+            (priority < 1 || priority > 4)
+        ) {
             console.warn(
-                `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4.`,
+                `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4, p:all, or p:none.`,
             );
         }
 

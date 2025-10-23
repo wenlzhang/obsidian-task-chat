@@ -240,16 +240,26 @@ export class TaskPropertyService {
      * Used in queryParserService and taskSearchService
      */
     static readonly QUERY_PATTERNS = {
-        priority: /\bp[1-4]\b/gi,
+        // Priority patterns (unified syntax)
+        priority: /\bp[1-4]\b/gi, // Legacy: p1, p2, p3, p4
+        priorityUnified: /\bp:(1|2|3|4|all|none)\b/gi, // New: p:1, p:2, p:3, p:4, p:all, p:none
+
+        // Status patterns (already unified)
         status: /\b(?:s|status):([^\s&|,]+)/i, // Supports both s: and status: syntax (no 'g' flag to preserve capture groups)
-        project: /##+[A-Za-z0-9_-]+/g,
-        search: /search:\s*["']?[^"'&|]+["']?/gi,
-        hashtag: /#([\w-]+)/g,
+
+        // Due date patterns (unified syntax)
+        dueUnified: /\b(?:d|due):([^\s&|,]+)/gi, // New: d:today, due:all, d:none, d:2025-01-22, etc.
         dueBeforeRange: /due\s+before:\s*[^&|]+/gi,
         dueAfterRange: /due\s+after:\s*[^&|]+/gi,
         dateBeforeRange: /(?<!due\s)date\s+before:\s*[^&|]+/gi,
         dateAfterRange: /(?<!due\s)date\s+after:\s*[^&|]+/gi,
+
+        // Other patterns
+        project: /##+[A-Za-z0-9_-]+/g,
+        search: /search:\s*["']?[^"'&|]+["']?/gi,
+        hashtag: /#([\w-]+)/g,
         operators: /[&|!]/g,
+
         // Note: dueDateKeywords is dynamically generated from BASE_DUE_DATE_TERMS
         // See getDueDateKeywordsPattern() method below
         specialKeywordOverdue: /\b(overdue|over\s+due|od)\b/gi,

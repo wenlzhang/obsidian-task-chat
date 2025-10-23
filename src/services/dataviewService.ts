@@ -597,7 +597,7 @@ export class DataviewService {
      */
     private static buildTaskFilter(
         intent: {
-            priority?: number | number[] | null; // Support multi-value
+            priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
             dueDate?: string | null;
             dueDateRange?: { start: string; end: string } | null;
             status?: string | string[] | null; // Support multi-value
@@ -607,31 +607,67 @@ export class DataviewService {
     ): ((dvTask: any) => boolean) | null {
         const filters: ((dvTask: any) => boolean)[] = [];
 
-        // Build priority filter (supports multi-value)
+        // Build priority filter (supports multi-value and special values)
         if (intent.priority) {
             // Use centralized priority field names
             const priorityFields =
                 TaskPropertyService.getAllPriorityFieldNames(settings);
-            const targetPriorities = Array.isArray(intent.priority)
-                ? intent.priority
-                : [intent.priority];
 
-            filters.push((dvTask: any) => {
-                // Check task's own fields
-                for (const field of priorityFields) {
-                    const value = dvTask[field];
-                    if (value !== undefined && value !== null) {
-                        const mapped = this.mapPriority(value, settings);
-                        if (
-                            mapped !== undefined &&
-                            targetPriorities.includes(mapped)
-                        ) {
-                            return true;
+            if (intent.priority === "all") {
+                // Tasks with ANY priority (P1-P4)
+                filters.push((dvTask: any) => {
+                    for (const field of priorityFields) {
+                        const value = dvTask[field];
+                        if (value !== undefined && value !== null) {
+                            const mapped = this.mapPriority(value, settings);
+                            if (
+                                mapped !== undefined &&
+                                mapped >= 1 &&
+                                mapped <= 4
+                            ) {
+                                return true;
+                            }
                         }
                     }
-                }
-                return false;
-            });
+                    return false;
+                });
+            } else if (intent.priority === "none") {
+                // Tasks with NO priority
+                filters.push((dvTask: any) => {
+                    for (const field of priorityFields) {
+                        const value = dvTask[field];
+                        if (value !== undefined && value !== null) {
+                            const mapped = this.mapPriority(value, settings);
+                            if (mapped !== undefined) {
+                                return false; // Has a priority
+                            }
+                        }
+                    }
+                    return true; // No priority found
+                });
+            } else {
+                // Specific priority values
+                const targetPriorities = Array.isArray(intent.priority)
+                    ? intent.priority
+                    : [intent.priority];
+
+                filters.push((dvTask: any) => {
+                    // Check task's own fields
+                    for (const field of priorityFields) {
+                        const value = dvTask[field];
+                        if (value !== undefined && value !== null) {
+                            const mapped = this.mapPriority(value, settings);
+                            if (
+                                mapped !== undefined &&
+                                targetPriorities.includes(mapped)
+                            ) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                });
+            }
         }
 
         // Build due date filter (checks task metadata)
@@ -651,6 +687,17 @@ export class DataviewService {
                         }
                     }
                     return false;
+                });
+            } else if (intent.dueDate === "none") {
+                // Has NO due date
+                filters.push((dvTask: any) => {
+                    for (const field of dueDateFields) {
+                        const value = dvTask[field];
+                        if (value !== undefined && value !== null) {
+                            return false; // Has a due date
+                        }
+                    }
+                    return true; // No due date found
                 });
             } else if (
                 intent.dueDate === TaskPropertyService.DUE_DATE_KEYWORDS.today
