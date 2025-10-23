@@ -871,7 +871,7 @@ export class TaskSearchService {
             query,
             settings,
         );
-        const extractedDueDateFilter = this.extractDueDateFilter(
+        let extractedDueDateFilter = this.extractDueDateFilter(
             query,
             settings,
         );
@@ -955,9 +955,29 @@ export class TaskSearchService {
 
         // ========== VAGUE QUERY PROCESSING ==========
         if (isVague) {
-            // 1. Convert time context to range using centralized service
-            // Imports TimeContextService for detecting "today", "this week", "last month", etc.
-            if (!extractedDueDateFilter && !extractedDueDateRange) {
+            // 1. Convert exact dueDate to range for vague queries (includes overdue)
+            // Uses TimeContextService for consistent conversion across all modes
+            if (extractedDueDateFilter && !extractedDueDateRange) {
+                // Have exact date, convert to range for vague query
+                const { TimeContextService } = require("./timeContextService");
+                const timeContextResult =
+                    TimeContextService.detectAndConvertTimeContext(
+                        query,
+                        settings,
+                    );
+
+                if (timeContextResult) {
+                    extractedDueDateRange = timeContextResult.range;
+                    extractedDueDateFilter = null; // Clear exact date (using range now)
+                    console.log(
+                        `[Simple Search] Vague query - Converted dueDate "${timeContextResult.matchedTerm}" to range: ${timeContextResult.description}`,
+                    );
+                    console.log(
+                        `[Simple Search] Range: ${JSON.stringify(timeContextResult.range)}`,
+                    );
+                }
+            } else if (!extractedDueDateFilter && !extractedDueDateRange) {
+                // No date extracted by regex, try TimeContextService
                 const { TimeContextService } = require("./timeContextService");
                 const timeContextResult =
                     TimeContextService.detectAndConvertTimeContext(

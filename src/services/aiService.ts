@@ -230,14 +230,11 @@ export class AIService {
                         );
                 }
 
-                // NEW: Convert timeContext to dueDateRange externally (deterministic conversion)
-                // AI only detects the time term, external code converts to date range
+                // NEW: Convert dueDate to dueDateRange for vague queries only
+                // AI extracts dueDate normally, external code converts for vague case
                 // This matches Simple Search architecture (reliable, consistent)
-                if (
-                    parsedQuery.isVague &&
-                    parsedQuery.aiUnderstanding?.timeContext &&
-                    !parsedQuery.dueDateRange
-                ) {
+                if (parsedQuery.isVague && parsedQuery.dueDate) {
+                    // Vague query: Convert exact date to date range (includes overdue)
                     const {
                         TimeContextService,
                     } = require("./timeContextService");
@@ -249,14 +246,16 @@ export class AIService {
 
                     if (timeContextResult) {
                         parsedQuery.dueDateRange = timeContextResult.range;
+                        parsedQuery.dueDate = undefined; // Clear exact date (using range now)
                         console.log(
-                            `[Smart/Chat] Time context "${timeContextResult.matchedTerm}" → ${timeContextResult.description}`,
+                            `[Smart/Chat] Vague query - Converted dueDate "${parsedQuery.aiUnderstanding?.timeContext}" to range: ${timeContextResult.description}`,
                         );
                         console.log(
                             `[Smart/Chat] Range: ${JSON.stringify(timeContextResult.range)}`,
                         );
                     }
                 }
+                // Specific queries: dueDate stays as is (no conversion needed)
 
                 intent = {
                     isSearch: keywords.length > 0,

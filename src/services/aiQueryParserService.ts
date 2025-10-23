@@ -1007,82 +1007,28 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 - "What can I do today to complete the payment system?" → Specific object (payment system)
 - "Write documentation for authentication" → Specific actions + objects
 
-**TIME CONTEXT DETECTION:**
+**EXTRACTION INSTRUCTIONS:**
 
-⚠️ CRITICAL: Detect time terms semantically in ANY language, but don't convert to date ranges!
+1. **Extract dueDate** - If query mentions time/deadlines in ANY language
+   - Recognize: today/今天/idag, tomorrow/明天/imorgon, this week/本周/denna vecka
+   - Examples: "tasks due today", "What can I do today?", "Fix bug tomorrow"
+   - Set: dueDate = "today" (external code converts if vague)
+   
+2. **Set timeContext** - Same as dueDate, for metadata/logging
+   - Always set when time word detected
+   - Used for debugging, not filtering
 
-**When to extract exact dueDate (specific queries only):**
-1. ✅ User explicitly asks for tasks DUE on a date: "tasks due today", "due tomorrow"
-2. ✅ User mentions deadline/expiration: "deadline today", "expires tomorrow"
-3. ✅ Specific query with time: "Deploy API today", "Fix bug tomorrow"
-→ Set dueDate: "today" AND aiUnderstanding.timeContext: "today"
-
-**When to detect timeContext (vague queries with time words):**
-1. ✅ Vague query with time word: "What can I do today?", "今天可以做什么？"
-   - Just detect the time term: "today"
-   - Set aiUnderstanding.timeContext: "today"
-   - DON'T set dueDate or dueDateRange (external code will handle conversion!)
-2. ✅ Open-ended questions with time: "What should I work on this week?"
-   - Set aiUnderstanding.timeContext: "this week"
-   - External code will convert to appropriate date range
-
-**When NOT to detect any time context:**
-1. ❌ Pure generic questions: "What's next?", "What should I work on?"
-   - NO time words at all
-   - Set aiUnderstanding.timeContext: null
-
-**🔑 KEY PRINCIPLE - Semantic Time Term Detection:**
-- Recognize time words in ANY language: today/今天/idag, tomorrow/明天/imorgon, week/周/vecka
-- Common time terms: today, tomorrow, yesterday, this/last/next (week/month/year)
-- Just extract the term - don't convert to dates or ranges!
-- ALWAYS set aiUnderstanding.timeContext when time word detected (regardless of language)
-
-**EXAMPLES:**
-
-Query: "今天可以做什么？" (What can I do today?)
-→ isVague: true
-→ dueDate: null (vague query - no exact date filter)
-→ aiUnderstanding.timeContext: "today" (just the term!)
-→ Note: External code will convert "today" to date range
-
-Query: "What should I do today?"
-→ isVague: true
-→ dueDate: null
-→ aiUnderstanding.timeContext: "today"
-
-Query: "What should I work on this week?"
-→ isVague: true
-→ dueDate: null
-→ aiUnderstanding.timeContext: "this week"
-
-Query: "今天 API 项目应该做什么？" (What should I do in API project today?)
-→ isVague: true (generic question structure)
-→ coreKeywords: ["API", "项目"]
-→ aiUnderstanding.timeContext: "today"
-
-Query: "完成今天到期的任务" (Complete tasks due today)
-→ isVague: false (specific action: complete)
-→ dueDate: "today" (explicit due date filter!)
-→ aiUnderstanding.timeContext: "today"
-→ status: "open" (implied: not completed yet)
-
-Query: "What's due today?"
-→ isVague: false (explicitly asking for due dates)
-→ dueDate: "today" (exact filter)
-→ aiUnderstanding.timeContext: "today"
-
-**Set isVague field:**
-- Analyze coreKeywords AFTER extraction
-- If 70%+ are generic words → isVague: true
-- If most keywords are specific content → isVague: false
-- Time context alone doesn't make it specific!
+3. **Determine isVague** - Analyze coreKeywords AFTER extraction
+   - If 70%+ are generic words → isVague: true
+   - If most are specific content → isVague: false
+   - Time context alone doesn't make it specific!
 
 Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
 {
   "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
   "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
   "priority": <number or array of numbers or null>,
-  "dueDate": <string or null, ONLY for specific queries like "tasks due today", "deadline tomorrow">,
+  "dueDate": <string or null, extract if query mentions time/deadlines>,
   "status": <string or array of strings or null>,
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
@@ -1095,16 +1041,14 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
       "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
       "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
     },
-    "timeContext": <string or null, detected time term for BOTH vague and specific queries (e.g., "today", "this week", "tomorrow")>,
+    "timeContext": <string or null, detected time term (for metadata) (e.g., "today", "this week", "tomorrow")>,
     "confidence": <number 0-1, how confident you are in the parsing>,
     "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>,
     "isVagueReasoning": <string or null, brief explanation why isVague is true/false>
   }
 }
 
-⚠️ IMPORTANT: Do NOT create or set "dueDateRange" field - external code will convert timeContext to date range!
-
-🚨 CRITICAL JSON FORMAT RULES:
+🚨 JSON FORMAT RULES (applies to ALL queries - vague AND specific):
 - JSON does NOT support comments (no // or /* */)
 - Do NOT add explanatory text inside JSON arrays
 - Do NOT use arrows (←) or other symbols in JSON
