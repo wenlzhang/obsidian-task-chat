@@ -41,7 +41,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl).setName("AI provider").setHeading();
 
         new Setting(containerEl)
-            .setName("AI provider")
+            .setName("Provider")
             .setDesc(
                 "Select your AI provider. Each provider has different requirements and capabilities.",
             )
@@ -129,7 +129,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Add Test Connection button
         const testConnectionSetting = new Setting(containerEl)
-            .setName("Test connection")
+            .setName("Connection")
             .setDesc(
                 "Verify that your API key and model are working correctly",
             );
@@ -169,7 +169,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Max response length")
+            .setName("Max tokens")
             .setDesc(
                 "Maximum length of AI responses in Task Chat mode. Dependent on model capabilities. Higher = more detailed but slower and more expensive. Lower = faster and cheaper but may miss details. Recommended: 2000 (balanced), 4000 (detailed), 1000 (concise). Only affects Task Chat responses, not query parsing.",
             )
@@ -354,6 +354,10 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+
+        new Setting(containerEl)
+            .setName("Dataview task properties")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Priority terms")
@@ -564,13 +568,12 @@ export class SettingsTab extends PluginSettingTab {
         // DataView Settings
         new Setting(containerEl).setName("DataView integration").setHeading();
 
-        const dataviewInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        dataviewInfo.innerHTML = `
-            <p>Configure task property field names.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration">→ Learn more about DataView integration and troubleshooting</a></p>
-        `;
+        new Setting(containerEl)
+            .setName("DataView task properties")
+            .setDesc(
+                "Configure task property field names.\n\n<a href=\"https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration\">→ Learn more about DataView integration and troubleshooting</a>",
+            )
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Due date field")
@@ -623,11 +626,11 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-
-        containerEl.createDiv({
-            text: "Define which DataView values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1].",
-            cls: "setting-item-description",
-        });
+        
+        new Setting(containerEl)
+            .setName("Priority mapping")
+            .setDesc("Define which priority values map to each priority level. Separate multiple values with commas. Supports inline fields like [p::1]")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Priority 1 (highest) values")
@@ -915,15 +918,17 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task scoring
-        new Setting(containerEl).setName("Task scoring").setHeading();
+        new Setting(containerEl).
+            setName("Task scoring").
+            setHeading();
 
-        const scoringInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        scoringInfo.innerHTML = `
-            <p><strong>📊 Task scoring:</strong> Control how much each factor (relevance, due date, priority, status) affects task scores.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md">→ Learn more about the scoring system</a></p>
-        `;
+        // Main weights
+        new Setting(containerEl)
+            .setName("Main weights")
+            .setDesc(
+                "Control how much each factor (relevance, due date, priority, status) affects task scores. <a href=\"https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md\">→ Learn more</a>",
+            )
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Relevance weight")
@@ -1041,25 +1046,13 @@ export class SettingsTab extends PluginSettingTab {
                 maxStatusScore * this.plugin.settings.statusCoefficient;
 
             maxScoreValue.innerHTML = `
-                <strong>📈 Max score: ${maxScore.toFixed(1)} points</strong> 
+                📈 Max score: ${maxScore.toFixed(1)} points
                 (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})
             `;
         };
 
         // Initial display
         this.updateMaxScoreDisplay();
-
-        // Advanced Scoring Coefficients Section
-        new Setting(containerEl)
-            .setName("Advanced scoring coefficients")
-            .setClass("setting-subsection-heading");
-
-        const advancedScoringInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        advancedScoringInfo.innerHTML = `
-            <p><strong>🔧 Advanced:</strong> Fine-tune specific score components (optional). Most users don't need to change these.</p>
-        `;
 
         // Relevance Sub-Coefficients
         new Setting(containerEl)
@@ -1246,16 +1239,16 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Status Sub-Coefficients - MOVED TO STATUS MAPPING
+        // Status Sub-Coefficients
         new Setting(containerEl)
-            .setName("Status scores")
+            .setName("Status sub-coefficients")
             .setClass("setting-subsection-heading");
 
         const statusScoreNote = containerEl.createDiv({
             cls: "setting-item-description task-chat-info-box",
         });
         statusScoreNote.innerHTML = `
-            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their scores.</p>
+            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their coefficients.</p>
         `;
 
         // Reset Buttons Section
@@ -1263,15 +1256,42 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Reset coefficients to defaults")
             .setClass("setting-subsection-heading");
 
+        // Reset main coefficients
+        new Setting(containerEl)
+            .setName("Reset all main weights")
+            .setDesc("Reset all main weights to defaults (R:20, D:4, P:1, S:1).")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset all main weights")
+                    .setWarning()
+                    .onClick(async () => {
+                        this.plugin.settings.relevanceCoefficient =
+                            DEFAULT_SETTINGS.relevanceCoefficient;
+                        this.plugin.settings.dueDateCoefficient =
+                            DEFAULT_SETTINGS.dueDateCoefficient;
+                        this.plugin.settings.priorityCoefficient =
+                            DEFAULT_SETTINGS.priorityCoefficient;
+                        this.plugin.settings.statusCoefficient =
+                            DEFAULT_SETTINGS.statusCoefficient;
+                        await this.plugin.saveSettings();
+                        new Notice("All main weights reset to defaults");
+                        // Update max score display
+                        if (this.updateMaxScoreDisplay) {
+                            this.updateMaxScoreDisplay();
+                        }
+                        this.display(); // Refresh UI
+                    }),
+            );
+        
         // Reset all advanced coefficients
         new Setting(containerEl)
-            .setName("Reset all advanced coefficients")
+            .setName("Reset all sub-coefficients")
             .setDesc(
                 "Reset all sub-coefficients (relevance, due date, priority, status) to defaults.",
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Reset All Advanced")
+                    .setButtonText("Reset all sub-coefficients")
                     .setWarning()
                     .onClick(async () => {
                         // Relevance
@@ -1305,50 +1325,23 @@ export class SettingsTab extends PluginSettingTab {
                         );
                         await this.plugin.saveSettings();
                         new Notice(
-                            "All advanced coefficients reset to defaults",
+                            "All sub-coefficients reset to defaults",
                         );
-                        this.display(); // Refresh UI
-                    }),
-            );
-
-        // Reset main coefficients
-        new Setting(containerEl)
-            .setName("Reset main coefficients")
-            .setDesc("Reset weights to defaults (R:20, D:4, P:1, S:1).")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset Main Coefficients")
-                    .setWarning()
-                    .onClick(async () => {
-                        this.plugin.settings.relevanceCoefficient =
-                            DEFAULT_SETTINGS.relevanceCoefficient;
-                        this.plugin.settings.dueDateCoefficient =
-                            DEFAULT_SETTINGS.dueDateCoefficient;
-                        this.plugin.settings.priorityCoefficient =
-                            DEFAULT_SETTINGS.priorityCoefficient;
-                        this.plugin.settings.statusCoefficient =
-                            DEFAULT_SETTINGS.statusCoefficient;
-                        await this.plugin.saveSettings();
-                        new Notice("Main coefficients reset to defaults");
-                        // Update max score display
-                        if (this.updateMaxScoreDisplay) {
-                            this.updateMaxScoreDisplay();
-                        }
                         this.display(); // Refresh UI
                     }),
             );
 
         // Reset relevance sub-coefficients
         new Setting(containerEl)
-            .setName("Reset relevance core bonus")
-            .setDesc("Reset core keyword match bonus to 0.2.")
+            .setName("Reset relevance core keyword match bonus")
+            .setDesc("Reset relevance core keyword match bonus to default (0.2).")
             .addButton((button) =>
-                button.setButtonText("Reset Core Bonus").onClick(async () => {
+                button.setButtonText("Reset relevance core keyword match bonus").onClick(async () => {
                     this.plugin.settings.relevanceCoreWeight =
                         DEFAULT_SETTINGS.relevanceCoreWeight;
                     await this.plugin.saveSettings();
                     new Notice(
-                        "Core keyword match bonus reset to default (0.2)",
+                        "Relevance core keyword match bonus reset to default (0.2)",
                     );
                     this.display();
                 }),
@@ -1357,9 +1350,9 @@ export class SettingsTab extends PluginSettingTab {
         // Reset due date sub-coefficients
         new Setting(containerEl)
             .setName("Reset due date sub-coefficients")
-            .setDesc("Reset all time-range scores to defaults.")
+            .setDesc("Reset due date sub-coefficients to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset Due Date").onClick(async () => {
+                button.setButtonText("Reset due date sub-coefficients").onClick(async () => {
                     this.plugin.settings.dueDateOverdueScore =
                         DEFAULT_SETTINGS.dueDateOverdueScore;
                     this.plugin.settings.dueDateWithin7DaysScore =
@@ -1379,9 +1372,9 @@ export class SettingsTab extends PluginSettingTab {
         // Reset priority sub-coefficients
         new Setting(containerEl)
             .setName("Reset priority sub-coefficients")
-            .setDesc("Reset all priority level scores to defaults.")
+            .setDesc("Reset all priority sub-coefficients to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset Priority").onClick(async () => {
+                button.setButtonText("Reset priority sub-coefficients").onClick(async () => {
                     this.plugin.settings.priorityP1Score =
                         DEFAULT_SETTINGS.priorityP1Score;
                     this.plugin.settings.priorityP2Score =
@@ -1403,7 +1396,7 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Reset status category")
             .setDesc("Reset all status categories to defaults.")
             .addButton((button) =>
-                button.setButtonText("Reset Status").onClick(async () => {
+                button.setButtonText("Reset status category").onClick(async () => {
                     this.plugin.settings.taskStatusMapping = JSON.parse(
                         JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
                     );
