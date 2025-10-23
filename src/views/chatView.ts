@@ -4,6 +4,7 @@ import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
 import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
+import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
@@ -172,11 +173,28 @@ export class ChatView extends ItemView {
             "task-chat-input-container",
         );
 
-        this.inputEl = inputContainerEl.createEl("textarea", {
+        // Input wrapper with token counter overlay
+        const inputWrapperEl = inputContainerEl.createDiv(
+            "task-chat-input-wrapper",
+        );
+
+        this.inputEl = inputWrapperEl.createEl("textarea", {
             placeholder: "Ask about your tasks...",
             attr: {
                 rows: "3",
             },
+        });
+
+        // Token counter overlay (top-right inside input box)
+        const tokenCounterOverlay = inputWrapperEl.createDiv(
+            "task-chat-token-counter-overlay",
+        );
+        tokenCounterOverlay.setText("0 tokens");
+        this.tokenEstimateEl = tokenCounterOverlay;
+
+        // Update token count on input
+        this.inputEl.addEventListener("input", () => {
+            this.updateTokenCounter();
         });
 
         this.inputEl.addEventListener("keydown", (e) => {
@@ -187,7 +205,7 @@ export class ChatView extends ItemView {
             }
         });
 
-        // Model selector toolbar (provider + model dropdowns)
+        // Control bar (provider + model dropdowns + send button on one line)
         const toolbarEl = inputContainerEl.createDiv("task-chat-input-toolbar");
 
         // Provider selector
@@ -248,12 +266,8 @@ export class ChatView extends ItemView {
             await this.plugin.saveSettings();
         });
 
-        // Token estimate display
-        const tokenEstimate = toolbarEl.createDiv("task-chat-token-estimate");
-        tokenEstimate.setText("~0 tokens");
-        this.tokenEstimateEl = tokenEstimate;
-
-        this.sendButtonEl = inputContainerEl.createEl("button", {
+        // Send button (on same line as provider/model)
+        this.sendButtonEl = toolbarEl.createEl("button", {
             text: "Send (Cmd/Ctrl+Enter)",
             cls: "task-chat-send-button",
         });
@@ -1284,5 +1298,33 @@ export class ChatView extends ItemView {
 
         // Set current model as selected
         this.modelSelectEl.value = providerConfig.model;
+    }
+
+    /**
+     * Update token counter based on current input
+     * Shows: "X / Y tokens" where X is estimated input tokens, Y is max tokens limit
+     */
+    private updateTokenCounter(): void {
+        if (!this.tokenEstimateEl) return;
+
+        const text = this.inputEl.value;
+        const providerConfig = getCurrentProviderConfig(this.plugin.settings);
+
+        // Rough token estimation: ~4 characters per token (conservative estimate)
+        // This is approximate - actual tokenization varies by model
+        const estimatedTokens = Math.ceil(text.length / 4);
+        const maxTokens = providerConfig.maxTokens;
+
+        // Update display with current/max format
+        this.tokenEstimateEl.setText(
+            `${estimatedTokens} / ${maxTokens} tokens`,
+        );
+
+        // Add warning class if approaching limit (80% of max)
+        if (estimatedTokens > maxTokens * 0.8) {
+            this.tokenEstimateEl.addClass("task-chat-token-warning");
+        } else {
+            this.tokenEstimateEl.removeClass("task-chat-token-warning");
+        }
     }
 }

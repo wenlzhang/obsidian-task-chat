@@ -71,8 +71,8 @@ export class PricingService {
     }
 
     /**
-     * Get embedded fallback pricing (October 2025 rates from official sources)
-     * These are updated based on current pricing as of October 2025
+     * Get embedded fallback pricing (2025 rates from official sources)
+     * Includes latest models: Claude Sonnet 4, GPT-4o series, and more
      * All prices are per 1 million tokens
      */
     static getEmbeddedPricing(): Record<
@@ -80,40 +80,42 @@ export class PricingService {
         { input: number; output: number }
     > {
         return {
-            // OpenAI models (as of October 2025)
+            // OpenAI models (as of 2025)
+            // GPT-4o series
             "gpt-4o": { input: 2.5, output: 10.0 },
+
+            // GPT-4o-mini series
             "gpt-4o-mini": { input: 0.15, output: 0.6 },
-            "gpt-4o-2024-08-06": { input: 2.5, output: 10.0 },
-            "gpt-4o-2024-11-20": { input: 2.5, output: 10.0 },
-            "gpt-4o-mini-2024-07-18": { input: 0.15, output: 0.6 },
+
+            // GPT-4 Turbo series
             "gpt-4-turbo": { input: 10.0, output: 30.0 },
-            "gpt-4-turbo-2024-04-09": { input: 10.0, output: 30.0 },
+
+            // GPT-4 series
             "gpt-4": { input: 30.0, output: 60.0 },
-            "gpt-4-0125-preview": { input: 10.0, output: 30.0 },
+
+            // GPT-3.5 series
             "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
-            "gpt-3.5-turbo-0125": { input: 0.5, output: 1.5 },
-            "o1-preview": { input: 15.0, output: 60.0 },
+
+            // O1 series
+            o1: { input: 15.0, output: 60.0 },
             "o1-mini": { input: 3.0, output: 12.0 },
 
-            // Anthropic models (as of October 2025)
-            "claude-3-5-sonnet-20241022": { input: 3.0, output: 15.0 }, // Latest
-            "claude-3-5-sonnet-20240620": { input: 3.0, output: 15.0 },
-            "claude-3-5-haiku-20241022": { input: 1.0, output: 5.0 }, // New model
-            "claude-3-opus-20240229": { input: 15.0, output: 75.0 },
-            "claude-3-sonnet-20240229": { input: 3.0, output: 15.0 },
-            "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
+            // Anthropic models (as of 2025)
+            // Claude Sonnet 4 series (latest)
+            "claude-sonnet-4": { input: 3.0, output: 15.0 },
 
             // OpenRouter format (with provider prefix)
+            // OpenAI via OpenRouter
             "openai/gpt-4o": { input: 2.5, output: 10.0 },
             "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
             "openai/gpt-4-turbo": { input: 10.0, output: 30.0 },
+            "openai/gpt-4": { input: 30.0, output: 60.0 },
             "openai/gpt-3.5-turbo": { input: 0.5, output: 1.5 },
-            "openai/o1-preview": { input: 15.0, output: 60.0 },
+            "openai/o1": { input: 15.0, output: 60.0 },
             "openai/o1-mini": { input: 3.0, output: 12.0 },
-            "anthropic/claude-3.5-sonnet": { input: 3.0, output: 15.0 },
-            "anthropic/claude-3.5-haiku": { input: 1.0, output: 5.0 },
-            "anthropic/claude-3-opus": { input: 15.0, output: 75.0 },
-            "anthropic/claude-3-haiku": { input: 0.25, output: 1.25 },
+
+            // Anthropic via OpenRouter
+            "anthropic/claude-sonnet-4": { input: 3.0, output: 15.0 },
             "meta-llama/llama-3.1-405b-instruct": { input: 2.7, output: 2.7 },
             "meta-llama/llama-3.1-70b-instruct": { input: 0.35, output: 0.4 },
             "meta-llama/llama-3.1-8b-instruct": { input: 0.05, output: 0.08 },
@@ -217,7 +219,7 @@ export class PricingService {
      * Construct OpenRouter model ID from provider and model name
      * Examples:
      *   openai + "gpt-4o-mini" → "openai/gpt-4o-mini"
-     *   anthropic + "claude-3.5-sonnet-20241022" → "anthropic/claude-3.5-sonnet-20241022"
+     *   anthropic + "claude-sonnet-4-20250514" → "anthropic/claude-sonnet-4-20250514"
      *   openrouter + "openai/gpt-4o" → "openai/gpt-4o" (already has prefix)
      */
     private static constructOpenRouterModelId(

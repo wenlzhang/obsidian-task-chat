@@ -241,7 +241,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         },
         anthropic: {
             apiKey: "",
-            model: "claude-3-5-sonnet-20241022",
+            model: "claude-sonnet-4",
             apiEndpoint: "https://api.anthropic.com/v1/messages",
             temperature: 0.1,
             maxTokens: 2000,

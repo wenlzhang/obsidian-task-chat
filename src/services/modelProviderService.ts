@@ -103,13 +103,7 @@ export class ModelProviderService {
      * Default Anthropic models
      */
     static getDefaultAnthropicModels(): string[] {
-        return [
-            "claude-3-5-sonnet-20241022",
-            "claude-3-5-sonnet-20240620",
-            "claude-3-opus-20240229",
-            "claude-3-sonnet-20240229",
-            "claude-3-haiku-20240307",
-        ];
+        return ["claude-sonnet-4"];
     }
 
     /**
@@ -150,8 +144,11 @@ export class ModelProviderService {
         return [
             "openai/gpt-4o",
             "openai/gpt-4o-mini",
+            "openai/gpt-4-turbo",
+            "openai/o1-preview",
             "anthropic/claude-sonnet-4",
             "google/gemini-pro-1.5",
+            "google/gemini-flash-1.5",
             "meta-llama/llama-3.1-70b-instruct",
             "meta-llama/llama-3.1-8b-instruct",
             "mistralai/mistral-large",
