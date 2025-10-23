@@ -144,6 +144,7 @@ export class TaskPropertyService {
         ],
         today: ["today", "今天", "今日", "idag"],
         tomorrow: ["tomorrow", "明天", "imorgon"],
+        yesterday: ["yesterday", "昨天", "昨日", "igår"],
         overdue: [
             "overdue",
             "late",
@@ -528,6 +529,7 @@ export class TaskPropertyService {
         general: string[];
         today: string[];
         tomorrow: string[];
+        yesterday: string[];
         overdue: string[];
         thisWeek: string[];
         lastWeek: string[];
@@ -547,6 +549,7 @@ export class TaskPropertyService {
             ],
             today: [...this.BASE_DUE_DATE_TERMS.today],
             tomorrow: [...this.BASE_DUE_DATE_TERMS.tomorrow],
+            yesterday: [...this.BASE_DUE_DATE_TERMS.yesterday],
             overdue: [...this.BASE_DUE_DATE_TERMS.overdue],
             thisWeek: [...this.BASE_DUE_DATE_TERMS.thisWeek],
             lastWeek: [...this.BASE_DUE_DATE_TERMS.lastWeek],

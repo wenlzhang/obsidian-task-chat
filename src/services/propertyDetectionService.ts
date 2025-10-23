@@ -74,6 +74,9 @@ export class PropertyDetectionService {
             combined.dueDate.tomorrow.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||
+            combined.dueDate.yesterday.some((term) =>
+                lowerQuery.includes(term.toLowerCase()),
+            ) ||
             combined.dueDate.overdue.some((term) =>
                 lowerQuery.includes(term.toLowerCase()),
             ) ||

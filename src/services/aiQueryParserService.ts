@@ -1025,7 +1025,7 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
    - User wants recommendations, not date filtering
 
 **How to handle time in vague queries:**
-- Recognize time words: today, tomorrow, this week, this month, next week, next month，last week, last month, last year, this year, next year
+- Recognize time words: today, tomorrow, yesterday, this week, this month, next week, next month, last week, last month, last year, this year, next year
 - **For vague queries, convert time context to dueDateRange with "<=" operator**
 - This includes OVERDUE tasks (what needs attention by that time)
 - **Record ALSO in aiUnderstanding.timeContext** for AI prioritization
@@ -1039,6 +1039,10 @@ TODAY (今天, idag):
 TOMORROW (明天, imorgon):
 → dueDateRange: { "operator": "<=", "date": "tomorrow" }
 → Includes: Overdue + Today + Tomorrow
+
+YESTERDAY (昨天, igår):
+→ dueDateRange: { "operator": "=", "date": "yesterday" }
+→ Includes: Only yesterday (specific date)
 
 LAST WEEK (上周, förra veckan):
 → dueDateRange: { "operator": "between", "date": "start-of-last-week", "endDate": "end-of-last-week" }

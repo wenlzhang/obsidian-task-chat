@@ -23,7 +23,7 @@ export class TimeContextService {
         query: string,
         settings: PluginSettings
     ): {
-        type: 'today' | 'tomorrow' | 'thisWeek' | 'lastWeek' | 'nextWeek' | 
+        type: 'today' | 'tomorrow' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'nextWeek' | 
               'thisMonth' | 'lastMonth' | 'nextMonth' | 
               'thisYear' | 'lastYear' | 'nextYear' | null;
         matchedTerm?: string;
@@ -33,13 +33,14 @@ export class TimeContextService {
 
         // Check each time context (order matters - more specific first)
         const contexts: Array<{
-            type: 'today' | 'tomorrow' | 'thisWeek' | 'lastWeek' | 'nextWeek' | 
+            type: 'today' | 'tomorrow' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'nextWeek' | 
                   'thisMonth' | 'lastMonth' | 'nextMonth' | 
                   'thisYear' | 'lastYear' | 'nextYear';
             terms: string[];
         }> = [
             { type: 'today', terms: dueDateTerms.today },
             { type: 'tomorrow', terms: dueDateTerms.tomorrow },
+            { type: 'yesterday', terms: dueDateTerms.yesterday },
             { type: 'lastWeek', terms: dueDateTerms.lastWeek },
             { type: 'thisWeek', terms: dueDateTerms.thisWeek },
             { type: 'nextWeek', terms: dueDateTerms.nextWeek },
@@ -73,7 +74,7 @@ export class TimeContextService {
      * @returns DateRange with operator and date string
      */
     static timeContextToRange(
-        timeContext: 'today' | 'tomorrow' | 'thisWeek' | 'lastWeek' | 'nextWeek' |
+        timeContext: 'today' | 'tomorrow' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'nextWeek' |
                      'thisMonth' | 'lastMonth' | 'nextMonth' |
                      'thisYear' | 'lastYear' | 'nextYear'
     ): DateRange {
@@ -81,6 +82,7 @@ export class TimeContextService {
         const mapping: Record<string, { operator: DateRange['operator']; date: string }> = {
             'today': { operator: '<=', date: 'today' },
             'tomorrow': { operator: '<=', date: 'tomorrow' },
+            'yesterday': { operator: '=', date: 'yesterday' },
             'thisWeek': { operator: '<=', date: 'end-of-week' },
             'lastWeek': { operator: 'between', date: 'start-of-last-week' },
             'nextWeek': { operator: '<=', date: 'end-of-next-week' },
@@ -126,13 +128,14 @@ export class TimeContextService {
      * @returns Description string for logging/display
      */
     static getTimeContextDescription(
-        timeContext: 'today' | 'tomorrow' | 'thisWeek' | 'lastWeek' | 'nextWeek' |
+        timeContext: 'today' | 'tomorrow' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'nextWeek' |
                      'thisMonth' | 'lastMonth' | 'nextMonth' |
                      'thisYear' | 'lastYear' | 'nextYear'
     ): string {
         const descriptions: Record<string, string> = {
             'today': 'Tasks due today + overdue',
             'tomorrow': 'Tasks due tomorrow + today + overdue',
+            'yesterday': 'Tasks due yesterday only',
             'thisWeek': 'Tasks due this week + overdue',
             'lastWeek': 'Tasks due last week only',
             'nextWeek': 'Tasks due by end of next week + overdue',

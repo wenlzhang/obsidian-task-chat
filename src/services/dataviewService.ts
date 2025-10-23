@@ -786,6 +786,7 @@ export class DataviewService {
                     switch (keyword) {
                         case 'today': return moment().startOf('day');
                         case 'tomorrow': return moment().add(1, 'day').startOf('day');
+                        case 'yesterday': return moment().subtract(1, 'day').startOf('day');
                         case 'end-of-week': return moment().endOf('week');
                         case 'start-of-last-week': return moment().subtract(1, 'week').startOf('week');
                         case 'end-of-last-week': return moment().subtract(1, 'week').endOf('week');
