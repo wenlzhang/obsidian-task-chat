@@ -131,6 +131,10 @@ export class AIService {
                 settings,
             );
 
+            console.log(
+                `[Task Chat] Pre-extraction results: dueDate="${preExtractedIntent.extractedDueDateFilter}", priority=${preExtractedIntent.extractedPriority}, status="${preExtractedIntent.extractedStatus}"`,
+            );
+
             // Step 2: Remove property syntax from query string
             // This ONLY removes syntax, does NOT split words or filter stop words
             // AI will handle word splitting, stop word filtering, and semantic expansion
@@ -173,12 +177,86 @@ export class AIService {
                         parsedQuery.tags = preExtractedIntent.extractedTags;
                     }
                 } else {
-                    // Vague/generic query - trust AI's semantic understanding
-                    // AI knows "今天" is context, not a strict filter
-                    // AI knows "urgent" is concept, not exact property syntax
+                    // Vague/generic query - mostly trust AI's semantic understanding
+                    // BUT merge pre-extracted properties if AI returned null
+                    // (AI might miss them because query was cleaned before parsing)
                     console.log(
                         "[Task Chat] Vague query detected - using AI's property interpretation (not regex)",
                     );
+
+                    // DEBUG: Show what we're checking
+                    console.log(
+                        `[Task Chat] DEBUG - parsedQuery.dueDate: ${parsedQuery.dueDate}, preExtractedIntent.extractedDueDateFilter: ${preExtractedIntent.extractedDueDateFilter}, preExtractedIntent.extractedDueDateRange: ${JSON.stringify(preExtractedIntent.extractedDueDateRange)}`,
+                    );
+
+                    // If AI returned null but pre-extraction found something, use it
+                    // For vague queries, dueDate is converted to range, so check both!
+                    if (!parsedQuery.dueDate) {
+                        if (preExtractedIntent.extractedDueDateFilter) {
+                            parsedQuery.dueDate =
+                                preExtractedIntent.extractedDueDateFilter;
+                            // Also sync timeContext to match dueDate
+                            if (parsedQuery.aiUnderstanding) {
+                                parsedQuery.aiUnderstanding.timeContext =
+                                    parsedQuery.dueDate;
+                            }
+                            console.log(
+                                `[Task Chat] AI missed dueDate, using pre-extracted: "${parsedQuery.dueDate}"`,
+                            );
+                        } else if (preExtractedIntent.extractedDueDateRange) {
+                            // For vague queries, extract the date/term from the range
+                            // Range format: {operator: "<=", date: "today"}
+                            parsedQuery.dueDate =
+                                preExtractedIntent.extractedDueDateRange.date ||
+                                "today";
+                            // Also sync timeContext to match dueDate
+                            if (parsedQuery.aiUnderstanding) {
+                                parsedQuery.aiUnderstanding.timeContext =
+                                    parsedQuery.dueDate;
+                            }
+                            console.log(
+                                `[Task Chat] AI missed dueDate, using pre-extracted range: "${parsedQuery.dueDate}"`,
+                            );
+                        }
+                    }
+                    if (
+                        !parsedQuery.priority &&
+                        preExtractedIntent.extractedPriority
+                    ) {
+                        parsedQuery.priority =
+                            preExtractedIntent.extractedPriority;
+                        console.log(
+                            `[Task Chat] AI missed priority, using pre-extracted: ${parsedQuery.priority}`,
+                        );
+                    }
+                    if (
+                        !parsedQuery.status &&
+                        preExtractedIntent.extractedStatus
+                    ) {
+                        parsedQuery.status = preExtractedIntent.extractedStatus;
+                        console.log(
+                            `[Task Chat] AI missed status, using pre-extracted: "${parsedQuery.status}"`,
+                        );
+                    }
+                    if (
+                        !parsedQuery.folder &&
+                        preExtractedIntent.extractedFolder
+                    ) {
+                        parsedQuery.folder = preExtractedIntent.extractedFolder;
+                        console.log(
+                            `[Task Chat] AI missed folder, using pre-extracted: "${parsedQuery.folder}"`,
+                        );
+                    }
+                    if (
+                        (!parsedQuery.tags || parsedQuery.tags.length === 0) &&
+                        preExtractedIntent.extractedTags &&
+                        preExtractedIntent.extractedTags.length > 0
+                    ) {
+                        parsedQuery.tags = preExtractedIntent.extractedTags;
+                        console.log(
+                            `[Task Chat] AI missed tags, using pre-extracted: ${parsedQuery.tags.join(", ")}`,
+                        );
+                    }
                 }
 
                 console.log("[Task Chat] AI parsed query:", parsedQuery);
