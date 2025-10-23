@@ -506,6 +506,15 @@ Example with ${queryLanguages.length} languages and max ${maxExpansions} expansi
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
+⚠️ LANGUAGE SETTINGS REMINDER:
+Throughout this entire prompt, when we mention "ANY language" or "ALL languages", we are referring to the ${queryLanguages.length} languages configured by the user: ${languageList}
+
+You MUST respect these language settings in:
+- Keyword expansion (generate equivalents in ALL ${queryLanguages.length} languages)
+- Time context detection (recognize terms in ALL ${queryLanguages.length} languages)
+- Property recognition (detect properties in ALL ${queryLanguages.length} languages)
+- Vague query detection (consider generic words in ALL ${queryLanguages.length} languages)
+
 🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-DataView Conversion)
 
 **CRITICAL PRINCIPLE**: Properties need CONVERSION, not EXPANSION!
@@ -940,6 +949,9 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 
 **CRITICAL TASK: Detect if the query is vague/general vs specific**
 
+**CONFIGURED LANGUAGES:** You're working with ${queryLanguages.length} languages: ${languageList}
+Recognize generic words and specific content in ALL these languages!
+
 **SYSTEM REFERENCE:** The system maintains a list of 200+ generic words across 7+ languages for programmatic detection. Use your semantic understanding PLUS these indicators:
 
 **Generic word categories (key examples, not exhaustive):**
@@ -986,7 +998,7 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 1. Identify all words in query
 2. Count generic words (from categories above)
 3. Count specific content words (actions, objects, projects)
-4. If 70%+ are generic AND no specific content → isVague: true
+4. If ${Math.round((settings.vagueQueryThreshold || 0.7) * 100)}%+ are generic AND no specific content → isVague: true
 5. If query has specific content (even with some generic words) → isVague: false
 6. Use semantic understanding, not just word matching!
 
@@ -1009,7 +1021,10 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
 
 **EXTRACTION INSTRUCTIONS:**
 
-1. **Extract dueDate** - If query mentions time/deadlines in ANY language
+**LANGUAGE CONTEXT:** Configured languages: ${languageList}
+Recognize time terms, properties, and keywords in ALL these languages!
+
+1. **Extract dueDate** - If query mentions time/deadlines in ANY of the ${queryLanguages.length} configured languages
    - Recognize: today/今天/idag, tomorrow/明天/imorgon, this week/本周/denna vecka
    - Examples: "tasks due today", "What can I do today?", "Fix bug tomorrow"
    - Set: dueDate = "today" (external code converts if vague)
@@ -1019,7 +1034,7 @@ If you correct any typos, record them in the aiUnderstanding.correctedTypos arra
    - Used for debugging, not filtering
 
 3. **Determine isVague** - Analyze coreKeywords AFTER extraction
-   - If 70%+ are generic words → isVague: true
+   - If ${Math.round((settings.vagueQueryThreshold || 0.7) * 100)}%+ are generic words → isVague: true
    - If most are specific content → isVague: false
    - Time context alone doesn't make it specific!
 

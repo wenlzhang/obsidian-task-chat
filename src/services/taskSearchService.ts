@@ -876,6 +876,11 @@ export class TaskSearchService {
             settings,
         );
         let extractedDueDateRange = this.extractDueDateRange(query); // Changed to let for vague query range conversion
+        
+        // Track timeContext (same as dueDate) for consistency with Smart/Chat mode
+        // Used for debugging/logging and external conversion
+        let timeContext: string | string[] | null = extractedDueDateFilter;
+        
         const extractedStatus = this.extractStatusFromQuery(query, settings);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
@@ -969,6 +974,7 @@ export class TaskSearchService {
                 if (timeContextResult) {
                     extractedDueDateRange = timeContextResult.range;
                     extractedDueDateFilter = null; // Clear exact date (using range now)
+                    timeContext = timeContextResult.matchedTerm; // Keep timeContext for metadata
                     console.log(
                         `[Simple Search] Vague query - Converted dueDate "${timeContextResult.matchedTerm}" to range: ${timeContextResult.description}`,
                     );
@@ -987,6 +993,7 @@ export class TaskSearchService {
 
                 if (timeContextResult) {
                     extractedDueDateRange = timeContextResult.range;
+                    timeContext = timeContextResult.matchedTerm; // Set timeContext for metadata
                     console.log(
                         `[Simple Search] Time context detected: "${timeContextResult.matchedTerm}" → ${timeContextResult.description}`,
                     );
