@@ -33,65 +33,9 @@ export class SettingsTab extends PluginSettingTab {
             cls: "task-chat-info-box",
         });
         overviewBox.innerHTML = `
-            <h3 style="margin-top: 0;">📚 Understanding Settings</h3>
+            <h3>📚 Understanding Settings</h3>
             <p><strong>👉 Start with Defaults:</strong> All settings are pre-configured with recommended values. Most users don't need to change anything!</p>
-            
-            <h4>How Settings Affect Your Results:</h4>
-            <ol style="margin-left: 20px;">
-                <li><strong>Filtering:</strong> Determines which tasks appear in results
-                    <ul>
-                        <li>Stop words: Removes generic keywords (the, task, work, etc.)</li>
-                        <li>Quality filter: Keeps tasks above a comprehensive score threshold</li>
-                        <li>Minimum relevance: Requires keyword match quality (optional)</li>
-                    </ul>
-                </li>
-                <li><strong>Scoring:</strong> Calculates task importance
-                    <ul>
-                        <li>Relevance coefficient (R×20): Keyword match weight</li>
-                        <li>Due date coefficient (D×4): Urgency weight</li>
-                        <li>Priority coefficient (P×1): Importance weight</li>
-                        <li>Status coefficient (S×1): Status weight</li>
-                        <li>Sub-coefficients: Fine-tune specific scores</li>
-                    </ul>
-                </li>
-                <li><strong>Sorting:</strong> Orders tasks for display
-                    <ul>
-                        <li>Primary: Comprehensive score (R + D + P + S)</li>
-                        <li>Tiebreakers: Additional criteria for equal scores</li>
-                    </ul>
-                </li>
-                <li><strong>Display:</strong> How many tasks to show
-                    <ul>
-                        <li>Simple/Smart Search: Direct display (fast, free)</li>
-                        <li>Task Chat: AI analysis (comprehensive, uses tokens)</li>
-                    </ul>
-                </li>
-            </ol>
-            
-            <h4>The Processing Pipeline:</h4>
-            <p style="margin-left: 20px; font-family: monospace; font-size: 12px;">
-                Query → Parse → DataView Filter → Quality Filter → Minimum Relevance → Score → Sort → Display/AI Analysis
-            </p>
-            
-            <h4>Key Settings Groups:</h4>
-            <ul style="margin-left: 20px;">
-                <li><strong>Property Terms & Stop Words:</strong> Improve keyword recognition</li>
-                <li><strong>Quality Filter:</strong> Balance result count vs quality</li>
-                <li><strong>Scoring Coefficients:</strong> Weight importance of different factors</li>
-                <li><strong>Sort Order:</strong> Prioritize criteria for equal scores</li>
-                <li><strong>Task Display:</strong> Control result count per mode</li>
-            </ul>
-            
-            <h4>Recommended Workflow:</h4>
-            <ol style="margin-left: 20px;">
-                <li>✅ <strong>Start with defaults</strong> - Try queries first!</li>
-                <li>🔍 If results are too broad → Increase quality filter (10-30%)</li>
-                <li>🎯 If urgent tasks overwhelm keywords → Add minimum relevance (20-40%)</li>
-                <li>⚖️ If urgency/priority doesn't match expectations → Adjust coefficients</li>
-                <li>🛑 If generic words match everything → Add custom stop words</li>
-            </ol>
-            
-            <p style="margin-top: 10px;"><strong>💡 Tip:</strong> Each setting shows its impact in the description. Check the README for detailed explanations and examples!</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#settings">→ Learn more about settings and how they affect your results</a></p>
         `;
 
         // AI Provider Settings
@@ -352,32 +296,18 @@ export class SettingsTab extends PluginSettingTab {
         // Semantic Expansion
         containerEl.createEl("h3", { text: "Semantic expansion" });
 
-        containerEl.createEl("p", {
-            text: "Control how AI expands keywords for better task matching in Smart Search and Task Chat modes. Expansion multiplies keywords across configured languages to find tasks written in any language.",
+        const semanticExpansionInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-
-        const propertyTermsInfo = containerEl.createEl("div", {
-            cls: "setting-item-description",
-        });
-        propertyTermsInfo.createEl("p", {
-            text: "Add your own terms for task properties (priority, due date, status). These combine with built-in terms for enhanced recognition across all search modes. The system uses a three-layer approach:",
-        });
-        const layersList = propertyTermsInfo.createEl("ol");
-        layersList.createEl("li", {
-            text: "Your custom terms (highest priority)",
-        });
-        layersList.createEl("li", {
-            text: "Built-in multi-language mappings (fallback)",
-        });
-        layersList.createEl("li", {
-            text: "AI semantic expansion (broadest coverage)",
-        });
+        semanticExpansionInfo.innerHTML = `
+            <p>Configure keyword expansion and custom property terms.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("Enable semantic expansion")
             .setDesc(
-                "Enable AI-powered semantic keyword expansion. When enabled, each keyword is expanded with semantic equivalents across all configured languages. Example: 'develop' → 'develop', '开发', 'build', 'create', 'implement', 'utveckla', etc. This is NOT translation but direct cross-language semantic equivalence generation. Improves recall but may increase token usage.",
+                "Expand keywords with semantic equivalents across configured languages. Example: 'develop' → 'build', 'create', '开发', 'utveckla'. Improves recall but increases token usage.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -391,7 +321,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query language")
             .setDesc(
-                "Languages to use for semantic keyword expansion and AI response. Used by Smart Search and Task Chat modes. When 'Response language' is set to 'Auto', the AI will detect and respond in the language from this list that matches your query. When you search in one language, semantic equivalents are automatically generated in all configured languages for better cross-language matching. Examples: English, Español. Separate with commas.",
+                "Languages for keyword expansion and AI responses. Examples: English, Español. Separate with commas.",
             )
             .addTextArea((text) =>
                 text
@@ -413,7 +343,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max keyword expansions")
             .setDesc(
-                "Maximum semantic variations to generate per keyword per language. Default: 5. Total keywords = (max expansions × number of languages). Example: 5 expansions × 2 languages = 10 keywords per core keyword. Higher values improve recall but increase AI token usage.",
+                "Maximum variations per keyword per language. Default: 5. Higher values improve recall but increase token usage.",
             )
             .addSlider((slider) =>
                 slider
@@ -429,7 +359,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Priority terms")
             .setDesc(
-                "Your custom terms for priority (e.g., 'priority, urgent'). These combine with built-in terms (priority, important, urgent, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+                "Custom priority terms (e.g., 'priority, urgent'). Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -455,7 +385,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Due date terms")
             .setDesc(
-                "Your custom terms for due dates (e.g., 'due, deadline'). These combine with built-in terms (due, deadline, scheduled, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+                "Custom due date terms (e.g., 'due, deadline'). Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -481,7 +411,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Status terms")
             .setDesc(
-                "Your custom terms for task status (e.g., 'done, completed, in progress'). These combine with built-in terms (status, done, completed, etc.) for better recognition in all modes. Leave empty to use only built-in terms.",
+                "Custom status terms (e.g., 'done, completed, in progress'). Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -518,11 +448,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
             .setDesc(
-                "Maximum tasks to send to AI for analysis in Task Chat mode. " +
-                    "Default: 100 (increased from 30 to provide better context). " +
-                    "Higher values help AI see important tasks with due dates/priorities that may rank outside top 30. " +
-                    "Token cost impact: 30→$0.0006, 100→$0.0015 per query (gpt-4o-mini). " +
-                    "Recommended: 100 for comprehensive results, 50 for balanced, 30 for minimal cost.",
+                "Maximum tasks to send to AI in Task Chat mode. Default: 100. Higher values provide better context but increase token usage.",
             )
             .addSlider((slider) =>
                 slider
@@ -554,7 +480,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Response language")
             .setDesc(
-                "Choose the language for AI responses. Use 'Auto' to match user input language. For multi-language support, configure 'Query languages for semantic search' below.",
+                "Language for AI responses. 'Auto' matches user input language.",
             )
             .addDropdown((dropdown) =>
                 dropdown
@@ -588,21 +514,11 @@ export class SettingsTab extends PluginSettingTab {
                 );
         }
 
-        // Reference to configured languages
-        const languagesDisplay = this.plugin.settings.queryLanguages.join(", ");
-        const languagesRef = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        languagesRef.innerHTML = `
-            <p style="margin-top: 16px;"><strong>📚 Supported Languages:</strong></p>
-            <p>Currently configured: <strong>${languagesDisplay}</strong></p>
-            <p>Configure languages in "Query languages for semantic search" above. AI recognizes properties in ANY language using semantic concept recognition, not hardcoded phrase matching. Works with 100+ languages!</p>
-        `;
 
         new Setting(containerEl)
             .setName("Show AI understanding")
             .setDesc(
-                "Display what AI understood from your query in Task Chat mode. Shows detected language, corrected typos, and how properties were recognized/converted. Helps you understand how your natural language query was interpreted.",
+                "Display query interpretation in Task Chat mode (detected language, typo corrections, property recognition).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -631,7 +547,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable streaming responses")
             .setDesc(
-                "Show AI responses as they're being generated (like ChatGPT). Provides better user experience and allows you to see progress. You can stop generation at any time by clicking the Stop button. Works with all AI providers (OpenAI, Anthropic, OpenRouter, Ollama).",
+                "Show AI responses as they're generated (like ChatGPT). Works with all providers.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -648,43 +564,13 @@ export class SettingsTab extends PluginSettingTab {
         // DataView Settings
         containerEl.createEl("h3", { text: "DataView integration" });
 
-        containerEl.createDiv({
-            text: "Configure how task properties are read from DataView. These settings should match your task metadata fields.",
+        const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-
-        // DataView Status and Troubleshooting Info
-        const dataviewInfoBox = containerEl.createDiv({
-            cls: "setting-item-description task-chat-info-box",
-        });
-
-        dataviewInfoBox.createEl("strong", {
-            text: "💡 DataView Status & Troubleshooting",
-        });
-        dataviewInfoBox.createEl("br");
-        dataviewInfoBox.createEl("br");
-
-        dataviewInfoBox.appendText(
-            "If searches return 0 results but you have tasks in your vault:",
-        );
-        dataviewInfoBox.createEl("br");
-
-        const troubleshootingList = dataviewInfoBox.createEl("ul", {
-            cls: "task-chat-troubleshooting-list",
-        });
-
-        troubleshootingList.createEl("li", {
-            text: "⏱️ DataView may still be indexing - wait 10-30 seconds and click Refresh tasks",
-        });
-        troubleshootingList.createEl("li", {
-            text: "⚙️ DataView index delay may be too long - go to DataView settings and reduce 'Index delay' from default 2000ms to 500ms",
-        });
-        troubleshootingList.createEl("li", {
-            text: "✅ Verify task syntax - tasks must use proper Markdown format (e.g., - [ ] Task name)",
-        });
-        troubleshootingList.createEl("li", {
-            text: "🔄 Check DataView is enabled - go to Community Plugins and ensure DataView is enabled",
-        });
+        dataviewInfo.innerHTML = `
+            <p>Configure task property field names.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#dataview-integration">→ Learn more about DataView integration and troubleshooting</a></p>
+        `;
 
         new Setting(containerEl)
             .setName("Due date field")
@@ -842,39 +728,8 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
         statusCategoriesDesc.innerHTML = `
-            <p><strong>📋 Status categories:</strong> Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
-            <p><strong>Query syntax:</strong> Use <code>s:value</code> or <code>s:open,/,?</code> to mix categories and symbols.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories</a></p>
-        `;
-
-        // Add Score vs Order clarification info box
-        const scoreVsOrderBox = containerEl.createDiv({
-            cls: "task-chat-info-box",
-        });
-        scoreVsOrderBox.style.cssText =
-            "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
-
-        scoreVsOrderBox.innerHTML = `
-            <p style="font-weight: 600; margin-bottom: 8px;">📊 Score vs Order - What's the Difference?</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
-                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
-                    <p style="font-weight: 600; margin-bottom: 4px;">🎯 Score (0.0-1.0)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Relevance weight in search ranking</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> Scoring formula (finalScore = R×20 + D×4 + P×1 + <strong>S×1</strong>)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Higher score = more relevant in searches</p>
-                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1.0 (high), completed=0.3 (low)</p>
-                </div>
-                <div style="padding: 8px; background: var(--background-primary); border-radius: 4px;">
-                    <p style="font-weight: 600; margin-bottom: 4px;">📋 Order (1, 2, 3...)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Purpose:</strong> Display position when sorting by status</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Used in:</strong> TaskSortService (multi-criteria sorting)</p>
-                    <p style="font-size: 12px; margin: 4px 0;"><strong>Effect:</strong> Lower order = appears first in list</p>
-                    <p style="font-size: 12px; margin: 4px 0; font-style: italic;">Example: open=1 (first), completed=6 (last)</p>
-                </div>
-            </div>
-            <p style="margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--text-accent);">
-                ✅ They are completely independent! Changing score doesn't affect order, and vice versa.
-            </p>
+            <p>Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories and score vs order</a></p>
         `;
 
         // Validate status orders and show warnings if duplicates found
@@ -886,25 +741,24 @@ export class SettingsTab extends PluginSettingTab {
             const warningBox = containerEl.createDiv({
                 cls: "task-chat-warning-box",
             });
-            warningBox.style.cssText =
-                "background: var(--background-modifier-error); border: 1px solid var(--background-modifier-error-hover); border-radius: 6px; padding: 12px 16px; margin: 16px 0;";
 
-            const warningTitle = warningBox.createEl("div");
-            warningTitle.style.cssText =
-                "font-weight: 600; margin-bottom: 8px; color: var(--text-error);";
+            const warningTitle = warningBox.createEl("div", {
+                cls: "task-chat-warning-title",
+            });
             warningTitle.innerHTML = "⚠️ Duplicate Sort Orders Detected";
 
             for (const warning of validation.warnings) {
-                const warningText = warningBox.createEl("p");
-                warningText.style.cssText = "margin: 4px 0; font-size: 13px;";
+                const warningText = warningBox.createEl("p", {
+                    cls: "task-chat-warning-message",
+                });
                 warningText.textContent = warning;
             }
 
-            const warningExplanation = warningBox.createEl("p");
-            warningExplanation.style.cssText =
-                "margin: 8px 0 12px 0; font-size: 13px; font-style: italic;";
+            const warningExplanation = warningBox.createEl("p", {
+                cls: "task-chat-warning-explanation",
+            });
             warningExplanation.textContent =
-                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...).";
+                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Fix' to automatically renumber categories with proper gaps (10, 20, 30...)."
 
             new Setting(warningBox)
                 .setName("Auto-Fix Duplicates")
@@ -930,9 +784,9 @@ export class SettingsTab extends PluginSettingTab {
         }
 
         // Add column headers
-        const headerDiv = containerEl.createDiv();
-        headerDiv.style.cssText =
-            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--background-modifier-border); margin-top: 12px;";
+        const headerDiv = containerEl.createDiv({
+            cls: "task-chat-status-header",
+        });
         headerDiv.createDiv({ text: "Category key" });
         headerDiv.createDiv({ text: "Display name" });
         headerDiv.createDiv({ text: "Query aliases" });
@@ -987,30 +841,18 @@ export class SettingsTab extends PluginSettingTab {
         // Task filtering
         containerEl.createEl("h3", { text: "Task filtering" });
 
+        const filteringInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        filteringInfo.innerHTML = `
+            <p>Control which tasks appear in results.</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/README.md#task-filtering">→ Learn more about filtering options</a></p>
+        `;
+
         new Setting(containerEl)
             .setName("Relevance score")
             .setDesc(
-                `Requires tasks to have a minimum keyword relevance score. Set to 0 to disable (default).
-
-📊 MAXIMUM VALUE: The theoretical maximum relevance score is (Core bonus + 1.0).
-• Current maximum: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}% (based on your core bonus of ${this.plugin.settings.relevanceCoreWeight.toFixed(2)})
-• With default core bonus (0.2): maximum is 120%
-• If you change "Core keyword match bonus" below, update this value accordingly
-
-⚠️ This is an ADDITIONAL filter applied AFTER the quality filter above.
-
-Use this when:
-• You want to exclude tasks with weak keyword matches, even if they have high urgency/priority
-• Example: Low relevance + overdue + P1 = might pass quality filter, but blocked by this
-
-Recommended values:
-• 0%: Disabled (default) - only comprehensive score filtering applies
-• 20-30%: Moderate - requires reasonable keyword match
-• 40-60%: Strict - requires strong keyword match
-• 70%+: Very strict - requires near-perfect keyword match
-• 100%+: Extremely strict - requires perfect match with core keyword bonus
-
-💡 Tip: Leave at 0% unless you're getting urgent tasks with weak keyword relevance.`,
+                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches regardless of urgency/priority.`,
             )
             .addSlider((slider) => {
                 // Dynamic maximum based on actual max relevance score
@@ -1032,18 +874,7 @@ Recommended values:
         new Setting(containerEl)
             .setName("Quality filter")
             .setDesc(
-                `Controls task filtering strictness (0-100%). Higher = fewer but higher-quality results.
-
-Score calculation: relevance×20 + dueDate×4 + priority×1 (max: 31 points)
-
-Filter levels:
-• 0%: Adaptive (recommended) - auto-adjusts based on query complexity
-• 1-25%: Permissive - broad matching, more results
-• 26-50%: Balanced - moderate quality filtering
-• 51-75%: Strict - only strong matches
-• 76-100%: Very strict - near-perfect matches only
-
-💡 Tip: Start with 0% (adaptive) and increase if you get too many results.`,
+                `Filter strictness (0-100%). 0% = adaptive (recommended), higher = fewer but higher-quality results.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1057,24 +888,11 @@ Filter levels:
                     }),
             );
 
-        const stopWordsInfo = containerEl.createEl("div", {
-            cls: "setting-item-description",
-        });
-        stopWordsInfo.createEl("p", {
-            text: "Stop words are common words filtered out during search to improve relevance. Your custom stop words combine with ~100 built-in stop words (including 'the', 'a', 'task', 'work', etc.). Used in all modes: Simple Search, Smart Search, Task Chat.",
-        });
-
-        // Show count of internal stop words
-        const internalCount = StopWords.getInternalStopWords().length;
-        stopWordsInfo.createEl("p", {
-            text: `Built-in stop words: ${internalCount} words.`,
-            cls: "mod-muted",
-        });
 
         new Setting(containerEl)
             .setName("Custom stop words")
             .setDesc(
-                "Additional stop words specific to your workflow or language. These combine with built-in stop words to filter out unwanted keywords. Example: 'project, task' for domain-specific or additional language terms. Comma-separated list.",
+                `Custom stop words to filter out (combines with ${StopWords.getInternalStopWords().length} built-in). Comma-separated.`,
             )
             .addTextArea((text) =>
                 text
@@ -1111,14 +929,7 @@ Filter levels:
         new Setting(containerEl)
             .setName("Relevance weight")
             .setDesc(
-                `How much keyword matching affects score (1-50). Default: 20.
-                
-Higher value = keyword relevance matters more.
-
-Examples:
-• 10: Balanced with other factors
-• 20: Standard (recommended)
-• 30-50: Keyword matching very important`,
+                `Keyword matching importance (1-50). Default: 20. Higher = more keyword-focused.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1135,14 +946,7 @@ Examples:
         new Setting(containerEl)
             .setName("Due date weight")
             .setDesc(
-                `How much due date urgency affects score (1-20). Default: 4.
-                
-Higher value = urgency matters more.
-
-Examples:
-• 2: Due dates less important
-• 4: Standard (recommended)
-• 8-20: Urgent tasks heavily prioritized`,
+                `Urgency importance (1-20). Default: 4. Higher = more urgency-focused.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1159,14 +963,7 @@ Examples:
         new Setting(containerEl)
             .setName("Priority weight")
             .setDesc(
-                `How much task priority affects score (1-20). Default: 1.
-                
-Higher value = priority matters more.
-
-Examples:
-• 1: Standard (recommended)
-• 5: Priority very important
-• 10-20: Priority dominates scoring`,
+                `Priority importance (1-20). Default: 1. Higher = more priority-focused.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1183,14 +980,7 @@ Examples:
         new Setting(containerEl)
             .setName("Status weight")
             .setDesc(
-                `How much task status affects score (1-20). Default: 1.
-                
-Higher value = status matters more.
-
-Examples:
-• 1: Standard (recommended)
-• 5: Status very important
-• 10-20: Status dominates scoring`,
+                `Status importance (1-20). Default: 1. Higher = more status-focused.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1208,10 +998,6 @@ Examples:
         const maxScoreDisplay = containerEl.createDiv({
             cls: "task-chat-info-box",
         });
-        const maxScoreTitle = maxScoreDisplay.createEl("p");
-        maxScoreTitle.innerHTML =
-            "<strong>📈 Maximum Possible Score (with current coefficients):</strong>";
-
         const maxScoreValue = maxScoreDisplay.createEl("p", {
             cls: "task-chat-max-score-value",
         });
@@ -1256,13 +1042,8 @@ Examples:
                 maxStatusScore * this.plugin.settings.statusCoefficient;
 
             maxScoreValue.innerHTML = `
-                <strong>Max Score: ${maxScore.toFixed(1)} points</strong><br/>
-                <span style="font-size: 0.9em; opacity: 0.8;">
-                Relevance: ${relevPart.toFixed(1)} + 
-                Due Date: ${datePart.toFixed(1)} + 
-                Priority: ${priorPart.toFixed(1)} + 
-                Status: ${statusPart.toFixed(1)}
-                </span>
+                <strong>📈 Max score: ${maxScore.toFixed(1)} points</strong> 
+                (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})
             `;
         };
 
@@ -1285,15 +1066,7 @@ Examples:
         new Setting(containerEl)
             .setName("Core keyword match bonus")
             .setDesc(
-                "Additional bonus for matching core keywords (0.0-1.0). Default: 0.2. " +
-                    "Core keywords are original extracted keywords from your query, before semantic expansion. " +
-                    "Set to 0 to treat all keywords equally (pure semantic search). " +
-                    "Higher values prioritize exact query matches over semantic equivalents. " +
-                    "Combined with the relevance coefficient above, this fine-tunes keyword matching.\n\n" +
-                    "⚠️ IMPORTANT: Changing this value affects:\n" +
-                    "• Maximum relevance score: (This value + 1.0)\n" +
-                    "• Quality filter calculations (uses this + 1.0 for max score)\n" +
-                    "• Minimum relevance score maximum (auto-updates when you change this)",
+                "Bonus for exact keyword matches (0.0-1.0). Default: 0.2. Set to 0 for pure semantic search. Affects max relevance score: (value + 1.0).",
             )
             .addSlider((slider) =>
                 slider
@@ -1481,17 +1254,14 @@ Examples:
         containerEl.createEl("h4", { text: "Reset coefficients to defaults" });
 
         containerEl.createDiv({ cls: "task-chat-info-box" }).innerHTML = `
-            <p>Use these buttons to quickly reset coefficient values to their recommended defaults.</p>
+            <p>Quickly reset coefficient values to recommended defaults.</p>
         `;
 
         // Reset all advanced coefficients
         new Setting(containerEl)
             .setName("Reset all advanced coefficients")
             .setDesc(
-                "Reset all sub-coefficients to defaults: relevance (core bonus: 0.2), " +
-                    "due date (overdue: 1.5, 7days: 1.0, month: 0.5, later: 0.2, none: 0.1), " +
-                    "priority (P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, none: 0.1), " +
-                    "status (completed: 1.0, in-progress: 0.75, open: 0.5, cancelled: 0.2, other: 0.1).",
+                "Reset all sub-coefficients (relevance, due date, priority, status) to defaults.",
             )
             .addButton((button) =>
                 button
@@ -1539,7 +1309,7 @@ Examples:
         new Setting(containerEl)
             .setName("Reset main coefficients")
             .setDesc(
-                "Reset main coefficient weights to defaults: Relevance: 20, Due Date: 4, Priority: 1, Status: 1.",
+                "Reset weights to defaults (R:20, D:4, P:1, S:1).",
             )
             .addButton((button) =>
                 button
@@ -1628,7 +1398,7 @@ Examples:
         new Setting(containerEl)
             .setName("Reset status category")
             .setDesc(
-                "Reset all status categories (symbols, scores, names) to defaults: Open, Completed, In Progress, Cancelled, Other.",
+                "Reset all status categories to defaults.",
             )
             .addButton((button) =>
                 button.setButtonText("Reset Status").onClick(async () => {
@@ -1644,10 +1414,17 @@ Examples:
         // Task Display
         containerEl.createEl("h3", { text: "Task display" });
 
+        // Store the container for this setting so we can refresh it
+        // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
+        this.sortByContainerEl = containerEl.createDiv(
+            "task-chat-sort-container",
+        );
+        this.renderSortBySetting();
+
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
-                "Maximum tasks to show without using AI (no token cost). Default: 20. Simple queries like 'overdue tasks' show results directly.",
+                "Maximum tasks to show without AI (no token cost). Default: 20.",
             )
             .addSlider((slider) =>
                 slider
@@ -1660,19 +1437,12 @@ Examples:
                     }),
             );
 
-        // Store the container for this setting so we can refresh it
-        // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
-        this.sortByContainerEl = containerEl.createDiv(
-            "task-chat-sort-container",
-        );
-        this.renderSortBySetting();
-
         containerEl.createEl("h3", { text: "Advanced" });
 
         new Setting(containerEl)
             .setName("System prompt")
             .setDesc(
-                "Customize the AI's base behavior and personality. This sets the tone and style - technical task management instructions are automatically appended. Default: 'You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.'",
+                "Customize AI behavior and personality. Technical instructions are automatically appended.",
             )
             .addTextArea((text) =>
                 text
@@ -1705,10 +1475,6 @@ Examples:
         // Pricing Information
         containerEl.createEl("h4", { text: "Pricing data" });
 
-        const pricingInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
         );
@@ -1716,20 +1482,14 @@ Examples:
             this.plugin.settings.pricingCache.data,
         ).length;
 
-        pricingInfo.createEl("p", {
-            text: `Pricing database: ${modelCount} models cached`,
-        });
-        pricingInfo.createEl("p", {
-            text: `Last updated: ${lastUpdate}`,
-        });
-        pricingInfo.createEl("p", {
-            text: "Pricing is fetched from OpenRouter API daily and includes all major providers (OpenAI, Anthropic, etc.)",
+        const pricingInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
+        pricingInfo.innerHTML = `<p>${modelCount} models cached, updated ${lastUpdate}</p>`;
 
         new Setting(containerEl)
             .setName("Refresh pricing")
-            .setDesc("Manually update pricing data from OpenRouter API")
+            .setDesc("Update pricing data from OpenRouter API")
             .addButton((button) =>
                 button.setButtonText("Refresh Now").onClick(async () => {
                     button.setButtonText("Updating...");
@@ -1762,24 +1522,18 @@ Examples:
         // Usage Statistics
         containerEl.createEl("h4", { text: "Usage statistics" });
 
-        const statsContainer = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
         const totalCost = this.plugin.settings.totalCost.toFixed(4);
 
-        statsContainer.createEl("p", {
-            text: `Total tokens used: ${totalTokens}`,
+        const statsContainer = containerEl.createDiv({
+            cls: "setting-item-description",
         });
-        statsContainer.createEl("p", {
-            text: `Total cost: $${totalCost} (based on real-time API pricing)`,
-        });
+        statsContainer.innerHTML = `<p>Total: ${totalTokens} tokens, $${totalCost}</p>`;
 
         new Setting(containerEl)
             .setName("Reset statistics")
-            .setDesc("Clear all usage statistics and cost tracking")
+            .setDesc("Clear usage statistics and cost tracking")
             .addButton((button) =>
                 button.setButtonText("Reset").onClick(async () => {
                     this.plugin.settings.totalTokensUsed = 0;
@@ -1828,9 +1582,9 @@ Examples:
         const isFullyLocked = isStatusCategoryFullyLocked(categoryKey);
 
         // Create horizontal grid row
-        const rowDiv = containerEl.createDiv();
-        rowDiv.style.cssText =
-            "display: grid; grid-template-columns: 120px 130px 150px 1fr 100px 60px; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--background-modifier-border); align-items: center;";
+        const rowDiv = containerEl.createDiv({
+            cls: "task-chat-status-row",
+        });
 
         // Category key (editable for custom categories only)
         const keyInput = rowDiv.createEl("input", { type: "text" });

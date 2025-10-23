@@ -874,3 +874,112 @@
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* Settings Tab - Warning Box */
+.task-chat-warning-box {
+    background: var(--background-modifier-error);
+    border: 1px solid var(--background-modifier-error-hover);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 16px 0;
+}
+
+.task-chat-warning-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-error);
+}
+
+.task-chat-warning-message {
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.task-chat-warning-explanation {
+    margin: 8px 0 12px 0;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Settings Tab - Status Category Grid */
+.task-chat-status-header {
+    display: grid;
+    grid-template-columns: 120px 130px 150px 1fr 100px 60px;
+    gap: 8px;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-top: 12px;
+}
+
+.task-chat-status-row {
+    display: grid;
+    grid-template-columns: 120px 130px 150px 1fr 100px 60px;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    align-items: center;
+}
+
+.task-chat-status-input {
+    padding: 4px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.task-chat-status-input-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.task-chat-status-score-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-chat-status-score-slider {
+    flex: 1;
+    min-width: 60px;
+}
+
+.task-chat-status-score-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 32px;
+}
+
+.task-chat-status-btn-disabled {
+    padding: 2px 8px;
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.task-chat-status-btn-remove {
+    padding: 2px 8px;
+    font-size: 14px;
+}
+
+.task-chat-status-advanced {
+    padding: 8px 12px;
+    border-left: 3px solid var(--background-modifier-border);
+    margin-left: 12px;
+    margin-bottom: 8px;
+    background: var(--background-secondary);
+}
+
+.task-chat-status-advanced-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 8px;
+}
+
+/* Settings Tab - Info Box Heading */
+.task-chat-info-box h3 {
+    margin-top: 0;
+}
