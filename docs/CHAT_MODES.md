@@ -1,6 +1,6 @@
-# Search Modes
+# Chat Modes
 
-Task Chat offers three search modes, each optimized for different use cases and AI usage levels.
+Task Chat offers three chat modes, each optimized for different use cases and AI usage levels.
 
 ## Mode Comparison
 
@@ -45,9 +45,16 @@ Task Chat offers three search modes, each optimized for different use cases and 
 - When you want better recall without AI analysis
 
 **Example queries:**
-- `fix` → Finds "repair", "solve", "correct" in multiple languages
+
+*English:*
+- `fix` → Finds "repair", "solve", "correct", "resolve"
 - `urgent` → Finds "critical", "important", "high-priority"
-- Natural language: "tasks I need to finish today"
+- "tasks I need to finish today"
+
+*中文:*
+- `修复` → Finds "修理", "解决", "修正", "纠正"
+- `紧急` → Finds "关键", "重要", "高优先级"
+- "我今天需要完成的任务"
 
 **AI features:**
 - Keyword semantic expansion
@@ -69,9 +76,16 @@ Task Chat offers three search modes, each optimized for different use cases and 
 - When you want help understanding your tasks
 
 **Example queries:**
+
+*English:*
 - "What should I work on next?"
 - "Show me urgent tasks that are overdue"
 - "Analyze my high-priority tasks"
+
+*中文:*
+- "我接下来应该做什么？"
+- "显示过期的紧急任务"
+- "分析我的高优先级任务"
 
 **AI features:**
 - Keyword semantic expansion

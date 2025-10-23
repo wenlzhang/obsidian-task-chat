@@ -529,4 +529,4 @@ Sort order: Current effective order: 2
 
 - [Scoring System](SCORING_SYSTEM.md) - How status score affects ranking
 - [Sorting System](SORTING_SYSTEM.md) - How status order affects display
-- [Search Modes](SEARCH_MODES.md) - How status filters work in each mode
+- [Chat Modes](CHAT_MODES.md) - How status filters work in each mode

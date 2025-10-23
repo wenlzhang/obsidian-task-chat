@@ -288,8 +288,8 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
         modeComparisonInfo.innerHTML = `
-            <p><strong>ℹ️ Search mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEARCH_MODES.md">→ Learn more about search modes</a></p>
+            <p><strong>ℹ️ Chat mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
+            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md">→ Learn more about chat modes</a></p>
         `;
 
         // Semantic Expansion
@@ -1433,7 +1433,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
-                "Maximum tasks to show in Simple Search mode (no token cost). Default: 20.",
+                "Maximum tasks to show in Simple Search chat mode (no token cost). Default: 20.",
             )
             .addSlider((slider) =>
                 slider

@@ -380,4 +380,4 @@ Reason: Focus on importance
 
 - [Scoring System](SCORING_SYSTEM.md) - How tasks are scored
 - [Status Categories](STATUS_CATEGORIES.md) - Status order vs score
-- [Search Modes](SEARCH_MODES.md) - When sorting is applied
+- [Chat Modes](CHAT_MODES.md) - When sorting is applied

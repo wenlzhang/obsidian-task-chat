@@ -25,8 +25,7 @@ Your query: "fix bug"
 
 AI expands to:
 - English: fix, repair, solve, correct, resolve, debug, patch
-- 中文: 修复, 解决, 修正, 纠正
-- Svenska: fixa, reparera, lösa, korrigera
+- 中文: 修复, 解决, 修正, 纠正, 修理
 
 Result: Finds tasks with any of these terms!
 ```
@@ -105,13 +104,13 @@ AI corrects: "completed items"
 
 **Format:** Comma-separated list
 ```
-English, 中文, Svenska
+English, 中文
 ```
 
 **How it works:**
 - AI generates synonyms in each language
 - Each keyword expanded in all languages
-- Example: "fix" → 5 English + 5 中文 + 5 Svenska = 15 variations
+- Example: "fix" → 5 English + 5 中文 = 10 variations
 
 **Tip:** Add languages you use in your tasks
 
@@ -353,6 +352,6 @@ q1, q2, q3, q4
 
 ## See Also
 
-- [Search Modes](SEARCH_MODES.md) - When to use each mode
+- [Chat Modes](CHAT_MODES.md) - When to use each mode
 - [Scoring System](SCORING_SYSTEM.md) - How relevance is calculated
 - [Sorting System](SORTING_SYSTEM.md) - How tasks are ordered

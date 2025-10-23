@@ -1,196 +1,560 @@
-# Complete Settings Guide
+# Settings Guide
 
-**📚 Comprehensive guide to understanding and customizing Task Chat settings**
+Complete guide to configuring Task Chat for your workflow.
 
-## Quick Start
+## Settings Overview
 
-### 👉 Start with Defaults
+Task Chat settings are organized into 10 main sections:
 
-**All settings are pre-configured with recommended values.** Most users get excellent results without changing anything!
+1. **AI Provider** - Configure your AI service
+2. **Task Chat** - Chat interface settings
+3. **Chat Mode** - Choose default mode
+4. **Semantic Expansion** - Multilingual keyword expansion
+5. **DataView Integration** - Task property fields
+6. **Status Category** - Custom task status
+7. **Task Filtering** - Control which tasks appear
+8. **Task Scoring** - Weight importance factors
+9. **Task Display** - Result limits and sorting
+10. **Advanced** - System prompts and expert settings
 
-**When to Customize:**
-- Too many results → Increase quality filter (10-30%)
-- Urgent tasks overwhelming keywords → Add minimum relevance (20-40%)
-- Wrong task priority → Adjust coefficients (R, D, P)
-- Generic words matching everything → Add custom stop words
+## 1. AI Provider
 
----
+### Provider Selection
 
-## The Processing Pipeline
+Choose from four AI providers:
 
+- **OpenAI** - GPT-4o, GPT-5, o-series models
+- **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus
+- **OpenRouter** - Access 100+ models from one API
+- **Ollama** - Run models locally (free, private)
+
+### API Key
+
+Required for OpenAI, Anthropic, and OpenRouter. Not needed for Ollama.
+
+**Security:** API keys are stored locally in Obsidian's data folder.
+
+### Model Selection
+
+**Recommended models:**
+- **GPT-4o-mini** - Fast, cheap, excellent quality
+- **Claude 3.5 Sonnet** - Best reasoning, higher cost
+- **gpt-4o** - Flagship model, balanced performance
+- **Local (Ollama)** - Free, private, slower
+
+### Connection Test
+
+Click "Test connection" to verify:
+- API key is valid
+- Selected model is available
+- Network connectivity works
+
+### Refresh Models
+
+Click "Refresh" to fetch latest models from your provider's API.
+
+## 2. Task Chat
+
+### Max Chat History
+
+**What it does:** Number of previous messages to include as context
+
+**Default:** 10 messages
+
+**Impact:**
+- Higher = Better context, higher token cost
+- Lower = Less context, cheaper queries
+
+**Recommended:**
+- 5-10 for most use
+- 15-20 for complex conversations
+- 3-5 to minimize costs
+
+### Max Response Length (Max Tokens)
+
+**What it does:** Maximum length of AI responses
+
+**Default:** 2000 tokens
+
+**Impact:**
+- Higher = More detailed responses, slower, more expensive
+- Lower = Concise responses, faster, cheaper
+
+**Recommended:**
+- 1000 - Concise answers
+- 2000 - Balanced (default)
+- 4000 - Detailed analysis
+
+### Temperature
+
+**What it does:** Controls AI creativity vs consistency
+
+**Range:** 0.0-2.0  
+**Default:** 0.7
+
+**Guide:**
+- **0.0-0.3** - Precise, factual, consistent
+- **0.4-0.7** - Balanced creativity (recommended)
+- **0.8-1.2** - Creative, varied responses
+- **1.3-2.0** - Very creative, less predictable
+
+## 3. Chat Mode
+
+### Default Chat Mode
+
+**Options:**
+- **Simple Search** - Free, regex-based matching
+- **Smart Search** - AI keyword expansion (~$0.0001/query)
+- **Task Chat** - Full AI analysis (~$0.0021/query)
+
+**Can override per-query** using dropdown in chat interface.
+
+See [Chat Modes](CHAT_MODES.md) for detailed comparison.
+
+## 4. Semantic Expansion
+
+### Enable Semantic Expansion
+
+**What it does:** AI expands keywords into multilingual synonyms
+
+**Default:** Enabled
+
+**Example:**
 ```
-User Query
-    ↓
-1. PARSING - Extract keywords & properties
-    ↓
-2. FILTERING
-   a. DataView Filter - Match keywords/properties → ~500 tasks
-   b. Stop Words Filter - Remove generic keywords
-   c. Quality Filter - Keep above threshold → ~50 tasks
-   d. Minimum Relevance - Require keyword quality (optional)
-    ↓
-3. SCORING - Calculate: (R×20) + (D×4) + (P×1)
-    ↓
-4. SORTING - Order by comprehensive score
-    ↓
-5. DISPLAY - Simple/Smart: show | Task Chat: AI analysis
+Query: "fix"
+English: fix, repair, solve, correct, resolve
+中文: 修复, 修理, 解决, 修正, 纠正
 ```
 
----
+**Applies to:** Smart Search and Task Chat only
 
-## Settings Reference
+### Max Keyword Expansions
+
+**What it does:** Number of variations per keyword per language
+
+**Default:** 5  
+**Range:** 1-10
+
+**Calculation:**
+```
+Total keywords = Core keywords × Expansions × Languages
+
+Example:
+Query: "fix bug" (2 keywords)
+Expansions: 5 per language
+Languages: English + 中文 (2 languages)
+Total: 2 × 5 × 2 = 20 keywords
+```
+
+**Recommended:**
+- 3-4 for fast queries
+- 5 for balanced (default)
+- 7-10 for comprehensive matching
+
+### Query Languages
+
+**What it does:** Languages to generate synonyms in
+
+**Default:** English, 中文
+
+**Format:** Comma-separated language names
+
+**Examples:**
+```
+English, 中文
+English, 中文, Japanese
+English, Spanish, French
+```
+
+**Tip:** Use English names (e.g., "Chinese" not "中文") for better AI recognition
+
+## 5. DataView Integration
+
+### DataView Task Properties
+
+Configure field names that DataView uses for task properties.
+
+### Due Date Field
+
+**Default:** `due, due_date`
+
+**What it does:** Field names for due dates in DataView
+
+**Format:** Comma-separated
+
+### Completed Date Field
+
+**Default:** `completion, completion_date`
+
+### Created Date Field
+
+**Default:** `created`
+
+### Start Date Field
+
+**Default:** `start, start_date`
+
+### Scheduled Date Field
+
+**Default:** `scheduled`
+
+### Priority Field
+
+**Default:** `priority, p`
+
+### Priority Mapping
+
+Define which values map to each priority level:
+
+**Priority 1 (highest):** `1, high, ⏫, urgent`  
+**Priority 2 (high):** `2, 🔼, important`  
+**Priority 3 (medium):** `3, medium, 🔽`  
+**Priority 4 (low):** `4, low, 🔻`
+
+## 6. Status Category
+
+Customize task status categories to match your workflow.
+
+See [Status Categories](STATUS_CATEGORIES.md) for complete guide.
+
+### Built-in Categories
+
+- **Open** - Not started (symbol: space)
+- **In Progress** - Currently working (symbol: `/`)
+- **Completed** - Finished (symbols: `x`, `X`)
+- **Cancelled** - Abandoned (symbol: `-`)
+- **Other** - Catches unassigned symbols
+
+### Custom Categories
+
+Add your own categories:
+
+**Examples:**
+- **Blocked** - Waiting on dependencies (symbol: `?`)
+- **Review** - Under review (symbol: `R`)
+- **Important** - High priority (symbol: `!`)
+
+### Category Fields
+
+For each category, configure:
+
+- **Display name** - Shown in UI
+- **Symbols** - Checkbox characters (comma-separated)
+- **Score** - Relevance weight (0.0-1.0)
+- **Order** - Display position (1, 2, 3...)
+- **Aliases** - Query alternatives (comma-separated)
+- **Description** - For AI understanding (optional)
+- **Terms** - Semantic keywords (optional)
+
+## 7. Task Filtering
+
+Control which tasks appear in results.
 
 ### Stop Words
 
-**What:** Generic words filtered out during search  
-**Built-in:** ~100 words (the, a, task, work, etc.)  
-**Impact:** Filtering, Scoring, AI Prompt  
+**What it does:** Generic words filtered out during search
 
-**Custom stop words when:**
-- Domain-specific: `plugin, feature, module`
-- Additional language: `und, der, die` (German)
-- Personal: Terms generic in your workflow
+**Built-in:** ~100 words (the, a, task, work, etc.)
+
+**Custom stop words:** Add domain-specific terms
+
+**Examples:**
+```
+plugin, feature, module, component
+项目, 任务, 工作
+```
+
+**Impact:** Filtering, Scoring, AI Prompts
 
 ### Quality Filter
 
-**What:** Filters by comprehensive score: (R×20) + (D×4) + (P×1)  
-**Default:** 0% (adaptive)  
-**Impact:** Filtering (primary)  
+**What it does:** Filters tasks by comprehensive score
+
+**Formula:**
+```
+Score = (Relevance × R) + (Due Date × D) + (Priority × P) + (Status × S)
+Threshold = Max Score × Quality Filter %
+```
+
+**Default:** 0% (adaptive)
 
 **Levels:**
-- 0%: Adaptive (recommended)
-- 1-25%: Permissive
-- 26-50%: Balanced  
-- 51-75%: Strict
-- 76-100%: Very strict
+- **0%** - Adaptive (auto-adjusts, recommended)
+- **1-25%** - Permissive (broad results)
+- **26-50%** - Balanced
+- **51-75%** - Strict (focused results)
+- **76-100%** - Very strict (near-perfect matches)
+
+**When to adjust:**
+- Too many results? Increase to 20-30%
+- Too few results? Decrease to 0-10%
 
 ### Minimum Relevance Score
 
-**What:** Additional filter requiring keyword match quality  
+**What it does:** Requires minimum keyword match quality
+
 **Default:** 0% (disabled)  
-**Impact:** Filtering (secondary, after quality filter)  
+**Range:** 0-120% (dynamic based on core keyword bonus)
 
-**When to use:** Urgent tasks with weak keywords passing quality filter  
-**Max value:** Auto-updates with core keyword bonus (core + 1.0)  
-**Note:** Only applies to keyword queries
+**Use when:** Urgent tasks with weak keyword matches pass quality filter
 
-### Scoring Coefficients
+**Examples:**
+- **0%** - Disabled (default)
+- **20-30%** - Moderate filter
+- **40-60%** - Strict filter
+- **70%+** - Very strict
 
-**What:** Weight of each factor in final score  
-**Defaults:** R: 20, D: 4, P: 1 (Max: 31 points)  
-**Impact:** Filtering, Scoring, Sorting  
+**Note:** Only applies to keyword queries (skipped for properties-only)
 
-**Common adjustments:**
-- Urgency-focused: R:15, D:10, P:5
-- Importance-focused: R:15, D:3, P:10
-- Balanced: R:10, D:10, P:10
-- Keyword-focused: R:30, D:2, P:1
+## 8. Task Scoring
 
-### Sub-Coefficients
+Control how much each factor affects task ranking.
 
-**Core Keyword Match Bonus (0.0-1.0, default: 0.2)**
+See [Scoring System](SCORING_SYSTEM.md) for complete details.
+
+### Main Weights
+
+**Formula:**
+```
+Final Score = (Relevance × R) + (Due Date × D) + (Priority × P) + (Status × S)
+```
+
+**Defaults:** R:20, D:4, P:1, S:1 (Max: 32 points)
+
+**Common configurations:**
+
+**Keyword-focused (R:30, D:2, P:1, S:1):**
+- Emphasizes keyword matching
+- Best for: Content searches
+
+**Urgency-focused (R:20, D:10, P:5, S:1):**
+- Emphasizes deadlines
+- Best for: Deadline-driven work
+
+**Importance-focused (R:15, D:3, P:10, S:1):**
+- Emphasizes priority
+- Best for: Goal-driven work
+
+**Balanced (R:10, D:10, P:10, S:1):**
+- Equal weight to all factors
+- Best for: General use
+
+### Relevance Sub-Coefficients
+
+**Core keyword match bonus (0.0-1.0, default: 0.2):**
 - Bonus for exact query matches vs semantic expansions
-- 0.0: Pure semantic search (all equal)
-- 0.5: Strong preference for exact terms
+- 0.0 = Pure semantic (all keywords equal)
+- 0.5-1.0 = Strong preference for exact matches
 
-**Due Date Scores (0.0-10.0):**
-- Overdue: 1.5 (most urgent)
-- Within 7 days: 1.0
-- Within 1 month: 0.5
-- Later: 0.2
-- None: 0.1
+### Due Date Sub-Coefficients
 
-**Priority Scores (0.0-1.0):**
-- P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, None: 0.1
+Control urgency curve:
 
-### Task Display Limits
+- **Overdue:** 1.5 (most urgent)
+- **Within 7 days:** 1.0
+- **Within 1 month:** 0.5
+- **Later:** 0.2
+- **No due date:** 0.1
 
-- **Max direct results (20):** Simple/Smart Search display
-- **Max tasks for AI (100):** Context sent to AI
-- **Max recommendations (20):** AI's recommended limit
+### Priority Sub-Coefficients
 
-### Property Terms
+Control importance levels:
 
-**What:** Help AI recognize properties in different languages  
-**Built-in:** English, Chinese, Swedish  
-**Impact:** AI parsing (Smart Search & Task Chat)  
+- **P1:** 1.0 (highest)
+- **P2:** 0.75
+- **P3:** 0.5
+- **P4:** 0.2
+- **None:** 0.1
 
-**Add when:** Your language not covered, domain-specific terms
+### Status Sub-Coefficients
 
-### Sort Order
+Managed per category in Status Category section.
 
-**What:** Tiebreaker for equal comprehensive scores  
-**Default:** [relevance, dueDate, priority]  
-**Impact:** Sorting (secondary only)  
+### Reset Options
 
-**Note:** Coefficients determine importance, NOT sort order!
+Five reset buttons for easy restoration:
 
----
+- **Reset all main weights** - R:20, D:4, P:1, S:1
+- **Reset all sub-coefficients** - All advanced settings
+- **Reset relevance core keyword match bonus** - 0.2
+- **Reset due date sub-coefficients** - All time ranges
+- **Reset priority sub-coefficients** - All priority levels
+
+## 9. Task Display
+
+Control result limits and sorting behavior.
+
+### Result Limits
+
+**Max direct results (default: 20):**
+- Simple/Smart Search display limit
+- Increase for more comprehensive results
+- Decrease for faster display
+
+**Max tasks for AI (default: 100):**
+- Context sent to AI in Task Chat mode
+- Higher = Better AI understanding, more expensive
+- Lower = Faster, cheaper, less context
+
+**Max AI recommendations (default: 20):**
+- AI's recommended task limit
+- Final curated list after analysis
+
+### Task Sort Order
+
+**What it does:** Multi-criteria sorting for tiebreaking
+
+**Default:** [Relevance, Due date, Priority, Status]
+
+**How it works:**
+1. Tasks scored by weighted formula
+2. Sorted by score (primary)
+3. Tiebreaking by sort order (secondary)
+
+**Important:** Coefficients control importance, not sort order!
+
+**Example:**
+```
+Coefficients: R:20, D:4, P:1
+Task A: (0.8 × 20) + (1.5 × 4) + (1.0 × 1) = 23 points
+Task B: (0.9 × 20) + (0.5 × 4) + (0.75 × 1) = 20.75 points
+
+Task A ranks higher (23 > 20.75)
+Sort order only matters if scores are exactly equal
+```
+
+**Customization:**
+- Click ✕ to remove criteria
+- Use dropdown to add criteria
+- Relevance always first (locked)
+
+### Show Token Usage
+
+Toggle display of token usage statistics in chat interface.
+
+## 10. Advanced
+
+### System Prompt
+
+**What it does:** Instructions that shape AI assistant behavior
+
+**Default:** Pre-configured for task analysis
+
+**Customize when:**
+- Specific tone needed (formal/casual)
+- Domain expertise required
+- Custom output format desired
+
+**Examples:**
+```
+"You are a project manager. Focus on deadlines and dependencies."
+"You are a productivity coach. Emphasize time management."
+"Respond in Chinese. Be concise and action-oriented."
+```
+
+### Pricing Data
+
+View and manage token usage costs.
+
+**Shows:**
+- Total tokens used
+- Total cost (USD)
+- Per-provider breakdown
+
+**Reset:** Clear statistics to start fresh
 
 ## Common Scenarios
 
-### 1. Too Many Irrelevant Results
+### Scenario 1: Too Many Irrelevant Results
 
-**Problem:** Query "Fix bug" → 500 tasks including "task manager"  
+**Problem:** Query "fix bug" returns 500 tasks including "task manager"
 
 **Solutions:**
 1. Add custom stop words: `task, work, item`
 2. Increase quality filter: 20%
 3. Add minimum relevance: 30%
 
-### 2. Urgent Tasks Overwhelming Keywords
+### Scenario 2: Urgent Tasks Overwhelming Keywords
 
-**Problem:** Query "Implement feature" → Overdue docs/meetings appear  
+**Problem:** Query "implement feature" shows overdue docs/meetings
 
-**Solution:** Minimum Relevance Score → 30-40%
+**Solution:** Add minimum relevance score 30-40%
 
-### 3. Keywords Dominate Too Much
+### Scenario 3: Keywords Dominate Too Much
 
-**Problem:** Overdue P1 tasks buried in keyword matches  
+**Problem:** Overdue P1 tasks buried in keyword matches
 
-**Solution:** Adjust coefficients  
+**Solution:** Adjust coefficients
 - Relevance: 20 → 15 (decrease)
 - Due Date: 4 → 8 (increase)
 - Priority: 1 → 3 (increase)
 
-### 4. Domain-Specific Generic Terms
+### Scenario 4: Multilingual Tasks Not Matching
 
-**Problem:** Software development - "plugin" matches everything  
+**Problem:** English query doesn't find Chinese tasks
+
+**Solutions:**
+1. Enable semantic expansion
+2. Add Chinese to query languages
+3. Increase max keyword expansions to 7-10
+
+### Scenario 5: Domain-Specific Generic Terms
+
+**Problem:** In software development, "plugin" matches everything
 
 **Solution:** Add to stop words: `plugin, feature, module, component`
 
----
-
-## Troubleshooting
-
-### No/Few Results
-- Quality filter too strict → Decrease to 0-20%
-- Minimum relevance too high → Decrease or disable
-- Properties-only query → Minimum relevance skipped (by design)
-
-### Wrong Tasks Appearing
-- Generic keywords → Add custom stop words
-- Urgent tasks overwhelming → Add minimum relevance (30-40%)
-- Quality filter too permissive → Increase to 10-30%
-
-### Wrong Task Order
-- Check scoring coefficients (R, D, P)
-- Check sub-coefficients (urgency/importance curves)
-- Remember: Primary sort is score, sort order is tiebreaker only
-
-### Task Chat Recommends Too Few
-- Quality filter too strict → Decrease
-- Max tasks for AI too low → Increase to 100-150
-- Max recommendations too low → Increase to 20-30
-
----
-
 ## Best Practices
 
-1. **Start with defaults** - Try queries first!
-2. **Adjust incrementally** - Change one setting at a time
-3. **Use reset buttons** - Quick recovery from experiments
-4. **Check console logs** - See detailed score breakdowns
-5. **Refer to descriptions** - Each setting explains its impact
+### Getting Started
 
-For detailed examples and advanced configurations, see the main README.
+1. **Start with defaults** - Try queries first
+2. **Use Simple Search** - Free and fast for exact keywords
+3. **Try Smart Search** - When you need multilingual/semantic matching
+4. **Use Task Chat** - When you need AI analysis
+
+### Optimizing Performance
+
+1. **Quality filter** - Reduces tasks sent to AI
+2. **Max tasks for AI** - Balance context vs cost
+3. **Max keyword expansions** - 3-5 for speed, 7-10 for comprehensiveness
+
+### Cost Management
+
+1. **Use Simple Search** - Free (no AI)
+2. **Smart Search** - ~$0.0001/query (keyword expansion only)
+3. **Task Chat** - ~$0.0021/query (full analysis)
+4. **Monitor pricing data** - Track usage over time
+
+### Troubleshooting
+
+**No/Few Results:**
+- Quality filter too strict → Decrease to 0-20%
+- Minimum relevance too high → Decrease or disable
+- Stop words too aggressive → Remove domain terms
+
+**Wrong Tasks Appearing:**
+- Generic keywords → Add custom stop words
+- Urgent tasks overwhelming → Add minimum relevance
+- Quality filter too permissive → Increase to 10-30%
+
+**Wrong Task Order:**
+- Check scoring coefficients (R, D, P, S)
+- Remember: Coefficients control importance, not sort order
+- Use reset buttons to restore defaults
+
+### Advanced Tuning
+
+1. **Adjust incrementally** - Change one setting at a time
+2. **Test with queries** - See how results change
+3. **Check console logs** - See detailed score breakdowns
+4. **Use reset buttons** - Quick recovery from experiments
+5. **Document your config** - Note why you chose specific values
+
+## See Also
+
+- [Chat Modes](CHAT_MODES.md) - Choose the right mode
+- [Scoring System](SCORING_SYSTEM.md) - Understand task ranking
+- [Status Categories](STATUS_CATEGORIES.md) - Customize task states
+- [Semantic Expansion](SEMANTIC_EXPANSION.md) - Multilingual keyword expansion
+- [Sorting System](SORTING_SYSTEM.md) - Multi-criteria sorting

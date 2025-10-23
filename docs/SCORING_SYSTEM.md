@@ -370,6 +370,6 @@ Fine-tune specific score components.
 
 ## See Also
 
-- [Search Modes](SEARCH_MODES.md) - When scoring is applied
+- [Chat Modes](CHAT_MODES.md) - When scoring is applied
 - [Sorting System](SORTING_SYSTEM.md) - How scored tasks are ordered
 - [Semantic Expansion](SEMANTIC_EXPANSION.md) - How keywords are matched
