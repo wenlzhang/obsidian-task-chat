@@ -148,25 +148,37 @@ export class AIService {
                 );
 
                 // Merge pre-extracted properties with AI-parsed properties
-                // Pre-extracted properties take precedence (more reliable)
-                if (preExtractedIntent.extractedPriority) {
-                    parsedQuery.priority = preExtractedIntent.extractedPriority;
-                }
-                if (preExtractedIntent.extractedDueDateFilter) {
-                    parsedQuery.dueDate =
-                        preExtractedIntent.extractedDueDateFilter;
-                }
-                if (preExtractedIntent.extractedStatus) {
-                    parsedQuery.status = preExtractedIntent.extractedStatus;
-                }
-                if (preExtractedIntent.extractedFolder) {
-                    parsedQuery.folder = preExtractedIntent.extractedFolder;
-                }
-                if (
-                    preExtractedIntent.extractedTags &&
-                    preExtractedIntent.extractedTags.length > 0
-                ) {
-                    parsedQuery.tags = preExtractedIntent.extractedTags;
+                // IMPORTANT: For vague queries, trust AI's semantic understanding
+                // For specific queries, use pre-extracted properties (syntax like p:1, d:today is more reliable)
+                if (!parsedQuery.isVague) {
+                    // Specific query - use pre-extracted properties (syntax-based extraction)
+                    if (preExtractedIntent.extractedPriority) {
+                        parsedQuery.priority =
+                            preExtractedIntent.extractedPriority;
+                    }
+                    if (preExtractedIntent.extractedDueDateFilter) {
+                        parsedQuery.dueDate =
+                            preExtractedIntent.extractedDueDateFilter;
+                    }
+                    if (preExtractedIntent.extractedStatus) {
+                        parsedQuery.status = preExtractedIntent.extractedStatus;
+                    }
+                    if (preExtractedIntent.extractedFolder) {
+                        parsedQuery.folder = preExtractedIntent.extractedFolder;
+                    }
+                    if (
+                        preExtractedIntent.extractedTags &&
+                        preExtractedIntent.extractedTags.length > 0
+                    ) {
+                        parsedQuery.tags = preExtractedIntent.extractedTags;
+                    }
+                } else {
+                    // Vague/generic query - trust AI's semantic understanding
+                    // AI knows "今天" is context, not a strict filter
+                    // AI knows "urgent" is concept, not exact property syntax
+                    console.log(
+                        "[Task Chat] Vague query detected - using AI's property interpretation (not regex)",
+                    );
                 }
 
                 console.log("[Task Chat] AI parsed query:", parsedQuery);
@@ -332,6 +344,13 @@ export class AIService {
                             ? intent.keywords
                             : undefined,
                     isVague: intent.isVague, // Pass vague query flag
+                    hasOriginalProperties: !!(
+                        intent.extractedPriority ||
+                        intent.extractedDueDateFilter ||
+                        intent.extractedStatus ||
+                        intent.extractedFolder ||
+                        (intent.extractedTags && intent.extractedTags.length > 0)
+                    ), // Indicates if original query had properties
                 },
             );
 

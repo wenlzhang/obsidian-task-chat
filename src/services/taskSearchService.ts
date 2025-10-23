@@ -686,12 +686,14 @@ export class TaskSearchService {
             tags?: string[];
             keywords?: string[];
             isVague?: boolean; // Indicates generic/vague query
+            hasOriginalProperties?: boolean; // NEW: Indicates if original query had properties (before DataView filtering)
         },
     ): Task[] {
         let filteredTasks = [...tasks];
 
-        // Check if query has any property filters
-        const hasProperties = !!(
+        // Check if query has any property filters in the filters object
+        // (Note: Some properties may be undefined if already filtered at DataView level)
+        const hasFiltersHere = !!(
             filters.priority ||
             filters.dueDate ||
             filters.status ||
@@ -772,18 +774,59 @@ export class TaskSearchService {
         }
 
         // Apply keyword search (semantic matching - ANY keyword matches)
-        // Skip keyword filtering for vague queries with properties (e.g., "What should I do today?")
+        // For vague queries, filter out generic keywords but keep meaningful ones
+        // This handles mixed vague queries like "What API tasks should I do today?" where "API" is meaningful
         if (filters.keywords && filters.keywords.length > 0) {
-            if (filters.isVague && hasProperties) {
-                console.log(
-                    `[Task Chat] 🔍 Vague query with properties detected - SKIPPING keyword filter`,
+            if (filters.isVague) {
+                // Filter out generic keywords, keep meaningful ones
+                const meaningfulKeywords = filters.keywords.filter(
+                    (kw) => !StopWords.isGenericWord(kw),
                 );
-                console.log(
-                    `[Task Chat] Strategy: Using property filters only (${filteredTasks.length} tasks)`,
-                );
-                console.log(
-                    `[Task Chat] Let AI handle natural language understanding instead of strict keyword matching`,
-                );
+
+                if (meaningfulKeywords.length > 0) {
+                    // Mixed vague query: Has some meaningful keywords
+                    console.log(
+                        `[Task Chat] 🔍 Vague query with ${meaningfulKeywords.length} meaningful keywords (filtered out ${filters.keywords.length - meaningfulKeywords.length} generic)`,
+                    );
+                    console.log(
+                        `[Task Chat] Meaningful keywords: [${meaningfulKeywords.join(", ")}]`,
+                    );
+                    console.log(
+                        `[Task Chat] Filtering ${filteredTasks.length} tasks with meaningful keywords only`,
+                    );
+
+                    // Apply keyword filtering with meaningful keywords only
+                    const matchedTasks: Task[] = [];
+                    filteredTasks.forEach((task) => {
+                        const taskText = task.text.toLowerCase();
+                        const matched = meaningfulKeywords.some((keyword) => {
+                            const keywordLower = keyword.toLowerCase();
+                            return taskText.includes(keywordLower);
+                        });
+                        if (matched) {
+                            matchedTasks.push(task);
+                        }
+                    });
+
+                    filteredTasks = matchedTasks;
+                    console.log(
+                        `[Task Chat] After meaningful keyword filtering: ${filteredTasks.length} tasks remain`,
+                    );
+                } else {
+                    // Pure vague query: All keywords are generic
+                    console.log(
+                        `[Task Chat] 🔍 Pure vague/generic query - NO meaningful keywords`,
+                    );
+                    console.log(
+                        `[Task Chat] Strategy: Return tasks based on properties only (${filteredTasks.length} tasks)`,
+                    );
+                    console.log(
+                        `[Task Chat] Generic keywords like "what", "do", "should" won't match specific tasks`,
+                    );
+                    console.log(
+                        `[Task Chat] Let AI analyze and recommend from available tasks instead`,
+                    );
+                }
             } else {
                 console.log(
                     `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
