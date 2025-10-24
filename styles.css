@@ -175,7 +175,7 @@
 .task-chat-message-user {
     align-self: flex-end;
     max-width: 80%;
-    margin-bottom: 32px; /* Space for copy button below */
+    margin-bottom: 12px; /* Space for copy button below - reduced for closer spacing */
     position: relative; /* For copy button positioning */
 }
 
@@ -297,7 +297,7 @@
 /* User messages: below the message box, aligned with response copy button */
 .task-chat-message-user .task-chat-copy-button {
     position: absolute;
-    bottom: -24px;
+    bottom: -10px;
     right: 10px;
 }
 
@@ -332,7 +332,7 @@
 .task-chat-recommended-tasks {
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid var(--background-modifier-border);
+    border-top: 2px solid var(--background-modifier-border);
 }
 
 .task-chat-task-list {
@@ -553,10 +553,11 @@
 
 /* Token Usage - now outside message element so vertical line doesn't extend to it */
 .task-chat-token-usage {
-    margin-top: 8px;
-    margin-bottom: 16px;
+    margin-top: 6px;
+    margin-bottom: 12px;
     margin-left: 8px; /* Align with message content */
-    padding-top: 8px;
+    margin-right: 8px; /* Match left margin for alignment */
+    padding-top: 6px;
     padding-left: 6px;
     border-top: 2px solid var(--background-modifier-border);
     opacity: 0.8;
@@ -573,9 +574,10 @@
 
 /* Keyword Expansion Display - now outside message element */
 .task-chat-keyword-expansion {
-    margin-top: -25px; /* Reduce gap with token usage above */
+    margin-top: -20px; /* Reduce gap with token usage above */
     margin-bottom: 0px;
     margin-left: 8px; /* Align with token usage and message content */
+    margin-right: 8px; /* Match left margin for alignment */
     padding-left: 6px;
     opacity: 0.9;
 }
