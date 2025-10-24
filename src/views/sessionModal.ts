@@ -8,6 +8,8 @@ import TaskChatPlugin from "../main";
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
     private onSessionSelect: (sessionId: string) => void;
+    private selectionMode: boolean = false;
+    private selectedSessionIds: Set<string> = new Set();
 
     constructor(
         app: App,
@@ -47,8 +49,42 @@ export class SessionModal extends Modal {
             text: `${sessions.length} session${sessions.length !== 1 ? "s" : ""}`,
         });
 
-        // Bulk delete button
-        const deleteAllBtn = headerEl.createEl("button", {
+        const actionsEl = headerEl.createDiv("task-chat-session-actions");
+
+        // Selection mode button (toggles between Select and Delete Selected)
+        const selectBtn = actionsEl.createEl("button", {
+            text: this.selectionMode
+                ? this.selectedSessionIds.size > 0
+                    ? `Delete Selected (${this.selectedSessionIds.size})`
+                    : "Cancel"
+                : "Select",
+            cls: this.selectionMode
+                ? this.selectedSessionIds.size > 0
+                    ? "task-chat-delete-selected-button"
+                    : "task-chat-cancel-button"
+                : "task-chat-select-button",
+        });
+        selectBtn.addEventListener("click", () => {
+            if (this.selectionMode) {
+                // Delete selected sessions
+                if (this.selectedSessionIds.size > 0) {
+                    this.deleteSelectedSessions();
+                } else {
+                    // Cancel selection mode
+                    this.selectionMode = false;
+                    this.selectedSessionIds.clear();
+                    this.onOpen();
+                }
+            } else {
+                // Enter selection mode
+                this.selectionMode = true;
+                this.selectedSessionIds.clear();
+                this.onOpen();
+            }
+        });
+
+        // Delete all button
+        const deleteAllBtn = actionsEl.createEl("button", {
             text: "Delete All",
             cls: "task-chat-delete-all-button",
         });
@@ -82,6 +118,27 @@ export class SessionModal extends Modal {
             itemEl.addClass("task-chat-session-active");
         }
 
+        // Checkbox for selection mode
+        if (this.selectionMode) {
+            const checkboxWrapper = itemEl.createDiv(
+                "task-chat-session-checkbox-wrapper",
+            );
+            const checkbox = checkboxWrapper.createEl("input", {
+                type: "checkbox",
+                cls: "task-chat-session-checkbox",
+            });
+            checkbox.checked = this.selectedSessionIds.has(session.id);
+            checkbox.addEventListener("change", (e) => {
+                e.stopPropagation();
+                if (checkbox.checked) {
+                    this.selectedSessionIds.add(session.id);
+                } else {
+                    this.selectedSessionIds.delete(session.id);
+                }
+                this.onOpen(); // Refresh to update button text
+            });
+        }
+
         // Session content wrapper
         const contentWrapper = itemEl.createDiv("task-chat-session-content");
 
@@ -108,22 +165,36 @@ export class SessionModal extends Modal {
             cls: "task-chat-session-meta",
         });
 
-        // Click handler for selection
-        contentWrapper.addEventListener("click", () => {
-            this.onSessionSelect(session.id);
-            this.close();
-        });
+        // Click handler - different behavior in selection mode
+        if (this.selectionMode) {
+            contentWrapper.addEventListener("click", () => {
+                // Toggle selection
+                if (this.selectedSessionIds.has(session.id)) {
+                    this.selectedSessionIds.delete(session.id);
+                } else {
+                    this.selectedSessionIds.add(session.id);
+                }
+                this.onOpen(); // Refresh to update checkbox and button
+            });
+        } else {
+            contentWrapper.addEventListener("click", () => {
+                this.onSessionSelect(session.id);
+                this.close();
+            });
+        }
 
-        // Delete button
-        const deleteBtn = itemEl.createEl("button", {
-            text: "×",
-            cls: "task-chat-session-delete",
-        });
+        // Delete button (hide in selection mode)
+        if (!this.selectionMode) {
+            const deleteBtn = itemEl.createEl("button", {
+                text: "×",
+                cls: "task-chat-session-delete",
+            });
 
-        deleteBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.deleteSession(session);
-        });
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.deleteSession(session);
+            });
+        }
     }
 
     private deleteSession(session: ChatSession): void {
@@ -139,6 +210,48 @@ export class SessionModal extends Modal {
         if (confirm(confirmMessage)) {
             this.plugin.sessionManager.deleteSession(session.id);
             this.plugin.saveSettings();
+
+            // Refresh modal content
+            this.onOpen();
+
+            // Trigger callback if we deleted current session
+            const newCurrent = this.plugin.sessionManager.getCurrentSession();
+            if (newCurrent) {
+                this.onSessionSelect(newCurrent.id);
+            }
+        }
+    }
+
+    private deleteSelectedSessions(): void {
+        const sessions = this.plugin.sessionManager.getAllSessions();
+        const selectedSessions = sessions.filter((s) =>
+            this.selectedSessionIds.has(s.id),
+        );
+
+        const totalMessages = selectedSessions.reduce((sum, session) => {
+            return (
+                sum +
+                session.messages.filter(
+                    (msg) => msg.role === "user" || msg.role === "assistant",
+                ).length
+            );
+        }, 0);
+
+        const confirmMessage =
+            totalMessages > 0
+                ? `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""} (${totalMessages} total messages)?\n\nThis action cannot be undone.`
+                : `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""}?`;
+
+        if (confirm(confirmMessage)) {
+            // Delete selected sessions
+            selectedSessions.forEach((session) => {
+                this.plugin.sessionManager.deleteSession(session.id);
+            });
+            this.plugin.saveSettings();
+
+            // Exit selection mode
+            this.selectionMode = false;
+            this.selectedSessionIds.clear();
 
             // Refresh modal content
             this.onOpen();

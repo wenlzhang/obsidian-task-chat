@@ -546,8 +546,47 @@
     margin: 0;
 }
 
+.task-chat-session-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.task-chat-select-button,
+.task-chat-cancel-button {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-chat-select-button:hover,
+.task-chat-cancel-button:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.task-chat-delete-selected-button {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-error);
+    border: 1px solid var(--text-error);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-chat-delete-selected-button:hover {
+    background: var(--text-error);
+    color: var(--text-on-accent);
+}
+
 .task-chat-delete-all-button {
-    padding: 4px 12px;
+    padding: 4px 10px;
     font-size: 12px;
     background: transparent;
     color: var(--text-error);
@@ -560,6 +599,18 @@
 .task-chat-delete-all-button:hover {
     background: var(--text-error);
     color: var(--text-on-accent);
+}
+
+.task-chat-session-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.task-chat-session-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
 }
 
 .task-chat-session-list-container {
