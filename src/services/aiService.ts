@@ -799,25 +799,43 @@ export class AIService {
                 Logger.debug("AI response:", response);
 
                 // Extract task IDs that AI referenced
-                const { tasks: recommendedTasks, indices: recommendedIndices } =
-                    this.extractRecommendedTasks(
-                        response,
-                        tasksToAnalyze,
-                        settings,
-                        intent.keywords || [],
-                        parsedQuery?.coreKeywords || [],
-                        !!intent.extractedDueDateFilter,
-                        !!intent.extractedPriority,
-                        !!intent.extractedStatus,
-                        sortOrder,
-                        usingAIParsing,
-                    );
+                const {
+                    tasks: recommendedTasks,
+                    indices: recommendedIndices,
+                    usedFallback,
+                } = this.extractRecommendedTasks(
+                    response,
+                    tasksToAnalyze,
+                    settings,
+                    intent.keywords || [],
+                    parsedQuery?.coreKeywords || [],
+                    !!intent.extractedDueDateFilter,
+                    !!intent.extractedPriority,
+                    !!intent.extractedStatus,
+                    sortOrder,
+                    usingAIParsing,
+                );
 
                 // Replace [TASK_X] references with task numbers matching recommended list (1, 2, 3...)
-                const processedResponse = this.replaceTaskReferences(
+                let processedResponse = this.replaceTaskReferences(
                     response,
                     recommendedIndices,
                 );
+
+                // Add user-facing warning if fallback was used
+                if (usedFallback) {
+                    const modelInfo = `${getCurrentProviderConfig(settings).model} (${settings.aiProvider})`;
+                    const warningMessage =
+                        `⚠️ **AI Model Issue Detected**\n\n` +
+                        `The AI model (${modelInfo}) did not follow the expected response format. ` +
+                        `As a fallback, I've automatically selected the top ${recommendedTasks.length} most relevant tasks based on scoring.\n\n` +
+                        `**Recommendations:**\n` +
+                        `• Switch to a larger model (instead of smaller models)\n` +
+                        `• Use a cloud provider (OpenAI, Anthropic, OpenRouter) for improved performance\n` +
+                        `• Switch to Simple Search mode (no AI parsing required)\n\n` +
+                        `See console logs for technical details.\n\n---\n\n`;
+                    processedResponse = warningMessage + processedResponse;
+                }
 
                 return {
                     response: processedResponse,
@@ -1521,7 +1539,7 @@ ${taskContext}`;
 
     /**
      * Extract recommended tasks from AI response using task IDs
-     * @returns Object containing recommended tasks and their original indices
+     * @returns Object containing recommended tasks, their original indices, and fallback flag
      */
     private static extractRecommendedTasks(
         response: string,
@@ -1534,7 +1552,7 @@ ${taskContext}`;
         queryHasStatus: boolean,
         sortCriteria: SortCriterion[],
         usingAIParsing: boolean,
-    ): { tasks: Task[]; indices: number[] } {
+    ): { tasks: Task[]; indices: number[]; usedFallback: boolean } {
         const recommended: Task[] = [];
         const recommendedIndices: number[] = [];
 
@@ -1648,7 +1666,7 @@ ${taskContext}`;
             Logger.debug(
                 `Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
-            return { tasks: topTasks, indices: topIndices };
+            return { tasks: topTasks, indices: topIndices, usedFallback: true };
         }
 
         Logger.debug(`AI explicitly recommended ${recommended.length} tasks.`);
@@ -1666,11 +1684,17 @@ ${taskContext}`;
             0,
             settings.maxRecommendations,
         );
-        Logger.debug(`Returning ${finalRecommended.length} recommended tasks:`);
+        Logger.debug(
+            `Returning ${finalRecommended.length} recommended tasks (user limit: ${settings.maxRecommendations}):`,
+        );
         finalRecommended.forEach((task, i) => {
             Logger.debug(`  Recommended [${i + 1}]: ${task.text}`);
         });
-        return { tasks: finalRecommended, indices: finalIndices };
+        return {
+            tasks: finalRecommended,
+            indices: finalIndices,
+            usedFallback: false,
+        };
     }
 
     /**

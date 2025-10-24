@@ -1527,6 +1527,32 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             const parsed = JSON.parse(jsonString);
             Logger.debug("AI query parser parsed:", parsed);
 
+            // Validate that AI returned the correct schema
+            const hasExpectedFields =
+                parsed.hasOwnProperty("keywords") ||
+                parsed.hasOwnProperty("priority") ||
+                parsed.hasOwnProperty("dueDate") ||
+                parsed.hasOwnProperty("status") ||
+                parsed.hasOwnProperty("folder") ||
+                parsed.hasOwnProperty("tags");
+
+            if (!hasExpectedFields) {
+                Logger.error(
+                    "⚠️ AI RETURNED WRONG JSON SCHEMA! Expected query parser fields but got:",
+                    Object.keys(parsed),
+                );
+                Logger.error(
+                    "This model returned linguistic analysis instead of query parsing.",
+                );
+                Logger.error(
+                    `Model: ${getCurrentProviderConfig(settings).model}, Provider: ${settings.aiProvider}`,
+                );
+                Logger.error("Full response:", response.substring(0, 500));
+                Logger.error(
+                    "Recommendation: Switch to a larger model or cloud provider (OpenAI, Anthropic, OpenRouter).",
+                );
+            }
+
             // If AI didn't extract any keywords but also didn't extract any filters,
             // split the query into words as fallback
             let keywords = parsed.keywords || [];
