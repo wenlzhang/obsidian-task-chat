@@ -197,14 +197,8 @@ export class ChatView extends ItemView {
             this.updateTokenCounter();
         });
 
-        this.inputEl.addEventListener("keydown", (e) => {
-            // Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux) sends message
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.sendMessage();
-            }
-        });
+        // Note: Hotkey for sending messages is now handled by the command system
+        // Users can customize the hotkey in Settings → Hotkeys → "Send chat message"
 
         // Control bar (provider + model dropdowns + send button on one line)
         const toolbarEl = inputContainerEl.createDiv("task-chat-input-toolbar");
@@ -956,6 +950,17 @@ export class ChatView extends ItemView {
             `[Task Chat] Fallback: attempting to open as internal link: ${href}`,
         );
         this.app.workspace.openLinkText(href, sourcePath, false);
+    }
+
+    /**
+     * Public method for sending message from command system
+     * Called when user triggers the "Send chat message" command
+     */
+    public sendMessageFromCommand(): void {
+        // Focus input first to ensure proper context
+        this.inputEl.focus();
+        // Trigger send
+        this.sendMessage();
     }
 
     /**

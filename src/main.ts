@@ -61,6 +61,25 @@ export default class TaskChatPlugin extends Plugin {
             },
         });
 
+        // Add command to send chat message
+        // Users can bind this to their preferred hotkey in Settings → Hotkeys
+        this.addCommand({
+            id: "send-chat-message",
+            name: "Send chat message",
+            checkCallback: (checking: boolean) => {
+                // Only available when chat view is active
+                const leaves =
+                    this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+                if (leaves.length > 0 && this.chatView) {
+                    if (!checking) {
+                        this.chatView.sendMessageFromCommand();
+                    }
+                    return true;
+                }
+                return false;
+            },
+        });
+
         // Add settings tab
         this.addSettingTab(new SettingsTab(this.app, this));
 
