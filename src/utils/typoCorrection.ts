@@ -51,7 +51,6 @@ export class TypoCorrection {
         // Progress typos
         ["progres", "progress"],
         ["proggress", "progress"],
-        ["inprogress", "in-progress"],
 
         // Common action words
         ["paymant", "payment"],
