@@ -10,6 +10,7 @@ import { SessionManager } from "./services/sessionManager";
 import { ModelProviderService } from "./services/modelProviderService";
 import { PricingService } from "./services/pricingService";
 import { StopWords } from "./services/stopWords";
+import { Logger } from "./utils/logger";
 
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
@@ -18,9 +19,11 @@ export default class TaskChatPlugin extends Plugin {
     sessionManager: SessionManager;
 
     async onload(): Promise<void> {
-        console.log("Loading Task Chat plugin");
-
         await this.loadSettings();
+
+        // Initialize logger with settings
+        Logger.initialize(this.settings);
+        Logger.info("Loading Task Chat plugin");
 
         // Initialize session manager
         this.sessionManager = new SessionManager();
@@ -28,7 +31,7 @@ export default class TaskChatPlugin extends Plugin {
 
         // Check if DataView is available
         if (!DataviewService.isDataviewEnabled(this.app)) {
-            console.warn("DataView plugin is not enabled");
+            Logger.warn("DataView plugin is not enabled");
         }
 
         // Register the chat view
@@ -115,7 +118,7 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     onunload(): void {
-        console.log("Unloading Task Chat plugin");
+        Logger.info("Unloading Task Chat plugin");
         this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);
     }
 
@@ -142,8 +145,8 @@ export default class TaskChatPlugin extends Plugin {
     private migrateOldSettings(loadedData: any): void {
         // Check if old settings exist (before per-provider config was added)
         if (loadedData.openaiApiKey !== undefined) {
-            console.log(
-                "[Task Chat] Migrating old settings to per-provider configuration...",
+            Logger.info(
+                "Migrating old settings to per-provider configuration...",
             );
 
             // Migrate OpenAI settings
@@ -244,7 +247,7 @@ export default class TaskChatPlugin extends Plugin {
 
             // Save migrated settings
             this.saveSettings();
-            console.log("[Task Chat] Migration completed successfully");
+            Logger.info("Migration completed successfully");
         }
     }
 
@@ -264,8 +267,8 @@ export default class TaskChatPlugin extends Plugin {
                     this.settings.pricingCache.lastUpdated,
                 )
             ) {
-                console.log(
-                    "[Task Chat] Pricing cache is stale, refreshing in background...",
+                Logger.debug(
+                    "Pricing cache is stale, refreshing in background...",
                 );
                 try {
                     const pricing =
@@ -274,13 +277,13 @@ export default class TaskChatPlugin extends Plugin {
                         this.settings.pricingCache.data = pricing;
                         this.settings.pricingCache.lastUpdated = Date.now();
                         await this.saveSettings();
-                        console.log(
-                            `[Task Chat] Updated pricing for ${Object.keys(pricing).length} models`,
+                        Logger.debug(
+                            `Updated pricing for ${Object.keys(pricing).length} models`,
                         );
                     }
                 } catch (error) {
-                    console.warn(
-                        "[Task Chat] Failed to refresh pricing, using cached/embedded rates",
+                    Logger.warn(
+                        "Failed to refresh pricing, using cached/embedded rates",
                         error,
                     );
                 }
@@ -288,7 +291,7 @@ export default class TaskChatPlugin extends Plugin {
 
             // Only load models if cache is empty
             if (!cached || cached.length === 0) {
-                console.log(`Loading ${provider} models in background...`);
+                Logger.debug(`Loading ${provider} models in background...`);
                 try {
                     let models: string[] = [];
 
@@ -330,12 +333,12 @@ export default class TaskChatPlugin extends Plugin {
                     if (models.length > 0) {
                         providerConfig.availableModels = models;
                         await this.saveSettings();
-                        console.log(
+                        Logger.debug(
                             `Loaded ${models.length} ${provider} models`,
                         );
                     }
                 } catch (error) {
-                    console.error("Error loading models in background:", error);
+                    Logger.error("Error loading models in background:", error);
                 }
             }
 
@@ -345,7 +348,7 @@ export default class TaskChatPlugin extends Plugin {
                     this.settings.pricingCache.lastUpdated,
                 )
             ) {
-                console.log(
+                Logger.debug(
                     "Pricing cache is stale, refreshing from OpenRouter API...",
                 );
                 try {
@@ -355,15 +358,15 @@ export default class TaskChatPlugin extends Plugin {
                         this.settings.pricingCache.data = pricing;
                         this.settings.pricingCache.lastUpdated = Date.now();
                         await this.saveSettings();
-                        console.log(
+                        Logger.debug(
                             `Updated pricing for ${Object.keys(pricing).length} models`,
                         );
                     }
                 } catch (error) {
-                    console.error("Error refreshing pricing:", error);
+                    Logger.error("Error refreshing pricing:", error);
                 }
             } else {
-                console.log(
+                Logger.debug(
                     `Pricing cache is fresh (updated ${PricingService.getTimeSinceUpdate(this.settings.pricingCache.lastUpdated)})`,
                 );
             }
@@ -430,7 +433,7 @@ export default class TaskChatPlugin extends Plugin {
         try {
             // Check if DataView is enabled
             if (!DataviewService.isDataviewEnabled(this.app)) {
-                console.warn("DataView plugin is not enabled");
+                Logger.warn("DataView plugin is not enabled");
                 return;
             }
 

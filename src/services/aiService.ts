@@ -12,6 +12,7 @@ import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 import { DataviewService } from "./dataviewService";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for AI chat functionality
@@ -91,7 +92,7 @@ export class AIService {
 
         if (chatMode === "simple") {
             // Mode 1: Simple Search - Regex parsing only
-            console.log("[Task Chat] Mode: Simple Search (regex parsing)");
+            Logger.debug("Mode: Simple Search (regex parsing)");
             try {
                 intent = TaskSearchService.analyzeQueryIntent(
                     message,
@@ -119,8 +120,8 @@ export class AIService {
             usingAIParsing = false;
         } else {
             // Mode 2 & 3: Smart Search / Task Chat - AI parsing
-            console.log(
-                `[Task Chat] Mode: ${chatMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
+            Logger.debug(
+                `Mode: ${chatMode === "smart" ? "Smart Search" : "Task Chat"} (AI parsing)`,
             );
 
             // OPTIMIZATION: Pre-extract standard property syntax before AI parsing
@@ -137,8 +138,8 @@ export class AIService {
             const cleanedQuery =
                 TaskSearchService.removePropertySyntax(message);
 
-            console.log(
-                `[Task Chat] Pre-extracted properties, cleaned query: "${message}" → "${cleanedQuery}"`,
+            Logger.debug(
+                `Pre-extracted properties, cleaned query: "${message}" → "${cleanedQuery}"`,
             );
 
             try {
@@ -169,11 +170,11 @@ export class AIService {
                     parsedQuery.tags = preExtractedIntent.extractedTags;
                 }
 
-                console.log("[Task Chat] AI parsed query:", parsedQuery);
+                Logger.debug("AI parsed query:", parsedQuery);
                 usingAIParsing = true; // AI parsing succeeded
             } catch (error) {
-                console.error(
-                    "[Task Chat] AI parsing failed, falling back to regex:",
+                Logger.error(
+                    "AI parsing failed, falling back to regex:",
                     error,
                 );
                 parsedQuery = null;
@@ -263,7 +264,7 @@ export class AIService {
             intent.extractedTags.length > 0 ||
             intent.keywords.length > 0
         ) {
-            console.log("[Task Chat] Extracted intent:", {
+            Logger.debug("Extracted intent:", {
                 priority: intent.extractedPriority,
                 dueDate: intent.extractedDueDateFilter,
                 status: intent.extractedStatus,
@@ -273,8 +274,8 @@ export class AIService {
             });
 
             if (intent.keywords.length > 0) {
-                console.log(
-                    `[Task Chat] Searching with keywords: [${intent.keywords.join(", ")}]`,
+                Logger.debug(
+                    `Searching with keywords: [${intent.keywords.join(", ")}]`,
                 );
             }
 
@@ -320,8 +321,8 @@ export class AIService {
                 },
             );
 
-            console.log(
-                `[Task Chat] After filtering: ${filteredTasks.length} tasks found`,
+            Logger.debug(
+                `After filtering: ${filteredTasks.length} tasks found`,
             );
 
             // Detect query type for adaptive scoring
@@ -382,8 +383,8 @@ export class AIService {
                 let scoredTasks;
                 if (usingAIParsing && parsedQuery?.coreKeywords) {
                     // Smart Search / Task Chat: with semantic expansion
-                    console.log(
-                        `[Task Chat] Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
+                    Logger.debug(
+                        `Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
                     );
                     scoredTasks = TaskSearchService.scoreTasksComprehensive(
                         filteredTasks,
@@ -402,8 +403,8 @@ export class AIService {
                     );
                 } else {
                     // Simple Search: no semantic expansion (keywords = coreKeywords)
-                    console.log(
-                        `[Task Chat] Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
+                    Logger.debug(
+                        `Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
                     );
                     scoredTasks = TaskSearchService.scoreTasksComprehensive(
                         filteredTasks,
@@ -488,8 +489,8 @@ export class AIService {
                     activeComponents.push("status");
                 }
 
-                console.log(
-                    `[Task Chat] Query type: ${queryType.queryType}, Active components: [${activeComponents.join(", ")}], maxScore = ${maxScore.toFixed(1)}`,
+                Logger.debug(
+                    `Query type: ${queryType.queryType}, Active components: [${activeComponents.join(", ")}], maxScore = ${maxScore.toFixed(1)}`,
                 );
                 let baseThreshold: number;
 
@@ -514,8 +515,8 @@ export class AIService {
                     const mode = hasExpansion
                         ? "with expansion"
                         : "no expansion";
-                    console.log(
-                        `[Task Chat] Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}] (${intent.keywords.length} keywords)`,
+                    Logger.debug(
+                        `Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}] (${intent.keywords.length} keywords)`,
                     );
                 } else {
                     // User-defined percentage - convert to actual threshold
@@ -528,8 +529,8 @@ export class AIService {
                     const mode = hasExpansion
                         ? "with expansion"
                         : "no expansion";
-                    console.log(
-                        `[Task Chat] Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}]`,
+                    Logger.debug(
+                        `Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}]`,
                     );
                 }
 
@@ -552,8 +553,8 @@ export class AIService {
                         (st) =>
                             st.relevanceScore >= settings.minimumRelevanceScore,
                     );
-                    console.log(
-                        `[Task Chat] Minimum relevance filter (${settings.minimumRelevanceScore.toFixed(2)}): ${beforeRelevanceFilter} → ${qualityFilteredScored.length} tasks`,
+                    Logger.debug(
+                        `Minimum relevance filter (${settings.minimumRelevanceScore.toFixed(2)}): ${beforeRelevanceFilter} → ${qualityFilteredScored.length} tasks`,
                     );
                 }
 
@@ -561,30 +562,30 @@ export class AIService {
                     (st) => st.task,
                 );
 
-                console.log(
-                    `[Task Chat] Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold.toFixed(2)})`,
+                Logger.debug(
+                    `Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold.toFixed(2)})`,
                 );
 
                 // Log sample task scores for transparency
                 if (qualityFilteredScored.length > 0) {
                     const sample = qualityFilteredScored[0];
-                    console.log(`[Task Chat] Sample score breakdown:`);
-                    console.log(
+                    Logger.debug(`Sample score breakdown:`);
+                    Logger.debug(
                         `  Task: "${sample.task.text.substring(0, 60)}..."`,
                     );
-                    console.log(
+                    Logger.debug(
                         `  Relevance: ${sample.relevanceScore.toFixed(2)} (× ${settings.relevanceCoefficient} = ${(sample.relevanceScore * settings.relevanceCoefficient).toFixed(2)})`,
                     );
-                    console.log(
+                    Logger.debug(
                         `  Due Date: ${sample.dueDateScore.toFixed(2)} (× ${settings.dueDateCoefficient} = ${(sample.dueDateScore * settings.dueDateCoefficient).toFixed(2)})`,
                     );
-                    console.log(
+                    Logger.debug(
                         `  Priority: ${sample.priorityScore.toFixed(2)} (× ${settings.priorityCoefficient} = ${(sample.priorityScore * settings.priorityCoefficient).toFixed(2)})`,
                     );
-                    console.log(
+                    Logger.debug(
                         `  Status: ${sample.statusScore.toFixed(2)} (× ${settings.statusCoefficient} = ${(sample.statusScore * settings.statusCoefficient).toFixed(2)})`,
                     );
-                    console.log(
+                    Logger.debug(
                         `  Final: ${sample.score.toFixed(2)} (threshold: ${finalThreshold.toFixed(2)})`,
                     );
                 }
@@ -604,8 +605,8 @@ export class AIService {
                         filteredTasks.length,
                     );
                     if (qualityFilteredTasks.length < minTasksNeeded) {
-                        console.log(
-                            `[Task Chat] Adaptive mode: quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
+                        Logger.debug(
+                            `Adaptive mode: quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
                         );
                         qualityFilteredScored = scoredTasks
                             .sort((a, b) => b.score - a.score)
@@ -615,8 +616,8 @@ export class AIService {
                         );
                     }
                 } else {
-                    console.log(
-                        `[Task Chat] User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
+                    Logger.debug(
+                        `User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
                     );
                 }
             }
@@ -673,7 +674,7 @@ export class AIService {
                 );
             }
 
-            console.log(`[Task Chat] Sort order: [${sortOrder.join(", ")}]`);
+            Logger.debug(`Sort order: [${sortOrder.join(", ")}]`);
 
             // Sort tasks for display using multi-criteria sorting
             const sortedTasksForDisplay =
@@ -689,8 +690,8 @@ export class AIService {
             // Mode 3 (Task Chat) → AI analysis
             if (chatMode === "simple" || chatMode === "smart") {
                 // Return direct results for Simple Search and Smart Search
-                console.log(
-                    `[Task Chat] Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasksForDisplay.length} results)`,
+                Logger.debug(
+                    `Result delivery: Direct (${chatMode === "simple" ? "Simple Search" : "Smart Search"} mode, ${sortedTasksForDisplay.length} results)`,
                 );
 
                 // Calculate token usage based on mode
@@ -736,7 +737,7 @@ export class AIService {
 
             // Mode 3: Task Chat - Continue to AI analysis
             // For AI context, sort differently using aiContextSortOrder (optimized for AI understanding)
-            console.log(
+            Logger.debug(
                 `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasksForDisplay.length} tasks)`,
             );
 
@@ -750,28 +751,28 @@ export class AIService {
                 settings.maxTasksForAI,
             );
 
-            console.log(
-                `[Task Chat] Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
+            Logger.debug(
+                `Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
             );
-            console.log(
-                `[Task Chat] Total filtered tasks available: ${qualityFilteredTasks.length}`,
+            Logger.debug(
+                `Total filtered tasks available: ${qualityFilteredTasks.length}`,
             );
 
             // DEBUG: Log first 10 tasks with their sort criteria values
-            console.log(
-                `[Task Chat] === TOP 10 TASKS DEBUG (sorted by ${sortOrder.join(" → ")}) ===`,
+            Logger.debug(
+                `=== TOP 10 TASKS DEBUG (sorted by ${sortOrder.join(" → ")}) ===`,
             );
             tasksToAnalyze.slice(0, 10).forEach((task, index) => {
                 const score = comprehensiveScores?.get(task.id) || 0;
                 const dueInfo = task.dueDate || "none";
                 const priorityInfo =
                     task.priority !== undefined ? task.priority : "none";
-                console.log(
-                    `[Task Chat]   ${index + 1}. [score=${score}] [due=${dueInfo}] [p=${priorityInfo}] ${task.text.substring(0, 60)}...`,
+                Logger.debug(
+                    `  ${index + 1}. [score=${score}] [due=${dueInfo}] [p=${priorityInfo}] ${task.text.substring(0, 60)}...`,
                 );
             });
-            console.log(
-                `[Task Chat] ===========================================`,
+            Logger.debug(
+                `===========================================`,
             );
 
             const taskContext = this.buildTaskContext(
@@ -797,7 +798,7 @@ export class AIService {
                     abortSignal,
                 );
 
-                console.log("[Task Chat] AI response:", response);
+                Logger.debug("AI response:", response);
 
                 // Extract task IDs that AI referenced
                 const { tasks: recommendedTasks, indices: recommendedIndices } =
@@ -827,16 +828,16 @@ export class AIService {
                     parsedQuery: usingAIParsing ? parsedQuery : undefined,
                 };
             } catch (error) {
-                console.error("AI Service Error:", error);
+                Logger.error("AI Service Error:", error);
                 throw error;
             }
         } else {
             // No filters detected - return all tasks with default sorting
-            console.log(
-                "[Task Chat] No filters detected, returning all tasks with default sort order",
+            Logger.debug(
+                "No filters detected, returning all tasks with default sort order",
             );
 
-            console.log(`[Task Chat] Sort order: [${sortOrder.join(", ")}]`);
+            Logger.debug(`Sort order: [${sortOrder.join(", ")}]`);
 
             // Sort all tasks using multi-criteria sorting
             const sortedTasks = TaskSortService.sortTasksMultiCriteria(
@@ -892,8 +893,8 @@ export class AIService {
             queryType = "empty";
         }
 
-        console.log(
-            `[Task Chat] Query type: ${queryType} (keywords: ${hasKeywords}, properties: ${hasTaskProperties})`,
+        Logger.debug(
+            `Query type: ${queryType} (keywords: ${hasKeywords}, properties: ${hasTaskProperties})`,
         );
 
         return { hasKeywords, hasTaskProperties, queryType };
@@ -975,11 +976,11 @@ export class AIService {
             return "No tasks found matching your query.";
         }
 
-        console.log(
-            `[Task Chat] Building task context with ${tasks.length} tasks:`,
+        Logger.debug(
+            `Building task context with ${tasks.length} tasks:`,
         );
         tasks.forEach((task, index) => {
-            console.log(`[Task Chat]   [TASK_${index + 1}]: ${task.text}`);
+            Logger.debug(`  [TASK_${index + 1}]: ${task.text}`);
         });
 
         let context = `Found ${tasks.length} relevant task(s):\n\n`;
@@ -1274,7 +1275,7 @@ ${taskContext}`;
 
         // Default to gpt-4o-mini pricing if unknown
         if (!rates) {
-            console.warn(
+            Logger.warn(
                 `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
             );
             const fallback = PricingService.getPricing(
@@ -1541,11 +1542,11 @@ ${taskContext}`;
         const recommended: Task[] = [];
         const recommendedIndices: number[] = [];
 
-        console.log(
-            `[Task Chat] Extracting recommended tasks from ${tasks.length} available tasks`,
+        Logger.debug(
+            `Extracting recommended tasks from ${tasks.length} available tasks`,
         );
-        console.log(
-            "[Task Chat] Available tasks:",
+        Logger.debug(
+            "Available tasks:",
             tasks.map((t, i) => `[${i}]: ${t.text}`),
         );
 
@@ -1564,21 +1565,21 @@ ${taskContext}`;
             if (taskIndex >= 0 && taskIndex < tasks.length) {
                 // Only add if not already seen (avoid duplicates)
                 if (!seenIndices.has(taskIndex)) {
-                    console.log(
-                        `[Task Chat] Found reference: [TASK_${index}] -> array index ${taskIndex}: "${tasks[taskIndex].text}"`,
+                    Logger.debug(
+                        `Found reference: [TASK_${index}] -> array index ${taskIndex}: "${tasks[taskIndex].text}"`,
                     );
                     referencedIndices.push(taskIndex);
                     seenIndices.add(taskIndex);
                 }
             } else {
-                console.warn(
-                    `[Task Chat] Invalid task reference [TASK_${index}] - out of bounds (have ${tasks.length} tasks)`,
+                Logger.warn(
+                    `Invalid task reference [TASK_${index}] - out of bounds (have ${tasks.length} tasks)`,
                 );
             }
         }
 
-        console.log(
-            `[Task Chat] Found ${referencedIndices.length} unique task references in order`,
+        Logger.debug(
+            `Found ${referencedIndices.length} unique task references in order`,
         );
 
         // Add tasks in the exact order they were mentioned in the AI response
@@ -1589,11 +1590,11 @@ ${taskContext}`;
 
         // If no task IDs were found, use fallback: return top relevant tasks
         if (recommended.length === 0) {
-            console.warn(
-                "⚠️ [Task Chat] WARNING: No [TASK_X] references found in AI response!",
+            Logger.warn(
+                "⚠️ WARNING: No [TASK_X] references found in AI response!",
             );
-            console.warn(
-                "[Task Chat] AI response did not follow [TASK_X] format. Using top tasks as fallback.",
+            Logger.warn(
+                "AI response did not follow [TASK_X] format. Using top tasks as fallback.",
             );
 
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
@@ -1601,8 +1602,8 @@ ${taskContext}`;
             let scoredTasks;
             const queryHasKeywords = keywords.length > 0;
             if (usingAIParsing && coreKeywords.length > 0) {
-                console.log(
-                    `[Task Chat] Fallback: Using comprehensive scoring with expansion (core: ${coreKeywords.length})`,
+                Logger.debug(
+                    `Fallback: Using comprehensive scoring with expansion (core: ${coreKeywords.length})`,
                 );
                 scoredTasks = TaskSearchService.scoreTasksComprehensive(
                     tasks,
@@ -1620,8 +1621,8 @@ ${taskContext}`;
                     settings,
                 );
             } else {
-                console.log(
-                    `[Task Chat] Fallback: Using comprehensive scoring without expansion`,
+                Logger.debug(
+                    `Fallback: Using comprehensive scoring without expansion`,
                 );
                 scoredTasks = TaskSearchService.scoreTasksComprehensive(
                     tasks,
@@ -1648,14 +1649,14 @@ ${taskContext}`;
                 (_, i) => i,
             );
 
-            console.log(
-                `[Task Chat] Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
+            Logger.debug(
+                `Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
             return { tasks: topTasks, indices: topIndices };
         }
 
-        console.log(
-            `[Task Chat] AI explicitly recommended ${recommended.length} tasks.`,
+        Logger.debug(
+            `AI explicitly recommended ${recommended.length} tasks.`,
         );
 
         // Trust the AI's judgment on how many tasks to recommend
@@ -1671,11 +1672,11 @@ ${taskContext}`;
             0,
             settings.maxRecommendations,
         );
-        console.log(
-            `[Task Chat] Returning ${finalRecommended.length} recommended tasks:`,
+        Logger.debug(
+            `Returning ${finalRecommended.length} recommended tasks:`,
         );
         finalRecommended.forEach((task, i) => {
-            console.log(`[Task Chat]   Recommended [${i + 1}]: ${task.text}`);
+            Logger.debug(`  Recommended [${i + 1}]: ${task.text}`);
         });
         return { tasks: finalRecommended, indices: finalIndices };
     }
@@ -1705,8 +1706,8 @@ ${taskContext}`;
             taskIdToPosition.set(taskId, position);
         });
 
-        console.log(
-            `[Task Chat] Task ID to position mapping:`,
+        Logger.debug(
+            `Task ID to position mapping:`,
             Array.from(taskIdToPosition.entries()).map(
                 ([id, pos]) => `[TASK_${id}] -> **Task ${pos}**`,
             ),
@@ -1723,21 +1724,21 @@ ${taskContext}`;
                 const position = taskIdToPosition.get(taskId);
 
                 if (position !== undefined) {
-                    console.log(
-                        `[Task Chat] Replacing ${match} with "**Task ${position}**"`,
+                    Logger.debug(
+                        `Replacing ${match} with "**Task ${position}**"`,
                     );
                     return `**Task ${position}**`;
                 } else {
                     // Task was referenced but not in recommended list (shouldn't happen)
-                    console.warn(
-                        `[Task Chat] Task ID ${taskId} not found in recommended list`,
+                    Logger.warn(
+                        `Task ID ${taskId} not found in recommended list`,
                     );
                     return match; // Keep original reference
                 }
             },
         );
 
-        console.log(`[Task Chat] Processed response:`, processedResponse);
+        Logger.debug(`Processed response:`, processedResponse);
         return processedResponse;
     }
 

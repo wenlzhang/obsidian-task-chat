@@ -2,6 +2,8 @@
  * Local typo correction utility (no AI required)
  * Corrects common misspellings in task queries
  */
+import { Logger } from "./logger";
+
 export class TypoCorrection {
     /**
      * Dictionary of common typos and their corrections
@@ -119,7 +121,7 @@ export class TypoCorrection {
 
         // Log corrections if any were made
         if (corrections.length > 0) {
-            console.log(`[Typo Correction] Fixed: [${corrections.join(", ")}]`);
+            Logger.debug(`[Typo Correction] Fixed: [${corrections.join(", ")}]`);
         }
 
         return corrected;
