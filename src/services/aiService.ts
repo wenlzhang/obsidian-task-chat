@@ -825,7 +825,9 @@ export class AIService {
 
                 // Add user-facing warning if fallback was used
                 if (usedFallback) {
-                    const modelInfo = `${getCurrentProviderConfig(settings).model} (${settings.aiProvider})`;
+                    // Use the model info from tokenUsage (the actual model used for this request)
+                    // Not getCurrentProviderConfig(settings) which might have changed if user switched models
+                    const modelInfo = `${tokenUsage.model} (${tokenUsage.provider})`;
                     const warningMessage =
                         `⚠️ **AI Model Issue Detected**\n\n` +
                         `The AI model (${modelInfo}) did not follow the expected response format. ` +

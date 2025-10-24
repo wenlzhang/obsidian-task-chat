@@ -170,15 +170,18 @@
 .task-chat-message {
     padding: 10px;
     border-radius: 6px;
-    border-left: 2px solid transparent;
 }
 
 .task-chat-message-user {
     align-self: flex-end;
     max-width: 80%;
-    border-left: 2px solid var(--interactive-accent);
     margin-bottom: 32px; /* Space for copy button below */
     position: relative; /* For copy button positioning */
+}
+
+.task-chat-message-user .task-chat-message-content {
+    border-left: 2px solid var(--interactive-accent);
+    padding-left: 10px;
 }
 
 .task-chat-message-assistant,
@@ -187,23 +190,38 @@
 .task-chat-message-simple {
     align-self: flex-start;
     max-width: 100%; /* Use full width like user input */
-    border-left: 2px solid var(--interactive-accent);
     /* Copy button inline with token usage, no extra margin needed */
+}
+
+.task-chat-message-assistant .task-chat-message-content,
+.task-chat-message-chat .task-chat-message-content,
+.task-chat-message-smart .task-chat-message-content,
+.task-chat-message-simple .task-chat-message-content {
+    border-left: 2px solid var(--interactive-accent);
+    padding-left: 10px;
 }
 
 .task-chat-message-system {
     align-self: flex-start;
     max-width: 100%;
-    border-left: 2px solid var(--text-faint);
     background: var(--background-secondary-alt);
+}
+
+.task-chat-message-system .task-chat-message-content {
+    border-left: 2px solid var(--interactive-accent);
+    padding-left: 10px;
 }
 
 /* Streaming Message - shows AI response as it's being generated */
 .task-chat-message-ai {
     align-self: flex-start;
     max-width: 100%; /* Use full width like user input */
-    border-left: 2px solid var(--interactive-accent);
     /* No background - same as final message */
+}
+
+.task-chat-message-ai .task-chat-message-content {
+    border-left: 2px solid var(--interactive-accent);
+    padding-left: 10px;
 }
 
 /* Streaming indicator - three flashing dots at the end */

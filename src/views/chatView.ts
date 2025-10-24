@@ -1063,8 +1063,33 @@ export class ChatView extends ItemView {
 
         if (useStreaming) {
             // Create streaming message element instead of typing indicator
-            this.streamingMessageEl = this.messagesEl.createDiv({
-                cls: "task-chat-message task-chat-message-ai task-chat-streaming",
+            const streamingWrapper = this.messagesEl.createDiv({
+                cls: "task-chat-message task-chat-message-ai",
+            });
+
+            // Add header with mode name (determine from chat mode override or settings)
+            const usedChatMode =
+                this.chatModeOverride || this.plugin.settings.defaultChatMode;
+            const headerEl = streamingWrapper.createDiv(
+                "task-chat-message-header",
+            );
+            let modeName: string;
+            if (usedChatMode === "simple") {
+                modeName = "Simple Search";
+            } else if (usedChatMode === "smart") {
+                modeName = "Smart Search";
+            } else {
+                modeName = "Task Chat";
+            }
+            headerEl.createEl("strong", { text: modeName });
+            headerEl.createEl("span", {
+                text: new Date().toLocaleTimeString(),
+                cls: "task-chat-message-time",
+            });
+
+            // Create content div for streaming text
+            this.streamingMessageEl = streamingWrapper.createDiv({
+                cls: "task-chat-message-content task-chat-streaming",
             });
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
         } else {
@@ -1088,11 +1113,19 @@ export class ChatView extends ItemView {
                       streamedContent += chunk;
                       if (this.streamingMessageEl) {
                           this.streamingMessageEl.empty();
+                          // Remove streaming class before rendering to avoid dots overlapping content
+                          this.streamingMessageEl.removeClass(
+                              "task-chat-streaming",
+                          );
                           MarkdownRenderer.renderMarkdown(
                               streamedContent,
                               this.streamingMessageEl,
                               "",
                               this.plugin,
+                          );
+                          // Re-add streaming class for dots animation
+                          this.streamingMessageEl.addClass(
+                              "task-chat-streaming",
                           );
                           // Auto-scroll to bottom
                           this.messagesEl.scrollTop =
