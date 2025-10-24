@@ -2,6 +2,7 @@ import { moment } from "obsidian";
 import { Task, TaskStatusCategory, DateRange } from "../models/task";
 import { PluginSettings } from "../settings";
 import * as chrono from "chrono-node";
+import { Logger } from "../utils/logger";
 
 /**
  * Centralized Task Property Service
@@ -951,7 +952,7 @@ export class TaskPropertyService {
                     : momentDate.format("YYYY-MM-DD");
             }
         } catch (e) {
-            console.error("Error formatting date:", e);
+            Logger.error("Error formatting date:", e);
         }
 
         return undefined;

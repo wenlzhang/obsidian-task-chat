@@ -1,5 +1,6 @@
 import { App, Notice, TFile, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { Task } from "../models/task";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for navigating to tasks in notes
@@ -66,7 +67,7 @@ export class NavigationService {
                 );
             }
         } catch (error) {
-            console.error("Error navigating to task:", error);
+            Logger.error("Error navigating to task:", error);
             new Notice("Failed to navigate to task");
         }
     }
@@ -110,7 +111,7 @@ export class NavigationService {
                 new Notice(`Opened task in new pane`);
             }
         } catch (error) {
-            console.error("Error opening task in new pane:", error);
+            Logger.error("Error opening task in new pane:", error);
             new Notice("Failed to open task in new pane");
         }
     }

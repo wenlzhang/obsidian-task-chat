@@ -6,6 +6,7 @@ import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
 import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
+import { Logger } from "../utils/logger";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -148,7 +149,7 @@ export class ChatView extends ItemView {
             this.plugin.settings.currentChatMode = value;
             await this.plugin.saveSettings();
 
-            console.log(`[Task Chat] Chat mode changed to: ${value}`);
+            Logger.debug(`Chat mode changed to: ${value}`);
         });
 
         // Group 3: Task management
@@ -386,7 +387,7 @@ export class ChatView extends ItemView {
             this.chatModeOverride || this.plugin.settings.defaultChatMode;
         this.chatModeSelect.value = currentMode;
 
-        console.log(`[Task Chat] Chat mode dropdown updated: ${currentMode}`);
+        Logger.debug(`Chat mode dropdown updated: ${currentMode}`);
     }
 
     /**
@@ -641,8 +642,8 @@ export class ChatView extends ItemView {
                 ? message.recommendedTasks[0].sourcePath
                 : this.app.workspace.getActiveFile()?.path || "";
 
-        console.log(
-            `[Task Chat] Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
+        Logger.debug(
+            `Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
         );
 
         await MarkdownRenderer.renderMarkdown(
@@ -655,23 +656,23 @@ export class ChatView extends ItemView {
         // Enable hover preview for internal links in message content
         this.enableHoverPreview(contentEl, contextPath);
 
-        console.log(
-            `[Task Chat] Message content rendered, checking for links...`,
+        Logger.debug(
+            `Message content rendered, checking for links...`,
         );
         const messageLinks = contentEl.querySelectorAll("a");
-        console.log(
-            `[Task Chat] - Found ${messageLinks.length} link elements in message content`,
+        Logger.debug(
+            `- Found ${messageLinks.length} link elements in message content`,
         );
         messageLinks.forEach((link, i) => {
-            console.log(
-                `[Task Chat]   Message link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
+            Logger.debug(
+                `  Message link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
             );
         });
 
         // Add click tracking for message content
         contentEl.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
-            console.log(`[Task Chat] Click in message content:`, {
+            Logger.debug(`Click in message content:`, {
                 tagName: target.tagName,
                 className: target.className,
                 textContent: target.textContent?.substring(0, 50),
@@ -720,12 +721,12 @@ export class ChatView extends ItemView {
                 // MUST await to ensure links are properly registered by Obsidian
                 const taskMarkdown = `- [${task.status}] ${task.text}`;
 
-                console.log(
-                    `[Task Chat] Rendering task ${taskNumber}: ${task.text.substring(0, 50)}...`,
+                Logger.debug(
+                    `Rendering task ${taskNumber}: ${task.text.substring(0, 50)}...`,
                 );
-                console.log(`[Task Chat] - Source path: ${task.sourcePath}`);
-                console.log(
-                    `[Task Chat] - Task markdown: ${taskMarkdown.substring(0, 100)}...`,
+                Logger.debug(`- Source path: ${task.sourcePath}`);
+                Logger.debug(
+                    `- Task markdown: ${taskMarkdown.substring(0, 100)}...`,
                 );
 
                 await MarkdownRenderer.renderMarkdown(
@@ -738,24 +739,24 @@ export class ChatView extends ItemView {
                 // Enable hover preview for internal links in task content
                 this.enableHoverPreview(taskContentEl, task.sourcePath);
 
-                console.log(
-                    `[Task Chat] - Rendering complete, checking for links...`,
+                Logger.debug(
+                    `- Rendering complete, checking for links...`,
                 );
                 const links = taskContentEl.querySelectorAll("a");
-                console.log(
-                    `[Task Chat] - Found ${links.length} link elements`,
+                Logger.debug(
+                    `- Found ${links.length} link elements`,
                 );
                 links.forEach((link, i) => {
-                    console.log(
-                        `[Task Chat]   Link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
+                    Logger.debug(
+                        `  Link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
                     );
                 });
 
                 // Add click handlers for links in task content
                 taskContentEl.addEventListener("click", (e) => {
                     const target = e.target as HTMLElement;
-                    console.log(
-                        `[Task Chat] Click detected in task ${taskNumber}:`,
+                    Logger.debug(
+                        `Click detected in task ${taskNumber}:`,
                         {
                             tagName: target.tagName,
                             className: target.className,
@@ -905,20 +906,20 @@ export class ChatView extends ItemView {
             link.getAttribute("href") || link.getAttribute("data-href");
         const linkClass = link.className;
 
-        console.log(`[Task Chat] handleLinkClick called:`, {
+        Logger.debug(`handleLinkClick called:`, {
             href,
             class: linkClass,
             sourcePath,
         });
 
         if (!href) {
-            console.log(`[Task Chat] No href found, ignoring click`);
+            Logger.debug(`No href found, ignoring click`);
             return;
         }
 
         // Handle tags (#tag)
         if (linkClass.contains("tag")) {
-            console.log(`[Task Chat] Opening tag search for: ${href}`);
+            Logger.debug(`Opening tag search for: ${href}`);
             // Use Obsidian's search for tags
             (this.app as any).internalPlugins
                 .getPluginById("global-search")
@@ -928,7 +929,7 @@ export class ChatView extends ItemView {
 
         // Handle internal links ([[Note]])
         if (linkClass.contains("internal-link")) {
-            console.log(`[Task Chat] Opening internal link: ${href}`);
+            Logger.debug(`Opening internal link: ${href}`);
             // Use Obsidian's built-in method to open links
             this.app.workspace.openLinkText(href, sourcePath, false);
             return;
@@ -940,14 +941,14 @@ export class ChatView extends ItemView {
             href.startsWith("http://") ||
             href.startsWith("https://")
         ) {
-            console.log(`[Task Chat] Opening external link: ${href}`);
+            Logger.debug(`Opening external link: ${href}`);
             window.open(href, "_blank");
             return;
         }
 
         // Fallback: try to open as internal link
-        console.log(
-            `[Task Chat] Fallback: attempting to open as internal link: ${href}`,
+        Logger.debug(
+            `Fallback: attempting to open as internal link: ${href}`,
         );
         this.app.workspace.openLinkText(href, sourcePath, false);
     }
@@ -1003,8 +1004,8 @@ export class ChatView extends ItemView {
             const effectiveSettings = { ...this.plugin.settings };
             if (this.chatModeOverride !== null) {
                 effectiveSettings.defaultChatMode = this.chatModeOverride;
-                console.log(
-                    `[Task Chat] Using overridden chat mode: ${this.chatModeOverride}`,
+                Logger.debug(
+                    `Using overridden chat mode: ${this.chatModeOverride}`,
                 );
             }
 
@@ -1065,7 +1066,7 @@ export class ChatView extends ItemView {
         } catch (error) {
             // Hide typing indicator on error
             this.hideTypingIndicator();
-            console.error("Error sending message:", error);
+            Logger.error("Error sending message:", error);
             new Notice(error.message || "Failed to get AI response");
 
             const errorMessage: ChatMessage = {
@@ -1094,7 +1095,7 @@ export class ChatView extends ItemView {
      */
     private stopGeneration(): void {
         if (this.abortController) {
-            console.log("[Task Chat] Stopping AI generation...");
+            Logger.debug("Stopping AI generation...");
             this.abortController.abort();
             this.abortController = null;
         }
@@ -1215,8 +1216,8 @@ export class ChatView extends ItemView {
             `New session created: ${newSession.name}. How can I help you?`,
         );
 
-        console.log(
-            `[Task Chat] New session created, chat mode reset to default: ${this.plugin.settings.defaultChatMode}`,
+        Logger.debug(
+            `New session created, chat mode reset to default: ${this.plugin.settings.defaultChatMode}`,
         );
     }
 

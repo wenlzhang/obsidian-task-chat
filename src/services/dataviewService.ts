@@ -2,6 +2,7 @@ import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskPropertyService } from "./taskPropertyService";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for integrating with Dataview plugin to fetch tasks
@@ -883,7 +884,7 @@ export class DataviewService {
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
-            console.error("DataView API not available");
+            Logger.error("DataView API not available");
             return [];
         }
 
@@ -904,11 +905,11 @@ export class DataviewService {
                 filterDesc.push(`dueDate=${propertyFilters.dueDate}`);
             if (propertyFilters?.status)
                 filterDesc.push(`status=${propertyFilters.status}`);
-            console.log(
-                `[Task Chat] Task-level filtering: ${filterDesc.join(", ")}`,
+            Logger.debug(
+                `Task-level filtering: ${filterDesc.join(", ")}`,
             );
-            console.log(
-                `[Task Chat] Child tasks will be evaluated independently of parents`,
+            Logger.debug(
+                `Child tasks will be evaluated independently of parents`,
             );
         }
 
@@ -963,10 +964,10 @@ export class DataviewService {
                     }
                 }
             } catch (e) {
-                console.error("Error using DataView pages API:", e);
+                Logger.error("Error using DataView pages API:", e);
 
                 // Fallback to recursive processing if expand() fails
-                console.log("[Task Chat] Falling back to recursive processing");
+                Logger.debug("Falling back to recursive processing");
                 try {
                     const pages = dataviewApi.pages();
                     let taskIndex = 0;
@@ -992,7 +993,7 @@ export class DataviewService {
                                     }
                                 }
                             } catch (pageError) {
-                                console.warn(
+                                Logger.warn(
                                     `Error processing page: ${page.file?.path}`,
                                 );
                             }
@@ -1003,7 +1004,7 @@ export class DataviewService {
                         }
                     }
                 } catch (fallbackError) {
-                    console.error(
+                    Logger.error(
                         "Fallback processing also failed:",
                         fallbackError,
                     );
@@ -1012,8 +1013,8 @@ export class DataviewService {
         }
 
         if (taskFilter) {
-            console.log(
-                `[Task Chat] Task-level filtering complete: ${tasks.length} tasks matched`,
+            Logger.debug(
+                `Task-level filtering complete: ${tasks.length} tasks matched`,
             );
         }
 

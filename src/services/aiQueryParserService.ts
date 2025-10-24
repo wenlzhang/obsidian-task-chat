@@ -5,6 +5,7 @@ import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 import { DataviewService } from "./dataviewService";
+import { Logger } from "../utils/logger";
 
 /**
  * Structured query result from AI parsing - Three-part system
@@ -1449,12 +1450,12 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
         try {
             const response = await this.callAI(messages, settings);
-            console.log("[Task Chat] AI query parser raw response:", response);
+            Logger.debug("AI query parser raw response:", response);
 
             // Extract JSON from response (handles DeepSeek's <think> tags and other wrappers)
             const jsonString = this.extractJSON(response);
             const parsed = JSON.parse(jsonString);
-            console.log("[Task Chat] AI query parser parsed:", parsed);
+            Logger.debug("AI query parser parsed:", parsed);
 
             // If AI didn't extract any keywords but also didn't extract any filters,
             // split the query into words as fallback
@@ -1467,8 +1468,8 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 !parsed.folder &&
                 (!parsed.tags || parsed.tags.length === 0)
             ) {
-                console.log(
-                    "[Task Chat] AI returned no filters or keywords, splitting query into words",
+                Logger.debug(
+                    "AI returned no filters or keywords, splitting query into words",
                 );
                 // Split by whitespace and filter stop words
                 keywords = StopWords.filterStopWords(
@@ -1480,12 +1481,12 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             // This catches any stop words that slipped through AI's filters
             const filteredKeywords = StopWords.filterStopWords(keywords);
 
-            console.log(
-                `[Task Chat] Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
+            Logger.debug(
+                `Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
             );
             if (keywords.length !== filteredKeywords.length) {
-                console.log(
-                    `[Task Chat] Removed stop words: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
+                Logger.debug(
+                    `Removed stop words: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
                 );
             }
 
@@ -1495,11 +1496,11 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             const coreKeywords = StopWords.filterStopWords(rawCoreKeywords);
 
             if (rawCoreKeywords.length !== coreKeywords.length) {
-                console.log(
-                    `[Task Chat] Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${coreKeywords.length}`,
+                Logger.debug(
+                    `Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${coreKeywords.length}`,
                 );
-                console.log(
-                    `[Task Chat] Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
+                Logger.debug(
+                    `Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
                 );
             }
             const expandedKeywords = filteredKeywords;
@@ -1511,15 +1512,15 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                     coreKeywords.length * maxKeywordsPerCore;
 
                 if (expandedKeywords.length < expectedMinKeywords) {
-                    console.warn(
-                        `[Task Chat] Expansion failed: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (expected at least ${expectedMinKeywords})`,
+                    Logger.warn(
+                        `Expansion failed: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (expected at least ${expectedMinKeywords})`,
                     );
                 } else if (
                     expandedKeywords.length <
                     expectedTargetKeywords * 0.3
                 ) {
-                    console.warn(
-                        `[Task Chat] Expansion under-performing: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (target: ~${expectedTargetKeywords})`,
+                    Logger.warn(
+                        `Expansion under-performing: ${coreKeywords.length} core → ${expandedKeywords.length} expanded (target: ~${expectedTargetKeywords})`,
                     );
                 }
             }
@@ -1534,22 +1535,22 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             };
 
             // Detailed expansion logging
-            console.log(
-                "[Task Chat] ========== SEMANTIC EXPANSION DETAILS ==========",
+            Logger.debug(
+                "========== SEMANTIC EXPANSION DETAILS ==========",
             );
-            console.log("[Task Chat] User Settings:", {
+            Logger.debug("User Settings:", {
                 languages: queryLanguages,
                 maxExpansionsPerLanguage: maxExpansions,
                 targetPerCore: maxKeywordsPerCore,
                 expansionEnabled: expansionEnabled,
             });
 
-            console.log("[Task Chat] Extraction Results:", {
+            Logger.debug("Extraction Results:", {
                 coreKeywords: coreKeywords,
                 coreCount: coreKeywords.length,
             });
 
-            console.log("[Task Chat] Expansion Results:", {
+            Logger.debug("Expansion Results:", {
                 expandedKeywords: expandedKeywords,
                 totalExpanded: expandedKeywords.length,
                 averagePerCore:
@@ -1611,11 +1612,11 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                     }
                 });
 
-                console.log(
-                    "[Task Chat] Language Distribution (estimated - for diagnostics only):",
+                Logger.debug(
+                    "Language Distribution (estimated - for diagnostics only):",
                 );
-                console.log(
-                    "[Task Chat] Note: This uses heuristics to estimate distribution. Actual functionality doesn't depend on detection.",
+                Logger.debug(
+                    "Note: This uses heuristics to estimate distribution. Actual functionality doesn't depend on detection.",
                 );
 
                 // Check for missing languages
@@ -1624,11 +1625,11 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
-                        console.log(
+                        Logger.debug(
                             `  ${lang}: ${words.length} keywords - [${words.slice(0, 5).join(", ")}${words.length > 5 ? "..." : ""}]`,
                         );
                     } else {
-                        console.log(`  ${lang}: 0 keywords ⚠️ MISSING!`);
+                        Logger.debug(`  ${lang}: 0 keywords ⚠️ MISSING!`);
                         missingLanguages.push(lang);
                     }
 
@@ -1638,35 +1639,35 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                         words.length < expectedMinPerLanguage &&
                         coreKeywords.length > 0
                     ) {
-                        console.warn(
-                            `[Task Chat] Language "${lang}" has only ${words.length} keywords (expected at least ${expectedMinPerLanguage} per core keyword)`,
+                        Logger.warn(
+                            `Language "${lang}" has only ${words.length} keywords (expected at least ${expectedMinPerLanguage} per core keyword)`,
                         );
                     }
                 });
 
                 // Warning if languages appear to be missing (based on heuristic detection)
                 if (missingLanguages.length > 0) {
-                    console.warn(
-                        `[Task Chat] ⚠️ Language detection heuristic couldn't find ${missingLanguages.length} language(s): ${missingLanguages.join(", ")}`,
+                    Logger.warn(
+                        `⚠️ Language detection heuristic couldn't find ${missingLanguages.length} language(s): ${missingLanguages.join(", ")}`,
                     );
-                    console.warn(
-                        `[Task Chat] This may indicate AI under-expansion. Check if keywords are actually present for all languages.`,
+                    Logger.warn(
+                        `This may indicate AI under-expansion. Check if keywords are actually present for all languages.`,
                     );
-                    console.warn(
-                        `[Task Chat] Note: Detection is imperfect - some words without special characters may be miscategorized.`,
+                    Logger.warn(
+                        `Note: Detection is imperfect - some words without special characters may be miscategorized.`,
                     );
-                    console.warn(
-                        `[Task Chat] Recommendation: If expansion count is low (${expandedKeywords.length} < ${coreKeywords.length * maxKeywordsPerCore}), AI may not understand language name "${missingLanguages.join(", ")}".`,
+                    Logger.warn(
+                        `Recommendation: If expansion count is low (${expandedKeywords.length} < ${coreKeywords.length * maxKeywordsPerCore}), AI may not understand language name "${missingLanguages.join(", ")}".`,
                     );
                 }
             }
 
-            console.log(
-                "[Task Chat] ================================================",
+            Logger.debug(
+                "================================================",
             );
 
             // Summary
-            console.log("[Task Chat] Semantic expansion summary:", {
+            Logger.debug("Semantic expansion summary:", {
                 core: coreKeywords.length,
                 expanded: expandedKeywords.length,
                 perCore:
@@ -1681,49 +1682,46 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
             // Log AI Understanding metadata if present
             if (parsed.aiUnderstanding) {
-                console.log(
-                    "[Task Chat] ========== AI UNDERSTANDING ==========",
+                Logger.debug(
+                    "========== AI UNDERSTANDING ==========",
                 );
-                console.log(
-                    "[Task Chat] Detected language:",
+                Logger.debug(
+                    "Detected language:",
                     parsed.aiUnderstanding.detectedLanguage || "unknown",
                 );
-                console.log(
-                    "[Task Chat] Confidence:",
+                Logger.debug(
+                    "Confidence:",
                     parsed.aiUnderstanding.confidence !== undefined
                         ? `${(parsed.aiUnderstanding.confidence * 100).toFixed(0)}%`
                         : "unknown",
                 );
-                console.log(
-                    "[Task Chat] Natural language used:",
+                Logger.debug(
+                    "Natural language used:",
                     parsed.aiUnderstanding.naturalLanguageUsed || false,
                 );
                 if (
                     parsed.aiUnderstanding.correctedTypos &&
                     parsed.aiUnderstanding.correctedTypos.length > 0
                 ) {
-                    console.log(
-                        "[Task Chat] Typos corrected:",
+                    Logger.debug(
+                        "Typos corrected:",
                         parsed.aiUnderstanding.correctedTypos,
                     );
                 }
-                if (
-                    parsed.aiUnderstanding.semanticMappings &&
-                    Object.keys(parsed.aiUnderstanding.semanticMappings)
-                        .length > 0
-                ) {
-                    console.log(
-                        "[Task Chat] Semantic mappings:",
-                        parsed.aiUnderstanding.semanticMappings,
+                if (parsed.aiUnderstanding.notes) {
+                    Logger.debug(
+                        "Notes:",
+                        parsed.aiUnderstanding.notes,
                     );
                 }
-                console.log(
-                    "[Task Chat] ===========================================",
+                Logger.debug(
+                    "================================================",
                 );
             }
 
+            // PART 1-3: Return complete three-part query result
             const result: ParsedQuery = {
-                // PART 1: Task Content
+                // PART 1: Task Content (Keywords)
                 coreKeywords: coreKeywords,
                 keywords: expandedKeywords,
 
@@ -1742,16 +1740,16 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 aiUnderstanding: parsed.aiUnderstanding || undefined,
             };
 
-            console.log(
-                "[Task Chat] Query parser returning (three-part):",
+            Logger.debug(
+                "Query parser returning (three-part):",
                 result,
             );
             return result;
         } catch (error) {
-            console.error("Query parsing error:", error);
+            Logger.error("Query parsing error:", error);
             // Fallback: return query as keywords
-            console.log(
-                `[Task Chat] Query parser fallback: using entire query as keyword: "${query}"`,
+            Logger.debug(
+                `Query parser fallback: using entire query as keyword: "${query}"`,
             );
             return {
                 keywords: [query],

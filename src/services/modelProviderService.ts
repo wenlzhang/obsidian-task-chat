@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import { PluginSettings, getCurrentProviderConfig } from "../settings";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for fetching available AI models from different providers
@@ -19,7 +20,7 @@ export class ModelProviderService {
             });
 
             if (response.status !== 200) {
-                console.error("Failed to fetch OpenAI models:", response);
+                Logger.error("Failed to fetch OpenAI models:", response);
                 return this.getDefaultOpenAIModels();
             }
 
@@ -35,7 +36,7 @@ export class ModelProviderService {
                 ? allModels
                 : this.getDefaultOpenAIModels();
         } catch (error) {
-            console.error("Error fetching OpenAI models:", error);
+            Logger.error("Error fetching OpenAI models:", error);
             return this.getDefaultOpenAIModels();
         }
     }
@@ -120,7 +121,7 @@ export class ModelProviderService {
             });
 
             if (response.status !== 200) {
-                console.error("Failed to fetch OpenRouter models:", response);
+                Logger.error("Failed to fetch OpenRouter models:", response);
                 return this.getDefaultOpenRouterModels();
             }
 
@@ -132,7 +133,7 @@ export class ModelProviderService {
                 ? models
                 : this.getDefaultOpenRouterModels();
         } catch (error) {
-            console.error("Error fetching OpenRouter models:", error);
+            Logger.error("Error fetching OpenRouter models:", error);
             return this.getDefaultOpenRouterModels();
         }
     }
@@ -171,7 +172,7 @@ export class ModelProviderService {
             });
 
             if (response.status !== 200) {
-                console.error("Failed to fetch Ollama models:", response);
+                Logger.error("Failed to fetch Ollama models:", response);
                 return this.getDefaultOllamaModels();
             }
 
@@ -183,7 +184,7 @@ export class ModelProviderService {
 
             return models.length > 0 ? models : this.getDefaultOllamaModels();
         } catch (error) {
-            console.error(
+            Logger.error(
                 "Error fetching Ollama models (is Ollama running?):",
                 error,
             );

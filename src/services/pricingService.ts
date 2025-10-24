@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for fetching and managing AI model pricing data
@@ -18,7 +19,7 @@ export class PricingService {
             });
 
             if (response.status !== 200) {
-                console.warn(
+                Logger.warn(
                     "Failed to fetch pricing from OpenRouter:",
                     response.status,
                 );
@@ -60,12 +61,12 @@ export class PricingService {
                 });
             }
 
-            console.log(
-                `[Pricing] Fetched pricing for ${Object.keys(pricing).length} models from OpenRouter`,
+            Logger.debug(
+                `Fetched pricing for ${Object.keys(pricing).length} models from OpenRouter`,
             );
             return pricing;
         } catch (error) {
-            console.error("Error fetching pricing from OpenRouter:", error);
+            Logger.error("Error fetching pricing from OpenRouter:", error);
             return {};
         }
     }
@@ -155,30 +156,30 @@ export class PricingService {
 
         // Try OpenRouter format first (most accurate)
         if (cachedPricing[openRouterFormat]) {
-            console.log(
-                `[Pricing] Found exact match in cache: ${openRouterFormat}`,
+            Logger.debug(
+                `Found exact match in cache: ${openRouterFormat}`,
             );
             return cachedPricing[openRouterFormat];
         }
 
         // Try exact model name match in cache
         if (cachedPricing[model]) {
-            console.log(`[Pricing] Found model in cache: ${model}`);
+            Logger.debug(`Found model in cache: ${model}`);
             return cachedPricing[model];
         }
 
         // Try embedded pricing with OpenRouter format
         const embedded = this.getEmbeddedPricing();
         if (embedded[openRouterFormat]) {
-            console.log(
-                `[Pricing] Using embedded rate for: ${openRouterFormat}`,
+            Logger.debug(
+                `Using embedded rate for: ${openRouterFormat}`,
             );
             return embedded[openRouterFormat];
         }
 
         // Try exact model name in embedded pricing
         if (embedded[model]) {
-            console.log(`[Pricing] Using embedded rate for: ${model}`);
+            Logger.debug(`Using embedded rate for: ${model}`);
             return embedded[model];
         }
 
@@ -189,8 +190,8 @@ export class PricingService {
                 key.toLowerCase().includes(modelLower) ||
                 modelLower.includes(key.toLowerCase())
             ) {
-                console.log(
-                    `[Pricing] Found partial match in cache: ${key} for ${model}`,
+                Logger.debug(
+                    `Found partial match in cache: ${key} for ${model}`,
                 );
                 return value;
             }
@@ -202,15 +203,15 @@ export class PricingService {
                 key.toLowerCase().includes(modelLower) ||
                 modelLower.includes(key.toLowerCase())
             ) {
-                console.log(
-                    `[Pricing] Found partial match in embedded: ${key} for ${model}`,
+                Logger.debug(
+                    `Found partial match in embedded: ${key} for ${model}`,
                 );
                 return value;
             }
         }
 
-        console.warn(
-            `[Pricing] No pricing found for: ${model} (provider: ${provider}, tried: ${openRouterFormat})`,
+        Logger.warn(
+            `No pricing found for: ${model} (provider: ${provider}, tried: ${openRouterFormat})`,
         );
         return null;
     }

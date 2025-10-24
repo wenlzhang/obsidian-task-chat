@@ -10,6 +10,7 @@ import {
     PROTECTED_STATUS_CATEGORIES,
 } from "./settings";
 import { StopWords } from "./services/stopWords";
+import { Logger } from "./utils/logger";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -1703,8 +1704,8 @@ export class SettingsTab extends PluginSettingTab {
     ): void {
         // Defensive check: ensure config has required properties
         if (!config) {
-            console.error(
-                `[Task Chat] Invalid config for category: ${categoryKey}`,
+            Logger.error(
+                `Invalid config for category: ${categoryKey}`,
             );
             return;
         }
@@ -2225,7 +2226,7 @@ export class SettingsTab extends PluginSettingTab {
                 new Notice("No models found. Using defaults.");
             }
         } catch (error) {
-            console.error("Error refreshing models:", error);
+            Logger.error("Error refreshing models:", error);
             new Notice("Failed to fetch models. Using defaults.");
         }
     }
@@ -2522,8 +2523,8 @@ export class SettingsTab extends PluginSettingTab {
         this.sortByContainerEl.empty();
         this.renderSortBySetting();
 
-        console.log(
-            `[Task Chat] Sort settings refreshed: Default chat mode = ${this.plugin.settings.defaultChatMode}`,
+        Logger.debug(
+            `Sort settings refreshed: Default chat mode = ${this.plugin.settings.defaultChatMode}`,
         );
     }
 
