@@ -1503,7 +1503,7 @@ ${taskContext}`;
                 body: JSON.stringify({
                     model: providerConfig.model,
                     messages: messages,
-                    stream: false,
+                    stream: false, // TODO: Implement streaming with Fetch API (requestUrl doesn't support streaming)
                     options: {
                         temperature: providerConfig.temperature, // User-configurable
                         num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)

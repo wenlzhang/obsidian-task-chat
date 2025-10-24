@@ -222,7 +222,16 @@ Analyze my tasks for this week
   - Max response tokens (default 8000)
   - Context window (critical for Ollama)
   - Provider-specific differences
+  - **Performance tuning & model selection**
+  - When to use Ollama vs cloud providers
   - Troubleshooting guide
+
+- **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide ⭐ NEW
+  - Installation and CORS configuration
+  - Recommended models by use case
+  - Parameter configuration for different model sizes
+  - Performance comparison
+  - Troubleshooting common issues
 
 ## 🎚️ Customization
 

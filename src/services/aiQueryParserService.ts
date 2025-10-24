@@ -1971,7 +1971,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 body: JSON.stringify({
                     model: providerConfig.model,
                     messages: messages,
-                    stream: false,
+                    stream: false, // Query parsing must NOT stream - needs complete JSON response
                     options: {
                         temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
                         num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)

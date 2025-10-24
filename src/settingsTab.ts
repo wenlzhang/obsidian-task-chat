@@ -171,7 +171,7 @@ export class SettingsTab extends PluginSettingTab {
                 }),
         );
 
-        new Setting(containerEl)
+        const tempSetting = new Setting(containerEl)
             .setName("Temperature")
             .setDesc(
                 "Controls AI response randomness (0.0-2.0). Lower values (e.g., 0.1) produce consistent, focused responses ideal for JSON format output in Smart Search and Task Chat. Higher values (e.g., 1.0) produce more creative, varied responses. ⚠️ RECOMMENDED: 0.1 for reliable JSON parsing and structured output. Higher values may impact performance in Smart Search/Task Chat modes.",
@@ -186,8 +186,13 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+        tempSetting.descEl.createEl("br");
+        tempSetting.descEl.createEl("a", {
+            text: "📖 Learn more about temperature and model parameters",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-temperature",
+        });
 
-        new Setting(containerEl)
+        const tokenSetting = new Setting(containerEl)
             .setName("Max response tokens")
             .setDesc(
                 "Maximum tokens for AI response generation. Affects BOTH Smart Search query parsing AND Task Chat responses. Higher = more comprehensive responses but slower and more expensive. Lower = faster and cheaper but may truncate output. ⚠️ RECOMMENDED: 8000 (default, supports 60 keywords expansion + comprehensive task analysis). Parameter names: OpenAI/Anthropic/OpenRouter use 'max_tokens', Ollama uses 'num_predict'.",
@@ -202,8 +207,13 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+        tokenSetting.descEl.createEl("br");
+        tokenSetting.descEl.createEl("a", {
+            text: "📖 Learn more about max tokens and performance tuning",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-max-response-tokens",
+        });
 
-        new Setting(containerEl)
+        const contextSetting = new Setting(containerEl)
             .setName("Context window")
             .setDesc(
                 "Maximum context size the model can process (input prompt + response). For OpenAI/Anthropic/OpenRouter: informational only (set by model). For Ollama: actively used as 'num_ctx' parameter. IMPORTANT: Input prompt + max response tokens must not exceed model's context capability. ⚠️ If you get context length errors, reduce this value or max response tokens. Default: 32000 (Ollama), 128000+ (cloud providers).",
@@ -218,6 +228,11 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+        contextSetting.descEl.createEl("br");
+        contextSetting.descEl.createEl("a", {
+            text: "📖 Learn more about context window and troubleshooting",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-context-window",
+        });
 
         new Setting(containerEl)
             .setName("API endpoint")
@@ -232,48 +247,26 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Add provider-specific setup instructions
+        // Add provider-specific setup links
         if (this.plugin.settings.aiProvider === "ollama") {
             const ollamaInfo = containerEl.createDiv({
                 cls: "ollama-setup-info",
             });
-            ollamaInfo.createEl("strong", { text: "Ollama setup:" });
+            ollamaInfo.createEl("strong", { text: "Ollama Setup Required" });
             ollamaInfo.createEl("br");
-            ollamaInfo.appendText("1. Install Ollama from ");
-            ollamaInfo.createEl("a", {
-                text: "ollama.com",
-                href: "https://ollama.com",
+            ollamaInfo.appendText("For installation, CORS configuration, model selection, and troubleshooting, see: ");
+            ollamaInfo.createEl("br");
+            const link = ollamaInfo.createEl("a", {
+                text: "📖 Complete Ollama Setup Guide",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/OLLAMA_SETUP.md",
             });
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText("2. Pull a model: ");
-            ollamaInfo.createEl("code", { text: "ollama pull llama3.2" });
-            ollamaInfo.appendText(" (or mistral, phi3, etc.)");
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText("3. Start server with CORS: ");
-            ollamaInfo.createEl("code", {
-                text: 'OLLAMA_ORIGINS="app://obsidian.md*" ollama serve',
-            });
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText("4. On macOS app: ");
-            ollamaInfo.createEl("code", {
-                text: 'launchctl setenv OLLAMA_ORIGINS "app://obsidian.md*"',
-            });
-            ollamaInfo.appendText(" then restart Ollama");
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText("5. On Windows: ");
-            ollamaInfo.createEl("code", {
-                text: '$env:OLLAMA_ORIGINS="app://obsidian.md*"; ollama serve',
-            });
+            link.style.fontWeight = "bold";
+            link.style.fontSize = "1.1em";
             ollamaInfo.createEl("br");
             ollamaInfo.createEl("br");
-            ollamaInfo.createEl("strong", { text: "Available models:" });
-            ollamaInfo.appendText(
-                " llama3.2, llama3.1, mistral, phi3, gemma2, qwen2.5, and more at ",
-            );
-            ollamaInfo.createEl("a", {
-                text: "ollama.com/library",
-                href: "https://ollama.com/library",
-            });
+            ollamaInfo.appendText("Quick start: ");
+            ollamaInfo.createEl("code", { text: "ollama pull qwen2.5:14b" });
+            ollamaInfo.appendText(" (recommended model)");
         }
 
         // Chat Settings
@@ -643,13 +636,14 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable streaming responses")
             .setDesc(
-                "Show AI responses as they're generated (like ChatGPT). Works with all providers.",
+                "Show AI responses as they're generated (like ChatGPT). ⚠️ COMING SOON: Currently disabled due to Obsidian requestUrl API limitations. Will be implemented using Fetch API in a future update. Setting is available for when feature is ready.",
             )
             .addToggle((toggle) =>
                 toggle
                     .setValue(
                         this.plugin.settings.aiEnhancement.enableStreaming,
                     )
+                    .setDisabled(true)  // Disable until feature is implemented
                     .onChange(async (value) => {
                         this.plugin.settings.aiEnhancement.enableStreaming =
                             value;
