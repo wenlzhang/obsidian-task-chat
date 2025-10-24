@@ -200,23 +200,10 @@ export class AIService {
                           ? []
                           : [message];
 
-                // IMPORTANT: Remove property trigger words from AI-returned keywords
-                // Even though we cleaned the input query, the AI might semantically expand
-                // to property-related words (e.g., "task" → "due", "deadline", "priority")
-                // We need to remove these to avoid false matches
-                keywords = TaskSearchService.removePropertyTriggerWords(
-                    keywords,
-                    settings,
-                );
-
-                // Also clean up core keywords returned by AI
-                if (parsedQuery.coreKeywords) {
-                    parsedQuery.coreKeywords =
-                        TaskSearchService.removePropertyTriggerWords(
-                            parsedQuery.coreKeywords,
-                            settings,
-                        );
-                }
+                // NOTE: Property trigger word filtering REMOVED
+                // AI already separates properties (priority, status, dueDate) from keywords
+                // No need to filter again - doing so removes legitimate semantic expansions
+                // Example: "implement priority queue" - "priority" is task content, not filter
 
                 intent = {
                     isSearch: keywords.length > 0,

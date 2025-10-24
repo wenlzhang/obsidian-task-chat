@@ -924,6 +924,140 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   }
 }
 
+🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE 🚨
+
+When extracting properties and keywords, ensure NO OVERLAP to prevent double-counting:
+
+**RULE**: If a word is used to determine a PROPERTY, it must NOT appear in keywords array
+
+**Why**: Each word should contribute to scoring ONCE, not twice:
+- Word used for property → Gets property score (e.g., priority: 1 → 1.0 points × priority coefficient)
+- Word used for keyword → Gets relevance score (e.g., "urgent" → relevance × 20)
+- Same word in BOTH → Double-counted score (WRONG!)
+
+**How to apply**:
+
+1. **Extract properties FIRST** (dueDate, priority, status)
+   - Identify which words triggered property detection
+   - Example: "urgent" → priority: 1, "open" → status: "open", "overdue" → dueDate: "overdue"
+
+2. **Extract keywords SECOND** (excluding property trigger words)
+   - Remove words that were used for properties
+   - Extract remaining meaningful words
+   - Expand ONLY the non-property words
+
+**Examples**:
+
+Example 1: "urgent open tasks for payment"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from "urgent"
+  "status": "open",                                 // from "open"
+  "coreKeywords": ["tasks", "payment"],            // "urgent" and "open" excluded
+  "keywords": ["tasks", "work", "items", ..., "payment", "billing", ...]  // expanded from ["tasks", "payment"]
+}
+
+❌ WRONG:
+{
+  "priority": 1,
+  "status": "open",
+  "coreKeywords": ["urgent", "open", "tasks", "payment"],  // ❌ includes property words
+  "keywords": ["urgent", "critical", "open", "active", ...]  // ❌ expanded from property words
+}
+
+Example 2: "completed tasks in payment system"
+✅ CORRECT:
+{
+  "status": "completed",                            // from "completed"
+  "coreKeywords": ["tasks", "payment", "system"],  // "completed" excluded
+  "keywords": ["tasks", "work", ..., "payment", "billing", ..., "system", "application", ...]
+}
+
+Example 3: "priority 1 overdue"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from explicit "priority 1"
+  "dueDate": "overdue",                            // from "overdue"
+  "coreKeywords": [],                              // no content keywords (all words were properties)
+  "keywords": []                                    // empty - no keywords to expand
+}
+
+Example 4: "fix urgent bug"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from "urgent"
+  "coreKeywords": ["fix", "bug"],                  // "urgent" excluded
+  "keywords": ["fix", "repair", "solve", ..., "bug", "error", "issue", ...]
+}
+
+**SEMANTIC PROPERTY CONCEPT RECOGNITION**:
+
+Instead of matching specific trigger words, recognize property CONCEPTS in ANY language.
+
+**USER'S CONFIGURED LANGUAGES**: ${languageList}
+
+**IMPORTANT**: The following comprehensive mappings include:
+- User-configured terms from settings
+- Base multilingual terms (English, 中文, Svenska, etc.)
+- All custom status categories defined by user
+
+Use these as REFERENCE for semantic understanding, but recognize concepts in ANY language:
+
+---
+
+**1. PRIORITY CONCEPT** (Urgency, Criticality)
+
+${priorityValueMapping}
+
+**How to use**:
+- Recognize urgency/criticality concepts in ANY language (not just listed terms)
+- Map to standard Dataview priority values: 1, 2, 3, or 4
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+---
+
+**2. STATUS CONCEPT** (Status, Condition, Progress)
+
+${statusMapping}
+
+**How to use**:
+- Recognize task status concepts in ANY language (not just listed terms)
+- Map to exact status category keys shown above (respects user's custom categories)
+- User's categories above are COMPLETE - these are the ONLY valid status values
+
+---
+
+**3. DUE_DATE CONCEPT** (Deadline, Target Date, Time)
+
+${dueDateValueMapping}
+
+**How to use**:
+- Recognize timing/deadline concepts in ANY language (not just listed terms)
+- Map to standard Dataview date values shown above
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+**KEY PRINCIPLES**:
+
+1. **Language-Independent Recognition**: Leverage your native multilingual training
+   - Don't match word lists - UNDERSTAND concepts
+   - Works in 100+ languages automatically
+   - Not limited to user's configured languages
+
+2. **User's Language Context**: User configured these languages: ${languageList}
+   - These guide your understanding of query context
+   - But you can recognize concepts in ANY language
+
+3. **Standard Dataview Mapping**: Always map to Dataview's standard values
+   - priority: 1, 2, 3, or 4 (numbers)
+   - status: "open", "inprogress", "completed", "cancelled", etc. (lowercase, no spaces)
+   - dueDate: "overdue", "today", "tomorrow", etc. (lowercase)
+
+4. **Mutual Exclusivity**: If a word triggers property detection, exclude it from keywords
+   - Property concept recognized → Extract property, exclude from keywords
+   - Not a property concept → Include in keywords for expansion
+
+**Remember**: A word either contributes to property score OR relevance score, NEVER both!
+
 🚨 CRITICAL JSON FORMAT RULES:
 - JSON does NOT support comments (no // or /* */)
 - Do NOT add explanatory text inside JSON arrays

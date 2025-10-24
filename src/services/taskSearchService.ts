@@ -6,6 +6,7 @@ import { PropertyDetectionService } from "./propertyDetectionService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { PluginSettings } from "../settings";
 import { moment } from "obsidian";
+import { TypoCorrection } from "../utils/typoCorrection";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -88,127 +89,113 @@ export class TaskSearchService {
     }
 
     /**
-     * Remove property syntax from query string (for AI preprocessing)
-     * Returns cleaned query string WITHOUT splitting into words or filtering stop words
-     * This is used before sending query to AI to save tokens
+     * Remove property syntax from query string POSITIONALLY (beginning/end only)
+     * This preserves task content that happens to contain property-related words in the middle
+     *
+     * User queries typically follow these patterns:
+     * - [properties] [keywords]: "p1 urgent payment system"
+     * - [keywords] [properties]: "payment system urgent p1"
+     *
+     * By removing only from beginning/end, we preserve middle content like:
+     * - "payment priority system" → keeps "priority" (it's task content)
+     *
+     * IMPORTANT: This ONLY removes STANDARD SYNTAX (p1, s:open, d:today)
+     * NOT natural language trigger words ("urgent", "priority", "tasks")
+     * Natural language property detection is handled by AI in Smart/Chat modes
      *
      * @param query - Original user query
-     * @returns Query with property syntax removed, preserving original phrasing
+     * @returns Query with property syntax removed from beginning/end only
      */
     static removePropertySyntax(query: string): string {
-        let cleanedQuery = query;
+        let result = query.trim();
+        let changed = true;
 
-        // Remove priority syntax (both legacy and unified)
-        cleanedQuery = cleanedQuery.replace(
+        // All property patterns to check
+        const patterns = [
             TaskPropertyService.QUERY_PATTERNS.priority,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.priorityUnified,
-            "",
-        );
-
-        // Remove status syntax using centralized pattern
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.status,
-            "",
-        );
-
-        // Remove due date unified syntax (d:today, due:all, etc.)
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.dueUnified,
-            "",
-        );
-
-        // Remove project syntax using centralized pattern
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.project,
-            "",
-        );
-
-        // Remove search syntax using centralized pattern
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.search,
-            "",
-        );
-
-        // Remove due date keywords (dynamically generated, multilingual)
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.getDueDateKeywordsPattern(),
-            "",
-        );
-
-        // Remove special keywords using centralized patterns
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordSubtask,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordNoDate,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.specialKeywordNoPriority,
-            "",
-        );
-
-        // Remove date range syntax using centralized patterns
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.dueBeforeRange,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.dueAfterRange,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.dateBeforeRange,
-            "",
-        );
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.dateAfterRange,
-            "",
-        );
-
-        // Remove hashtags using centralized pattern
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.hashtag,
-            "",
-        );
-
-        // Remove operators using centralized pattern
-        cleanedQuery = cleanedQuery.replace(
             TaskPropertyService.QUERY_PATTERNS.operators,
-            "",
-        );
+        ];
+
+        // Remove from BEGINNING (loop until nothing matches)
+        while (changed) {
+            changed = false;
+            for (const pattern of patterns) {
+                // Match at start only
+                const startPattern = new RegExp(
+                    `^\\s*${pattern.source}\\s*`,
+                    pattern.flags,
+                );
+                if (startPattern.test(result)) {
+                    const before = result;
+                    result = result.replace(startPattern, "");
+                    if (result !== before) {
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        // Remove from END (loop until nothing matches)
+        changed = true;
+        while (changed) {
+            changed = false;
+            for (const pattern of patterns) {
+                // Match at end only
+                const endPattern = new RegExp(
+                    `\\s*${pattern.source}\\s*$`,
+                    pattern.flags,
+                );
+                if (endPattern.test(result)) {
+                    const before = result;
+                    result = result.replace(endPattern, "");
+                    if (result !== before) {
+                        changed = true;
+                    }
+                }
+            }
+        }
 
         // Clean up extra whitespace
-        cleanedQuery = cleanedQuery.replace(/\s+/g, " ").trim();
+        result = result.replace(/\s+/g, " ").trim();
 
-        return cleanedQuery;
+        return result;
     }
 
     /**
      * Extract keywords from user query with improved multilingual word segmentation
      * Uses TextSplitter for better handling of mixed-language text
      * This is used for Simple Search mode (splits into words and filters stop words)
+     *
+     * NEW: Includes typo correction and positional property removal
      */
     static extractKeywords(query: string): string[] {
-        // Remove property syntax using shared function
-        const cleanedQuery = this.removePropertySyntax(query);
+        // Step 1: Correct common typos (local, no AI)
+        const correctedQuery = TypoCorrection.correctTypos(query);
 
-        // Use TextSplitter for multilingual word segmentation
+        // Step 2: Remove property syntax POSITIONALLY (beginning/end only)
+        // This preserves task content like "payment priority system"
+        const cleanedQuery = this.removePropertySyntax(correctedQuery);
+
+        // Step 3: Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
-        // Remove stop words using shared service (consistent with AI mode)
+        // Step 4: Remove stop words using shared service (consistent with AI mode)
         const filteredWords = StopWords.filterStopWords(words);
 
         // Log stop word filtering (for consistency with AI mode)
@@ -227,55 +214,11 @@ export class TaskSearchService {
         return filteredWords;
     }
 
-    /**
-     * Remove property trigger words from keywords using smart positional filtering
-     *
-     * @param settings - Plugin settings with user-configured property terms
-     * @returns Keywords with property trigger words removed (if at beginning/end)
-     */
-    static removePropertyTriggerWords(
-        keywords: string[],
-        settings: PluginSettings,
-    ): string[] {
-        if (keywords.length === 0) return keywords;
-
-        // Get all property trigger words from centralized source
-        const propertyTriggerWords =
-            TaskPropertyService.getAllPropertyTriggerWords(settings);
-
-        const result = [...keywords];
-        let removed: string[] = [];
-
-        // Check and remove from beginning
-        while (
-            result.length > 0 &&
-            propertyTriggerWords.has(result[0].toLowerCase())
-        ) {
-            removed.push(result[0]);
-            result.shift();
-        }
-
-        // Check and remove from end
-        while (
-            result.length > 0 &&
-            propertyTriggerWords.has(result[result.length - 1].toLowerCase())
-        ) {
-            removed.push(result[result.length - 1]);
-            result.pop();
-        }
-
-        // Log removal if any words were removed
-        if (removed.length > 0) {
-            console.log(
-                `[Task Chat] Removed property trigger words (positional): [${removed.join(", ")}]`,
-            );
-            console.log(
-                `[Task Chat] Keywords after property trigger removal: ${keywords.length} → ${result.length}`,
-            );
-        }
-
-        return result;
-    }
+    // NOTE: removePropertyTriggerWords has been REMOVED
+    // Property removal is now handled POSITIONALLY in removePropertySyntax()
+    // which removes ONLY standard syntax (p1, s:open) from beginning/end
+    // NOT natural language words ("urgent", "priority", "tasks")
+    // This prevents over-filtering and preserves task content
 
     /**
      * Check if query is asking about task search/finding
@@ -812,11 +755,11 @@ export class TaskSearchService {
         const extractedStatus = this.extractStatusFromQuery(query, settings);
         const extractedFolder = this.extractFolderFromQuery(query);
         const extractedTags = this.extractTagsFromQuery(query);
-        let keywords = this.extractKeywords(query);
+        const keywords = this.extractKeywords(query);
 
-        // Apply smart positional filtering to remove property trigger words
-        // Only removes if at beginning or end (e.g., "task chat due" → ["task", "chat"])
-        keywords = this.removePropertyTriggerWords(keywords, settings);
+        // NOTE: Property filtering now handled in extractKeywords()
+        // removePropertySyntax() removes standard syntax POSITIONALLY (beginning/end only)
+        // This preserves task content like "payment priority system"
 
         // Count how many filters are present
         const filterCount =
