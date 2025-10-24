@@ -1270,6 +1270,17 @@ ${taskContext}`;
     }
 
     /**
+     * Estimate token count from text
+     * Rough approximation: 1 token ≈ 4 characters for English, ~1 token per character for Chinese
+     */
+    private static estimateTokenCount(text: string): number {
+        if (!text) return 0;
+        // Simple estimation: ~4 chars per token on average
+        // This is a rough approximation but better than showing 0
+        return Math.ceil(text.length / 4);
+    }
+
+    /**
      * Calculate cost based on token usage and model (using dynamic pricing from API)
      * Pricing data fetched from OpenRouter API and updated automatically
      */
@@ -1490,9 +1501,35 @@ ${taskContext}`;
             // Clean up reasoning tags
             const cleanedResponse = this.stripReasoningTags(fullResponse);
 
-            // Use actual token counts if available
-            const promptTokens = tokenUsageInfo?.promptTokens ?? 0;
-            const completionTokens = tokenUsageInfo?.completionTokens ?? 0;
+            // Use actual token counts if available, otherwise estimate
+            let promptTokens: number;
+            let completionTokens: number;
+            let isEstimated: boolean;
+
+            if (tokenUsageInfo) {
+                // API provided token counts - use them
+                promptTokens = tokenUsageInfo.promptTokens || 0;
+                completionTokens = tokenUsageInfo.completionTokens || 0;
+                isEstimated = false;
+            } else {
+                // API didn't provide token counts - estimate them
+                // Estimate input tokens from messages
+                let inputText = "";
+                for (const msg of messages) {
+                    if (typeof msg.content === "string") {
+                        inputText += msg.content;
+                    } else if (Array.isArray(msg.content)) {
+                        for (const part of msg.content) {
+                            if (part.type === "text") {
+                                inputText += part.text;
+                            }
+                        }
+                    }
+                }
+                promptTokens = this.estimateTokenCount(inputText);
+                completionTokens = this.estimateTokenCount(cleanedResponse);
+                isEstimated = true;
+            }
 
             // Create token usage object
             const tokenUsage: TokenUsage = {
@@ -1508,7 +1545,7 @@ ${taskContext}`;
                 ),
                 model: providerConfig.model,
                 provider: settings.aiProvider,
-                isEstimated: !tokenUsageInfo,
+                isEstimated,
             };
 
             Logger.debug("Streaming completed successfully");
@@ -1609,9 +1646,35 @@ ${taskContext}`;
 
                 const cleanedResponse = this.stripReasoningTags(fullResponse);
 
-                // Use actual token counts if available
-                const promptTokens = tokenUsageInfo?.promptTokens ?? 0;
-                const completionTokens = tokenUsageInfo?.completionTokens ?? 0;
+                // Use actual token counts if available, otherwise estimate
+                let promptTokens: number;
+                let completionTokens: number;
+                let isEstimated: boolean;
+
+                if (tokenUsageInfo) {
+                    // API provided token counts - use them
+                    promptTokens = tokenUsageInfo.promptTokens || 0;
+                    completionTokens = tokenUsageInfo.completionTokens || 0;
+                    isEstimated = false;
+                } else {
+                    // API didn't provide token counts - estimate them
+                    // For Anthropic, estimate from system message + conversation messages
+                    let inputText = systemMessage?.content || "";
+                    for (const msg of conversationMessages) {
+                        if (typeof msg.content === "string") {
+                            inputText += msg.content;
+                        } else if (Array.isArray(msg.content)) {
+                            for (const part of msg.content) {
+                                if (part.type === "text") {
+                                    inputText += part.text;
+                                }
+                            }
+                        }
+                    }
+                    promptTokens = this.estimateTokenCount(inputText);
+                    completionTokens = this.estimateTokenCount(cleanedResponse);
+                    isEstimated = true;
+                }
 
                 const tokenUsage: TokenUsage = {
                     promptTokens,
@@ -1626,7 +1689,7 @@ ${taskContext}`;
                     ),
                     model: providerConfig.model,
                     provider: "anthropic",
-                    isEstimated: !tokenUsageInfo,
+                    isEstimated,
                 };
 
                 Logger.debug("Anthropic streaming completed successfully");

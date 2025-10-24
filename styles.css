@@ -533,12 +533,15 @@
     font-size: 12px;
 }
 
-/* Token Usage */
+/* Token Usage - now outside message element so vertical line doesn't extend to it */
 .task-chat-token-usage {
     margin-top: 8px;
+    margin-bottom: 16px;
+    margin-left: 8px; /* Align with message content */
     padding-top: 8px;
-    border-top: 1px solid var(--background-modifier-border);
-    opacity: 0.7;
+    padding-left: 6px;
+    border-top: 2px solid var(--background-modifier-border);
+    opacity: 0.8;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -550,13 +553,13 @@
     flex: 1;
 }
 
-/* Keyword Expansion Display */
+/* Keyword Expansion Display - now outside message element */
 .task-chat-keyword-expansion {
-    margin-top: 0px;
-    padding-top: 2px;
+    margin-top: -25px; /* Reduce gap with token usage above */
+    margin-bottom: 0px;
+    margin-left: 8px; /* Align with token usage and message content */
+    padding-left: 6px;
     opacity: 0.9;
-    /* No horizontal padding - align with token usage */
-    /* No background - keep it simple like token usage */
 }
 
 .task-chat-keyword-summary {

@@ -826,9 +826,9 @@ export class ChatView extends ItemView {
             }
         }
 
-        // Token usage display
+        // Token usage display - moved outside messageEl so border-left doesn't extend to it
         if (message.tokenUsage && this.plugin.settings.showTokenUsage) {
-            const usageEl = messageEl.createDiv("task-chat-token-usage");
+            const usageEl = this.messagesEl.createDiv("task-chat-token-usage");
 
             const parts: string[] = [];
 
@@ -848,42 +848,54 @@ export class ChatView extends ItemView {
 
             // Determine if AI was used
             const isSimpleSearch = message.tokenUsage.model === "none";
-            const hasAIAnalysis = message.tokenUsage.totalTokens > 0;
+            // Show model info if we have a model (even if token count is 0 due to streaming issues)
+            const hasModelInfo =
+                message.tokenUsage.model && message.tokenUsage.model !== "none";
 
             // Show model and token details when AI was used (parsing or analysis)
-            if (hasAIAnalysis) {
-                // Show provider and model for non-Ollama services
-                if (message.tokenUsage.provider !== "ollama") {
+            if (hasModelInfo) {
+                // Show provider and model
+                if (message.tokenUsage.provider === "ollama") {
+                    // Ollama: Show "Model: ollama/modelname"
+                    parts.push(`Ollama: ${message.tokenUsage.model}`);
+                } else {
+                    // OpenAI/Anthropic/OpenRouter: Show "Provider modelname"
                     const providerName =
                         message.tokenUsage.provider === "openai"
                             ? "OpenAI"
                             : message.tokenUsage.provider === "anthropic"
                               ? "Anthropic"
                               : "OpenRouter";
-                    parts.push(`${providerName} ${message.tokenUsage.model}`);
-                } else {
-                    parts.push(`Model: ${message.tokenUsage.model}`);
+                    parts.push(`${providerName}: ${message.tokenUsage.model}`);
                 }
 
-                // Token count with details
+                // Token count with details (always show, even if 0)
                 const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
+                const totalTokens = message.tokenUsage.totalTokens || 0;
+                const promptTokens = message.tokenUsage.promptTokens || 0;
+                const completionTokens =
+                    message.tokenUsage.completionTokens || 0;
                 parts.push(
-                    `${tokenStr}${message.tokenUsage.totalTokens.toLocaleString()} tokens (${message.tokenUsage.promptTokens.toLocaleString()} in, ${message.tokenUsage.completionTokens.toLocaleString()} out)`,
+                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
                 );
-            }
 
-            // Cost information
-            if (message.tokenUsage.provider === "ollama") {
-                parts.push("Free (local)");
-            } else if (isSimpleSearch) {
-                parts.push("$0");
-            } else if (message.tokenUsage.estimatedCost > 0) {
-                const cost = message.tokenUsage.estimatedCost;
-                if (cost < 0.01) {
-                    parts.push(`~$${cost.toFixed(4)}`);
+                // Cost information (always show)
+                if (message.tokenUsage.provider === "ollama") {
+                    parts.push("Free (local)");
                 } else {
-                    parts.push(`~$${cost.toFixed(2)}`);
+                    // For online models, always show cost (even if $0)
+                    const cost = message.tokenUsage.estimatedCost || 0;
+                    if (cost === 0) {
+                        parts.push("$0.00");
+                    } else if (cost < 0.01) {
+                        parts.push(`~$${cost.toFixed(4)}`);
+                    } else {
+                        parts.push(`~$${cost.toFixed(2)}`);
+                    }
                 }
+            } else if (isSimpleSearch) {
+                // Simple Search: No AI used
+                parts.push("$0.00");
             }
 
             // Add AI understanding summary to metadata line (compact format)
@@ -903,9 +915,10 @@ export class ChatView extends ItemView {
         }
 
         // Keyword expansion info (show below token usage for Smart Search and Task Chat)
+        // Also moved outside messageEl so border-left doesn't extend to it
         const keywordSummary = this.getKeywordExpansionSummary(message);
         if (keywordSummary) {
-            const keywordEl = messageEl.createDiv(
+            const keywordEl = this.messagesEl.createDiv(
                 "task-chat-keyword-expansion",
             );
             keywordEl.createEl("small", {
