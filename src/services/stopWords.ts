@@ -48,10 +48,10 @@ export class StopWords {
         "was",
         "are",
         "were",
-        "to",   // Very common: "to-do", "Todoist", "sync to", etc.
-        "in",   // Common: "in progress", "in work"
-        "on",   // Common: "on hold", "work on"
-        "at",   // Common: "at work", "look at"
+        "to", // Very common: "to-do", "Todoist", "sync to", etc.
+        "in", // Common: "in progress", "in work"
+        "on", // Common: "on hold", "work on"
+        "at", // Common: "at work", "look at"
 
         // English query/question words
         "me",

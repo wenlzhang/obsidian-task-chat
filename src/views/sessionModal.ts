@@ -38,12 +38,22 @@ export class SessionModal extends Modal {
             return;
         }
 
-        // Session count
-        const countEl = contentEl.createEl("p", {
+        // Session count and bulk actions
+        const headerEl = contentEl.createDiv("task-chat-session-header");
+        const countEl = headerEl.createEl("p", {
             cls: "task-chat-session-count",
         });
         countEl.createEl("span", {
             text: `${sessions.length} session${sessions.length !== 1 ? "s" : ""}`,
+        });
+
+        // Bulk delete button
+        const deleteAllBtn = headerEl.createEl("button", {
+            text: "Delete All",
+            cls: "task-chat-delete-all-button",
+        });
+        deleteAllBtn.addEventListener("click", () => {
+            this.deleteAllSessions();
         });
 
         // Session list
@@ -138,6 +148,39 @@ export class SessionModal extends Modal {
             if (newCurrent) {
                 this.onSessionSelect(newCurrent.id);
             }
+        }
+    }
+
+    private deleteAllSessions(): void {
+        const sessions = this.plugin.sessionManager.getAllSessions();
+        const totalMessages = sessions.reduce((sum, session) => {
+            return (
+                sum +
+                session.messages.filter(
+                    (msg) => msg.role === "user" || msg.role === "assistant",
+                ).length
+            );
+        }, 0);
+
+        const confirmMessage =
+            totalMessages > 0
+                ? `Delete all ${sessions.length} sessions (${totalMessages} total messages)?\n\nThis action cannot be undone.`
+                : `Delete all ${sessions.length} empty sessions?`;
+
+        if (confirm(confirmMessage)) {
+            // Delete all sessions
+            sessions.forEach((session) => {
+                this.plugin.sessionManager.deleteSession(session.id);
+            });
+            this.plugin.saveSettings();
+
+            // Create a new session automatically
+            const newSession =
+                this.plugin.sessionManager.getOrCreateCurrentSession();
+            this.onSessionSelect(newSession.id);
+
+            // Close modal after deleting all
+            this.close();
         }
     }
 

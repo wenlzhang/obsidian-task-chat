@@ -201,6 +201,7 @@ export class ChatView extends ItemView {
             // Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux) sends message
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
+                e.stopPropagation();
                 this.sendMessage();
             }
         });
@@ -268,7 +269,7 @@ export class ChatView extends ItemView {
 
         // Send button (on same line as provider/model)
         this.sendButtonEl = toolbarEl.createEl("button", {
-            text: "Send (Cmd/Ctrl+Enter)",
+            text: "Send",
             cls: "task-chat-send-button",
         });
 
@@ -969,6 +970,7 @@ export class ChatView extends ItemView {
 
         this.isProcessing = true;
         this.inputEl.value = "";
+        this.updateTokenCounter(); // Reset token counter to 0 after clearing input
         this.inputEl.disabled = true;
         this.sendButtonEl.disabled = false; // Keep enabled so user can click to stop
         this.sendButtonEl.setText("Stop");
@@ -1074,7 +1076,7 @@ export class ChatView extends ItemView {
             this.isProcessing = false;
             this.inputEl.disabled = false;
             this.sendButtonEl.disabled = false;
-            this.sendButtonEl.setText("Send (Cmd/Ctrl+Enter)");
+            this.sendButtonEl.setText("Send");
             this.sendButtonEl.removeClass("task-chat-stop-button");
             this.abortController = null;
             this.streamingMessageEl = null;
@@ -1099,7 +1101,7 @@ export class ChatView extends ItemView {
         this.isProcessing = false;
         this.inputEl.disabled = false;
         this.sendButtonEl.disabled = false;
-        this.sendButtonEl.setText("Send (Cmd/Ctrl+Enter)");
+        this.sendButtonEl.setText("Send");
         this.sendButtonEl.removeClass("task-chat-stop-button");
         this.streamingMessageEl = null;
         this.inputEl.focus();
