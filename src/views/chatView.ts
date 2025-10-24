@@ -985,8 +985,18 @@ export class ChatView extends ItemView {
         await this.renderMessages();
         await this.plugin.saveSettings();
 
-        // Show typing indicator
-        this.showTypingIndicator();
+        // Show typing indicator (or create streaming element if streaming enabled)
+        const useStreaming = this.plugin.settings.aiEnhancement.enableStreaming;
+
+        if (useStreaming) {
+            // Create streaming message element instead of typing indicator
+            this.streamingMessageEl = this.messagesEl.createDiv({
+                cls: "task-chat-message task-chat-message-ai task-chat-streaming",
+            });
+            this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+        } else {
+            this.showTypingIndicator();
+        }
 
         try {
             // Apply chat mode override if user selected different mode
@@ -998,6 +1008,26 @@ export class ChatView extends ItemView {
                 );
             }
 
+            // Create streaming callback
+            let streamedContent = "";
+            const onStream = useStreaming
+                ? (chunk: string) => {
+                      streamedContent += chunk;
+                      if (this.streamingMessageEl) {
+                          this.streamingMessageEl.empty();
+                          MarkdownRenderer.renderMarkdown(
+                              streamedContent,
+                              this.streamingMessageEl,
+                              "",
+                              this.plugin,
+                          );
+                          // Auto-scroll to bottom
+                          this.messagesEl.scrollTop =
+                              this.messagesEl.scrollHeight;
+                      }
+                  }
+                : undefined;
+
             // Get AI response or direct results
             const result = await AIService.sendMessage(
                 this.plugin.app,
@@ -1005,6 +1035,8 @@ export class ChatView extends ItemView {
                 this.currentTasks,
                 this.plugin.sessionManager.getCurrentMessages(),
                 effectiveSettings,
+                onStream, // Pass streaming callback
+                this.abortController?.signal, // Pass abort signal
             );
 
             // Update total usage in settings
@@ -1016,8 +1048,13 @@ export class ChatView extends ItemView {
                 await this.plugin.saveSettings();
             }
 
-            // Hide typing indicator
-            this.hideTypingIndicator();
+            // Clean up streaming element or hide typing indicator
+            if (useStreaming && this.streamingMessageEl) {
+                this.streamingMessageEl.remove();
+                this.streamingMessageEl = null;
+            } else {
+                this.hideTypingIndicator();
+            }
 
             // Get the chat mode that was used (from override or settings)
             const usedChatMode =
@@ -1053,8 +1090,13 @@ export class ChatView extends ItemView {
                 await this.plugin.saveSettings();
             }
         } catch (error) {
-            // Hide typing indicator on error
-            this.hideTypingIndicator();
+            // Clean up streaming element or hide typing indicator on error
+            if (useStreaming && this.streamingMessageEl) {
+                this.streamingMessageEl.remove();
+                this.streamingMessageEl = null;
+            } else {
+                this.hideTypingIndicator();
+            }
             Logger.error("Error sending message:", error);
             new Notice(error.message || "Failed to get AI response");
 

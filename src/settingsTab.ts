@@ -254,7 +254,9 @@ export class SettingsTab extends PluginSettingTab {
             });
             ollamaInfo.createEl("strong", { text: "Ollama Setup Required" });
             ollamaInfo.createEl("br");
-            ollamaInfo.appendText("For installation, CORS configuration, model selection, and troubleshooting, see: ");
+            ollamaInfo.appendText(
+                "For installation, CORS configuration, model selection, and troubleshooting, see: ",
+            );
             ollamaInfo.createEl("br");
             const link = ollamaInfo.createEl("a", {
                 text: "📖 Complete Ollama Setup Guide",
@@ -636,14 +638,13 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable streaming responses")
             .setDesc(
-                "Show AI responses as they're generated (like ChatGPT). ⚠️ COMING SOON: Currently disabled due to Obsidian requestUrl API limitations. Will be implemented using Fetch API in a future update. Setting is available for when feature is ready.",
+                "Show AI responses as they're generated (like ChatGPT). ✅ NOW AVAILABLE: Streaming is fully implemented using native Fetch API. Works with all providers: OpenAI, Anthropic, Ollama, and OpenRouter. Responses appear in real-time as the AI generates them, providing immediate feedback and better user experience.",
             )
             .addToggle((toggle) =>
                 toggle
                     .setValue(
                         this.plugin.settings.aiEnhancement.enableStreaming,
                     )
-                    .setDisabled(true)  // Disable until feature is implemented
                     .onChange(async (value) => {
                         this.plugin.settings.aiEnhancement.enableStreaming =
                             value;

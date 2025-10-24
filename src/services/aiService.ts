@@ -13,6 +13,7 @@ import { TaskSortService } from "./taskSortService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 import { DataviewService } from "./dataviewService";
 import { Logger } from "../utils/logger";
+import { StreamingService, StreamChunk } from "./streamingService";
 
 /**
  * Service for AI chat functionality
@@ -1325,8 +1326,18 @@ ${taskContext}`;
         const providerConfig = getCurrentProviderConfig(settings);
         const endpoint = providerConfig.apiEndpoint;
 
+        // Check if streaming is enabled and callback is provided
+        const useStreaming =
+            settings.aiEnhancement.enableStreaming && onStream !== undefined;
+
         if (settings.aiProvider === "ollama") {
-            return this.callOllama(messages, settings, onStream, abortSignal);
+            return this.callOllama(
+                messages,
+                settings,
+                onStream,
+                abortSignal,
+                useStreaming,
+            );
         }
 
         if (settings.aiProvider === "anthropic") {
@@ -1335,10 +1346,21 @@ ${taskContext}`;
                 settings,
                 onStream,
                 abortSignal,
+                useStreaming,
             );
         }
 
         // OpenAI-compatible API call (OpenAI and OpenRouter)
+        if (useStreaming) {
+            return this.callOpenAIWithStreaming(
+                messages,
+                settings,
+                onStream,
+                abortSignal,
+            );
+        }
+
+        // Non-streaming fallback
         const apiKey = this.getApiKeyForProvider(settings);
         const response = await requestUrl({
             url: endpoint,
@@ -1397,6 +1419,110 @@ ${taskContext}`;
     }
 
     /**
+     * Call OpenAI-compatible API with streaming support
+     * Uses native Fetch API instead of requestUrl to support streaming
+     */
+    private static async callOpenAIWithStreaming(
+        messages: any[],
+        settings: PluginSettings,
+        onStream: (chunk: string) => void,
+        abortSignal?: AbortSignal,
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
+        const providerConfig = getCurrentProviderConfig(settings);
+        const endpoint = providerConfig.apiEndpoint;
+        const apiKey = this.getApiKeyForProvider(settings);
+
+        Logger.debug("Starting OpenAI streaming call...");
+
+        try {
+            // Use native Fetch API (supports streaming)
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: providerConfig.model,
+                    messages: messages,
+                    stream: true, // Enable streaming!
+                    temperature: providerConfig.temperature,
+                    max_tokens: providerConfig.maxTokens,
+                }),
+                signal: abortSignal,
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `AI API error: ${response.status} ${response.statusText}`,
+                );
+            }
+
+            if (!response.body) {
+                throw new Error("Response body is null");
+            }
+
+            // Parse SSE stream
+            const reader = response.body.getReader();
+            let fullResponse = "";
+            let tokenUsageInfo: StreamChunk["tokenUsage"] | undefined;
+
+            for await (const chunk of StreamingService.parseSSE(
+                reader,
+                settings.aiProvider,
+            )) {
+                if (chunk.content) {
+                    fullResponse += chunk.content;
+                    onStream(chunk.content); // Stream to UI
+                }
+
+                // Capture token usage from stream
+                if (chunk.tokenUsage) {
+                    tokenUsageInfo = chunk.tokenUsage;
+                }
+
+                if (chunk.done) break;
+            }
+
+            // Clean up reasoning tags
+            const cleanedResponse = this.stripReasoningTags(fullResponse);
+
+            // Create token usage object
+            const tokenUsage: TokenUsage = {
+                promptTokens: tokenUsageInfo?.promptTokens || 0,
+                completionTokens: tokenUsageInfo?.completionTokens || 0,
+                totalTokens: tokenUsageInfo?.totalTokens || 0,
+                estimatedCost: this.calculateCost(
+                    tokenUsageInfo?.promptTokens || 0,
+                    tokenUsageInfo?.completionTokens || 0,
+                    providerConfig.model,
+                    settings.aiProvider,
+                    settings.pricingCache.data,
+                ),
+                model: providerConfig.model,
+                provider: settings.aiProvider,
+                isEstimated: !tokenUsageInfo, // Estimated if no usage info from stream
+            };
+
+            Logger.debug("Streaming completed successfully");
+
+            return {
+                response: cleanedResponse,
+                tokenUsage,
+            };
+        } catch (error: any) {
+            // Handle abort errors gracefully
+            if (error.name === "AbortError") {
+                Logger.debug("Stream aborted by user");
+                throw new Error("Request aborted");
+            }
+
+            Logger.error("Streaming error:", error);
+            throw error;
+        }
+    }
+
+    /**
      * Call Anthropic API (different format than OpenAI)
      */
     private static async callAnthropic(
@@ -1404,6 +1530,7 @@ ${taskContext}`;
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
+        useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
@@ -1417,6 +1544,97 @@ ${taskContext}`;
         );
 
         const apiKey = this.getApiKeyForProvider(settings);
+
+        // Use streaming if enabled
+        if (useStreaming && onStream) {
+            Logger.debug("Starting Anthropic streaming call...");
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-api-key": apiKey,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    body: JSON.stringify({
+                        model: providerConfig.model,
+                        messages: conversationMessages,
+                        system: systemMessage?.content || "",
+                        stream: true, // Enable streaming!
+                        temperature: providerConfig.temperature,
+                        max_tokens: providerConfig.maxTokens,
+                    }),
+                    signal: abortSignal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Anthropic API error: ${response.status} ${response.statusText}`,
+                    );
+                }
+
+                if (!response.body) {
+                    throw new Error("Response body is null");
+                }
+
+                // Parse SSE stream
+                const reader = response.body.getReader();
+                let fullResponse = "";
+                let tokenUsageInfo: StreamChunk["tokenUsage"] | undefined;
+
+                for await (const chunk of StreamingService.parseSSE(
+                    reader,
+                    "anthropic",
+                )) {
+                    if (chunk.content) {
+                        fullResponse += chunk.content;
+                        onStream(chunk.content);
+                    }
+
+                    if (chunk.tokenUsage) {
+                        tokenUsageInfo = chunk.tokenUsage;
+                    }
+
+                    if (chunk.done) break;
+                }
+
+                const cleanedResponse = this.stripReasoningTags(fullResponse);
+
+                const tokenUsage: TokenUsage = {
+                    promptTokens: tokenUsageInfo?.promptTokens || 0,
+                    completionTokens: tokenUsageInfo?.completionTokens || 0,
+                    totalTokens: tokenUsageInfo?.totalTokens || 0,
+                    estimatedCost: this.calculateCost(
+                        tokenUsageInfo?.promptTokens || 0,
+                        tokenUsageInfo?.completionTokens || 0,
+                        providerConfig.model,
+                        settings.aiProvider,
+                        settings.pricingCache.data,
+                    ),
+                    model: providerConfig.model,
+                    provider: settings.aiProvider,
+                    isEstimated: !tokenUsageInfo,
+                };
+
+                Logger.debug("Anthropic streaming completed successfully");
+
+                return {
+                    response: cleanedResponse,
+                    tokenUsage,
+                };
+            } catch (error: any) {
+                if (error.name === "AbortError") {
+                    Logger.debug("Anthropic stream aborted by user");
+                    throw new Error("Request aborted");
+                }
+
+                Logger.error("Anthropic streaming error:", error);
+                throw error;
+            }
+        }
+
+        // Non-streaming fallback
         const response = await requestUrl({
             url: endpoint,
             method: "POST",
@@ -1488,11 +1706,119 @@ ${taskContext}`;
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
+        useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
+        // Use streaming if enabled
+        if (useStreaming && onStream) {
+            Logger.debug("Starting Ollama streaming call...");
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: providerConfig.model,
+                        messages: messages,
+                        stream: true, // Enable streaming!
+                        options: {
+                            temperature: providerConfig.temperature,
+                            num_predict: providerConfig.maxTokens,
+                            num_ctx: providerConfig.contextWindow,
+                        },
+                    }),
+                    signal: abortSignal,
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(
+                        `Ollama API error (${response.status}): ${errorText}. ` +
+                            `Ensure Ollama is running and model '${providerConfig.model}' is available.`,
+                    );
+                }
+
+                if (!response.body) {
+                    throw new Error("Response body is null");
+                }
+
+                // Parse SSE stream
+                const reader = response.body.getReader();
+                let fullResponse = "";
+                let tokenUsageInfo: StreamChunk["tokenUsage"] | undefined;
+
+                for await (const chunk of StreamingService.parseSSE(
+                    reader,
+                    "ollama",
+                )) {
+                    if (chunk.content) {
+                        fullResponse += chunk.content;
+                        onStream(chunk.content);
+                    }
+
+                    if (chunk.tokenUsage) {
+                        tokenUsageInfo = chunk.tokenUsage;
+                    }
+
+                    if (chunk.done) break;
+                }
+
+                const cleanedResponse = this.stripReasoningTags(fullResponse);
+
+                // Use actual token counts if available, otherwise estimate
+                const promptTokens =
+                    tokenUsageInfo?.promptTokens ||
+                    Math.round(JSON.stringify(messages).length / 4);
+                const completionTokens =
+                    tokenUsageInfo?.completionTokens ||
+                    Math.round(cleanedResponse.length / 4);
+
+                const tokenUsage: TokenUsage = {
+                    promptTokens,
+                    completionTokens,
+                    totalTokens: promptTokens + completionTokens,
+                    estimatedCost: 0, // Ollama is local, no cost
+                    model: providerConfig.model,
+                    provider: "ollama",
+                    isEstimated: !tokenUsageInfo,
+                };
+
+                Logger.debug("Ollama streaming completed successfully");
+
+                return {
+                    response: cleanedResponse,
+                    tokenUsage,
+                };
+            } catch (error: any) {
+                if (error.name === "AbortError") {
+                    Logger.debug("Ollama stream aborted by user");
+                    throw new Error("Request aborted");
+                }
+
+                // Enhanced error handling
+                const errorMsg = error.message || String(error);
+
+                if (
+                    errorMsg.includes("ECONNREFUSED") ||
+                    errorMsg.includes("fetch failed")
+                ) {
+                    throw new Error(
+                        `Cannot connect to Ollama at ${endpoint}. ` +
+                            `Please ensure Ollama is running. Start it with: ollama serve`,
+                    );
+                }
+
+                Logger.error("Ollama streaming error:", error);
+                throw error;
+            }
+        }
+
+        // Non-streaming fallback
         try {
             const response = await requestUrl({
                 url: endpoint,
@@ -1503,7 +1829,7 @@ ${taskContext}`;
                 body: JSON.stringify({
                     model: providerConfig.model,
                     messages: messages,
-                    stream: false, // TODO: Implement streaming with Fetch API (requestUrl doesn't support streaming)
+                    stream: false,
                     options: {
                         temperature: providerConfig.temperature, // User-configurable
                         num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)

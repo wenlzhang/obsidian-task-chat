@@ -192,7 +192,47 @@
     align-self: flex-start;
     max-width: 100%;
     border-left: 2px solid var(--text-faint);
-    /* Copy button inline with token usage, no extra margin needed */
+    background: var(--background-secondary-alt);
+}
+
+/* Streaming Message - shows AI response as it's being generated */
+.task-chat-message-ai {
+    align-self: flex-start;
+    max-width: 90%;
+    border-left: 2px solid var(--interactive-accent);
+    background: var(--background-primary-alt);
+}
+
+.task-chat-streaming {
+    position: relative;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Subtle pulse animation for streaming messages */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.85;
+    }
+}
+
+/* Streaming cursor effect - add blinking cursor at end */
+.task-chat-streaming::after {
+    content: "▋";
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+    color: var(--interactive-accent);
+}
+
+@keyframes blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0;
+    }
 }
 
 /* Message Header */
