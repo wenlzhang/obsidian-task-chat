@@ -85,7 +85,7 @@ export class SessionModal extends Modal {
 
         // Delete all button
         const deleteAllBtn = actionsEl.createEl("button", {
-            text: "Delete All",
+            text: "Delete all",
             cls: "task-chat-delete-all-button",
         });
         deleteAllBtn.addEventListener("click", () => {

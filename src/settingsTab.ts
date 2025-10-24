@@ -155,7 +155,7 @@ export class SettingsTab extends PluginSettingTab {
 
         testConnectionSetting.addButton((button) =>
             button
-                .setButtonText("Test Connection")
+                .setButtonText("Test connection")
                 .setTooltip("Verify API configuration")
                 .onClick(async () => {
                     button.setButtonText("Testing...");
@@ -163,7 +163,7 @@ export class SettingsTab extends PluginSettingTab {
 
                     const result = await this.testConnection();
 
-                    button.setButtonText("Test Connection");
+                    button.setButtonText("Test connection");
                     button.setDisabled(false);
 
                     // Show result below the button
@@ -852,7 +852,7 @@ export class SettingsTab extends PluginSettingTab {
                 )
                 .addButton((button) =>
                     button
-                        .setButtonText("Auto-Fix Now")
+                        .setButtonText("Auto-fix now")
                         .setCta()
                         .onClick(async () => {
                             this.plugin.settings.taskStatusMapping =
@@ -893,7 +893,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Create a new custom status category")
             .addButton((button) =>
                 button
-                    .setButtonText("+ Add Category")
+                    .setButtonText("Add category")
                     .setCta()
                     .onClick(async () => {
                         // Generate unique category name
@@ -1629,7 +1629,7 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Refresh pricing")
             .setDesc("Update pricing data from OpenRouter API")
             .addButton((button) =>
-                button.setButtonText("Refresh Now").onClick(async () => {
+                button.setButtonText("Refresh now").onClick(async () => {
                     button.setButtonText("Updating...");
                     button.setDisabled(true);
 
@@ -1652,7 +1652,7 @@ export class SettingsTab extends PluginSettingTab {
                         new Notice("Error updating pricing: " + error.message);
                     }
 
-                    button.setButtonText("Refresh Now");
+                    button.setButtonText("Refresh now");
                     button.setDisabled(false);
                 }),
             );
