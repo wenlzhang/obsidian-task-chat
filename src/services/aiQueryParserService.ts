@@ -1878,8 +1878,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             body: JSON.stringify({
                 model: providerConfig.model,
                 messages: messages,
-                temperature: 0.1, // Low temperature for consistent parsing
-                max_tokens: 2000, // Increased for full semantic expansion (60 keywords)
+                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
+                max_tokens: providerConfig.maxTokens, // User-configurable response length
             }),
         });
 
@@ -1925,8 +1925,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 model: providerConfig.model,
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
-                temperature: 0.1,
-                max_tokens: 2000,
+                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
+                max_tokens: providerConfig.maxTokens, // User-configurable response length
             }),
         });
 
@@ -1973,9 +1973,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     messages: messages,
                     stream: false,
                     options: {
-                        temperature: 0.1, // Low for deterministic JSON parsing
-                        num_predict: 16000, // Sufficient for JSON with 60 keywords
-                        num_ctx: 32000, // Large context for system prompts
+                        temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
+                        num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)
+                        num_ctx: providerConfig.contextWindow, // User-configurable context window (Ollama-specific)
                     },
                 }),
             });

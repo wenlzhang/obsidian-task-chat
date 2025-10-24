@@ -217,6 +217,13 @@ Analyze my tasks for this week
   - Sort criteria (relevance, due date, priority, status, created, alphabetical)
   - Performance considerations
 
+- **[Model Parameters](docs/MODEL_PARAMETERS.md)** - Configure AI behavior ⭐ NEW
+  - Temperature (recommended 0.1 for JSON output)
+  - Max response tokens (default 8000)
+  - Context window (critical for Ollama)
+  - Provider-specific differences
+  - Troubleshooting guide
+
 ## 🎚️ Customization
 
 ### Status Categories

@@ -1350,8 +1350,8 @@ ${taskContext}`;
             body: JSON.stringify({
                 model: providerConfig.model,
                 messages: messages,
-                temperature: providerConfig.temperature,
-                max_tokens: providerConfig.maxTokens || 2000, // User-configurable response length
+                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for Task Chat
+                max_tokens: providerConfig.maxTokens, // User-configurable response length
             }),
         });
 
@@ -1429,8 +1429,8 @@ ${taskContext}`;
                 model: providerConfig.model,
                 messages: conversationMessages,
                 system: systemMessage?.content || "",
-                temperature: providerConfig.temperature,
-                max_tokens: providerConfig.maxTokens || 2000, // User-configurable response length
+                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for Task Chat
+                max_tokens: providerConfig.maxTokens, // User-configurable response length
             }),
         });
 
@@ -1505,9 +1505,9 @@ ${taskContext}`;
                     messages: messages,
                     stream: false,
                     options: {
-                        temperature: providerConfig.temperature,
-                        num_predict: 16000, // Maximum tokens to generate (higher for comprehensive responses)
-                        num_ctx: 32000, // Context window size (important for large task lists)
+                        temperature: providerConfig.temperature, // User-configurable
+                        num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)
+                        num_ctx: providerConfig.contextWindow, // User-configurable context window (Ollama-specific)
                     },
                 }),
             });

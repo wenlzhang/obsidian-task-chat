@@ -59,8 +59,9 @@ export interface ProviderConfig {
     apiKey: string;
     model: string;
     apiEndpoint: string;
-    temperature: number; // 0.0-2.0, lower = more consistent
-    maxTokens: number; // Max tokens for responses
+    temperature: number; // 0.0-2.0, lower = more consistent, recommended 0.1 for JSON output
+    maxTokens: number; // Max tokens for response generation (OpenAI/Anthropic: max_tokens, Ollama: num_predict)
+    contextWindow: number; // Context window size (Ollama: num_ctx, others: informational only)
     availableModels: string[]; // Cached list of available models
 }
 
@@ -236,7 +237,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             model: "gpt-4o-mini",
             apiEndpoint: "https://api.openai.com/v1/chat/completions",
             temperature: 0.1,
-            maxTokens: 2000,
+            maxTokens: 8000,
+            contextWindow: 128000, // gpt-4o-mini context window (informational)
             availableModels: [],
         },
         anthropic: {
@@ -244,7 +246,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             model: "claude-sonnet-4",
             apiEndpoint: "https://api.anthropic.com/v1/messages",
             temperature: 0.1,
-            maxTokens: 2000,
+            maxTokens: 8000,
+            contextWindow: 200000, // Claude Sonnet context window (informational)
             availableModels: [],
         },
         openrouter: {
@@ -252,15 +255,17 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             model: "openai/gpt-4o-mini",
             apiEndpoint: "https://openrouter.ai/api/v1/chat/completions",
             temperature: 0.1,
-            maxTokens: 2000,
+            maxTokens: 8000,
+            contextWindow: 128000, // Varies by model (informational)
             availableModels: [],
         },
         ollama: {
             apiKey: "", // Not needed for Ollama but kept for consistency
-            model: "llama3.2",
+            model: "gpt-oss:20b",
             apiEndpoint: "http://localhost:11434/api/chat",
             temperature: 0.1,
-            maxTokens: 2000,
+            maxTokens: 8000,
+            contextWindow: 64000, // Ollama num_ctx parameter (actively used)
             availableModels: [],
         },
     },

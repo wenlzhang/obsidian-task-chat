@@ -36,7 +36,7 @@ export class SettingsTab extends PluginSettingTab {
         const p1 = overviewBox.createEl("p");
         p1.createEl("strong", { text: "👉 Start with defaults:" });
         p1.appendText(
-            " Most settings are pre-configured with recommended values. Most users don't need to change anything!",
+            " Most settings are pre-configured with recommended values",
         );
         const p2 = overviewBox.createEl("p");
         p2.createEl("a", {
@@ -174,7 +174,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Temperature")
             .setDesc(
-                "Controls AI response randomness (0.0-2.0). Lower values (e.g., 0.1) produce consistent, focused responses. Higher values (e.g., 1.0) produce more creative, varied responses. Default: 0.1 for consistency.",
+                "Controls AI response randomness (0.0-2.0). Lower values (e.g., 0.1) produce consistent, focused responses ideal for JSON format output in Smart Search and Task Chat. Higher values (e.g., 1.0) produce more creative, varied responses. ⚠️ RECOMMENDED: 0.1 for reliable JSON parsing and structured output. Higher values may impact performance in Smart Search/Task Chat modes.",
             )
             .addSlider((slider) =>
                 slider
@@ -188,17 +188,33 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Max tokens")
+            .setName("Max response tokens")
             .setDesc(
-                "Maximum length of AI responses in Task Chat mode. Dependent on model capabilities. Higher = more detailed but slower and more expensive. Lower = faster and cheaper but may miss details. Recommended: 2000 (balanced), 4000 (detailed), 1000 (concise). Only affects Task Chat responses, not query parsing.",
+                "Maximum tokens for AI response generation. Affects BOTH Smart Search query parsing AND Task Chat responses. Higher = more comprehensive responses but slower and more expensive. Lower = faster and cheaper but may truncate output. ⚠️ RECOMMENDED: 8000 (default, supports 60 keywords expansion + comprehensive task analysis). Parameter names: OpenAI/Anthropic/OpenRouter use 'max_tokens', Ollama uses 'num_predict'.",
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(500, 64000, 100)
+                    .setLimits(2000, 64000, 100)
                     .setValue(this.getCurrentProviderConfig().maxTokens)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
                         this.getCurrentProviderConfig().maxTokens = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Context window")
+            .setDesc(
+                "Maximum context size the model can process (input prompt + response). For OpenAI/Anthropic/OpenRouter: informational only (set by model). For Ollama: actively used as 'num_ctx' parameter. IMPORTANT: Input prompt + max response tokens must not exceed model's context capability. ⚠️ If you get context length errors, reduce this value or max response tokens. Default: 32000 (Ollama), 128000+ (cloud providers).",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(64000, 2000000, 1000)
+                    .setValue(this.getCurrentProviderConfig().contextWindow)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.getCurrentProviderConfig().contextWindow = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -2054,6 +2070,11 @@ export class SettingsTab extends PluginSettingTab {
         // Ensure maxTokens is set
         if (!providerConfig.maxTokens) {
             providerConfig.maxTokens = defaults.maxTokens;
+        }
+
+        // Ensure contextWindow is set
+        if (!providerConfig.contextWindow) {
+            providerConfig.contextWindow = defaults.contextWindow;
         }
 
         // For Ollama, automatically try to fetch available models
