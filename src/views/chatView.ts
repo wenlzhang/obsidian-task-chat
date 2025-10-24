@@ -605,7 +605,7 @@ export class ChatView extends ItemView {
 
         // Core keywords (after stop word removal)
         if (query.coreKeywords && query.coreKeywords.length > 0) {
-            parts.push(`🔑 Core keywords: ${query.coreKeywords.join(", ")}`);
+            parts.push(`🔑 Core: ${query.coreKeywords.join(", ")}`);
         }
 
         // Expanded keywords (if semantic expansion was used)
@@ -618,7 +618,7 @@ export class ChatView extends ItemView {
                 (k: string) => !query.coreKeywords.includes(k),
             );
             if (expandedOnly.length > 0) {
-                parts.push(`✨ Expanded keywords: ${expandedOnly.join(", ")}`);
+                parts.push(`🤖 Semantic: ${expandedOnly.join(", ")}`);
             }
         }
 
@@ -627,7 +627,7 @@ export class ChatView extends ItemView {
             const meta = query.expansionMetadata;
             if (meta.enabled) {
                 parts.push(
-                    `📊 ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total`,
+                    `📈 Expansion: ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total`,
                 );
             }
         }
@@ -826,6 +826,20 @@ export class ChatView extends ItemView {
             }
         }
 
+        // AI Understanding: Keyword expansion info (show after tasks, before token usage)
+        // Shows core keywords for all modes, expanded keywords + stats for Smart Search & Task Chat
+        // Moved outside messageEl so border-left doesn't extend to it
+        const keywordSummary = this.getKeywordExpansionSummary(message);
+        if (keywordSummary) {
+            const keywordEl = this.messagesEl.createDiv(
+                "task-chat-keyword-expansion",
+            );
+            keywordEl.createEl("small", {
+                text: keywordSummary,
+                cls: "task-chat-keyword-summary",
+            });
+        }
+
         // Token usage display - moved outside messageEl so border-left doesn't extend to it
         if (message.tokenUsage && this.plugin.settings.showTokenUsage) {
             const usageEl = this.messagesEl.createDiv("task-chat-token-usage");
@@ -912,19 +926,6 @@ export class ChatView extends ItemView {
             if (message.role !== "user") {
                 this.addCopyButton(usageEl, message);
             }
-        }
-
-        // Keyword expansion info (show below token usage for Smart Search and Task Chat)
-        // Also moved outside messageEl so border-left doesn't extend to it
-        const keywordSummary = this.getKeywordExpansionSummary(message);
-        if (keywordSummary) {
-            const keywordEl = this.messagesEl.createDiv(
-                "task-chat-keyword-expansion",
-            );
-            keywordEl.createEl("small", {
-                text: keywordSummary,
-                cls: "task-chat-keyword-summary",
-            });
         }
 
         // Add copy button below message for user messages

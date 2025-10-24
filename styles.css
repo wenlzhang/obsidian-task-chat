@@ -330,9 +330,9 @@
 
 /* Recommended Tasks */
 .task-chat-recommended-tasks {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 2px solid var(--background-modifier-border);
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--background-modifier-border);
 }
 
 .task-chat-task-list {
@@ -343,7 +343,7 @@
 .task-chat-task-item {
     margin: 4px 0;
     display: flex;
-    align-items: flex-start;
+    align-items: center; /* Changed from flex-start to center for better vertical alignment */
     gap: 0;
 }
 
@@ -553,11 +553,11 @@
 
 /* Token Usage - now outside message element so vertical line doesn't extend to it */
 .task-chat-token-usage {
-    margin-top: 6px;
-    margin-bottom: 12px;
+    margin-top: -8px; /* Reduced to bring closer to keywords section above */
+    margin-bottom: 10px;
     margin-left: 8px; /* Align with message content */
     margin-right: 8px; /* Match left margin for alignment */
-    padding-top: 6px;
+    padding-top: 8px;
     padding-left: 6px;
     border-top: 2px solid var(--background-modifier-border);
     opacity: 0.8;
@@ -572,19 +572,22 @@
     flex: 1;
 }
 
-/* Keyword Expansion Display - now outside message element */
+/* Keyword Expansion Display - now outside message element, after tasks, before token usage */
 .task-chat-keyword-expansion {
-    margin-top: -20px; /* Reduce gap with token usage above */
-    margin-bottom: 0px;
-    margin-left: 8px; /* Align with token usage and message content */
+    margin-top: -2px; /* Reduced to bring closer to recommended tasks */
+    margin-bottom: 0px; /* No bottom margin - let token usage control spacing */
+    margin-left: 8px; /* Align with message content */
     margin-right: 8px; /* Match left margin for alignment */
     padding-left: 6px;
-    opacity: 0.9;
+    padding-top: 10px; /* Space from top border to text */
+    padding-bottom: 10px; /* Space from text to bottom - matches padding-top for symmetry */
+    border-top: 1px solid var(--background-modifier-border);
+    opacity: 1;
 }
 
 .task-chat-keyword-summary {
-    font-size: 11px;
-    color: var(--text-muted);
+    font-size: 14px; /* Increased from 11px for better readability */
+    color: var(--text-normal); /* Changed from --text-muted for more prominence */
     line-height: 1.6;
     display: block;
     white-space: pre-line; /* Preserve newlines */

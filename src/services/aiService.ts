@@ -725,6 +725,27 @@ export class AIService {
                     };
                 }
 
+                // For Simple Search, create a minimal parsedQuery with core keywords
+                // so the UI can display them (even though no AI expansion was used)
+                let finalParsedQuery = parsedQuery;
+                if (
+                    chatMode === "simple" &&
+                    intent.keywords &&
+                    intent.keywords.length > 0
+                ) {
+                    finalParsedQuery = {
+                        coreKeywords: intent.keywords,
+                        keywords: intent.keywords,
+                        expansionMetadata: {
+                            enabled: false,
+                            maxExpansionsPerKeyword: 0,
+                            languagesUsed: [],
+                            totalKeywords: intent.keywords.length,
+                            coreKeywordsCount: intent.keywords.length,
+                        },
+                    };
+                }
+
                 return {
                     response: "",
                     directResults: sortedTasksForDisplay.slice(
@@ -732,7 +753,7 @@ export class AIService {
                         settings.maxDirectResults,
                     ),
                     tokenUsage,
-                    parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                    parsedQuery: finalParsedQuery,
                 };
             }
 
