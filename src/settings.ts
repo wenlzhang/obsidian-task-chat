@@ -221,6 +221,9 @@ export interface PluginSettings {
     totalCost: number;
     showTokenUsage: boolean;
 
+    // Advanced Settings
+    enableDebugLogging: boolean; // Enable detailed console logging for debugging (default: false)
+
     // Session Data
     sessionData: SessionData;
 }
@@ -432,6 +435,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     totalTokensUsed: 0,
     totalCost: 0,
     showTokenUsage: true,
+
+    // Advanced Settings
+    enableDebugLogging: false, // Disabled by default for production use
 
     // Session Data
     sessionData: {

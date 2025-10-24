@@ -4,6 +4,7 @@ import { PromptBuilderService } from "./aiPromptBuilderService";
 import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
+import { DataviewService } from "./dataviewService";
 
 /**
  * Structured query result from AI parsing - Three-part system
@@ -226,9 +227,6 @@ export class QueryParserService {
         query: string,
         settings: PluginSettings,
     ): Partial<ParsedQuery> {
-        // Import DataviewService at runtime to avoid circular dependency
-        const { DataviewService } = require("./dataviewService");
-
         // Use existing comprehensive standard syntax parser - it handles:
         // - Priority: p1, p2, p3, p4
         // - Status: s:open, s:completed, s:inprogress, etc.

@@ -477,7 +477,6 @@ export class DataviewService {
         // - Symbols: s:x, s:/, s:?
         // - Multiple values: s:x,/, s:open,wip
         // Use centralized pattern from TaskPropertyService
-        const { TaskPropertyService } = require("./taskPropertyService");
         const statusMatch = query.match(
             TaskPropertyService.QUERY_PATTERNS.status,
         );

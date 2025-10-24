@@ -32,10 +32,16 @@ export class SettingsTab extends PluginSettingTab {
         const overviewBox = containerEl.createDiv({
             cls: "task-chat-info-box",
         });
-        overviewBox.innerHTML = `
-            <p><strong>👉 Start with Defaults:</strong> Most settings are pre-configured with recommended values. Most users don't need to change anything!</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md">→ Complete settings guide with examples and best practices</a></p>
-        `;
+        const p1 = overviewBox.createEl("p");
+        p1.createEl("strong", { text: "👉 Start with defaults:" });
+        p1.appendText(
+            " Most settings are pre-configured with recommended values. Most users don't need to change anything!",
+        );
+        const p2 = overviewBox.createEl("p");
+        p2.createEl("a", {
+            text: "→ Complete settings guide with examples and best practices",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md",
+        });
 
         // AI Provider Settings
         new Setting(containerEl).setName("AI provider").setHeading();
@@ -43,10 +49,14 @@ export class SettingsTab extends PluginSettingTab {
         const aiProviderInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        aiProviderInfo.innerHTML = `
-            <p>Choose your AI provider and configure API key, model selection, and connection settings.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#1-ai-provider">→ Learn more about AI provider setup</a></p>
-        `;
+        aiProviderInfo.createEl("p", {
+            text: "Choose your AI provider and configure API key, model selection, and connection settings.",
+        });
+        const p = aiProviderInfo.createEl("p");
+        p.createEl("a", {
+            text: "→ Learn more about AI provider setup",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#1-ai-provider",
+        });
 
         new Setting(containerEl)
             .setName("Provider")
@@ -133,7 +143,7 @@ export class SettingsTab extends PluginSettingTab {
         const modelInfo = containerEl.createDiv({
             cls: "setting-item-description model-info-display",
         });
-        modelInfo.innerHTML = this.getModelInfo();
+        this.renderModelInfo(modelInfo);
 
         // Add Test Connection button
         const testConnectionSetting = new Setting(containerEl)
@@ -210,16 +220,43 @@ export class SettingsTab extends PluginSettingTab {
             const ollamaInfo = containerEl.createDiv({
                 cls: "ollama-setup-info",
             });
-            ollamaInfo.innerHTML = `
-                <strong>Ollama setup:</strong><br>
-                1. Install Ollama from <a href="https://ollama.com" target="_blank">ollama.com</a><br>
-                2. Pull a model: <code>ollama pull llama3.2</code> (or mistral, phi3, etc.)<br>
-                3. Start server with CORS: <code>OLLAMA_ORIGINS="app://obsidian.md*" ollama serve</code><br>
-                4. On macOS app: <code>launchctl setenv OLLAMA_ORIGINS "app://obsidian.md*"</code> then restart Ollama<br>
-                5. On Windows: <code>$env:OLLAMA_ORIGINS="app://obsidian.md*"; ollama serve</code><br>
-                <br>
-                <strong>Available models:</strong> llama3.2, llama3.1, mistral, phi3, gemma2, qwen2.5, and more at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>
-            `;
+            ollamaInfo.createEl("strong", { text: "Ollama setup:" });
+            ollamaInfo.createEl("br");
+            ollamaInfo.appendText("1. Install Ollama from ");
+            ollamaInfo.createEl("a", {
+                text: "ollama.com",
+                href: "https://ollama.com",
+            });
+            ollamaInfo.createEl("br");
+            ollamaInfo.appendText("2. Pull a model: ");
+            ollamaInfo.createEl("code", { text: "ollama pull llama3.2" });
+            ollamaInfo.appendText(" (or mistral, phi3, etc.)");
+            ollamaInfo.createEl("br");
+            ollamaInfo.appendText("3. Start server with CORS: ");
+            ollamaInfo.createEl("code", {
+                text: 'OLLAMA_ORIGINS="app://obsidian.md*" ollama serve',
+            });
+            ollamaInfo.createEl("br");
+            ollamaInfo.appendText("4. On macOS app: ");
+            ollamaInfo.createEl("code", {
+                text: 'launchctl setenv OLLAMA_ORIGINS "app://obsidian.md*"',
+            });
+            ollamaInfo.appendText(" then restart Ollama");
+            ollamaInfo.createEl("br");
+            ollamaInfo.appendText("5. On Windows: ");
+            ollamaInfo.createEl("code", {
+                text: '$env:OLLAMA_ORIGINS="app://obsidian.md*"; ollama serve',
+            });
+            ollamaInfo.createEl("br");
+            ollamaInfo.createEl("br");
+            ollamaInfo.createEl("strong", { text: "Available models:" });
+            ollamaInfo.appendText(
+                " llama3.2, llama3.1, mistral, phi3, gemma2, qwen2.5, and more at ",
+            );
+            ollamaInfo.createEl("a", {
+                text: "ollama.com/library",
+                href: "https://ollama.com/library",
+            });
         }
 
         // Chat Settings
@@ -228,10 +265,14 @@ export class SettingsTab extends PluginSettingTab {
         const taskChatInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        taskChatInfo.innerHTML = `
-            <p>Configure chat interface behavior, history length, response tokens, and temperature.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#2-task-chat">→ Learn more about task chat settings</a></p>
-        `;
+        taskChatInfo.createEl("p", {
+            text: "Configure chat interface behavior, history length, response tokens, and temperature.",
+        });
+        const p3 = taskChatInfo.createEl("p");
+        p3.createEl("a", {
+            text: "→ Learn more about task chat settings",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#2-task-chat",
+        });
 
         new Setting(containerEl)
             .setName("Max chat history")
@@ -303,10 +344,16 @@ export class SettingsTab extends PluginSettingTab {
         const modeComparisonInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        modeComparisonInfo.innerHTML = `
-            <p><strong>ℹ️ Chat mode comparison:</strong> Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md">→ Learn more about chat modes</a></p>
-        `;
+        const p4 = modeComparisonInfo.createEl("p");
+        p4.createEl("strong", { text: "ℹ️ Chat mode comparison:" });
+        p4.appendText(
+            " Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).",
+        );
+        const p5 = modeComparisonInfo.createEl("p");
+        p5.createEl("a", {
+            text: "→ Learn more about chat modes",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md",
+        });
 
         // Semantic Expansion
         new Setting(containerEl).setName("Semantic expansion").setHeading();
@@ -314,10 +361,14 @@ export class SettingsTab extends PluginSettingTab {
         const semanticExpansionInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        semanticExpansionInfo.innerHTML = `
-            <p>Configure keyword expansion and custom property terms.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
-        `;
+        semanticExpansionInfo.createEl("p", {
+            text: "Configure keyword expansion and custom property terms.",
+        });
+        const p6 = semanticExpansionInfo.createEl("p");
+        p6.createEl("a", {
+            text: "→ Learn more about semantic expansion",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
+        });
 
         new Setting(containerEl)
             .setName("Enable semantic expansion")
@@ -461,10 +512,18 @@ export class SettingsTab extends PluginSettingTab {
         const aiEnhancementInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        aiEnhancementInfo.innerHTML = `
-            <p><strong>🤖 AI features (automatic in Smart Search & Task Chat):</strong> Keyword expansion, property recognition, typo correction.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md">→ Learn more about semantic expansion</a></p>
-        `;
+        const p7 = aiEnhancementInfo.createEl("p");
+        p7.createEl("strong", {
+            text: "🤖 AI features (automatic in Smart Search & Task Chat):",
+        });
+        p7.appendText(
+            " Keyword expansion, property recognition, typo correction.",
+        );
+        const p8 = aiEnhancementInfo.createEl("p");
+        p8.createEl("a", {
+            text: "→ Learn more about semantic expansion",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
+        });
 
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
@@ -748,10 +807,14 @@ export class SettingsTab extends PluginSettingTab {
         const statusCategoriesDesc = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        statusCategoriesDesc.innerHTML = `
-            <p>Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md">→ Learn more about status categories and score vs order</a></p>
-        `;
+        statusCategoriesDesc.createEl("p", {
+            text: "Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.",
+        });
+        const p9 = statusCategoriesDesc.createEl("p");
+        p9.createEl("a", {
+            text: "→ Learn more about status categories and score vs order",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md",
+        });
 
         // Validate status orders and show warnings if duplicates found
         const validation = TaskPropertyService.validateStatusOrders(
@@ -765,8 +828,8 @@ export class SettingsTab extends PluginSettingTab {
 
             const warningTitle = warningBox.createEl("div", {
                 cls: "task-chat-warning-title",
+                text: "⚠️ Duplicate sort orders detected",
             });
-            warningTitle.innerHTML = "⚠️ Duplicate Sort Orders Detected";
 
             for (const warning of validation.warnings) {
                 const warningText = warningBox.createEl("p", {
@@ -865,10 +928,14 @@ export class SettingsTab extends PluginSettingTab {
         const filteringInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        filteringInfo.innerHTML = `
-            <p>Control which tasks appear in results.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering">→ Learn more about filtering options</a></p>
-        `;
+        filteringInfo.createEl("p", {
+            text: "Control which tasks appear in results.",
+        });
+        const p10 = filteringInfo.createEl("p");
+        p10.createEl("a", {
+            text: "→ Learn more about filtering options",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering",
+        });
 
         new Setting(containerEl)
             .setName("Relevance score")
@@ -1061,10 +1128,7 @@ export class SettingsTab extends PluginSettingTab {
             const statusPart =
                 maxStatusScore * this.plugin.settings.statusCoefficient;
 
-            maxScoreValue.innerHTML = `
-                📈 Max score: ${maxScore.toFixed(1)} points
-                (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})
-            `;
+            maxScoreValue.textContent = `📈 Max score: ${maxScore.toFixed(1)} points (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})`;
         };
 
         // Initial display
@@ -1263,9 +1327,9 @@ export class SettingsTab extends PluginSettingTab {
         const statusScoreNote = containerEl.createDiv({
             cls: "setting-item-description task-chat-info-box",
         });
-        statusScoreNote.innerHTML = `
-            <p>Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their coefficients.</p>
-        `;
+        statusScoreNote.createEl("p", {
+            text: 'Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their coefficients.',
+        });
 
         // Reset Buttons Section
         new Setting(containerEl)
@@ -1442,10 +1506,14 @@ export class SettingsTab extends PluginSettingTab {
         const taskDisplayInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        taskDisplayInfo.innerHTML = `
-            <p>Configure result limits, sorting order, and display preferences.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#9-task-display">→ Learn more about task display options</a></p>
-        `;
+        taskDisplayInfo.createEl("p", {
+            text: "Configure result limits, sorting order, and display preferences.",
+        });
+        const p11 = taskDisplayInfo.createEl("p");
+        p11.createEl("a", {
+            text: "→ Learn more about task display options",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#9-task-display",
+        });
 
         // Store the container for this setting so we can refresh it
         // Create a dedicated div to hold the sort setting (prevents scroll issues when refreshed)
@@ -1475,10 +1543,14 @@ export class SettingsTab extends PluginSettingTab {
         const advancedInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        advancedInfo.innerHTML = `
-            <p>Advanced settings for system prompts and pricing data management.</p>
-            <p><a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#10-advanced">→ Learn more about advanced settings</a></p>
-        `;
+        advancedInfo.createEl("p", {
+            text: "Advanced settings for system prompts and pricing data management.",
+        });
+        const p12 = advancedInfo.createEl("p");
+        p12.createEl("a", {
+            text: "→ Learn more about advanced settings",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#10-advanced",
+        });
 
         new Setting(containerEl)
             .setName("System prompt")
@@ -1513,6 +1585,26 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Debug Logging
+        new Setting(containerEl)
+            .setName("Enable debug logging")
+            .setDesc(
+                "Enable detailed console logging for debugging purposes. Disable in production to minimize console output.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableDebugLogging)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableDebugLogging = value;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            value
+                                ? "Debug logging enabled"
+                                : "Debug logging disabled",
+                        );
+                    }),
+            );
+
         // Pricing Information
         new Setting(containerEl)
             .setName("Pricing data")
@@ -1528,7 +1620,9 @@ export class SettingsTab extends PluginSettingTab {
         const pricingInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        pricingInfo.innerHTML = `<p>${modelCount} models cached, updated ${lastUpdate}</p>`;
+        pricingInfo.createEl("p", {
+            text: `${modelCount} models cached, updated ${lastUpdate}`,
+        });
 
         new Setting(containerEl)
             .setName("Refresh pricing")
@@ -1574,7 +1668,9 @@ export class SettingsTab extends PluginSettingTab {
         const statsContainer = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        statsContainer.innerHTML = `<p>Total: ${totalTokens} tokens, $${totalCost}</p>`;
+        statsContainer.createEl("p", {
+            text: `Total: ${totalTokens} tokens, $${totalCost}`,
+        });
 
         new Setting(containerEl)
             .setName("Reset statistics")
@@ -2135,23 +2231,53 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Get model info text
+     * Render model info text directly to DOM
      */
-    private getModelInfo(): string {
+    private renderModelInfo(containerEl: HTMLElement): void {
+        containerEl.empty();
         const models = this.getAvailableModels();
         const count = models.length;
 
         switch (this.plugin.settings.aiProvider) {
             case "openai":
-                return `<strong>${count} OpenAI models available</strong> - Click "Refresh" to fetch latest from API`;
+                containerEl.createEl("strong", {
+                    text: `${count} OpenAI models available`,
+                });
+                containerEl.appendText(
+                    ' - Click "Refresh" to fetch latest from API',
+                );
+                break;
             case "anthropic":
-                return `<strong>${count} Claude models available</strong> - Latest models from Anthropic`;
+                containerEl.createEl("strong", {
+                    text: `${count} Claude models available`,
+                });
+                containerEl.appendText(" - Latest models from Anthropic");
+                break;
             case "openrouter":
-                return `<strong>${count} models available</strong> - Click "Refresh" to fetch from OpenRouter. Visit <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a> for details.`;
+                containerEl.createEl("strong", {
+                    text: `${count} models available`,
+                });
+                containerEl.appendText(
+                    ' - Click "Refresh" to fetch from OpenRouter. Visit ',
+                );
+                containerEl.createEl("a", {
+                    text: "openrouter.ai/models",
+                    href: "https://openrouter.ai/models",
+                });
+                containerEl.appendText(" for details.");
+                break;
             case "ollama":
-                return `<strong>${count} models found</strong> - Click "Refresh" to detect installed local models. Install more at <a href="https://ollama.com/library" target="_blank">ollama.com/library</a>`;
-            default:
-                return "";
+                containerEl.createEl("strong", {
+                    text: `${count} models found`,
+                });
+                containerEl.appendText(
+                    ' - Click "Refresh" to detect installed local models. Install more at ',
+                );
+                containerEl.createEl("a", {
+                    text: "ollama.com/library",
+                    href: "https://ollama.com/library",
+                });
+                break;
         }
     }
 
@@ -2271,9 +2397,12 @@ export class SettingsTab extends PluginSettingTab {
         const sortingInfo = this.sortByContainerEl.createDiv({
             cls: "setting-item-description",
         });
-        sortingInfo.innerHTML = `
-            <p>Select sorting criteria for tiebreaking. <a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md">→ Learn more</a></p>
-        `;
+        const p13 = sortingInfo.createEl("p");
+        p13.appendText("Select sorting criteria for tiebreaking. ");
+        p13.createEl("a", {
+            text: "→ Learn more",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md",
+        });
 
         // Unified sort settings (tag-based UI)
         const sortSetting = new Setting(this.sortByContainerEl)
