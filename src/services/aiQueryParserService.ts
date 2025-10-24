@@ -136,6 +136,19 @@ export class QueryParserService {
             .replace(/<thought>[\s\S]*?<\/thought>/gi, "")
             .trim();
 
+        // Step 1.5: Check if response contains markdown headings (## or ###)
+        // This indicates the model returned analysis instead of JSON
+        if (cleaned.match(/^#{1,6}\s+/m)) {
+            Logger.warn(
+                "AI returned markdown analysis instead of JSON. First 200 chars:",
+                cleaned.substring(0, 200),
+            );
+            Logger.warn(
+                "This often happens with smaller open-source models. Consider using a larger model or a cloud provider.",
+            );
+            // Continue trying to extract JSON, but log the issue
+        }
+
         // Step 2: Try to extract from markdown code blocks first (common format)
         // Pattern: ```json {...} ``` or ```{...}```
         const markdownMatch = cleaned.match(
@@ -213,7 +226,26 @@ export class QueryParserService {
             return cleaned.substring(firstBrace, lastBrace + 1);
         }
 
-        // Step 7: If all else fails, return cleaned response and let JSON.parse throw error
+        // Step 7: No JSON found at all - log detailed error
+        Logger.error(
+            "Failed to extract any JSON from AI response. Full response length:",
+            response.length,
+        );
+        Logger.error("Response preview:", response.substring(0, 500));
+        Logger.error(
+            "This model may not support structured JSON output reliably. Consider:",
+        );
+        Logger.error(
+            "1. Using a larger model (e.g., llama3.1:70b instead of 20b)",
+        );
+        Logger.error(
+            "2. Using a cloud provider (OpenAI, Anthropic) for better reliability",
+        );
+        Logger.error(
+            "3. Switching to Simple Search mode (which doesn't require AI parsing)",
+        );
+
+        // Step 8: Return cleaned response and let JSON.parse throw error with context
         return cleaned;
     }
 
@@ -1435,7 +1467,43 @@ COMPLETE STOP WORDS LIST:
 ⚠️ IMPORTANT: Instead of these generic terms, use SPECIFIC synonyms related to the actual concept.
 Example: For "开发" (develop), use "develop", "build", "create", "implement", "code" - NOT "work" or "task"
 
-- Tags and keywords serve DIFFERENT purposes - don't mix them!`;
+- Tags and keywords serve DIFFERENT purposes - don't mix them!
+
+🚨🚨🚨 CRITICAL FINAL INSTRUCTION 🚨🚨🚨
+YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
+
+❌ DO NOT return:
+- Markdown headings (##, ###)
+- Explanatory text before or after JSON
+- Dependency trees, syntax analysis, or linguistic breakdowns
+- Any text that is not parseable JSON
+
+✅ CORRECT output format:
+{
+  "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
+  "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
+  "priority": <number or array of numbers or null>,
+  "dueDate": <string or null>,
+  "dueDateRange": <{start: string, end: string} or null>,
+  "status": <string or array of strings or null>,
+  "folder": <string or null>,
+  "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "aiUnderstanding": {
+    "detectedLanguage": <string, primary language detected (e.g., "en", "zh", "sv")>,
+    "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
+    "semanticMappings": {
+      "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
+      "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
+      "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
+    },
+    "confidence": <number 0-1, how confident you are in the parsing>,
+    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
+  }
+}
+
+⚠️ If you return ANYTHING other than pure JSON, the system will FAIL.
+⚠️ Start your response with { and end with }
+⚠️ NO markdown code blocks (no \`\`\`json), just raw JSON`;
 
         const messages = [
             {
@@ -1444,7 +1512,9 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             },
             {
                 role: "user",
-                content: `Parse this query: "${query}"`,
+                content: `Parse this query: "${query}"
+
+CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. Start with { and end with }.`,
             },
         ];
 
@@ -1859,17 +1929,28 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
+        // Build request body with JSON format enforcement
+        const requestBody: any = {
+            model: providerConfig.model,
+            messages: messages,
+            stream: false,
+            options: {
+                temperature: 0.1, // Low temperature for consistent parsing
+            },
+        };
+
+        // Force JSON output format for Ollama
+        // This tells Ollama to constrain the model to output valid JSON
+        // Supported by most recent Ollama models
+        requestBody.format = "json";
+
         const response = await requestUrl({
             url: endpoint,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                model: providerConfig.model,
-                messages: messages,
-                stream: false,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (response.status !== 200) {
