@@ -520,9 +520,7 @@ export class TaskSearchService {
                 );
 
                 if (resolved) {
-                    Logger.debug(
-                        `[Task Chat] Resolved to category: ${resolved}`,
-                    );
+                    Logger.debug(`Resolved to category: ${resolved}`);
                     allStatuses.add(resolved);
                 } else {
                     // If explicit syntax was used but no match found, throw error
@@ -530,7 +528,7 @@ export class TaskSearchService {
                         settings.taskStatusMapping,
                     ).join(", ");
                     const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
-                    Logger.error(`[Task Chat] ${errorMsg}`);
+                    Logger.error(`${errorMsg}`);
                     throw new Error(errorMsg);
                 }
             }
@@ -657,7 +655,7 @@ export class TaskSearchService {
                 filters.dueDate,
             );
             Logger.debug(
-                `[Task Chat] Due date filter (${filters.dueDate}): ${beforeDueDate} → ${filteredTasks.length} tasks`,
+                `Due date filter (${filters.dueDate}): ${beforeDueDate} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -672,7 +670,7 @@ export class TaskSearchService {
                 statuses.includes(task.statusCategory),
             );
             Logger.debug(
-                `[Task Chat] Status filter (${Array.isArray(filters.status) ? filters.status.join(", ") : filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
+                `Status filter (${Array.isArray(filters.status) ? filters.status.join(", ") : filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -686,7 +684,7 @@ export class TaskSearchService {
                     task.folder.toLowerCase().includes(folderLower),
             );
             Logger.debug(
-                `[Task Chat] Folder filter (${filters.folder}): ${beforeFolder} → ${filteredTasks.length} tasks`,
+                `Folder filter (${filters.folder}): ${beforeFolder} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -702,14 +700,14 @@ export class TaskSearchService {
                 );
             });
             Logger.debug(
-                `[Task Chat] Tag filter (${filters.tags.join(", ")}): ${beforeTags} → ${filteredTasks.length} tasks`,
+                `Tag filter (${filters.tags.join(", ")}): ${beforeTags} → ${filteredTasks.length} tasks`,
             );
         }
 
         // Apply keyword search (semantic matching - ANY keyword matches)
         if (filters.keywords && filters.keywords.length > 0) {
             Logger.debug(
-                `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
+                `Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
             );
 
             const matchedTasks: Task[] = [];
@@ -728,7 +726,7 @@ export class TaskSearchService {
             filteredTasks = matchedTasks;
 
             Logger.debug(
-                `[Task Chat] After keyword filtering: ${filteredTasks.length} tasks remain`,
+                `After keyword filtering: ${filteredTasks.length} tasks remain`,
             );
         }
 
@@ -951,14 +949,12 @@ export class TaskSearchService {
 
         if (keywords.length !== deduplicated.length) {
             Logger.debug(
-                `[Task Chat] Deduplicated ${label}: ${keywords.length} → ${deduplicated.length}`,
+                `Deduplicated ${label}: ${keywords.length} → ${deduplicated.length}`,
             );
             const removed = keywords.filter((k) => !deduplicated.includes(k));
             if (removed.length > 0 && removed.length <= 10) {
                 // Only show removed keywords if not too many
-                Logger.debug(
-                    `[Task Chat] Removed overlaps: [${removed.join(", ")}]`,
-                );
+                Logger.debug(`Removed overlaps: [${removed.join(", ")}]`);
             }
         }
 
@@ -1064,9 +1060,7 @@ export class TaskSearchService {
         // Use moment for reliable date comparisons (from Obsidian)
         const { moment } = window as any;
         if (!moment) {
-            Logger.warn(
-                "[Task Chat] moment not available, skipping due date score",
-            );
+            Logger.warn("moment not available, skipping due date score");
             return settings.dueDateNoneScore;
         }
 
@@ -1251,22 +1245,20 @@ export class TaskSearchService {
         const statusCoefficient = queryHasStatus || statusInSort ? 1.0 : 0.0;
 
         Logger.debug(
-            `[Task Chat] ========== COMPREHENSIVE SCORING CONFIGURATION ==========`,
+            `========== COMPREHENSIVE SCORING CONFIGURATION ==========`,
         );
         Logger.debug(
-            `[Task Chat] User coefficients - relevance: ${relevCoeff}, dueDate: ${dateCoeff}, priority: ${priorCoeff}, status: ${statusCoeff}`,
+            `User coefficients - relevance: ${relevCoeff}, dueDate: ${dateCoeff}, priority: ${priorCoeff}, status: ${statusCoeff}`,
         );
         Logger.debug(
-            `[Task Chat] Core keywords: ${deduplicatedCoreKeywords.length} [${deduplicatedCoreKeywords.join(", ")}]`,
+            `Core keywords: ${deduplicatedCoreKeywords.length} [${deduplicatedCoreKeywords.join(", ")}]`,
+        );
+        Logger.debug(`Expanded keywords: ${deduplicatedKeywords.length}`);
+        Logger.debug(
+            `Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}, status: ${queryHasStatus}`,
         );
         Logger.debug(
-            `[Task Chat] Expanded keywords: ${deduplicatedKeywords.length}`,
-        );
-        Logger.debug(
-            `[Task Chat] Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}, status: ${queryHasStatus}`,
-        );
-        Logger.debug(
-            `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}, status: ${statusInSort}`,
+            `Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}, status: ${statusInSort}`,
         );
         Logger.debug(
             `Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}, status: ${statusCoefficient * statusCoeff}`,
