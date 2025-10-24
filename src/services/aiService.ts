@@ -190,32 +190,40 @@ export class AIService {
                     );
 
                     // If AI returned null but pre-extraction found something, use it
-                    // For vague queries, dueDate is converted to range, so check both!
-                    if (!parsedQuery.dueDate) {
-                        if (preExtractedIntent.extractedDueDateFilter) {
+                    // For vague queries, pre-extraction converts dueDate to range
+                    if (!parsedQuery.dueDate && !parsedQuery.dueDateRange) {
+                        if (
+                            preExtractedIntent.extractedDueDateRange
+                                ?.operator &&
+                            preExtractedIntent.extractedDueDateRange?.date
+                        ) {
+                            // Vague query: Use the range (includes overdue tasks)
+                            parsedQuery.dueDateRange = {
+                                operator:
+                                    preExtractedIntent.extractedDueDateRange
+                                        .operator,
+                                date: preExtractedIntent.extractedDueDateRange
+                                    .date,
+                            } as any;
+                            // Set timeContext for metadata (not a filter)
+                            if (parsedQuery.aiUnderstanding) {
+                                parsedQuery.aiUnderstanding.timeContext =
+                                    preExtractedIntent.extractedDueDateRange.date;
+                            }
+                            console.log(
+                                `[Task Chat] AI missed dueDate, using pre-extracted range: ${JSON.stringify(parsedQuery.dueDateRange)}`,
+                            );
+                        } else if (preExtractedIntent.extractedDueDateFilter) {
+                            // Non-vague or explicit syntax: Use exact date
                             parsedQuery.dueDate =
                                 preExtractedIntent.extractedDueDateFilter;
-                            // Also sync timeContext to match dueDate
+                            // Also sync timeContext
                             if (parsedQuery.aiUnderstanding) {
                                 parsedQuery.aiUnderstanding.timeContext =
                                     parsedQuery.dueDate;
                             }
                             console.log(
                                 `[Task Chat] AI missed dueDate, using pre-extracted: "${parsedQuery.dueDate}"`,
-                            );
-                        } else if (preExtractedIntent.extractedDueDateRange) {
-                            // For vague queries, extract the date/term from the range
-                            // Range format: {operator: "<=", date: "today"}
-                            parsedQuery.dueDate =
-                                preExtractedIntent.extractedDueDateRange.date ||
-                                "today";
-                            // Also sync timeContext to match dueDate
-                            if (parsedQuery.aiUnderstanding) {
-                                parsedQuery.aiUnderstanding.timeContext =
-                                    parsedQuery.dueDate;
-                            }
-                            console.log(
-                                `[Task Chat] AI missed dueDate, using pre-extracted range: "${parsedQuery.dueDate}"`,
                             );
                         }
                     }
@@ -282,13 +290,13 @@ export class AIService {
                     (parsedQuery.keywords && parsedQuery.keywords.length > 0)
                 );
 
-                // If nothing was extracted, treat entire query as keyword search
+                // If nothing was extracted, split query into keywords
                 let keywords =
                     parsedQuery.keywords && parsedQuery.keywords.length > 0
                         ? parsedQuery.keywords
                         : hasAnyFilter
                           ? []
-                          : [message];
+                          : this.fallbackKeywordExtraction(message, settings);
 
                 // IMPORTANT: Remove property trigger words from AI-returned keywords
                 // Even though we cleaned the input query, the AI might semantically expand
@@ -411,6 +419,16 @@ export class AIService {
             if (intent.keywords.length > 0) {
                 console.log(
                     `[Task Chat] Searching with keywords: [${intent.keywords.join(", ")}]`,
+                );
+            }
+
+            // Default status filter for vague queries
+            // If query is vague (e.g., "What should I do today?") and no status was explicitly specified,
+            // default to incomplete tasks only (users typically don't want to see completed tasks for such queries)
+            if (intent.isVague && !intent.extractedStatus) {
+                intent.extractedStatus = ["open", "inprogress", "unknown"]; // Exclude completed and cancelled
+                console.log(
+                    `[Task Chat] Vague query detected - defaulting to incomplete tasks only (excluding completed & cancelled)`,
                 );
             }
 
@@ -1009,6 +1027,45 @@ export class AIService {
     }
 
     /**
+     * Fallback keyword extraction when AI returns nothing
+     * Split query into words and filter stop words properly
+     */
+    private static fallbackKeywordExtraction(
+        query: string,
+        settings: PluginSettings,
+    ): string[] {
+        console.log(
+            "[Task Chat] AI returned no filters or keywords, splitting query into words",
+        );
+
+        // Split by whitespace and punctuation
+        const words = query
+            .split(/[\s,，、.。!！?？;；:：]+/)
+            .filter((w) => w.length > 0);
+
+        console.log(
+            `[Task Chat] RAW keywords extracted: ${words.length} total, ${words.length} core`,
+        );
+
+        // Filter stop words
+        const { StopWords } = require("./stopWords");
+        const filtered = words.filter((w) => !StopWords.isStopWord(w));
+
+        console.log(
+            `[Task Chat] Keywords after stop word filtering: ${words.length} → ${filtered.length}`,
+        );
+
+        if (filtered.length < words.length) {
+            const removed = words.filter((w) => !filtered.includes(w));
+            console.log(
+                `[Task Chat] Removed stop words: [${removed.join(", ")}]`,
+            );
+        }
+
+        return filtered;
+    }
+
+    /**
      * Detect query type based on content (Part 1 vs Part 2 vs both)
      * Used to dynamically adapt scoring and filtering
      */
@@ -1021,6 +1078,7 @@ export class AIService {
         const hasTaskProperties = !!(
             intent.extractedPriority ||
             intent.extractedDueDateFilter ||
+            intent.extractedDueDateRange || // FIXED: Also check for date range
             intent.extractedStatus ||
             intent.extractedFolder ||
             (intent.extractedTags && intent.extractedTags.length > 0)

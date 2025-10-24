@@ -947,7 +947,35 @@ export class TaskSearchService {
             const threshold = settings.vagueQueryThreshold || 0.7;
             isVague = vaguenessRatio >= threshold;
 
-            if (isVague) {
+            // SPECIAL CASE: If extracted dueDate is a time context word (today, tomorrow, etc.),
+            // treat as vague even if vagueness ratio is low.
+            // These queries like "What should I do today?" should convert "today" to a range.
+            if (!isVague && extractedDueDateFilter) {
+                const timeContextWords = [
+                    "today",
+                    "tomorrow",
+                    "yesterday",
+                    "week",
+                    "month",
+                    "year",
+                    "overdue",
+                    "past",
+                ];
+                const lowerDueDate = String(
+                    extractedDueDateFilter,
+                ).toLowerCase();
+                const isTimeContext = timeContextWords.some((word) =>
+                    lowerDueDate.includes(word),
+                );
+                if (isTimeContext) {
+                    isVague = true;
+                    console.log(
+                        `[Simple Search] 🔍 Time context word detected ("${extractedDueDateFilter}") - treating as vague query`,
+                    );
+                }
+            }
+
+            if (isVague && !extractedDueDateFilter) {
                 console.log(
                     `[Simple Search] 🔍 Vague query detected: ${rawWords.length} words, ` +
                         `${(vaguenessRatio * 100).toFixed(0)}% generic (threshold: ${(threshold * 100).toFixed(0)}%)`,
