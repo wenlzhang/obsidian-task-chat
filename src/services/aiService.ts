@@ -1476,6 +1476,12 @@ ${taskContext}`;
 
     /**
      * Call Ollama API
+     *
+     * Ollama API format differs from OpenAI/OpenRouter:
+     * - Parameters go inside 'options' object
+     * - Uses 'num_predict' instead of 'max_tokens'
+     * - Response has 'message' field directly (not 'choices')
+     * - No built-in token counting (must estimate)
      */
     private static async callOllama(
         messages: any[],
@@ -1487,55 +1493,100 @@ ${taskContext}`;
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
-        const response = await requestUrl({
-            url: endpoint,
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: providerConfig.model,
-                messages: messages,
-                stream: false,
-                options: {
-                    temperature: providerConfig.temperature,
-                    num_predict: 8000, // Ollama uses num_predict instead of max_tokens (higher for full responses)
+        try {
+            const response = await requestUrl({
+                url: endpoint,
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-            }),
-        });
+                body: JSON.stringify({
+                    model: providerConfig.model,
+                    messages: messages,
+                    stream: false,
+                    options: {
+                        temperature: providerConfig.temperature,
+                        num_predict: 16000, // Maximum tokens to generate (higher for comprehensive responses)
+                        num_ctx: 32000, // Context window size (important for large task lists)
+                    },
+                }),
+            });
 
-        if (response.status !== 200) {
-            throw new Error(
-                `Ollama API error: ${response.status} ${response.text}`,
+            if (response.status !== 200) {
+                const errorMsg =
+                    response.json?.error || response.text || "Unknown error";
+                throw new Error(
+                    `Ollama API error (${response.status}): ${errorMsg}. ` +
+                        `Ensure Ollama is running and model '${providerConfig.model}' is available. ` +
+                        `Try: ollama run ${providerConfig.model}`,
+                );
+            }
+
+            const data = response.json;
+
+            // Validate response structure
+            if (!data || !data.message || !data.message.content) {
+                throw new Error(
+                    `Invalid Ollama response structure. Expected {message: {content: "..."}}, got: ${JSON.stringify(data)}`,
+                );
+            }
+
+            const rawContent = data.message.content;
+
+            // Clean up reasoning tags (important for DeepSeek-R1 via Ollama)
+            const content = this.stripReasoningTags(rawContent);
+
+            // Ollama doesn't provide token counts in response, estimate based on content
+            // Use data from response if available (some models may provide it)
+            const promptTokens =
+                data.prompt_eval_count ||
+                Math.round(JSON.stringify(messages).length / 4);
+            const completionTokens =
+                data.eval_count || Math.round(content.length / 4);
+
+            const tokenUsage: TokenUsage = {
+                promptTokens,
+                completionTokens,
+                totalTokens: promptTokens + completionTokens,
+                estimatedCost: 0, // Ollama is local, no cost
+                model: providerConfig.model,
+                provider: "ollama",
+                isEstimated: !data.eval_count, // Estimated unless model provides counts
+            };
+
+            Logger.debug(
+                `[Ollama] Response received: ${content.length} chars, ` +
+                    `${completionTokens} tokens (${tokenUsage.isEstimated ? "estimated" : "actual"})`,
             );
+
+            return {
+                response: content,
+                tokenUsage,
+            };
+        } catch (error) {
+            // Enhanced error handling for common Ollama issues
+            const errorMsg = error.message || String(error);
+
+            if (
+                errorMsg.includes("ECONNREFUSED") ||
+                errorMsg.includes("fetch")
+            ) {
+                throw new Error(
+                    `Cannot connect to Ollama at ${endpoint}. ` +
+                        `Please ensure Ollama is running. Start it with: ollama serve`,
+                );
+            }
+
+            if (errorMsg.includes("model") || errorMsg.includes("not found")) {
+                throw new Error(
+                    `Model '${providerConfig.model}' not found in Ollama. ` +
+                        `Install it with: ollama pull ${providerConfig.model}`,
+                );
+            }
+
+            // Re-throw with context
+            throw new Error(`Ollama API call failed: ${errorMsg}`);
         }
-
-        const data = response.json;
-        const rawContent = data.message.content;
-
-        // Clean up reasoning tags (important for DeepSeek via Ollama)
-        const content = this.stripReasoningTags(rawContent);
-
-        // Ollama doesn't provide token counts, estimate based on cleaned content
-        const estimatedPromptTokens = JSON.stringify(messages).length / 4;
-        const estimatedCompletionTokens = content.length / 4;
-
-        const tokenUsage: TokenUsage = {
-            promptTokens: Math.round(estimatedPromptTokens),
-            completionTokens: Math.round(estimatedCompletionTokens),
-            totalTokens: Math.round(
-                estimatedPromptTokens + estimatedCompletionTokens,
-            ),
-            estimatedCost: 0, // Ollama is local, no cost
-            model: providerConfig.model,
-            provider: "ollama",
-            isEstimated: true, // Ollama doesn't return real token counts
-        };
-
-        return {
-            response: content,
-            tokenUsage,
-        };
     }
 
     /**
