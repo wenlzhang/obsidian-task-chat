@@ -447,7 +447,7 @@ export default class TaskChatPlugin extends Plugin {
                 this.chatView.updateTasks(this.allTasks);
             }
         } catch (error) {
-            console.error("Error refreshing tasks:", error);
+            Logger.error("Error refreshing tasks:", error);
             new Notice("Failed to refresh tasks");
         }
     }

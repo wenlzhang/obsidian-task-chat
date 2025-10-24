@@ -1535,9 +1535,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
             };
 
             // Detailed expansion logging
-            Logger.debug(
-                "========== SEMANTIC EXPANSION DETAILS ==========",
-            );
+            Logger.debug("========== SEMANTIC EXPANSION DETAILS ==========");
             Logger.debug("User Settings:", {
                 languages: queryLanguages,
                 maxExpansionsPerLanguage: maxExpansions,
@@ -1662,9 +1660,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 }
             }
 
-            Logger.debug(
-                "================================================",
-            );
+            Logger.debug("================================================");
 
             // Summary
             Logger.debug("Semantic expansion summary:", {
@@ -1682,9 +1678,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
             // Log AI Understanding metadata if present
             if (parsed.aiUnderstanding) {
-                Logger.debug(
-                    "========== AI UNDERSTANDING ==========",
-                );
+                Logger.debug("========== AI UNDERSTANDING ==========");
                 Logger.debug(
                     "Detected language:",
                     parsed.aiUnderstanding.detectedLanguage || "unknown",
@@ -1709,10 +1703,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                     );
                 }
                 if (parsed.aiUnderstanding.notes) {
-                    Logger.debug(
-                        "Notes:",
-                        parsed.aiUnderstanding.notes,
-                    );
+                    Logger.debug("Notes:", parsed.aiUnderstanding.notes);
                 }
                 Logger.debug(
                     "================================================",
@@ -1740,10 +1731,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
                 aiUnderstanding: parsed.aiUnderstanding || undefined,
             };
 
-            Logger.debug(
-                "Query parser returning (three-part):",
-                result,
-            );
+            Logger.debug("Query parser returning (three-part):", result);
             return result;
         } catch (error) {
             Logger.error("Query parsing error:", error);

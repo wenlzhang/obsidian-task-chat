@@ -1704,9 +1704,7 @@ export class SettingsTab extends PluginSettingTab {
     ): void {
         // Defensive check: ensure config has required properties
         if (!config) {
-            Logger.error(
-                `Invalid config for category: ${categoryKey}`,
-            );
+            Logger.error(`Invalid config for category: ${categoryKey}`);
             return;
         }
 

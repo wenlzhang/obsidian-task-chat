@@ -656,9 +656,7 @@ export class ChatView extends ItemView {
         // Enable hover preview for internal links in message content
         this.enableHoverPreview(contentEl, contextPath);
 
-        Logger.debug(
-            `Message content rendered, checking for links...`,
-        );
+        Logger.debug(`Message content rendered, checking for links...`);
         const messageLinks = contentEl.querySelectorAll("a");
         Logger.debug(
             `- Found ${messageLinks.length} link elements in message content`,
@@ -739,13 +737,9 @@ export class ChatView extends ItemView {
                 // Enable hover preview for internal links in task content
                 this.enableHoverPreview(taskContentEl, task.sourcePath);
 
-                Logger.debug(
-                    `- Rendering complete, checking for links...`,
-                );
+                Logger.debug(`- Rendering complete, checking for links...`);
                 const links = taskContentEl.querySelectorAll("a");
-                Logger.debug(
-                    `- Found ${links.length} link elements`,
-                );
+                Logger.debug(`- Found ${links.length} link elements`);
                 links.forEach((link, i) => {
                     Logger.debug(
                         `  Link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
@@ -755,16 +749,13 @@ export class ChatView extends ItemView {
                 // Add click handlers for links in task content
                 taskContentEl.addEventListener("click", (e) => {
                     const target = e.target as HTMLElement;
-                    Logger.debug(
-                        `Click detected in task ${taskNumber}:`,
-                        {
-                            tagName: target.tagName,
-                            className: target.className,
-                            textContent: target.textContent,
-                            href: target.getAttribute("href"),
-                            dataHref: target.getAttribute("data-href"),
-                        },
-                    );
+                    Logger.debug(`Click detected in task ${taskNumber}:`, {
+                        tagName: target.tagName,
+                        className: target.className,
+                        textContent: target.textContent,
+                        href: target.getAttribute("href"),
+                        dataHref: target.getAttribute("data-href"),
+                    });
 
                     // Handle clicks on links
                     if (target.tagName === "A") {
@@ -947,9 +938,7 @@ export class ChatView extends ItemView {
         }
 
         // Fallback: try to open as internal link
-        Logger.debug(
-            `Fallback: attempting to open as internal link: ${href}`,
-        );
+        Logger.debug(`Fallback: attempting to open as internal link: ${href}`);
         this.app.workspace.openLinkText(href, sourcePath, false);
     }
 

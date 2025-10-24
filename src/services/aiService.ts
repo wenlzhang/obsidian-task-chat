@@ -771,9 +771,7 @@ export class AIService {
                     `  ${index + 1}. [score=${score}] [due=${dueInfo}] [p=${priorityInfo}] ${task.text.substring(0, 60)}...`,
                 );
             });
-            Logger.debug(
-                `===========================================`,
-            );
+            Logger.debug(`===========================================`);
 
             const taskContext = this.buildTaskContext(
                 tasksToAnalyze,
@@ -976,9 +974,7 @@ export class AIService {
             return "No tasks found matching your query.";
         }
 
-        Logger.debug(
-            `Building task context with ${tasks.length} tasks:`,
-        );
+        Logger.debug(`Building task context with ${tasks.length} tasks:`);
         tasks.forEach((task, index) => {
             Logger.debug(`  [TASK_${index + 1}]: ${task.text}`);
         });
@@ -1655,9 +1651,7 @@ ${taskContext}`;
             return { tasks: topTasks, indices: topIndices };
         }
 
-        Logger.debug(
-            `AI explicitly recommended ${recommended.length} tasks.`,
-        );
+        Logger.debug(`AI explicitly recommended ${recommended.length} tasks.`);
 
         // Trust the AI's judgment on how many tasks to recommend
         // The prompt emphasizes comprehensive recommendations, so if AI selects fewer tasks,
@@ -1672,9 +1666,7 @@ ${taskContext}`;
             0,
             settings.maxRecommendations,
         );
-        Logger.debug(
-            `Returning ${finalRecommended.length} recommended tasks:`,
-        );
+        Logger.debug(`Returning ${finalRecommended.length} recommended tasks:`);
         finalRecommended.forEach((task, i) => {
             Logger.debug(`  Recommended [${i + 1}]: ${task.text}`);
         });

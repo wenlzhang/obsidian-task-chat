@@ -905,9 +905,7 @@ export class DataviewService {
                 filterDesc.push(`dueDate=${propertyFilters.dueDate}`);
             if (propertyFilters?.status)
                 filterDesc.push(`status=${propertyFilters.status}`);
-            Logger.debug(
-                `Task-level filtering: ${filterDesc.join(", ")}`,
-            );
+            Logger.debug(`Task-level filtering: ${filterDesc.join(", ")}`);
             Logger.debug(
                 `Child tasks will be evaluated independently of parents`,
             );

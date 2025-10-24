@@ -121,7 +121,9 @@ export class TypoCorrection {
 
         // Log corrections if any were made
         if (corrections.length > 0) {
-            Logger.debug(`[Typo Correction] Fixed: [${corrections.join(", ")}]`);
+            Logger.debug(
+                `[Typo Correction] Fixed: [${corrections.join(", ")}]`,
+            );
         }
 
         return corrected;

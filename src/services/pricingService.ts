@@ -156,9 +156,7 @@ export class PricingService {
 
         // Try OpenRouter format first (most accurate)
         if (cachedPricing[openRouterFormat]) {
-            Logger.debug(
-                `Found exact match in cache: ${openRouterFormat}`,
-            );
+            Logger.debug(`Found exact match in cache: ${openRouterFormat}`);
             return cachedPricing[openRouterFormat];
         }
 
@@ -171,9 +169,7 @@ export class PricingService {
         // Try embedded pricing with OpenRouter format
         const embedded = this.getEmbeddedPricing();
         if (embedded[openRouterFormat]) {
-            Logger.debug(
-                `Using embedded rate for: ${openRouterFormat}`,
-            );
+            Logger.debug(`Using embedded rate for: ${openRouterFormat}`);
             return embedded[openRouterFormat];
         }
 

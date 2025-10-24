@@ -7,6 +7,7 @@ import { TaskPropertyService } from "./taskPropertyService";
 import { PluginSettings } from "../settings";
 import { moment } from "obsidian";
 import { TypoCorrection } from "../utils/typoCorrection";
+import { Logger } from "../utils/logger";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -200,11 +201,11 @@ export class TaskSearchService {
 
         // Log stop word filtering (for consistency with AI mode)
         if (words.length !== filteredWords.length) {
-            console.log(
-                `[Task Chat] Keywords after stop word filtering: ${words.length} → ${filteredWords.length}`,
+            Logger.debug(
+                `Keywords after stop word filtering: ${words.length} → ${filteredWords.length}`,
             );
-            console.log(
-                `[Task Chat] Removed stop words: [${words.filter((w) => !filteredWords.includes(w)).join(", ")}]`,
+            Logger.debug(
+                `Removed stop words: [${words.filter((w) => !filteredWords.includes(w)).join(", ")}]`,
             );
         }
 
@@ -510,7 +511,7 @@ export class TaskSearchService {
             const values = rawValues.split(",").map((v) => v.trim());
 
             for (const value of values) {
-                console.log("[Task Chat] Extracted status value:", value);
+                Logger.debug("Extracted status value:", value);
 
                 // Use centralized resolution from TaskPropertyService
                 const resolved = TaskPropertyService.resolveStatusValue(
@@ -519,7 +520,9 @@ export class TaskSearchService {
                 );
 
                 if (resolved) {
-                    console.log("[Task Chat] Resolved to category:", resolved);
+                    Logger.debug(
+                        `[Task Chat] Resolved to category: ${resolved}`,
+                    );
                     allStatuses.add(resolved);
                 } else {
                     // If explicit syntax was used but no match found, throw error
@@ -527,7 +530,7 @@ export class TaskSearchService {
                         settings.taskStatusMapping,
                     ).join(", ");
                     const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
-                    console.error(`[Task Chat] ${errorMsg}`);
+                    Logger.error(`[Task Chat] ${errorMsg}`);
                     throw new Error(errorMsg);
                 }
             }
@@ -641,8 +644,8 @@ export class TaskSearchService {
             filteredTasks = filteredTasks.filter((task) =>
                 priorities.includes(task.priority!),
             );
-            console.log(
-                `[Task Chat] Priority filter (${Array.isArray(filters.priority) ? filters.priority.join(", ") : filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
+            Logger.debug(
+                `Priority filter (${Array.isArray(filters.priority) ? filters.priority.join(", ") : filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
             );
         }
 
@@ -653,7 +656,7 @@ export class TaskSearchService {
                 filteredTasks,
                 filters.dueDate,
             );
-            console.log(
+            Logger.debug(
                 `[Task Chat] Due date filter (${filters.dueDate}): ${beforeDueDate} → ${filteredTasks.length} tasks`,
             );
         }
@@ -668,7 +671,7 @@ export class TaskSearchService {
             filteredTasks = filteredTasks.filter((task) =>
                 statuses.includes(task.statusCategory),
             );
-            console.log(
+            Logger.debug(
                 `[Task Chat] Status filter (${Array.isArray(filters.status) ? filters.status.join(", ") : filters.status}): ${beforeStatus} → ${filteredTasks.length} tasks`,
             );
         }
@@ -682,7 +685,7 @@ export class TaskSearchService {
                     task.folder &&
                     task.folder.toLowerCase().includes(folderLower),
             );
-            console.log(
+            Logger.debug(
                 `[Task Chat] Folder filter (${filters.folder}): ${beforeFolder} → ${filteredTasks.length} tasks`,
             );
         }
@@ -698,14 +701,14 @@ export class TaskSearchService {
                     ),
                 );
             });
-            console.log(
+            Logger.debug(
                 `[Task Chat] Tag filter (${filters.tags.join(", ")}): ${beforeTags} → ${filteredTasks.length} tasks`,
             );
         }
 
         // Apply keyword search (semantic matching - ANY keyword matches)
         if (filters.keywords && filters.keywords.length > 0) {
-            console.log(
+            Logger.debug(
                 `[Task Chat] Filtering ${filteredTasks.length} tasks with keywords: [${filters.keywords.join(", ")}]`,
             );
 
@@ -724,7 +727,7 @@ export class TaskSearchService {
 
             filteredTasks = matchedTasks;
 
-            console.log(
+            Logger.debug(
                 `[Task Chat] After keyword filtering: ${filteredTasks.length} tasks remain`,
             );
         }
@@ -778,9 +781,9 @@ export class TaskSearchService {
         );
 
         // Enhanced logging for debugging (Phase 1 Enhancement #2)
-        console.log("[Simple Search] ========== QUERY PARSING ==========");
-        console.log("[Simple Search] Original query:", query);
-        console.log("[Simple Search] Extracted properties:", {
+        Logger.debug("[Simple Search] ========== QUERY PARSING ==========");
+        Logger.debug("[Simple Search] Original query:", query);
+        Logger.debug("[Simple Search] Extracted properties:", {
             priority: extractedPriority || "none",
             dueDate: extractedDueDateFilter || "none",
             dueDateRange: extractedDueDateRange
@@ -790,12 +793,12 @@ export class TaskSearchService {
             folder: extractedFolder || "none",
             tags: extractedTags.length > 0 ? extractedTags.join(", ") : "none",
         });
-        console.log(
+        Logger.debug(
             "[Simple Search] Extracted keywords:",
             keywords.length > 0 ? keywords.join(", ") : "(none)",
         );
-        console.log("[Simple Search] Active filters:", filterCount);
-        console.log(
+        Logger.debug("[Simple Search] Active filters:", filterCount);
+        Logger.debug(
             "[Simple Search] ==========================================",
         );
 
@@ -842,14 +845,14 @@ export class TaskSearchService {
             typeof priority === "number" &&
             (priority < 1 || priority > 4)
         ) {
-            console.warn(
+            Logger.warn(
                 `[Simple Search] ⚠️  Invalid priority: P${priority}. Valid values are P1-P4, p:1,2,3, p:all, or p:none.`,
             );
         }
         if (Array.isArray(priority)) {
             const invalid = priority.filter((p) => p < 1 || p > 4);
             if (invalid.length > 0) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Invalid priorities: ${invalid.join(",")}. Valid values are 1-4.`,
                 );
             }
@@ -859,7 +862,7 @@ export class TaskSearchService {
         if (project) {
             // Check for invalid characters (only alphanumeric, underscore, dash allowed)
             if (!/^[A-Za-z0-9_-]+$/.test(project)) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Invalid project name: "${project}". Use only letters, numbers, underscore, or dash.`,
                 );
             }
@@ -874,7 +877,7 @@ export class TaskSearchService {
                 (kw) => !validKeywords.includes(kw),
             );
             if (invalid.length > 0) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Unknown special keywords: ${invalid.join(", ")}`,
                 );
             }
@@ -899,14 +902,14 @@ export class TaskSearchService {
 
             // Check if start date is valid
             if (start && !isValidDate(start)) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Invalid start date: "${start}". Expected format: YYYY-MM-DD or YYYY-MM-DD HH:mm.`,
                 );
             }
 
             // Check if end date is valid
             if (end && !isValidDate(end)) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Invalid end date: "${end}". Expected format: YYYY-MM-DD or YYYY-MM-DD HH:mm.`,
                 );
             }
@@ -916,7 +919,7 @@ export class TaskSearchService {
                 const startDate = moment(start);
                 const endDate = moment(end);
                 if (startDate.isAfter(endDate)) {
-                    console.warn(
+                    Logger.warn(
                         `[Simple Search] ⚠️  Invalid date range: start (${start}) is after end (${end}).`,
                     );
                 }
@@ -924,12 +927,12 @@ export class TaskSearchService {
 
             // NEW: Warn if time without date
             if (start && start.includes(":") && !start.includes(" ")) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Time without date: "${start}". Use format: YYYY-MM-DD HH:mm.`,
                 );
             }
             if (end && end.includes(":") && !end.includes(" ")) {
-                console.warn(
+                Logger.warn(
                     `[Simple Search] ⚠️  Time without date: "${end}". Use format: YYYY-MM-DD HH:mm.`,
                 );
             }
@@ -947,13 +950,13 @@ export class TaskSearchService {
         const deduplicated = this.deduplicateOverlappingKeywords(keywords);
 
         if (keywords.length !== deduplicated.length) {
-            console.log(
+            Logger.debug(
                 `[Task Chat] Deduplicated ${label}: ${keywords.length} → ${deduplicated.length}`,
             );
             const removed = keywords.filter((k) => !deduplicated.includes(k));
             if (removed.length > 0 && removed.length <= 10) {
                 // Only show removed keywords if not too many
-                console.log(
+                Logger.debug(
                     `[Task Chat] Removed overlaps: [${removed.join(", ")}]`,
                 );
             }
@@ -1061,7 +1064,7 @@ export class TaskSearchService {
         // Use moment for reliable date comparisons (from Obsidian)
         const { moment } = window as any;
         if (!moment) {
-            console.warn(
+            Logger.warn(
                 "[Task Chat] moment not available, skipping due date score",
             );
             return settings.dueDateNoneScore;
@@ -1247,29 +1250,29 @@ export class TaskSearchService {
             queryHasPriority || priorityInSort ? 1.0 : 0.0;
         const statusCoefficient = queryHasStatus || statusInSort ? 1.0 : 0.0;
 
-        console.log(
+        Logger.debug(
             `[Task Chat] ========== COMPREHENSIVE SCORING CONFIGURATION ==========`,
         );
-        console.log(
+        Logger.debug(
             `[Task Chat] User coefficients - relevance: ${relevCoeff}, dueDate: ${dateCoeff}, priority: ${priorCoeff}, status: ${statusCoeff}`,
         );
-        console.log(
+        Logger.debug(
             `[Task Chat] Core keywords: ${deduplicatedCoreKeywords.length} [${deduplicatedCoreKeywords.join(", ")}]`,
         );
-        console.log(
+        Logger.debug(
             `[Task Chat] Expanded keywords: ${deduplicatedKeywords.length}`,
         );
-        console.log(
+        Logger.debug(
             `[Task Chat] Query filters - dueDate: ${queryHasDueDate}, priority: ${queryHasPriority}, status: ${queryHasStatus}`,
         );
-        console.log(
+        Logger.debug(
             `[Task Chat] Sort criteria includes - dueDate: ${dueDateInSort}, priority: ${priorityInSort}, status: ${statusInSort}`,
         );
-        console.log(
-            `[Task Chat] Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}, status: ${statusCoefficient * statusCoeff}`,
+        Logger.debug(
+            `Active coefficients - relevance: ${relevanceCoefficient * relevCoeff} (query has keywords: ${queryHasKeywords}), dueDate: ${dueDateCoefficient * dateCoeff}, priority: ${priorityCoefficient * priorCoeff}, status: ${statusCoefficient * statusCoeff}`,
         );
-        console.log(
-            `[Task Chat] ============================================================`,
+        Logger.debug(
+            `============================================================`,
         );
 
         const scored = tasks.map((task) => {
@@ -1328,31 +1331,29 @@ export class TaskSearchService {
         const sorted = scored.sort((a, b) => b.score - a.score);
 
         // Log top 5 scores for debugging
-        console.log(
-            `[Task Chat] ========== TOP 5 SCORED TASKS (Comprehensive) ==========`,
+        Logger.debug(
+            `========== TOP 5 SCORED TASKS (Comprehensive) ==========`,
         );
         sorted.slice(0, 5).forEach((item, index) => {
-            console.log(
-                `[Task Chat] #${index + 1}: "${item.task.text.substring(0, 50)}${item.task.text.length > 50 ? "..." : ""}"`,
+            Logger.debug(
+                `#${index + 1}: "${item.task.text.substring(0, 50)}${item.task.text.length > 50 ? "..." : ""}"`,
             );
-            console.log(
-                `[Task Chat]   - Relevance: ${item.relevanceScore.toFixed(2)} (× ${relevCoeff * relevanceCoefficient} = ${(item.relevanceScore * relevCoeff * relevanceCoefficient).toFixed(1)})`,
+            Logger.debug(
+                `  - Relevance: ${item.relevanceScore.toFixed(2)} (× ${relevCoeff * relevanceCoefficient} = ${(item.relevanceScore * relevCoeff * relevanceCoefficient).toFixed(1)})`,
             );
-            console.log(
-                `[Task Chat]   - Due Date: ${item.dueDateScore.toFixed(2)} (× ${dateCoeff * dueDateCoefficient} = ${(item.dueDateScore * dateCoeff * dueDateCoefficient).toFixed(1)})`,
+            Logger.debug(
+                `  - Due Date: ${item.dueDateScore.toFixed(2)} (× ${dateCoeff * dueDateCoefficient} = ${(item.dueDateScore * dateCoeff * dueDateCoefficient).toFixed(1)})`,
             );
-            console.log(
-                `[Task Chat]   - Priority: ${item.priorityScore.toFixed(2)} (× ${priorCoeff * priorityCoefficient} = ${(item.priorityScore * priorCoeff * priorityCoefficient).toFixed(1)})`,
+            Logger.debug(
+                `  - Priority: ${item.priorityScore.toFixed(2)} (× ${priorCoeff * priorityCoefficient} = ${(item.priorityScore * priorCoeff * priorityCoefficient).toFixed(1)})`,
             );
-            console.log(
-                `[Task Chat]   - Status: ${item.statusScore.toFixed(2)} (× ${statusCoeff * statusCoefficient} = ${(item.statusScore * statusCoeff * statusCoefficient).toFixed(1)})`,
+            Logger.debug(
+                `  - Status: ${item.statusScore.toFixed(2)} (× ${statusCoeff * statusCoefficient} = ${(item.statusScore * statusCoeff * statusCoefficient).toFixed(1)})`,
             );
-            console.log(
-                `[Task Chat]   - FINAL SCORE: ${item.score.toFixed(1)}`,
-            );
+            Logger.debug(`  - FINAL SCORE: ${item.score.toFixed(1)}`);
         });
-        console.log(
-            `[Task Chat] ==============================================================`,
+        Logger.debug(
+            `==============================================================`,
         );
 
         return sorted;
