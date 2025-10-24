@@ -1499,6 +1499,7 @@ ${taskContext}`;
                 stream: false,
                 options: {
                     temperature: providerConfig.temperature,
+                    num_predict: 8000, // Ollama uses num_predict instead of max_tokens (higher for full responses)
                 },
             }),
         });

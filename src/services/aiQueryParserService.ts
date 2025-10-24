@@ -1955,34 +1955,152 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
-        // Build request body with JSON format enforcement
-        const requestBody: any = {
-            model: providerConfig.model,
-            messages: messages,
-            stream: false,
-            options: {
-                temperature: 0.1, // Low temperature for consistent parsing
+        const systemMsg = messages.find((m) => m.role === "system");
+        const userMsg = messages.find((m) => m.role === "user");
+
+        Logger.debug("🔍 [OLLAMA DEBUG] Sending request to:", endpoint);
+        Logger.debug("🔍 [OLLAMA DEBUG] Model:", providerConfig.model);
+        Logger.debug(
+            "🔍 [OLLAMA DEBUG] System prompt length:",
+            systemMsg?.content.length || 0,
+        );
+        Logger.debug("🔍 [OLLAMA DEBUG] User prompt:", userMsg?.content);
+
+        // Strategy 1: Try standard system/user message format first
+        const standardMessages = messages;
+
+        // Strategy 2: Fallback - combine system + user into single user message
+        // Some Ollama models don't properly process system messages separately
+        const combinedMessages = [
+            {
+                role: "user",
+                content: `${systemMsg?.content}\n\n---\n\n${userMsg?.content}`,
             },
-        };
+        ];
 
-        // Force JSON output format for Ollama
-        // This tells Ollama to constrain the model to output valid JSON
-        // Supported by most recent Ollama models
-        requestBody.format = "json";
+        // Try both strategies
+        const strategies = [
+            { name: "standard", messages: standardMessages },
+            { name: "combined", messages: combinedMessages },
+        ];
 
-        const response = await requestUrl({
-            url: endpoint,
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
-        });
+        let lastError: Error | null = null;
 
-        if (response.status !== 200) {
-            throw new Error(`Ollama API error: ${response.status}`);
+        for (const strategy of strategies) {
+            try {
+                Logger.debug(
+                    `🔍 [OLLAMA DEBUG] Trying ${strategy.name} message format`,
+                );
+
+                const requestBody: any = {
+                    model: providerConfig.model,
+                    messages: strategy.messages,
+                    stream: false,
+                    options: {
+                        temperature: 0.1,
+                        num_predict: 16000,
+                        num_ctx: 32000, // Increased context window
+                    },
+                };
+
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Request body:",
+                    JSON.stringify(requestBody).substring(0, 500) + "...",
+                );
+
+                const response = await requestUrl({
+                    url: endpoint,
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Response status:",
+                    response.status,
+                );
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Response headers:",
+                    response.headers,
+                );
+
+                if (response.status !== 200) {
+                    const errorBody = JSON.stringify(
+                        response.json || response.text || "No body",
+                    );
+                    Logger.error(
+                        `🔍 [OLLAMA DEBUG] Error response body:`,
+                        errorBody,
+                    );
+                    throw new Error(
+                        `Ollama API error: ${response.status} - ${errorBody}`,
+                    );
+                }
+
+                // Validate response structure
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Full response object keys:",
+                    Object.keys(response.json || {}),
+                );
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Response JSON:",
+                    JSON.stringify(response.json).substring(0, 1000),
+                );
+
+                if (!response.json) {
+                    throw new Error("Ollama response has no JSON body");
+                }
+
+                if (!response.json.message) {
+                    throw new Error(
+                        `Ollama response missing 'message' field. Response: ${JSON.stringify(response.json)}`,
+                    );
+                }
+
+                if (!response.json.message.content) {
+                    throw new Error(
+                        `Ollama response message has no content. Message: ${JSON.stringify(response.json.message)}`,
+                    );
+                }
+
+                const responseContent = response.json.message.content.trim();
+
+                if (responseContent.length === 0) {
+                    throw new Error(
+                        "Ollama returned empty content. This may indicate the model failed to generate a response.",
+                    );
+                }
+
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Response length:",
+                    responseContent.length,
+                );
+                Logger.debug(
+                    "🔍 [OLLAMA DEBUG] Response preview:",
+                    responseContent.substring(0, 500),
+                );
+                Logger.debug(
+                    `🔍 [OLLAMA DEBUG] SUCCESS with ${strategy.name} format`,
+                );
+
+                return responseContent;
+            } catch (error) {
+                Logger.error(
+                    `🔍 [OLLAMA DEBUG] ${strategy.name} format failed:`,
+                    error,
+                );
+                lastError = error as Error;
+                // Continue to next strategy
+            }
         }
 
-        return response.json.message.content.trim();
+        // Both strategies failed
+        throw new Error(
+            `All Ollama request strategies failed. Last error: ${lastError?.message}. ` +
+                `This could indicate: 1) Model not loaded/available, 2) Context too large, ` +
+                `3) Model incompatible with JSON output. Try: ollama run ${providerConfig.model}`,
+        );
     }
 }
