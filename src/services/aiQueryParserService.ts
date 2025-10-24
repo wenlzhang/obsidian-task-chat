@@ -55,7 +55,7 @@ export interface ParsedQuery {
 
     // AI Understanding Metadata (for Natural Language & Typo Correction)
     aiUnderstanding?: {
-        detectedLanguage?: string; // Primary language detected (e.g., "en", "zh", "sv")
+        detectedLanguage?: string; // Primary language detected - full name (e.g., "English", "Chinese", "Swedish")
         correctedTypos?: string[]; // List of corrections made (e.g., ["urgant→urgent", "taks→task"])
         semanticMappings?: {
             // What AI understood from natural language
@@ -943,7 +943,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
   "aiUnderstanding": {
-    "detectedLanguage": <string, primary language detected (e.g., "en", "zh", "sv")>,
+    "detectedLanguage": <string, full language name detected (e.g., "English", "Chinese", "Swedish")>,
     "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
     "semanticMappings": {
       "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
@@ -1489,7 +1489,7 @@ YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
   "folder": <string or null>,
   "tags": [<hashtags from query, WITHOUT the # symbol>],
   "aiUnderstanding": {
-    "detectedLanguage": <string, primary language detected (e.g., "en", "zh", "sv")>,
+    "detectedLanguage": <string, full language name detected (e.g., "English", "Chinese", "Swedish")>,
     "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
     "semanticMappings": {
       "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,

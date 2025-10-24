@@ -567,23 +567,13 @@ export class ChatView extends ItemView {
         // Don't show mode here - it's already shown in token usage section
 
         // Language (only if not English)
-        if (ai?.detectedLanguage && ai.detectedLanguage !== "en") {
-            const languageNames: Record<string, string> = {
-                zh: "Chinese",
-                sv: "Swedish",
-                es: "Spanish",
-                fr: "French",
-                de: "German",
-                ja: "Japanese",
-                ko: "Korean",
-                ru: "Russian",
-                ar: "Arabic",
-                pt: "Portuguese",
-                it: "Italian",
-            };
-            const langName =
-                languageNames[ai.detectedLanguage] || ai.detectedLanguage;
-            parts.push(`Lang: ${langName}`);
+        // AI now returns full language name directly (e.g., "Chinese", "Swedish")
+        if (
+            ai?.detectedLanguage &&
+            ai.detectedLanguage !== "en" &&
+            ai.detectedLanguage !== "English"
+        ) {
+            parts.push(`Lang: ${ai.detectedLanguage}`);
         }
 
         // Typo corrections (if any)

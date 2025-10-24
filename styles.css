@@ -186,7 +186,7 @@
 .task-chat-message-smart,
 .task-chat-message-simple {
     align-self: flex-start;
-    max-width: 90%;
+    max-width: 100%; /* Use full width like user input */
     border-left: 2px solid var(--interactive-accent);
     /* Copy button inline with token usage, no extra margin needed */
 }
@@ -201,7 +201,7 @@
 /* Streaming Message - shows AI response as it's being generated */
 .task-chat-message-ai {
     align-self: flex-start;
-    max-width: 90%;
+    max-width: 100%; /* Use full width like user input */
     border-left: 2px solid var(--interactive-accent);
     /* No background - same as final message */
 }
@@ -552,11 +552,11 @@
 
 /* Keyword Expansion Display */
 .task-chat-keyword-expansion {
-    margin-top: 6px;
-    padding: 6px 8px;
-    background: var(--background-secondary);
-    border-radius: 4px;
-    border-left: 2px solid var(--interactive-accent);
+    margin-top: 4px;
+    padding-top: 4px;
+    opacity: 0.7;
+    /* No horizontal padding - align with token usage */
+    /* No background - keep it simple like token usage */
 }
 
 .task-chat-keyword-summary {
@@ -564,6 +564,7 @@
     color: var(--text-muted);
     line-height: 1.6;
     display: block;
+    white-space: pre-line; /* Preserve newlines */
 }
 
 /* Session Management */

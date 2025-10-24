@@ -1479,7 +1479,7 @@ ${taskContext}`;
                     onStream(chunk.content); // Stream to UI
                 }
 
-                // Capture token usage from stream
+                // Capture token usage from stream (comes in final chunk)
                 if (chunk.tokenUsage) {
                     tokenUsageInfo = chunk.tokenUsage;
                 }
@@ -1490,21 +1490,25 @@ ${taskContext}`;
             // Clean up reasoning tags
             const cleanedResponse = this.stripReasoningTags(fullResponse);
 
+            // Use actual token counts if available
+            const promptTokens = tokenUsageInfo?.promptTokens ?? 0;
+            const completionTokens = tokenUsageInfo?.completionTokens ?? 0;
+
             // Create token usage object
             const tokenUsage: TokenUsage = {
-                promptTokens: tokenUsageInfo?.promptTokens || 0,
-                completionTokens: tokenUsageInfo?.completionTokens || 0,
-                totalTokens: tokenUsageInfo?.totalTokens || 0,
+                promptTokens,
+                completionTokens,
+                totalTokens: promptTokens + completionTokens,
                 estimatedCost: this.calculateCost(
-                    tokenUsageInfo?.promptTokens || 0,
-                    tokenUsageInfo?.completionTokens || 0,
+                    promptTokens,
+                    completionTokens,
                     providerConfig.model,
                     settings.aiProvider,
                     settings.pricingCache.data,
                 ),
                 model: providerConfig.model,
                 provider: settings.aiProvider,
-                isEstimated: !tokenUsageInfo, // Estimated if no usage info from stream
+                isEstimated: !tokenUsageInfo,
             };
 
             Logger.debug("Streaming completed successfully");
@@ -1584,8 +1588,7 @@ ${taskContext}`;
                 // Parse SSE stream
                 const reader = response.body.getReader();
                 let fullResponse = "";
-                let promptTokens = 0;
-                let completionTokens = 0;
+                let tokenUsageInfo: StreamChunk["tokenUsage"] | undefined;
 
                 for await (const chunk of StreamingService.parseSSE(
                     reader,
@@ -1596,21 +1599,19 @@ ${taskContext}`;
                         onStream(chunk.content);
                     }
 
-                    // Accumulate token usage (Anthropic sends it in parts)
+                    // Capture token usage from stream (comes in final chunk)
                     if (chunk.tokenUsage) {
-                        if (chunk.tokenUsage.promptTokens) {
-                            promptTokens = chunk.tokenUsage.promptTokens;
-                        }
-                        if (chunk.tokenUsage.completionTokens) {
-                            completionTokens =
-                                chunk.tokenUsage.completionTokens;
-                        }
+                        tokenUsageInfo = chunk.tokenUsage;
                     }
 
                     if (chunk.done) break;
                 }
 
                 const cleanedResponse = this.stripReasoningTags(fullResponse);
+
+                // Use actual token counts if available
+                const promptTokens = tokenUsageInfo?.promptTokens ?? 0;
+                const completionTokens = tokenUsageInfo?.completionTokens ?? 0;
 
                 const tokenUsage: TokenUsage = {
                     promptTokens,
@@ -1624,8 +1625,8 @@ ${taskContext}`;
                         settings.pricingCache.data,
                     ),
                     model: providerConfig.model,
-                    provider: settings.aiProvider,
-                    isEstimated: promptTokens === 0 && completionTokens === 0,
+                    provider: "anthropic",
+                    isEstimated: !tokenUsageInfo,
                 };
 
                 Logger.debug("Anthropic streaming completed successfully");
