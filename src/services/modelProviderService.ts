@@ -293,7 +293,7 @@ export class ModelProviderService {
                 body: JSON.stringify({
                     model: model,
                     messages: [{ role: "user", content: "test" }],
-                    max_tokens: 10,
+                    max_tokens: 2000,
                 }),
             });
 

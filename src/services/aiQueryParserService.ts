@@ -1853,7 +1853,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 model: providerConfig.model,
                 messages: messages,
                 temperature: 0.1, // Low temperature for consistent parsing
-                max_tokens: 1000, // Increased for full semantic expansion (60 keywords)
+                max_tokens: 2000, // Increased for full semantic expansion (60 keywords)
             }),
         });
 
@@ -1900,7 +1900,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
                 temperature: 0.1,
-                max_tokens: 1000,
+                max_tokens: 2000,
             }),
         });
 
