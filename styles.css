@@ -552,9 +552,9 @@
 
 /* Keyword Expansion Display */
 .task-chat-keyword-expansion {
-    margin-top: 4px;
-    padding-top: 4px;
-    opacity: 0.7;
+    margin-top: 0px;
+    padding-top: 2px;
+    opacity: 0.9;
     /* No horizontal padding - align with token usage */
     /* No background - keep it simple like token usage */
 }
