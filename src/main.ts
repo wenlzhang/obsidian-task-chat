@@ -124,11 +124,33 @@ export default class TaskChatPlugin extends Plugin {
 
     async loadSettings(): Promise<void> {
         const loadedData = await this.loadData();
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 
-        // Migrate old settings structure to new per-provider configuration
+        // Deep merge: Start with defaults
+        this.settings = Object.assign({}, DEFAULT_SETTINGS);
+
+        // Then merge loaded data, but do DEEP merge for providerConfigs
         if (loadedData) {
-            this.migrateOldSettings(loadedData);
+            // Merge top-level settings
+            Object.assign(this.settings, loadedData);
+
+            // Deep merge provider configs to preserve defaults
+            if (loadedData.providerConfigs) {
+                for (const provider of [
+                    "openai",
+                    "anthropic",
+                    "openrouter",
+                    "ollama",
+                ] as const) {
+                    if (loadedData.providerConfigs[provider]) {
+                        // Merge loaded config with defaults for this provider
+                        this.settings.providerConfigs[provider] = Object.assign(
+                            {},
+                            DEFAULT_SETTINGS.providerConfigs[provider],
+                            loadedData.providerConfigs[provider],
+                        );
+                    }
+                }
+            }
         }
 
         // Initialize user stop words (combines with internal stop words)
@@ -136,119 +158,6 @@ export default class TaskChatPlugin extends Plugin {
 
         // Auto-load models if not already cached
         this.loadModelsInBackground();
-    }
-
-    /**
-     * Migrate old settings structure to new per-provider configuration
-     * This ensures backward compatibility when users update the plugin
-     */
-    private migrateOldSettings(loadedData: any): void {
-        // Check if old settings exist (before per-provider config was added)
-        if (loadedData.openaiApiKey !== undefined) {
-            Logger.info(
-                "Migrating old settings to per-provider configuration...",
-            );
-
-            // Migrate OpenAI settings
-            if (loadedData.openaiApiKey) {
-                this.settings.providerConfigs.openai.apiKey =
-                    loadedData.openaiApiKey;
-            }
-            if (loadedData.aiProvider === "openai") {
-                if (loadedData.model)
-                    this.settings.providerConfigs.openai.model =
-                        loadedData.model;
-                if (loadedData.apiEndpoint)
-                    this.settings.providerConfigs.openai.apiEndpoint =
-                        loadedData.apiEndpoint;
-                if (loadedData.temperature !== undefined)
-                    this.settings.providerConfigs.openai.temperature =
-                        loadedData.temperature;
-                if (loadedData.maxTokensChat !== undefined)
-                    this.settings.providerConfigs.openai.maxTokens =
-                        loadedData.maxTokensChat;
-            }
-
-            // Migrate Anthropic settings
-            if (loadedData.anthropicApiKey) {
-                this.settings.providerConfigs.anthropic.apiKey =
-                    loadedData.anthropicApiKey;
-            }
-            if (loadedData.aiProvider === "anthropic") {
-                if (loadedData.model)
-                    this.settings.providerConfigs.anthropic.model =
-                        loadedData.model;
-                if (loadedData.apiEndpoint)
-                    this.settings.providerConfigs.anthropic.apiEndpoint =
-                        loadedData.apiEndpoint;
-                if (loadedData.temperature !== undefined)
-                    this.settings.providerConfigs.anthropic.temperature =
-                        loadedData.temperature;
-                if (loadedData.maxTokensChat !== undefined)
-                    this.settings.providerConfigs.anthropic.maxTokens =
-                        loadedData.maxTokensChat;
-            }
-
-            // Migrate OpenRouter settings
-            if (loadedData.openrouterApiKey) {
-                this.settings.providerConfigs.openrouter.apiKey =
-                    loadedData.openrouterApiKey;
-            }
-            if (loadedData.aiProvider === "openrouter") {
-                if (loadedData.model)
-                    this.settings.providerConfigs.openrouter.model =
-                        loadedData.model;
-                if (loadedData.apiEndpoint)
-                    this.settings.providerConfigs.openrouter.apiEndpoint =
-                        loadedData.apiEndpoint;
-                if (loadedData.temperature !== undefined)
-                    this.settings.providerConfigs.openrouter.temperature =
-                        loadedData.temperature;
-                if (loadedData.maxTokensChat !== undefined)
-                    this.settings.providerConfigs.openrouter.maxTokens =
-                        loadedData.maxTokensChat;
-            }
-
-            // Migrate Ollama settings
-            if (loadedData.aiProvider === "ollama") {
-                if (loadedData.model)
-                    this.settings.providerConfigs.ollama.model =
-                        loadedData.model;
-                if (loadedData.apiEndpoint)
-                    this.settings.providerConfigs.ollama.apiEndpoint =
-                        loadedData.apiEndpoint;
-                if (loadedData.temperature !== undefined)
-                    this.settings.providerConfigs.ollama.temperature =
-                        loadedData.temperature;
-                if (loadedData.maxTokensChat !== undefined)
-                    this.settings.providerConfigs.ollama.maxTokens =
-                        loadedData.maxTokensChat;
-            }
-
-            // Migrate available models
-            if (loadedData.availableModels) {
-                if (loadedData.availableModels.openai) {
-                    this.settings.providerConfigs.openai.availableModels =
-                        loadedData.availableModels.openai;
-                }
-                if (loadedData.availableModels.anthropic) {
-                    this.settings.providerConfigs.anthropic.availableModels =
-                        loadedData.availableModels.anthropic;
-                }
-                if (loadedData.availableModels.openrouter) {
-                    this.settings.providerConfigs.openrouter.availableModels =
-                        loadedData.availableModels.openrouter;
-                }
-                if (loadedData.availableModels.ollama) {
-                    this.settings.providerConfigs.ollama.availableModels =
-                        loadedData.availableModels.ollama;
-                }
-            }
-
-            // Save migrated settings
-            this.saveSettings();
-            Logger.info("Migration completed successfully");
-        }
     }
 
     /**

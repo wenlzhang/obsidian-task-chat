@@ -172,7 +172,14 @@ export class ModelProviderService {
             });
 
             if (response.status !== 200) {
-                Logger.error("Failed to fetch Ollama models:", response);
+                Logger.error(
+                    "Failed to fetch Ollama models (status " +
+                        response.status +
+                        "). Is Ollama running at " +
+                        baseUrl +
+                        "?",
+                    response,
+                );
                 return this.getDefaultOllamaModels();
             }
 
@@ -197,16 +204,15 @@ export class ModelProviderService {
      */
     static getDefaultOllamaModels(): string[] {
         return [
-            "llama3.2:latest",
-            "llama3.1:latest",
+            "gpt-oss:20b",
+            "gemma3:12b",
+            "gemma3:12b-it-qat",
+            "deepseek-r1:8b",
+            "deepseek-r1:14b",
+            "qwen3:8b-q8_0",
+            "qwen3:14b",
             "llama3.1:8b",
-            "llama3.1:70b",
-            "mistral:latest",
             "mistral:7b",
-            "phi3:latest",
-            "qwen2.5:latest",
-            "gemma2:latest",
-            "codellama:latest",
         ];
     }
 

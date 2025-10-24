@@ -74,7 +74,7 @@ export class SettingsTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.aiProvider = value as any;
                         // Auto-configure provider defaults
-                        this.configureProviderDefaults(value);
+                        await this.configureProviderDefaults(value);
                         await this.plugin.saveSettings();
                         this.display(); // Refresh to show provider-specific settings
                     }),
@@ -2018,18 +2018,90 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
                 textarea.inputEl.style.width = "100%";
-                textarea.inputEl.style.minHeight = "60px";
             });
     }
 
     /**
-     * Configure provider-specific defaults
-     * Note: With per-provider configs, this is no longer needed as each provider
-     * maintains its own settings. Keeping empty for backward compatibility.
+     * Configure provider-specific default settings
+     * Ensures model, endpoint, and other settings are properly initialized
      */
-    private configureProviderDefaults(provider: string): void {
-        // No longer needed - each provider has its own configuration
-        // Settings are preserved when switching between providers
+    private async configureProviderDefaults(provider: string): Promise<void> {
+        const providerConfig = this.getCurrentProviderConfig();
+        const defaults =
+            DEFAULT_SETTINGS.providerConfigs[
+                provider as keyof typeof DEFAULT_SETTINGS.providerConfigs
+            ];
+
+        // Ensure endpoint is set (critical for Ollama!)
+        if (!providerConfig.apiEndpoint) {
+            providerConfig.apiEndpoint = defaults.apiEndpoint;
+            Logger.info(
+                `Set default endpoint for ${provider}: ${defaults.apiEndpoint}`,
+            );
+        }
+
+        // Ensure model is set
+        if (!providerConfig.model) {
+            providerConfig.model = defaults.model;
+            Logger.info(`Set default model for ${provider}: ${defaults.model}`);
+        }
+
+        // Ensure temperature is set
+        if (providerConfig.temperature === undefined) {
+            providerConfig.temperature = defaults.temperature;
+        }
+
+        // Ensure maxTokens is set
+        if (!providerConfig.maxTokens) {
+            providerConfig.maxTokens = defaults.maxTokens;
+        }
+
+        // For Ollama, automatically try to fetch available models
+        if (provider === "ollama") {
+            try {
+                Logger.info(
+                    `Fetching Ollama models from ${providerConfig.apiEndpoint}...`,
+                );
+                const models = await ModelProviderService.fetchOllamaModels(
+                    providerConfig.apiEndpoint,
+                );
+                if (models.length > 0) {
+                    providerConfig.availableModels = models;
+                    Logger.info(`Found ${models.length} Ollama models`);
+
+                    // Set first available model if current model is from another provider
+                    const currentModel = providerConfig.model;
+                    if (!models.includes(currentModel)) {
+                        providerConfig.model = models[0];
+                        Logger.info(
+                            `Switched to available model: ${models[0]}`,
+                        );
+                    }
+                } else {
+                    Logger.warn("No Ollama models found");
+                }
+            } catch (error) {
+                Logger.error("Could not auto-fetch Ollama models:", error);
+            }
+        }
+    }
+
+    /**
+     * Get default models for a provider
+     */
+    private getDefaultModelsForProvider(provider: string): string[] {
+        switch (provider) {
+            case "openai":
+                return ModelProviderService.getDefaultOpenAIModels();
+            case "anthropic":
+                return ModelProviderService.getDefaultAnthropicModels();
+            case "openrouter":
+                return ModelProviderService.getDefaultOpenRouterModels();
+            case "ollama":
+                return ModelProviderService.getDefaultOllamaModels();
+            default:
+                return [];
+        }
     }
 
     /**

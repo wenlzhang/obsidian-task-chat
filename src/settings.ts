@@ -206,9 +206,6 @@ export interface PluginSettings {
     priorityP4Score: number; // Score for priority 4 (low) (default: 0.2)
     priorityNoneScore: number; // Score for no priority (default: 0.1)
 
-    // Status Sub-Coefficients (DEPRECATED - now in taskStatusMapping)
-    // Kept for backward compatibility during migration
-
     // Sort settings - Unified multi-criteria sorting for all modes
     // Relevance is always first (weighted by coefficients)
     // Additional criteria serve as tiebreakers for tasks with identical scores
@@ -421,9 +418,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     priorityP3Score: 0.5, // Priority 3 (medium)
     priorityP4Score: 0.2, // Priority 4 (low)
     priorityNoneScore: 0.1, // No priority
-
-    // Status Sub-Coefficients (DEPRECATED - removed, now in taskStatusMapping)
-    // Migration: Old settings will be automatically converted to new structure
 
     // Unified multi-criteria sorting for all modes
     // Relevance always first (weighted by coefficients: R×20, D×4, P×1, S×1)
