@@ -1446,6 +1446,9 @@ ${taskContext}`;
                     model: providerConfig.model,
                     messages: messages,
                     stream: true, // Enable streaming!
+                    stream_options: {
+                        include_usage: true, // Get token usage in streaming mode
+                    },
                     temperature: providerConfig.temperature,
                     max_tokens: providerConfig.maxTokens,
                 }),
@@ -1581,7 +1584,8 @@ ${taskContext}`;
                 // Parse SSE stream
                 const reader = response.body.getReader();
                 let fullResponse = "";
-                let tokenUsageInfo: StreamChunk["tokenUsage"] | undefined;
+                let promptTokens = 0;
+                let completionTokens = 0;
 
                 for await (const chunk of StreamingService.parseSSE(
                     reader,
@@ -1592,8 +1596,15 @@ ${taskContext}`;
                         onStream(chunk.content);
                     }
 
+                    // Accumulate token usage (Anthropic sends it in parts)
                     if (chunk.tokenUsage) {
-                        tokenUsageInfo = chunk.tokenUsage;
+                        if (chunk.tokenUsage.promptTokens) {
+                            promptTokens = chunk.tokenUsage.promptTokens;
+                        }
+                        if (chunk.tokenUsage.completionTokens) {
+                            completionTokens =
+                                chunk.tokenUsage.completionTokens;
+                        }
                     }
 
                     if (chunk.done) break;
@@ -1602,19 +1613,19 @@ ${taskContext}`;
                 const cleanedResponse = this.stripReasoningTags(fullResponse);
 
                 const tokenUsage: TokenUsage = {
-                    promptTokens: tokenUsageInfo?.promptTokens || 0,
-                    completionTokens: tokenUsageInfo?.completionTokens || 0,
-                    totalTokens: tokenUsageInfo?.totalTokens || 0,
+                    promptTokens,
+                    completionTokens,
+                    totalTokens: promptTokens + completionTokens,
                     estimatedCost: this.calculateCost(
-                        tokenUsageInfo?.promptTokens || 0,
-                        tokenUsageInfo?.completionTokens || 0,
+                        promptTokens,
+                        completionTokens,
                         providerConfig.model,
                         settings.aiProvider,
                         settings.pricingCache.data,
                     ),
                     model: providerConfig.model,
                     provider: settings.aiProvider,
-                    isEstimated: !tokenUsageInfo,
+                    isEstimated: promptTokens === 0 && completionTokens === 0,
                 };
 
                 Logger.debug("Anthropic streaming completed successfully");

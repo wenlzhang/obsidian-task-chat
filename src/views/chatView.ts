@@ -553,10 +553,9 @@ export class ChatView extends ItemView {
      * Returns a short string with key info (language, confidence, typos)
      */
     private getAIUnderstandingSummary(message: ChatMessage): string | null {
-        // Only for Task Chat mode with AI understanding enabled
+        // Show for all message types if they have parsedQuery (Smart Search, Task Chat)
         if (
-            message.role !== "chat" ||
-            !message.parsedQuery?.aiUnderstanding ||
+            !message.parsedQuery ||
             !this.plugin.settings.aiEnhancement.showAIUnderstanding
         ) {
             return null;
@@ -565,18 +564,35 @@ export class ChatView extends ItemView {
         const ai = message.parsedQuery.aiUnderstanding;
         const parts: string[] = [];
 
+        // Don't show mode here - it's already shown in token usage section
+
         // Language (only if not English)
-        if (ai.detectedLanguage && ai.detectedLanguage !== "en") {
-            parts.push(`Lang: ${ai.detectedLanguage}`);
+        if (ai?.detectedLanguage && ai.detectedLanguage !== "en") {
+            const languageNames: Record<string, string> = {
+                zh: "Chinese",
+                sv: "Swedish",
+                es: "Spanish",
+                fr: "French",
+                de: "German",
+                ja: "Japanese",
+                ko: "Korean",
+                ru: "Russian",
+                ar: "Arabic",
+                pt: "Portuguese",
+                it: "Italian",
+            };
+            const langName =
+                languageNames[ai.detectedLanguage] || ai.detectedLanguage;
+            parts.push(`Lang: ${langName}`);
         }
 
         // Typo corrections (if any)
-        if (ai.correctedTypos && ai.correctedTypos.length > 0) {
+        if (ai?.correctedTypos && ai.correctedTypos.length > 0) {
             parts.push(`✏️ ${ai.correctedTypos.length} typo(s)`);
         }
 
         // Confidence (only if low/medium)
-        if (ai.confidence !== undefined) {
+        if (ai?.confidence !== undefined) {
             const percent = Math.round(ai.confidence * 100);
             if (percent < 70) {
                 const emoji = percent < 50 ? "⚠️" : "📊";
@@ -585,6 +601,48 @@ export class ChatView extends ItemView {
         }
 
         return parts.length > 0 ? parts.join(" • ") : null;
+    }
+
+    /**
+     * Get keyword expansion summary for display
+     * Shows core keywords, expanded keywords, and expansion stats
+     */
+    private getKeywordExpansionSummary(message: ChatMessage): string | null {
+        const query = message.parsedQuery;
+        if (!query) return null;
+
+        const parts: string[] = [];
+
+        // Core keywords (after stop word removal)
+        if (query.coreKeywords && query.coreKeywords.length > 0) {
+            parts.push(`🔑 Core keywords: ${query.coreKeywords.join(", ")}`);
+        }
+
+        // Expanded keywords (if semantic expansion was used)
+        if (
+            query.expansionMetadata?.enabled &&
+            query.keywords &&
+            query.keywords.length > query.coreKeywords.length
+        ) {
+            const expandedOnly = query.keywords.filter(
+                (k: string) => !query.coreKeywords.includes(k),
+            );
+            if (expandedOnly.length > 0) {
+                parts.push(`✨ Expanded keywords: ${expandedOnly.join(", ")}`);
+            }
+        }
+
+        // Expansion stats
+        if (query.expansionMetadata) {
+            const meta = query.expansionMetadata;
+            if (meta.enabled) {
+                parts.push(
+                    `📊 ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total`,
+                );
+            }
+        }
+
+        return parts.length > 0 ? parts.join("\n") : null;
     }
 
     /**
@@ -852,6 +910,18 @@ export class ChatView extends ItemView {
             if (message.role !== "user") {
                 this.addCopyButton(usageEl, message);
             }
+        }
+
+        // Keyword expansion info (show below token usage for Smart Search and Task Chat)
+        const keywordSummary = this.getKeywordExpansionSummary(message);
+        if (keywordSummary) {
+            const keywordEl = messageEl.createDiv(
+                "task-chat-keyword-expansion",
+            );
+            keywordEl.createEl("small", {
+                text: keywordSummary,
+                cls: "task-chat-keyword-summary",
+            });
         }
 
         // Add copy button below message for user messages

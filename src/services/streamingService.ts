@@ -117,9 +117,10 @@ export class StreamingService {
 
         const data = line.substring(6).trim();
 
-        // Stream end marker
+        // Stream end marker - but don't mark as done yet
+        // With stream_options.include_usage, OpenAI sends usage AFTER [DONE]
         if (data === "[DONE]") {
-            return { content: "", done: true };
+            return { content: "", done: false }; // Don't stop, wait for usage
         }
 
         try {
@@ -129,7 +130,7 @@ export class StreamingService {
             const content = json.choices?.[0]?.delta?.content || "";
             const finishReason = json.choices?.[0]?.finish_reason;
 
-            // Extract token usage (only in final message)
+            // Extract token usage (sent in final chunk with stream_options)
             const usage = json.usage
                 ? {
                       promptTokens: json.usage.prompt_tokens,
@@ -138,9 +139,16 @@ export class StreamingService {
                   }
                 : undefined;
 
+            // Done when we have finish_reason OR when we receive usage info
+            // (usage comes in last chunk after [DONE])
+            const isDone =
+                finishReason === "stop" ||
+                finishReason === "length" ||
+                usage !== undefined;
+
             return {
                 content,
-                done: finishReason === "stop" || finishReason === "length",
+                done: isDone,
                 tokenUsage: usage,
             };
         } catch (error) {
@@ -195,7 +203,7 @@ export class StreamingService {
                     return { content: text, done: false };
                 }
 
-                // Extract token usage from message_start
+                // Extract token usage from message_start (input tokens only)
                 if (json.type === "message_start") {
                     const usage = json.message?.usage;
                     if (usage) {
@@ -204,9 +212,26 @@ export class StreamingService {
                             done: false,
                             tokenUsage: {
                                 promptTokens: usage.input_tokens,
-                                completionTokens: usage.output_tokens,
+                                completionTokens: usage.output_tokens || 0,
                                 totalTokens:
-                                    usage.input_tokens + usage.output_tokens,
+                                    usage.input_tokens +
+                                    (usage.output_tokens || 0),
+                            },
+                        };
+                    }
+                }
+
+                // Extract final token usage from message_delta (complete counts)
+                if (json.type === "message_delta") {
+                    const usage = json.usage;
+                    if (usage) {
+                        return {
+                            content: "",
+                            done: false,
+                            tokenUsage: {
+                                promptTokens: 0, // Already sent in message_start
+                                completionTokens: usage.output_tokens || 0,
+                                totalTokens: usage.output_tokens || 0,
                             },
                         };
                     }
