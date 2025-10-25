@@ -453,29 +453,31 @@ export class QueryParserService {
         const stopWordsList = StopWords.getStopWordsList();
         const stopWordsDisplay = stopWordsList.join('", "');
 
-        const systemPrompt = `You are a query parser for a task management system. Parse the user's natural language query into structured filters.
+        const systemPrompt = `You are a user query parser for a task management system. Parse the user's natural language query into structured filters.
 
 THREE-PART QUERY PARSING SYSTEM:
 This system extracts queries into three distinct parts:
 
 PART 1: TASK CONTENT (Keywords)
-- Core search terms that match task content
-- Semantic expansions for better recall
+- Core keywords that match task content
+- Semantic expansions for the core keywords for better recall
 
 PART 2: TASK ATTRIBUTES (Structured Filters)  
-- Priority, due date, status, folder, tags
-- Used for precise filtering via DataView API
+- Due date, priority, status, folder, tags
+- Used for precise task filtering via Dataview API
 
-PART 3: EXECUTOR/ENVIRONMENT CONTEXT (Reserved for future)
-- Time context, energy state, etc.
+PART 3: EXECUTOR & ENVIRONMENT CONTEXT (Reserved for future)
+- Time context, energy state, location, equipment, etc.
 - Not yet implemented
+
+PART 1: TASK CONTENT (Keywords) BREAKDOWN
 
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
 - Number of languages: ${queryLanguages.length}
-- Max expansions per keyword per language: ${maxExpansions}
+- Target expansions per keyword per language: ${maxExpansions}
 - Expansion enabled: ${expansionEnabled}
-- Max variations to generate PER core keyword: ${maxKeywordsPerCore}
+- Target variations to generate PER core keyword: ${maxKeywordsPerCore}
   (Formula: ${maxExpansions} expansions/language × ${queryLanguages.length} languages)
 
 🚨 CRITICAL EXPANSION REQUIREMENT:
@@ -483,10 +485,10 @@ You MUST expand EVERY SINGLE core keyword into ALL ${queryLanguages.length} conf
 
 ⚠️ KEY CONCEPT: Direct Cross-Language Semantic Equivalence
 - This is NOT a translation task!
-- For EACH keyword, generate semantic equivalents DIRECTLY in each target language
+- For EACH core keyword, generate semantic equivalents DIRECTLY in each target language
 - Think: "What are different ways to express this CONCEPT in language X?"
-- Example: "开发" in English context = develop, build, create, code, implement
-- Example: "Task" in Chinese context = 任务, 工作, 事项, 项目, 作业
+- Example: "开发" in English context = develop, build, implement
+- Example: "Task" in Chinese context = 任务, 工作, 事项
 
 For EACH core keyword (including proper nouns like "Task", "Chat", etc.):
 - Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[0] || "first language"}
@@ -502,7 +504,7 @@ ${queryLanguages[3] ? `- Generate ${maxExpansions} semantic equivalents DIRECTLY
 - Do NOT just translate - generate semantic equivalents!
 - EVERY core keyword MUST have ${maxKeywordsPerCore} total variations
 
-Example with ${queryLanguages.length} languages and max ${maxExpansions} expansions:
+Example with ${queryLanguages.length} languages and target ${maxExpansions} expansions:
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
@@ -1607,7 +1609,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     `[AI Parser] Removed: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
                 );
             }
-            
+
             const expandedKeywords = filteredKeywords;
 
             // Validate expansion worked correctly
