@@ -188,74 +188,45 @@ Use the display name when showing status to users.`;
         settings: PluginSettings,
         queryLanguages: string[],
     ): string {
-        const languageList = queryLanguages.join(", ");
         const categoryKeys = Object.keys(settings.taskStatusMapping);
         const categoryList = categoryKeys.map((k) => `"${k}"`).join(", ");
 
         // Build examples for each category dynamically from user settings
         const categoryExamples = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
-                // Get semantic terms based on category key (stable)
                 const termSuggestions = this.inferStatusTermSuggestions(
                     key,
                     settings,
                 );
-                return `- "${key}" = ${config.displayName} tasks (${termSuggestions})`;
+                return `- "${key}" = ${config.displayName} (${termSuggestions})`;
             })
             .join("\n");
 
-        return `STATUS CATEGORY MAPPING (User-Configured - Dynamic):
+        return `STATUS MAPPING (User-Configured, ${categoryKeys.length} categories):
 
-TERMINOLOGY CLARIFICATION:
-- Category Key: Internal identifier (stable, used in code) - e.g., "open", "inprogress", "completed"
-- Display Name: User-facing label (customizable, shown in UI) - e.g., "Open", "In Progress", "Completed"
-- Alias: Alternative query terms (flexible, user-defined) - e.g., "wip", "doing", "active"
-- Symbol: Checkbox symbol (direct matching) - e.g., "[/]", "[x]"
-
-Category keys must be EXACTLY one of: ${categoryList}
-
-⚠️ The system supports CUSTOM STATUS CATEGORIES defined by the user!
-⚠️ Use your NATIVE LANGUAGE UNDERSTANDING to recognize status concepts in ALL languages: ${languageList}
-NO expansion needed - recognize concepts directly and convert to category keys!
-
-Current status categories:
+Valid keys: ${categoryList}
 ${categoryExamples}
 
-Your task: Recognize status concepts in user's query (ANY language) and convert to category keys.
+DISAMBIGUATION:
+1. Status category name → STATUS filter (highest priority)
+2. Not a status category → check priority/dueDate/keywords
+Examples: "${categoryKeys.map((k) => settings.taskStatusMapping[k].displayName.toLowerCase()).join('", "')}" → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
 
-🔑 CRITICAL DISAMBIGUATION RULES:
-1. If a word/phrase EXACTLY MATCHES a status category name (e.g., "${categoryKeys[0]}", "${categoryKeys[1]}"), interpret it as a STATUS FILTER FIRST
-2. When user says just "${categoryKeys.map((k) => settings.taskStatusMapping[k].displayName.toLowerCase()).join('", "')}" (without "tasks"), assume they mean that status
-3. Only interpret as keywords if the term does NOT match any status category
+STATUS VALUES:
+- Single: status: "${categoryKeys[0]}"
+- Multiple: status: ["${categoryKeys[0]}", "${categoryKeys[1]}"]
+- Any: status: null (rare)
 
-STATUS DISTINCTION:
-1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
-2. Asking for tasks with SPECIFIC status category → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
-3. Asking for multiple status categories → status: ["${categoryKeys[0]}", "${categoryKeys[1]}"]
-
-RECOGNITION EXAMPLES (using current categories):
-${Object.entries(settings.taskStatusMapping)
-    .slice(0, 4)
-    .map(([key, config]) => {
-        const displayLower = config.displayName.toLowerCase();
-        return `- "${displayLower}" → Recognize concept → status: "${key}" ✅\n- "${displayLower} tasks" → Recognize concept → status: "${key}" ✅`;
-    })
-    .join("\n")}
-
-MULTILINGUAL RECOGNITION (IMPORTANT!):
+RECOGNITION (ANY language):
 ${Object.entries(settings.taskStatusMapping)
     .slice(0, 3)
-    .map(([key, config]) => {
-        const displayLower = config.displayName.toLowerCase();
-        return `- "${displayLower}" (English) → Recognize concept → status: "${key}" ✅\n- Use native understanding for other languages → status: "${key}" ✅`;
-    })
-    .join("\n")}
+    .map(
+        ([key, config]) =>
+            `"${config.displayName.toLowerCase()}" → status: "${key}"`,
+    )
+    .join(" | ")}
 
-USER QUERY PATTERNS:
-1. Natural language: "in progress tasks" → Recognize IN_PROGRESS concept → status: "inprogress"
-2. Alias: "wip tasks" → Match alias → status: "inprogress"
-3. Symbol syntax: "s:/" → Match symbol → tasks with [/] symbol
-4. Multiple: "s:open,wip,/" → ["open", "inprogress", symbol [/]]`;
+Query patterns: Natural ("in progress tasks"), Alias ("wip"), Symbol ("s:/"), Multiple ("s:open,wip,/")`;
     }
 
     /**
@@ -278,100 +249,57 @@ Remember: Inclusion > Exclusion. When in doubt, include the task!`;
      * Used in task analysis prompts to explain how tasks are ordered
      */
     static buildSortOrderExplanation(sortOrder: SortCriterion[]): string {
-        // Convert criteria to human-readable names
-        const criteriaNames = sortOrder.map((criterion) => {
-            switch (criterion) {
-                case "relevance":
-                    return "keyword relevance";
-                case "dueDate":
-                    return "due date";
-                case "priority":
-                    return "priority level";
-                case "created":
-                    return "creation date";
-                case "alphabetical":
-                    return "alphabetical order";
-                default:
-                    return criterion;
-            }
-        });
+        const criteriaMap: Record<
+            string,
+            { name: string; desc: string; detail: string }
+        > = {
+            relevance: {
+                name: "keyword relevance",
+                desc: "best matches",
+                detail: "Higher keyword match (100 → 0)",
+            },
+            dueDate: {
+                name: "due date",
+                desc: "urgency",
+                detail: "Most urgent (overdue → today → future)",
+            },
+            priority: {
+                name: "priority",
+                desc: "importance",
+                detail: "Highest first (1 → 4)",
+            },
+            created: {
+                name: "creation date",
+                desc: "recency",
+                detail: "Newest first (recent → old)",
+            },
+            alphabetical: {
+                name: "alphabetical",
+                desc: "A → Z",
+                detail: "Standard order (A → Z)",
+            },
+        };
 
-        // Build primary sort description
-        const primaryCriterion = sortOrder[0];
-        let primaryDescription = "";
-
-        switch (primaryCriterion) {
-            case "relevance":
-                primaryDescription = "keyword relevance (best matches first)";
-                break;
-            case "dueDate":
-                primaryDescription = "urgency (overdue → today → future)";
-                break;
-            case "priority":
-                primaryDescription = "priority (1=highest → 4=lowest)";
-                break;
-            case "created":
-                primaryDescription = "recency (newest → oldest)";
-                break;
-            case "alphabetical":
-                primaryDescription = "alphabetical order (A → Z)";
-                break;
-        }
-
-        // Build complete explanation
-        const sortChain = criteriaNames.join(" → ");
-
-        // Build criterion-specific explanations ONLY for criteria actually in use
-        const criteriaDetails: string[] = [];
-        sortOrder.forEach((criterion) => {
-            switch (criterion) {
-                case "relevance":
-                    criteriaDetails.push(
-                        "Relevance: Higher keyword match scores first (100 → 0, best matches at top)",
-                    );
-                    break;
-                case "priority":
-                    criteriaDetails.push(
-                        "Priority: Highest priority first (1=highest → 2 → 3 → 4=lowest, urgent tasks at top)",
-                    );
-                    break;
-                case "dueDate":
-                    criteriaDetails.push(
-                        "Due date: Most urgent first (overdue → today → future → no due date, earliest deadlines at top)",
-                    );
-                    break;
-                case "created":
-                    criteriaDetails.push(
-                        "Created date: Newest tasks first (recent → older, latest work at top)",
-                    );
-                    break;
-                case "alphabetical":
-                    criteriaDetails.push(
-                        "Alphabetical: Standard order (A → Z)",
-                    );
-                    break;
-            }
-        });
+        const primary = criteriaMap[sortOrder[0]];
+        const sortChain = sortOrder
+            .map((c) => criteriaMap[c]?.name || c)
+            .join(" → ");
+        const details = sortOrder
+            .map((c) => criteriaMap[c]?.detail)
+            .filter(Boolean)
+            .join(" | ");
 
         return `
-TASK ORDERING (User-Configured):
-⚠️ CRITICAL: Tasks are PRE-SORTED based on user's criteria before reaching you!
+TASK ORDERING (Pre-Sorted):
+Sort: ${sortChain}
+Primary: ${primary?.desc} (${primary?.detail})
 
-Multi-criteria sort order: ${sortChain}
-- Primary sort: ${primaryDescription}
-- Secondary/tertiary sorts break ties when primary criteria are equal
+⚠️ IMPLICATIONS:
+- Lower task IDs = higher relevance/urgency/importance  
+- [TASK_1]-[TASK_3] are TOP ranked by these criteria
+- Prioritize earlier IDs in recommendations
 
-⚠️ IMPORTANT IMPLICATIONS FOR YOUR RECOMMENDATIONS:
-- [TASK_1], [TASK_2], [TASK_3] are at the TOP because they rank highest by these criteria
-- [TASK_90], [TASK_91], [TASK_92] are at the BOTTOM because they rank lowest
-- Earlier task IDs = MORE relevant/urgent/important (based on sort criteria)
-- When many tasks match the query, PRIORITIZE EARLIER TASK IDs (lower numbers)
-- The system already did the sorting - you should respect and leverage this ordering
-
-Sort criteria in use (in priority order):
-${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
-
-⚠️ ACTION: When recommending tasks, start with lower task IDs and work your way up. Tasks near [TASK_1] are the most aligned with user's needs based on the sort criteria!`;
+Details: ${details}`;
     }
 
     /**
@@ -379,7 +307,6 @@ ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
      * Used in task analysis prompts to ensure AI correctly interprets task metadata
      */
     static buildMetadataGuidance(settings: PluginSettings): string {
-        // Get user's configured values
         const statusNames = Object.values(settings.taskStatusMapping)
             .map((config) => config.displayName)
             .join(", ");
@@ -390,59 +317,26 @@ ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
             .join(", ");
 
         return `
-IMPORTANT: UNDERSTANDING TASK METADATA (User-Configured)
-- Each task is displayed with its text content AND structured metadata
-- ONLY use metadata shown explicitly - do NOT infer properties from task text
+TASK METADATA (Use Clean Metadata, Ignore Raw Syntax):
 
-⚠️ IMPORTANT: RAW DATAVIEW SYNTAX IN TASK TEXT
-You will see tasks with BOTH:
-1. Original task text (may contain raw Dataview syntax)
-2. Extracted metadata below each task (clean, structured format)
-
-Example:
+Example task display:
   [TASK_1] Fix bug [due::2025-10-20] 🗓️ 2025-10-20 [p::1] ⏫
     Status: Open | Priority: 1 | Due: 2025-10-20
 
-WHY you see raw syntax in text:
-- Raw syntax ([due::DATE], 🗓️ DATE, ⏫) is how users store metadata in their vault
-- We keep it in task text for vault compatibility
-- BUT we've ALREADY extracted it using Dataview API
+⚠️ CRITICAL: Use ONLY the clean metadata line ("Status: Open | Priority: 1 | Due: 2025-10-20")
+→ Ignore raw Dataview syntax in task text ([due::DATE], 🗓️, ⏫, etc.)
+→ Raw syntax already extracted - trust the metadata line only
 
-WHAT YOU MUST DO:
-→ Use ONLY the structured metadata (e.g., "Priority: 1", "Due: 2025-10-20")
-→ Do NOT try to parse [due::2025-10-20] or 🗓️ 2025-10-20 from the task text
-→ If you see BOTH raw syntax in text AND clean metadata, trust the metadata
-→ The raw syntax is already processed - you don't need to interpret it
+METADATA FIELDS (User-Configured):
+Status: ${statusNames} (appears as "Status: Open")
+Priority: ${priorityMappings} (appears as "Priority: 1", lower = higher, 1=highest → 4=lowest)
+Due: ${settings.dataviewKeys.dueDate} (appears as "Due: 2025-10-20", missing = no due date)
+Created: ${settings.dataviewKeys.createdDate} (appears as "Created: 2025-10-15")
+Completed: ${settings.dataviewKeys.completedDate} (appears as "Completed: 2025-10-18")
+Folder: Vault location (e.g., "Projects/Work")
+Tags: Task tags (e.g., "#urgent #coding")
 
-Common raw Dataview formats you might see in text (already extracted for you):
-- Inline fields: [${settings.dataviewKeys.dueDate}::2025-10-20], [${settings.dataviewKeys.priority}::1]
-- Emoji dates: 🗓️ 2025-10-20 (due), ✅ 2025-10-15 (completed), ➕ 2025-10-10 (created)
-- Priority emojis: ⏫ (high), 🔼 (medium), 🔽 (low)
-
-METADATA FIELD REFERENCE (User's Configuration):
-
-- **Status**: Display names = (${statusNames})
-  * Appears as: "Status: Open" (not "status: open" or [ ] checkbox)
-  
-- **Priority**: Values = (${priorityMappings})
-  * Appears as: "Priority: 1" or "Priority: high" (user's first configured value)
-  * Lower numbers = higher priority (1=highest, 4=lowest)
-  * Vault field: "${settings.dataviewKeys.priority}"
-  
-- **Due date**: Vault field = "${settings.dataviewKeys.dueDate}"
-  * Appears as: "Due: 2025-10-20" (clean date format)
-  * If NO "Due:" in metadata → task has NO due date
-  
-- **Created date**: Vault field = "${settings.dataviewKeys.createdDate}"
-  * Appears as: "Created: 2025-10-15" (when task was created)
-  
-- **Completed date**: Vault field = "${settings.dataviewKeys.completedDate}"
-  * Appears as: "Completed: 2025-10-18" (when task was finished)
-  
-- **Folder**: Task's vault location (e.g., "Projects/Work")
-- **Tags**: Task's tags (e.g., "#urgent #coding")
-
-REMEMBER: All these fields are extracted from Dataview syntax and shown as clean metadata. Always use the metadata values, never try to parse raw syntax from task text!`;
+⚠️ Always use metadata values - never parse raw syntax from task text!`;
     }
 
     /**
@@ -467,78 +361,33 @@ REMEMBER: All these fields are extracted from Dataview syntax and shown as clean
             status: TaskPropertyService.getCombinedStatusTerms(settings),
         };
 
-        const languageList = queryLanguages.join(", ");
-
         // Build comprehensive guidance
         return `
-🚨 PROPERTY TERM RECOGNITION (Three-Layer System)
+🚨 PROPERTY RECOGNITION (User Terms + Base Terms + Native Understanding)
 
-You have access to three layers of property term recognition:
+USER TERMS (Highest Priority):
+${settings.userPropertyTerms.priority.length > 0 ? `Priority: ${settings.userPropertyTerms.priority.join(", ")}` : ""}${settings.userPropertyTerms.dueDate.length > 0 ? `\nDue Date: ${settings.userPropertyTerms.dueDate.join(", ")}` : ""}${settings.userPropertyTerms.status.length > 0 ? `\nStatus: ${settings.userPropertyTerms.status.join(", ")}` : ""}
 
-LAYER 1: User-Configured Terms (Highest Priority)
-${settings.userPropertyTerms.priority.length > 0 ? `- Priority: ${settings.userPropertyTerms.priority.join(", ")}` : "- Priority: (none configured)"}
-${settings.userPropertyTerms.dueDate.length > 0 ? `- Due Date: ${settings.userPropertyTerms.dueDate.join(", ")}` : "- Due Date: (none configured)"}
-${settings.userPropertyTerms.status.length > 0 ? `- Status: ${settings.userPropertyTerms.status.join(", ")}` : "- Status: (none configured)"}
+BASE TERMS (Built-in, Multilingual):
+Priority: General (${combined.priority.general.slice(0, 8).join(", ")}), High (${combined.priority.high.slice(0, 6).join(", ")}), Medium (${combined.priority.medium.join(", ")}), Low (${combined.priority.low.slice(0, 6).join(", ")})
+Due Date: General (${combined.dueDate.general.slice(0, 8).join(", ")}), Today (${combined.dueDate.today.join(", ")}), Tomorrow (${combined.dueDate.tomorrow.join(", ")}), Overdue (${combined.dueDate.overdue.slice(0, 6).join(", ")}), This Week (${combined.dueDate.thisWeek.join(", ")}), Next Week (${combined.dueDate.nextWeek.join(", ")})
+Status: ${Object.entries(combined.status)
+            .map(([key, terms]) => {
+                const categoryConfig = settings.taskStatusMapping[key];
+                const displayName = categoryConfig?.displayName || key;
+                return `${displayName} (${terms.slice(0, 6).join(", ")})`;
+            })
+            .join(", ")}
 
-LAYER 2: Base Terms (Built-in, Multilingual)
+RECOGNITION PROCESS:
+1. Recognize property CONCEPTS in user's query (ANY language)
+2. Match against user terms (aliases) or base terms (defaults)
+3. Convert to internal values: "inprogress", 1, "overdue", etc.
+4. Separate from content keywords
 
-Priority Terms:
-- General: ${combined.priority.general.slice(0, 10).join(", ")}${combined.priority.general.length > 10 ? "..." : ""}
-- High: ${combined.priority.high.slice(0, 8).join(", ")}${combined.priority.high.length > 8 ? "..." : ""}
-- Medium: ${combined.priority.medium.join(", ")}
-- Low: ${combined.priority.low.slice(0, 8).join(", ")}${combined.priority.low.length > 8 ? "..." : ""}
+Examples: "urgent bug" → priority: 1, keywords: ["bug"] | "进行中任务" → status: "inprogress", keywords: ["任务"]
 
-Due Date Terms:
-- General: ${combined.dueDate.general.slice(0, 10).join(", ")}${combined.dueDate.general.length > 10 ? "..." : ""}
-- Today: ${combined.dueDate.today.join(", ")}
-- Tomorrow: ${combined.dueDate.tomorrow.join(", ")}
-- Overdue: ${combined.dueDate.overdue.slice(0, 8).join(", ")}${combined.dueDate.overdue.length > 8 ? "..." : ""}
-- This Week: ${combined.dueDate.thisWeek.join(", ")}
-- Next Week: ${combined.dueDate.nextWeek.join(", ")}
-- Future: ${combined.dueDate.future.slice(0, 8).join(", ")}${combined.dueDate.future.length > 8 ? "..." : ""}
-
-Status Terms:
-- General: ${combined.status.general.slice(0, 8).join(", ")}${combined.status.general.length > 8 ? "..." : ""}
-${Object.entries(combined.status)
-    .filter(([key]) => key !== "general")
-    .map(([key, terms]) => {
-        const categoryConfig = settings.taskStatusMapping[key];
-        const displayName = categoryConfig?.displayName || key;
-        return `- ${displayName}: ${terms.slice(0, 8).join(", ")}${terms.length > 8 ? "..." : ""}`;
-    })
-    .join("\n")}
-
-LAYER 3: Native Language Understanding (You provide this!)
-- Use your multilingual training to recognize property concepts in ANY language
-- NO expansion needed - direct concept recognition and conversion!
-- This enables cross-language property recognition automatically
-
-PROPERTY RECOGNITION FLOW (Different from Keywords!):
-
-Step 1: Identify Property Concepts in Query
-- Recognize property-related concepts (not just terms)
-- Example: "优先级任务" → Recognize PRIORITY concept
-- Example: "with due date" → Recognize DUE_DATE concept
-
-Step 2: Use Native Language Understanding
-- Recognize property concepts in user's query (ANY language)
-- Use your training to understand what the user means
-- Example: "in progress" (English) → Recognize IN_PROGRESS concept
-- Example: "进行中" (Chinese) → Recognize IN_PROGRESS concept
-- Example: "pågående" (Swedish) → Recognize IN_PROGRESS concept
-
-Step 3: Convert to Category Keys (Layer 1 + Layer 2 help with this)
-- Map recognized concepts to internal category keys
-- Check against user-configured terms (Layer 1) for aliases
-- Check against base terms (Layer 2) for defaults
-- Convert to structured values: "inprogress", 1, "overdue", etc.
-
-Step 4: Separate Property Concepts from Content Keywords
-- Property concepts → structured filters (priority, dueDate, status fields)
-- Content keywords → keywords array (for text matching)
-- Example: "urgent bug fix" → 
-  * Property: priority = 1 (recognized URGENCY concept)
-  * Keywords: ["bug", "fix"] (content terms)
+⚠️ Use native understanding for ANY language - NO expansion needed!
 `;
     }
 }

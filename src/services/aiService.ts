@@ -1165,44 +1165,20 @@ export class AIService {
         // Append technical instructions for task management
         systemPrompt += `
 
-⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST ⚠️
-- DO NOT provide generic advice or general knowledge (e.g., "research the market")
-- DO NOT suggest actions that aren't in the task list
-- Your response must be ENTIRELY based on the specific tasks provided
-- If there are no relevant tasks, say so directly
+🚨 CRITICAL RULES:
+1. ONLY discuss tasks from the list below - no generic advice
+2. Use [TASK_X] IDs to reference tasks (e.g., [TASK_15], [TASK_42])
+3. Recommend ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)}+ of ${taskCount} tasks (80%, max ${settings.maxRecommendations})
+4. Brief explanation (2-3 sentences), reference MANY tasks
+5. DO NOT list task content - IDs only (they appear below your response)
 
-CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
-- Tasks you reference will automatically appear in a "Recommended tasks" section below your response
-- Your response text should ONLY contain advice, insights, and recommendations
-- Use [TASK_X] IDs to reference tasks, but DO NOT list them with "- [TASK_1]: task text" format
-- DO NOT repeat any task content in your response
+TASK ID FORMAT:
+Use EXACT [TASK_X] IDs from list below (e.g., [TASK_15], [TASK_42], [TASK_3])
+System converts to sequential: [TASK_15] → "Task 1", [TASK_42] → "Task 2"
+Your mention order = user's numbering
 
-🚨 CRITICAL: COMPREHENSIVE TASK RECOMMENDATIONS REQUIRED 🚨
-⚠️ Users want to see MOST relevant tasks, not a small curated subset!
-⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a substantial portion!
-
-RECOMMENDATION TARGETS (based on available tasks):
-- ${taskCount} tasks available, maximum limit: ${settings.maxRecommendations} tasks
-- Target: Recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
-- ONLY exclude tasks that are clearly NOT relevant to the query
-- These tasks have ALREADY been filtered to match the query - your job is to recommend MOST of them
-- Err on the side of inclusion - users prefer comprehensive lists over missing tasks
-
-IMPORTANT RULES:
-1. 🚨 YOU MUST USE [TASK_X] FORMAT - This is not optional! Every task recommendation MUST use the EXACT [TASK_X] IDs (e.g., [TASK_1], [TASK_2], etc.) from the task list below
-2. ⚠️ CRITICAL: Use the EXACT [TASK_X] IDs you see in the context (e.g., if you see [TASK_15], [TASK_42], [TASK_3] in the list, use those exact numbers)
-3. DO NOT invent sequential IDs like [TASK_1], [TASK_2], [TASK_3] - use the actual IDs from the provided list
-4. ONLY reference tasks from the provided task list using their original [TASK_X] IDs
-5. DO NOT create new tasks or suggest tasks that don't exist
-6. When recommending tasks, reference them ONLY by their original [TASK_X] ID from the list below
-7. DO NOT list tasks with their content (e.g., DON'T write "- [TASK_15]: task description")
-8. ⚠️ CRITICAL: Reference ALL relevant tasks - be comprehensive, not selective!
-9. Do NOT invent task content - only use the exact task text provided
-10. Focus on helping users prioritize and execute existing tasks
-11. ⚠️ PRIORITIZE tasks based on their [TASK_X] ID numbers - lower IDs are more important (already sorted)
-12. If tasks are related, explain the relationships using only their original task IDs
-13. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using their original [TASK_X] IDs
-14. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
+Example: "Start with [TASK_42] (most urgent), then [TASK_15], [TASK_3]"
+→ User sees: "Start with Task 1 (most urgent), then Task 2, Task 3"
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1210,41 +1186,9 @@ ${PromptBuilderService.buildMetadataGuidance(settings)}
 
 ${PromptBuilderService.buildRecommendationLimits(settings)}
 
-🚨 CRITICAL: HOW TO REFERENCE TASKS IN YOUR RESPONSE:
-
-⚠️ YOU MUST USE THE EXACT [TASK_X] IDs FROM THE TASK LIST BELOW!
-
-- The task list below shows tasks labeled [TASK_1], [TASK_2], [TASK_15], [TASK_42], etc.
-- Use THOSE EXACT IDs when referencing tasks - DO NOT make up sequential IDs!
-- The system will AUTOMATICALLY convert [TASK_X] to "Task N" where N matches the visual list (1, 2, 3...)
-
-EXAMPLES (assuming task list has [TASK_1], [TASK_15], [TASK_42], [TASK_3], etc.):
-
-✅ CORRECT: "Start with [TASK_15] (the most relevant/due soonest/highest priority), then [TASK_42], then [TASK_3]"
-  → User sees: "Start with Task 1 (the most relevant/due soonest/highest priority), then Task 2, then Task 3"
-  → Tasks appear in recommended list as: 1, 2, 3
-
-✅ CORRECT: "Focus on [TASK_42] and [TASK_15]. The most relevant/due soonest/highest priority is [TASK_42]."
-  → User sees: "Focus on Task 1 and Task 2. The most relevant/due soonest/highest priority is Task 1."
-
-❌ WRONG: "Start with [TASK_1], then [TASK_2], then [TASK_3]" (unless those exact IDs exist in the list)
-❌ WRONG: Making up IDs not in the task list
-
-KEY POINTS:
-- IDs you use: The actual [TASK_X] numbers from the context (may be high numbers like TASK_42)
-- IDs user sees: Sequential "Task 1", "Task 2", "Task 3" based on recommended list order
-- Your mention order determines the visual numbering: first mentioned = Task 1
-- ALWAYS copy the exact [TASK_X] IDs you see in the task list below
-
-RESPONSE FORMAT:
-
-MUST: (1) Reference tasks using [TASK_X] IDs, (2) Explain strategy
-
-QUERY UNDERSTANDING:
-- The system has ALREADY extracted and applied ALL filters from the user's query
-- Tasks below have been PRE-FILTERED to match the query (keywords, due dates, priorities, status, etc.)
-- You are seeing ONLY tasks that match - don't second-guess the filtering
-- Your job is to recommend MOST of these pre-filtered tasks (80%+) with helpful prioritization${filterContext}
+QUERY CONTEXT:
+Tasks PRE-FILTERED to match query${filterContext}
+Recommend 80%+ with prioritization guidance
 
 ${PromptBuilderService.buildSortOrderExplanation(sortOrder)}
 
