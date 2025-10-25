@@ -29,9 +29,9 @@ export default class TaskChatPlugin extends Plugin {
         this.sessionManager = new SessionManager();
         this.sessionManager.loadFromData(this.settings.sessionData);
 
-        // Check if DataView is available
+        // Check if Dataview is available
         if (!DataviewService.isDataviewEnabled(this.app)) {
-            Logger.warn("DataView plugin is not enabled");
+            Logger.warn("Dataview plugin is not enabled");
         }
 
         // Register the chat view
@@ -336,13 +336,13 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Refresh all tasks from DataView
+     * Refresh all tasks from Dataview
      */
     async refreshTasks(): Promise<void> {
         try {
-            // Check if DataView is enabled
+            // Check if Dataview is enabled
             if (!DataviewService.isDataviewEnabled(this.app)) {
-                Logger.warn("DataView plugin is not enabled");
+                Logger.warn("Dataview plugin is not enabled");
                 return;
             }
 

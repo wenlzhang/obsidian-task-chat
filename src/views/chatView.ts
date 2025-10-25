@@ -90,7 +90,7 @@ export class ChatView extends ItemView {
         );
         this.updateFilterStatus();
 
-        // DataView warning banner (persistent)
+        // Dataview warning banner (persistent)
         this.renderDataviewWarning();
 
         // Button controls - grouped logically
@@ -391,8 +391,8 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render DataView status banner with helpful information
-     * Shows different messages based on DataView state:
+     * Render Dataview status banner with helpful information
+     * Shows different messages based on Dataview state:
      * - Not installed/enabled: Installation instructions
      * - Enabled but 0 tasks: Indexing status and troubleshooting tips
      */
@@ -400,7 +400,7 @@ export class ChatView extends ItemView {
         const isDataviewEnabled = DataviewService.isDataviewEnabled(this.app);
         const taskCount = this.currentTasks.length;
 
-        // Case 1: DataView is enabled and has tasks - no warning needed
+        // Case 1: Dataview is enabled and has tasks - no warning needed
         if (isDataviewEnabled && taskCount > 0) {
             if (this.dataviewWarningEl) {
                 this.dataviewWarningEl.remove();
@@ -418,7 +418,7 @@ export class ChatView extends ItemView {
             this.dataviewWarningEl.empty();
         }
 
-        // Case 2: DataView is not enabled
+        // Case 2: Dataview is not enabled
         if (!isDataviewEnabled) {
             const warningIcon = this.dataviewWarningEl.createSpan({
                 cls: "task-chat-warning-icon",
@@ -430,16 +430,16 @@ export class ChatView extends ItemView {
             });
 
             warningText.createEl("strong", {
-                text: "DataView plugin required: ",
+                text: "Dataview plugin required: ",
             });
 
             warningText.appendText(
-                "This plugin requires the DataView plugin to function. Please install and enable it from the Community Plugins settings, then click Refresh tasks.",
+                "This plugin requires the Dataview plugin to function. Please install and enable it from the Community Plugins settings, then click Refresh tasks.",
             );
             return;
         }
 
-        // Case 3: DataView is enabled but 0 tasks found
+        // Case 3: Dataview is enabled but 0 tasks found
         // This could mean indexing is in progress or delay is too long
         const infoIcon = this.dataviewWarningEl.createSpan({
             cls: "task-chat-info-icon",
@@ -451,11 +451,11 @@ export class ChatView extends ItemView {
         });
 
         infoText.createEl("strong", {
-            text: "DataView is enabled but no tasks found: ",
+            text: "Dataview is enabled but no tasks found: ",
         });
 
         infoText.appendText(
-            "If you have tasks in your vault, this usually means DataView is still indexing your files or the index delay is too long. ",
+            "If you have tasks in your vault, this usually means Dataview is still indexing your files or the index delay is too long. ",
         );
 
         infoText.createEl("br");
@@ -464,11 +464,11 @@ export class ChatView extends ItemView {
         infoText.appendText("📋 Troubleshooting steps:");
         infoText.createEl("br");
         infoText.appendText(
-            "1️⃣ Wait 10-30 seconds for DataView to finish indexing",
+            "1️⃣ Wait 10-30 seconds for Dataview to finish indexing",
         );
         infoText.createEl("br");
         infoText.appendText(
-            "2️⃣ Check DataView settings → Reduce 'Index delay' (default: 2000ms, try: 500ms)",
+            "2️⃣ Check Dataview settings → Reduce 'Index delay' (default: 2000ms, try: 500ms)",
         );
         infoText.createEl("br");
         infoText.appendText("3️⃣ Click the Refresh tasks button above");

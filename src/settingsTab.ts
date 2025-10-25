@@ -652,19 +652,19 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // DataView Settings
-        new Setting(containerEl).setName("DataView integration").setHeading();
+        // Dataview Settings
+        new Setting(containerEl).setName("Dataview integration").setHeading();
 
         new Setting(containerEl)
-            .setName("DataView task properties")
+            .setName("Dataview task properties")
             .setDesc(
-                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration">→ Learn more about DataView integration and field configuration</a>',
+                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration">→ Learn more about Dataview integration and field configuration</a>',
             )
             .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Due date field")
-            .setDesc("DataView field name for due dates")
+            .setDesc("Dataview field name for due dates")
             .addText((text) =>
                 text
                     .setPlaceholder("due")
@@ -677,7 +677,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Created date field")
-            .setDesc("DataView field name for creation dates")
+            .setDesc("Dataview field name for creation dates")
             .addText((text) =>
                 text
                     .setPlaceholder("created")
@@ -690,7 +690,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Completed date field")
-            .setDesc("DataView field name for completion dates")
+            .setDesc("Dataview field name for completion dates")
             .addText((text) =>
                 text
                     .setPlaceholder("completed")
@@ -703,7 +703,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Priority field")
-            .setDesc("DataView field name for priority")
+            .setDesc("Dataview field name for priority")
             .addText((text) =>
                 text
                     .setPlaceholder("p")

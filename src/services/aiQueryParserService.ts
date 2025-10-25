@@ -258,7 +258,7 @@ export class QueryParserService {
      * Uses existing DataviewService.parseStandardQuerySyntax() to avoid code duplication
      *
      * This is a lightweight wrapper that delegates to the comprehensive standard parser
-     * which handles: Todoist patterns, chrono-node dates, DataView compatibility, and more.
+     * which handles: Todoist patterns, chrono-node dates, Dataview compatibility, and more.
      */
     private static extractStandardProperties(
         query: string,
@@ -462,7 +462,7 @@ PART 1: TASK CONTENT (Keywords)
 - Core keywords that match task content
 - Semantic expansions for the core keywords for better recall
 
-PART 2: TASK ATTRIBUTES (Structured Filters)  
+PART 2: TASK ATTRIBUTES (Structured Filters)
 - Due date, priority, status, folder, tags
 - Used for precise task filtering via Dataview API
 
@@ -491,16 +491,23 @@ You MUST expand EVERY SINGLE core keyword into ALL ${queryLanguages.length} conf
 - Example: "Task" in Chinese context = 任务, 工作, 事项
 
 For EACH core keyword (including proper nouns like "Task", "Chat", etc.):
-- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[0] || "first language"}
-- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[1] || "second language"}
-${queryLanguages[2] ? `- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[2]}` : ""}
-${queryLanguages[3] ? `- Generate ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[3]}` : ""}
+- Iterate over every language in the user's configuration (queryLanguages array):
+${
+    queryLanguages.length > 0
+        ? queryLanguages
+              .map(
+                  (lang, idx) =>
+                      `  - queryLanguages[${idx}] = ${lang} → Generate ${maxExpansions} semantic equivalents DIRECTLY in this language`,
+              )
+              .join("\n")
+        : `  - No additional languages configured → Generate ${maxExpansions} semantic equivalents identified from the user's query language`
+}
 - Total: EXACTLY ${maxKeywordsPerCore} variations per core keyword
 
 ⚠️ NO EXCEPTIONS:
 - Do NOT skip any language for ANY keyword (regardless of keyword's source language)
 - Do NOT treat proper nouns differently - expand them too!
-- Do NOT leave keywords unexpanded
+- Do NOT leave core keywords unexpanded
 - Do NOT just translate - generate semantic equivalents!
 - EVERY core keyword MUST have ${maxKeywordsPerCore} total variations
 
@@ -508,26 +515,28 @@ Example with ${queryLanguages.length} languages and target ${maxExpansions} expa
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
-🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-DataView Conversion)
+PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
+
+🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
 
 **CRITICAL PRINCIPLE**: Properties need CONVERSION, not EXPANSION!
 
-Unlike keywords (which need semantic expansion for better recall), task properties must be converted directly to DataView-compatible format.
+Unlike keywords (which need semantic expansion for better recall), task properties must be converted directly to Dataview-compatible format.
 
 **CONFIGURED LANGUAGES FOR CONTEXT**:
 You're working with ${queryLanguages.length} configured languages: ${languageList}
 - Use this context to better understand property terms in these languages
-- But remember: You can recognize properties in ANY language (100+), not just these
+- But remember: You can recognize properties in ANY language, not just these
 
 **YOUR NATIVE LANGUAGE UNDERSTANDING**:
 You have native understanding of ALL human languages. Use this to:
 
 1. **Recognize Property CONCEPTS** (in ANY language the user types):
-   - **PRIORITY concept** = Urgency, importance, criticality, high/low priority
-   - **STATUS concept** = State, condition, progress level, completion state
-   - **DUE_DATE concept** = Deadline, target date, timing, expiration
+    - **DUE_DATE concept** = Deadline, target date, timing, expiration
+    - **PRIORITY concept** = Urgency, criticality, high/low priority
+    - **STATUS concept** = State, condition, progress level, completion state
 
-2. **Convert DIRECTLY to DataView format** (always English field names):
+2. **Convert DIRECTLY to Dataview format** (always English field names):
    - PRIORITY concept → priority: 1-4 (number) or null
      * Urgent/critical/high/asap → 1
      * Important/medium → 2
@@ -558,7 +567,7 @@ You have native understanding of ALL human languages. Use this to:
 **PROCESS FOR PROPERTIES**:
 1. Read user's query in ANY language
 2. Recognize which concepts are expressed (priority? status? due date?)
-3. Convert directly to DataView format
+3. Convert directly to Dataview format
 4. DO NOT expand properties - just convert!
 
 **Examples of Direct Conversion**:
@@ -775,7 +784,7 @@ You are a multilingual query understanding AI with **native understanding** of A
 1. ✅ Understand natural language in ANY language (not just pre-configured phrases)
 2. ✅ Automatically correct typos in ANY language
 3. ✅ Recognize task property CONCEPTS semantically
-4. ✅ Map concepts to structured filters (for DataView API)
+4. ✅ Map concepts to structured filters (for Dataview API)
 5. ✅ Work with languages configured by user: ${languageList}
 
 **CORE PRINCIPLE - SEMANTIC CONCEPT RECOGNITION:**
@@ -824,7 +833,7 @@ When you see a query in ANY language:
    - User says "مهام مفتوحة" (Arabic) → Recognize STATUS concept (open)
    - User says "期限今日" (Japanese) → Recognize DUE_DATE concept (today)
 
-2. **Map to internal codes** (for DataView API compatibility):
+2. **Map to internal codes** (for Dataview API compatibility):
    - PRIORITY concept → priority number (1-4):
      * Urgent/critical/high → 1
      * Important/medium → 2
@@ -875,7 +884,7 @@ User query in Korean: "긴급한 미완료 작업"
 - Use your native understanding of human languages
 - Recognize property CONCEPTS semantically
 - Don't rely on pre-programmed phrase matching
-- Map concepts to internal codes for DataView API
+- Map concepts to internal codes for Dataview API
 - Work with ANY language user configured: ${languageList}
 - Even work with languages NOT in the configured list if user queries in them!
 

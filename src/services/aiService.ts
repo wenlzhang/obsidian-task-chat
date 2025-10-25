@@ -48,7 +48,7 @@ export class AIService {
     /**
      * Send a message to AI and get a response with recommended tasks
      *
-     * @param app Obsidian app instance (for DataView API access)
+     * @param app Obsidian app instance (for Dataview API access)
      * @param message User's query message
      * @param tasks Initial task list (may be reloaded with property filters)
      * @param chatHistory Chat conversation history
@@ -256,7 +256,7 @@ export class AIService {
             }
         }
 
-        // Apply filters: Use DataView API for properties, JavaScript for keywords
+        // Apply filters: Use Dataview API for properties, JavaScript for keywords
         if (
             intent.extractedPriority ||
             intent.extractedDueDateFilter ||
@@ -280,7 +280,7 @@ export class AIService {
                 );
             }
 
-            // Step 1: Filter by properties at DataView API level (if any property filters)
+            // Step 1: Filter by properties at Dataview API level (if any property filters)
             let tasksAfterPropertyFilter = tasks;
             const hasPropertyFilters = !!(
                 intent.extractedPriority ||
@@ -290,7 +290,7 @@ export class AIService {
             );
 
             if (hasPropertyFilters) {
-                // Reload tasks from DataView API with property filters
+                // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
                 tasksAfterPropertyFilter =
                     await DataviewService.parseTasksFromDataview(
@@ -310,9 +310,9 @@ export class AIService {
             const filteredTasks = TaskSearchService.applyCompoundFilters(
                 tasksAfterPropertyFilter,
                 {
-                    priority: undefined, // Already filtered at DataView level
-                    dueDate: undefined, // Already filtered at DataView level
-                    status: undefined, // Already filtered at DataView level
+                    priority: undefined, // Already filtered at Dataview level
+                    dueDate: undefined, // Already filtered at Dataview level
+                    status: undefined, // Already filtered at Dataview level
                     folder: intent.extractedFolder,
                     tags: intent.extractedTags,
                     keywords:
@@ -342,11 +342,11 @@ export class AIService {
                 // Build helpful message based on total task count
                 let responseMessage = `No tasks found matching ${filterDesc}.`;
 
-                // If we have 0 initial tasks, it might be a DataView indexing issue
+                // If we have 0 initial tasks, it might be a Dataview indexing issue
                 if (tasks.length === 0) {
                     responseMessage += `\n\n💡 **Tip**: If you have tasks in your vault, this might mean:\n`;
-                    responseMessage += `• DataView is still indexing (wait 10-30 seconds)\n`;
-                    responseMessage += `• DataView index delay is too long (try reducing index delay in DataView settings)\n`;
+                    responseMessage += `• Dataview is still indexing (wait 10-30 seconds)\n`;
+                    responseMessage += `• Dataview index delay is too long (try reducing index delay in Dataview settings)\n`;
                     responseMessage += `• Tasks don't use the expected syntax (e.g., \`- [ ] Task\`)\n\n`;
                     responseMessage += `Try clicking the **Refresh tasks** button and waiting a moment.`;
                 } else {

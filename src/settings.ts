@@ -98,7 +98,7 @@ export interface PluginSettings {
         lastUpdated: number; // timestamp
     };
 
-    // DataView Settings
+    // Dataview Settings
     dataviewKeys: {
         dueDate: string;
         createdDate: string;
@@ -169,7 +169,7 @@ export interface PluginSettings {
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
     // AI is used for two purposes:
     // 1. Keyword semantic expansion (for better recall)
-    // 2. Property concept recognition (converting natural language to DataView format)
+    // 2. Property concept recognition (converting natural language to Dataview format)
     // Standard syntax (P1, s:open, overdue) skips AI entirely
     aiEnhancement: {
         showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood and how properties were converted)
@@ -275,7 +275,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         lastUpdated: 0,
     },
 
-    // DataView Settings
+    // Dataview Settings
     dataviewKeys: {
         dueDate: "due",
         createdDate: "created",

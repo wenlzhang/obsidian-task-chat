@@ -12,7 +12,7 @@ export class DataviewService {
      * Check if Dataview plugin is enabled
      */
     static isDataviewEnabled(app: App): boolean {
-        // @ts-ignore - DataView plugin check
+        // @ts-ignore - Dataview plugin check
         return app.plugins.plugins.dataview !== undefined;
     }
 
@@ -30,7 +30,7 @@ export class DataviewService {
     }
 
     /**
-     * Map a DataView task status symbol to status category
+     * Map a Dataview task status symbol to status category
      * Delegates to TaskPropertyService for consistent behavior
      */
     static mapStatusToCategory(
@@ -41,7 +41,7 @@ export class DataviewService {
     }
 
     /**
-     * Map a DataView priority value to internal numeric priority
+     * Map a Dataview priority value to internal numeric priority
      * Delegates to TaskPropertyService for consistent behavior
      */
     static mapPriority(
@@ -60,16 +60,16 @@ export class DataviewService {
     }
 
     /**
-     * Get field value from DataView task using multiple strategies
-     * DataView stores metadata in multiple places:
+     * Get field value from Dataview task using multiple strategies
+     * Dataview stores metadata in multiple places:
      * 1. Direct properties (from frontmatter or emoji shorthands): task.fieldName
      * 2. Fields object (from inline fields): task.fields.fieldName
-     * 3. DataView standard emoji field names (due, completion, created, etc.)
+     * 3. Dataview standard emoji field names (due, completion, created, etc.)
      * 4. Emoji shorthands extracted from text (fallback)
      * 5. Inline field syntax in text: [fieldName::value]
      *
      * IMPORTANT: Respects user's configured field names while also checking
-     * DataView's standard emoji shorthand field names
+     * Dataview's standard emoji shorthand field names
      */
     private static getFieldValue(
         dvTask: any,
@@ -86,14 +86,14 @@ export class DataviewService {
             return dvTask.fields[fieldKey];
         }
 
-        // Strategy 3: Check DataView's standard emoji shorthand field names
-        // These are FIXED by DataView and different from user's configured names
+        // Strategy 3: Check Dataview's standard emoji shorthand field names
+        // These are FIXED by Dataview and different from user's configured names
         const standardFieldMap: { [key: string]: string[] } = {
-            // Map common user field names to DataView's standard emoji field names
+            // Map common user field names to Dataview's standard emoji field names
             due: ["due"], // User might configure as "due", "dueDate", etc.
             dueDate: ["due"],
             completion: ["completion"],
-            completed: ["completion"], // DataView uses "completion", not "completed"
+            completed: ["completion"], // Dataview uses "completion", not "completed"
             completedDate: ["completion"],
             created: ["created"],
             createdDate: ["created"],
@@ -131,18 +131,18 @@ export class DataviewService {
     }
 
     /**
-     * Extract DataView emoji shorthands
+     * Extract Dataview emoji shorthands
      * See: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
      *
-     * IMPORTANT: DataView emoji shorthands use FIXED field names:
-     * 🗓️ → "due" (always this name in DataView, regardless of user settings)
+     * IMPORTANT: Dataview emoji shorthands use FIXED field names:
+     * 🗓️ → "due" (always this name in Dataview, regardless of user settings)
      * ✅ → "completion" (always this name, even if user configured "completed")
      * ➕ → "created" (always this name)
      * 🛫 → "start" (always this name)
      * ⏳ → "scheduled" (always this name)
      *
      * This method extracts emoji dates from text as a fallback.
-     * The primary extraction happens in getFieldValue() using DataView's API.
+     * The primary extraction happens in getFieldValue() using Dataview's API.
      */
     private static extractEmojiShorthand(
         text: string,
@@ -203,7 +203,7 @@ export class DataviewService {
     }
 
     /**
-     * Process a single DataView task
+     * Process a single Dataview task
      */
     static processDataviewTask(
         dvTask: any,
@@ -251,7 +251,7 @@ export class DataviewService {
         // Handle dates using unified field extraction
         let dueDate, createdDate, completedDate;
 
-        // Due date - check all DataView locations
+        // Due date - check all Dataview locations
         const dueDateValue = this.getFieldValue(
             dvTask,
             settings.dataviewKeys.dueDate,
@@ -261,7 +261,7 @@ export class DataviewService {
             dueDate = this.formatDate(dueDateValue, settings.dateFormats.due);
         }
 
-        // Created date - check all DataView locations
+        // Created date - check all Dataview locations
         const createdDateValue = this.getFieldValue(
             dvTask,
             settings.dataviewKeys.createdDate,
@@ -274,7 +274,7 @@ export class DataviewService {
             );
         }
 
-        // Completed date - check all DataView locations
+        // Completed date - check all Dataview locations
         const completedDateValue = this.getFieldValue(
             dvTask,
             settings.dataviewKeys.completedDate,
@@ -323,7 +323,7 @@ export class DataviewService {
      * - Applies filter to EACH task independently (parent and children separate)
      * - Ensures no child tasks are missed even if parent doesn't match
      *
-     * @param dvTask DataView task object (could be task or list item)
+     * @param dvTask Dataview task object (could be task or list item)
      * @param settings Plugin settings
      * @param tasks Array to collect matching tasks
      * @param path File path
@@ -424,7 +424,7 @@ export class DataviewService {
      * - Natural language dates: "next Friday", "in 3 days" (via chrono-node)
      * - Special keywords: overdue, recurring, no date, etc.
      * - Date ranges: due before:, due after:
-     * - DataView field compatibility
+     * - Dataview field compatibility
      * - Operators: &, |, !
      *
      * This is the standard parser used by all three modes (Simple Search, Smart Search, Task Chat)
@@ -884,7 +884,7 @@ export class DataviewService {
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
-            Logger.error("DataView API not available");
+            Logger.error("Dataview API not available");
             return [];
         }
 
@@ -911,7 +911,7 @@ export class DataviewService {
             );
         }
 
-        // Fetch ALL pages and use DataView's expand() to flatten ALL tasks
+        // Fetch ALL pages and use Dataview's expand() to flatten ALL tasks
         // CRITICAL: expand("children") recursively flattens the entire task hierarchy
         // This automatically handles:
         // - Parent tasks, child tasks, grandchildren, etc. at any depth
@@ -926,12 +926,12 @@ export class DataviewService {
                 const pages = dataviewApi.pages();
 
                 if (pages && pages.length > 0) {
-                    // Get ALL tasks from ALL pages using DataView's API
+                    // Get ALL tasks from ALL pages using Dataview's API
                     // file.tasks returns task objects (may be hierarchical)
                     const allPageTasks = pages.file.tasks;
 
                     if (allPageTasks && allPageTasks.length > 0) {
-                        // Use DataView's expand() to flatten ALL subtasks recursively
+                        // Use Dataview's expand() to flatten ALL subtasks recursively
                         // This handles unlimited nesting depth automatically
                         const flattenedTasks = allPageTasks.expand
                             ? allPageTasks.expand("children")
@@ -962,7 +962,7 @@ export class DataviewService {
                     }
                 }
             } catch (e) {
-                Logger.error("Error using DataView pages API:", e);
+                Logger.error("Error using Dataview pages API:", e);
 
                 // Fallback to recursive processing if expand() fails
                 Logger.debug("Falling back to recursive processing");

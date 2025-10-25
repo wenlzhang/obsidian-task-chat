@@ -69,7 +69,7 @@ export class TaskPropertyService {
     // ==========================================
 
     /**
-     * Standard date field names (DataView compatible)
+     * Standard date field names (Dataview compatible)
      * Used across dataviewService, taskFilterService, propertyDetectionService, aiPropertyPromptService
      */
     static readonly DATE_FIELDS = {
@@ -616,7 +616,7 @@ export class TaskPropertyService {
 
     /**
      * Get all priority field names to check
-     * Combines primary field + aliases + user's configured DataView key
+     * Combines primary field + aliases + user's configured Dataview key
      *
      * @param settings - Plugin settings
      * @returns Array of field names to check for priority
@@ -631,7 +631,7 @@ export class TaskPropertyService {
 
     /**
      * Get all due date field names to check
-     * Returns user's configured DataView key + standard aliases
+     * Returns user's configured Dataview key + standard aliases
      *
      * @param settings - Plugin settings
      * @returns Array of field names to check for due dates
@@ -641,7 +641,7 @@ export class TaskPropertyService {
     }
 
     /**
-     * Map a DataView task status symbol to status category
+     * Map a Dataview task status symbol to status category
      * Uses user's configured taskStatusMapping
      *
      * @param symbol - Task status symbol (e.g., "x", "/", "?", " ")
@@ -842,7 +842,7 @@ export class TaskPropertyService {
     // ==========================================
 
     /**
-     * Map a DataView priority value to internal numeric priority
+     * Map a Dataview priority value to internal numeric priority
      * Uses user's configured dataviewPriorityMapping
      *
      * @param value - Priority value (can be string or number)
@@ -1148,7 +1148,7 @@ export class TaskPropertyService {
     ): DateRange | null {
         const lowerFilter = dateFilter.toLowerCase().trim();
 
-        // Pattern 1: DataView duration (7d, 2w, 3mo, 1yr)
+        // Pattern 1: Dataview duration (7d, 2w, 3mo, 1yr)
         const durationPattern =
             /^(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)$/;
         const durationMatch = lowerFilter.match(durationPattern);
@@ -1505,7 +1505,7 @@ export class TaskPropertyService {
      * Check if a date value matches a due date keyword
      * Centralized date matching logic for all due date keywords
      *
-     * @param dateValue - The date value from task field (DataView format)
+     * @param dateValue - The date value from task field (Dataview format)
      * @param keyword - The keyword to match against (today, tomorrow, overdue, etc.)
      * @param formatDate - Function to format date value to YYYY-MM-DD
      * @returns True if the date matches the keyword
@@ -1701,7 +1701,7 @@ export class TaskPropertyService {
     /**
      * Parse relative date string with enhanced syntax support
      * Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
-     * Compatible with DataView API relative date syntax
+     * Compatible with Dataview API relative date syntax
      *
      * @param relativeDate - Relative date string (e.g., "1d", "+2w", "-3m", "1y")
      * @returns Formatted date string (YYYY-MM-DD) or null if invalid

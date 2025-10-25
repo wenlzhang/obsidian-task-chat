@@ -58,7 +58,7 @@ export class PromptBuilderService {
             return "";
         }
 
-        return `\nPRIORITY MAPPING (DataView format [${settings.dataviewKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
+        return `\nPRIORITY MAPPING (Dataview format [${settings.dataviewKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
     }
 
     /**
@@ -118,7 +118,7 @@ EXAMPLES:
     static buildDateFormats(settings: PluginSettings): string {
         const keys = settings.dataviewKeys;
         return `
-DATE FORMATS (DataView):
+DATE FORMATS (Dataview):
 - Due date: [${keys.dueDate}::YYYY-MM-DD] - Users may ask for "due today", "overdue", "this week", etc.
 - Created date: [${keys.createdDate}::YYYY-MM-DD] - When the task was created
 - Completed date: [${keys.completedDate}::YYYY-MM-DD] - When the task was finished
@@ -382,7 +382,7 @@ IMPORTANT: UNDERSTANDING TASK METADATA (User-Configured)
 
 ⚠️ IMPORTANT: RAW DATAVIEW SYNTAX IN TASK TEXT
 You will see tasks with BOTH:
-1. Original task text (may contain raw DataView syntax)
+1. Original task text (may contain raw Dataview syntax)
 2. Extracted metadata below each task (clean, structured format)
 
 Example:
@@ -392,7 +392,7 @@ Example:
 WHY you see raw syntax in text:
 - Raw syntax ([due::DATE], 🗓️ DATE, ⏫) is how users store metadata in their vault
 - We keep it in task text for vault compatibility
-- BUT we've ALREADY extracted it using DataView API
+- BUT we've ALREADY extracted it using Dataview API
 
 WHAT YOU MUST DO:
 → Use ONLY the structured metadata (e.g., "Priority: 1", "Due: 2025-10-20")
@@ -400,7 +400,7 @@ WHAT YOU MUST DO:
 → If you see BOTH raw syntax in text AND clean metadata, trust the metadata
 → The raw syntax is already processed - you don't need to interpret it
 
-Common raw DataView formats you might see in text (already extracted for you):
+Common raw Dataview formats you might see in text (already extracted for you):
 - Inline fields: [${settings.dataviewKeys.dueDate}::2025-10-20], [${settings.dataviewKeys.priority}::1]
 - Emoji dates: 🗓️ 2025-10-20 (due), ✅ 2025-10-15 (completed), ➕ 2025-10-10 (created)
 - Priority emojis: ⏫ (high), 🔼 (medium), 🔽 (low)
@@ -428,7 +428,7 @@ METADATA FIELD REFERENCE (User's Configuration):
 - **Folder**: Task's vault location (e.g., "Projects/Work")
 - **Tags**: Task's tags (e.g., "#urgent #coding")
 
-REMEMBER: All these fields are extracted from DataView syntax and shown as clean metadata. Always use the metadata values, never try to parse raw syntax from task text!`;
+REMEMBER: All these fields are extracted from Dataview syntax and shown as clean metadata. Always use the metadata values, never try to parse raw syntax from task text!`;
     }
 
     /**
