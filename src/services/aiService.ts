@@ -727,6 +727,8 @@ export class AIService {
 
                 // For Simple Search, create a minimal parsedQuery with core keywords
                 // so the UI can display them (even though no AI expansion was used)
+                // NOTE: intent.keywords already deduplicated + filtered by extractKeywords()
+                // No need to process again - just use them directly!
                 let finalParsedQuery = parsedQuery;
                 if (
                     chatMode === "simple" &&
@@ -734,8 +736,8 @@ export class AIService {
                     intent.keywords.length > 0
                 ) {
                     finalParsedQuery = {
-                        coreKeywords: intent.keywords,
-                        keywords: intent.keywords,
+                        coreKeywords: intent.keywords, // Already clean from extractKeywords()
+                        keywords: intent.keywords, // Already clean from extractKeywords()
                         expansionMetadata: {
                             enabled: false,
                             maxExpansionsPerKeyword: 0,

@@ -196,22 +196,36 @@ export class TaskSearchService {
         // Step 3: Use TextSplitter for multilingual word segmentation
         const words = TextSplitter.splitIntoWords(cleanedQuery);
 
-        // Step 4: Remove stop words using shared service (consistent with AI mode)
-        const filteredWords = StopWords.filterStopWords(words);
+        // Step 4: Deduplicate FIRST to preserve complete words
+        // This removes character splits while keeping complete words like "如何", "开发"
+        // Example: ["如何", "如", "何", "开发", "开", "发"] → ["如何", "开发"]
+        const deduplicated = this.deduplicateOverlappingKeywords(words);
 
-        // Log stop word filtering (for consistency with AI mode)
-        if (words.length !== filteredWords.length) {
+        if (words.length !== deduplicated.length) {
             Logger.debug(
-                `Keywords after stop word filtering: ${words.length} → ${filteredWords.length}`,
+                `Keywords after deduplication: ${words.length} → ${deduplicated.length}`,
             );
             Logger.debug(
-                `Removed stop words: [${words.filter((w) => !filteredWords.includes(w)).join(", ")}]`,
+                `Removed character splits: [${words.filter((w) => !deduplicated.includes(w)).join(", ")}]`,
             );
         }
 
-        // IMPORTANT: Return ALL keywords (including overlaps) for filtering
-        // Overlapping keywords will be deduplicated later ONLY for scoring
-        // This ensures broad recall (find more tasks) while maintaining accurate scoring
+        // Step 5: Remove stop words AFTER deduplication
+        // Now we filter complete words like "如何", not orphaned splits like "如", "何"
+        // Example: ["如何", "开发"] → filter → ["开发"]
+        const filteredWords = StopWords.filterStopWords(deduplicated);
+
+        if (deduplicated.length !== filteredWords.length) {
+            Logger.debug(
+                `Keywords after stop word filtering: ${deduplicated.length} → ${filteredWords.length}`,
+            );
+            Logger.debug(
+                `Removed stop words: [${deduplicated.filter((w) => !filteredWords.includes(w)).join(", ")}]`,
+            );
+        }
+
+        // Return clean keywords for BOTH filtering AND display
+        // No need to process again - use these everywhere!
         return filteredWords;
     }
 
@@ -969,10 +983,10 @@ export class TaskSearchService {
      *   Example: ["如何", "如", "何"] → ["如何"] ✅
      * - Non-CJK text: Conservative (only remove if BOTH are CJK)
      *   Example: ["chat", "chatt"] → ["chat", "chatt"] ✅ (different words!)
+     *
+     * PUBLIC for UI display deduplication
      */
-    private static deduplicateOverlappingKeywords(
-        keywords: string[],
-    ): string[] {
+    static deduplicateOverlappingKeywords(keywords: string[]): string[] {
         // Sort by length (longest first) to prioritize multi-character words
         const sorted = [...keywords].sort((a, b) => b.length - a.length);
         const deduplicated: string[] = [];

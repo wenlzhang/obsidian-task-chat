@@ -596,6 +596,7 @@ export class ChatView extends ItemView {
     /**
      * Get keyword expansion summary for display
      * Shows core keywords, expanded keywords, and expansion stats
+     * Note: Keywords are already clean (deduplicated + stop words filtered) from extraction/AI
      */
     private getKeywordExpansionSummary(message: ChatMessage): string | null {
         const query = message.parsedQuery;
@@ -603,17 +604,22 @@ export class ChatView extends ItemView {
 
         const parts: string[] = [];
 
-        // Core keywords (after stop word removal)
+        // Core keywords (already clean from extraction/AI)
+        // Simple Search: extractKeywords() already deduplicated + filtered
+        // Smart Search/Task Chat: AI returns clean keywords per explicit prompt instructions
         if (query.coreKeywords && query.coreKeywords.length > 0) {
             parts.push(`🔑 Core: ${query.coreKeywords.join(", ")}`);
         }
 
         // Expanded keywords (if semantic expansion was used)
+        // AI returns expanded keywords already deduplicated per prompt instructions
         if (
             query.expansionMetadata?.enabled &&
             query.keywords &&
             query.keywords.length > query.coreKeywords.length
         ) {
+            // Find expanded-only keywords (not in core)
+            // Both arrays already clean, no need to deduplicate again
             const expandedOnly = query.keywords.filter(
                 (k: string) => !query.coreKeywords.includes(k),
             );

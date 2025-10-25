@@ -110,6 +110,10 @@ export class QueryParserService {
         }
 
         // Step 4: Use AI to parse remaining keywords (and detect natural language properties)
+        // AI will naturally:
+        // - Identify stop words via prompt instructions (smarter than regex)
+        // - Extract meaningful keywords only
+        // - Expand semantically across configured languages
         const aiResult = await this.parseWithAI(remainingQuery, settings);
 
         // Step 5: Merge standard properties with AI results
@@ -1573,8 +1577,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 );
             }
 
-            // Post-process keywords to remove stop words (safety net - AI should already avoid these)
-            // This catches any stop words that slipped through AI's filters
+            // Post-process keywords to remove stop words (safety net)
+            // AI is instructed via prompt to NOT extract stop words (see STOP WORDS section in prompt)
+            // This post-filter is a safety net in case AI ignores instructions
             const filteredKeywords = StopWords.filterStopWords(keywords);
 
             Logger.debug(
@@ -1582,23 +1587,27 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             );
             if (keywords.length !== filteredKeywords.length) {
                 Logger.debug(
-                    `Removed stop words: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
+                    `[AI Parser] Post-filter safety net removed ${keywords.length - filteredKeywords.length} stop words that AI missed`,
+                );
+                Logger.debug(
+                    `[AI Parser] Removed: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
                 );
             }
 
-            // Extract core keywords and filter stop words (before expansion)
-            // This prevents wasting tokens expanding stop words
+            // Extract core keywords and filter stop words (safety net)
+            // AI should not extract stop words (prompt instructs this) but we verify
             const rawCoreKeywords = parsed.coreKeywords || [];
             const coreKeywords = StopWords.filterStopWords(rawCoreKeywords);
 
             if (rawCoreKeywords.length !== coreKeywords.length) {
                 Logger.debug(
-                    `Core keywords after stop word filtering: ${rawCoreKeywords.length} → ${coreKeywords.length}`,
+                    `[AI Parser] Post-filter safety net removed ${rawCoreKeywords.length - coreKeywords.length} stop words from core keywords`,
                 );
                 Logger.debug(
-                    `Removed stop words from cores: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
+                    `[AI Parser] Removed: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
                 );
             }
+            
             const expandedKeywords = filteredKeywords;
 
             // Validate expansion worked correctly
