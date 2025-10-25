@@ -110,11 +110,18 @@ Be smart about implied meanings:
             .join("\n");
 
         return `
-STATUS VALUE MAPPING (normalize to user-configured categories):
+STATUS CATEGORY MAPPING (recognize concepts, convert to category keys):
+
+TERMINOLOGY:
+- Category Key: Internal identifier (e.g., "open", "inprogress", "completed")
+- Display Name: User-facing label (e.g., "Open", "In Progress", "Completed")
+- Alias: Alternative query terms (e.g., "wip", "doing", "active")
+- Symbol: Checkbox symbol (e.g., "[/]", "[x]")
 
 IMPORTANT: There's a difference between:
-1. Asking for tasks WITH a status property (any value)
-2. Asking for tasks with SPECIFIC status value
+1. Asking for tasks WITH a status property (any value) → status: null
+2. Asking for tasks with SPECIFIC status category → status: "open", "inprogress", etc.
+3. Asking for multiple status categories → status: ["open", "inprogress"]
 
 STATUS NORMALIZATION (User-Configured - supports custom categories):
 ${statusExamples}
@@ -123,7 +130,14 @@ KEY DISTINCTION:
 - "status tasks" or "with status" = null (has any status - rarely used) ✅
 ${distinctionExamples}
 
-Be smart about implied meanings and synonyms - map user's natural language to the correct status category key.
+USER QUERY INTENT:
+1. Query by category key: "s:inprogress" → status: "inprogress"
+2. Query by display name: "in progress tasks" → status: "inprogress"
+3. Query by alias: "wip tasks" → status: "inprogress"
+4. Query by symbol: "s:/" → tasks with [/] symbol
+5. Mixed query: "s:open,/,wip" → ["open", symbol [/], "inprogress"]
+
+Be smart about implied meanings and synonyms - use native language understanding to map concepts to category keys.
 `;
     }
 }

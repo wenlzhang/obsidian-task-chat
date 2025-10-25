@@ -519,9 +519,13 @@ PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
 
 🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
 
-**CRITICAL PRINCIPLE**: Properties need CONVERSION, not EXPANSION!
+**CRITICAL PRINCIPLE**: Properties use CONCEPT RECOGNITION and CONVERSION!
 
-Unlike keywords (which need semantic expansion for better recall), task properties must be converted directly to Dataview-compatible format.
+Unlike keywords (which need semantic expansion for better recall), task properties use your native language understanding to:
+1. Recognize the concept (STATUS, PRIORITY, DUE_DATE) in ANY language
+2. Convert directly to Dataview-compatible format (category keys, numbers, dates)
+
+NO expansion needed - you already understand all languages!
 
 **CONFIGURED LANGUAGES FOR CONTEXT**:
 You're working with ${queryLanguages.length} configured languages: ${languageList}
@@ -542,7 +546,7 @@ You have native understanding of ALL human languages. Use this to:
      * Important/medium → 2
      * Normal → 3
      * Low/minor → 4
-     * null = user wants tasks WITH priority (any value)
+     * null = user wants tasks WITH priority (any value, including none value)
    
    - STATUS concept → status: string or null
      * Open/todo/pending → "${TaskPropertyService.STATUS_CATEGORY.open}"
@@ -567,8 +571,8 @@ You have native understanding of ALL human languages. Use this to:
 **PROCESS FOR PROPERTIES**:
 1. Read user's query in ANY language
 2. Recognize which concepts are expressed (priority? status? due date?)
-3. Convert directly to Dataview format
-4. DO NOT expand properties - just convert!
+3. Convert directly to Dataview format (category keys, not expanded terms)
+4. Use native language understanding - NO expansion needed!
 
 **Examples of Direct Conversion**:
 
@@ -586,10 +590,10 @@ English: "overdue tasks" → dueDate: "overdue", keywords: ["tasks"]
 русский: "просроченные задачи" → dueDate: "overdue", keywords: ["задачи"]
 
 **Key Points**:
-- Properties = semantic concept recognition + direct mapping (NO expansion)
-- Keywords = semantic expansion across languages (YES expansion)
-- You already know all languages - no pre-programming needed
-- Map meaning → internal code (same for all languages)
+- Properties = concept recognition + direct conversion to category keys (NO expansion)
+- Keywords = semantic expansion across languages for better matching (YES expansion)
+- You already know all languages - use native understanding, not pre-programmed phrases
+- Map concept → category key (language-independent internal identifier)
 
 ${propertyTermMappings}
 

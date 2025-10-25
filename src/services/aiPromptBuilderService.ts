@@ -204,17 +204,24 @@ Use the display name when showing status to users.`;
             })
             .join("\n");
 
-        return `STATUS MAPPING (User-Configured - Dynamic):
-Status values must be EXACTLY one of: ${categoryList}
+        return `STATUS CATEGORY MAPPING (User-Configured - Dynamic):
+
+TERMINOLOGY CLARIFICATION:
+- Category Key: Internal identifier (stable, used in code) - e.g., "open", "inprogress", "completed"
+- Display Name: User-facing label (customizable, shown in UI) - e.g., "Open", "In Progress", "Completed"
+- Alias: Alternative query terms (flexible, user-defined) - e.g., "wip", "doing", "active"
+- Symbol: Checkbox symbol (direct matching) - e.g., "[/]", "[x]"
+
+Category keys must be EXACTLY one of: ${categoryList}
 
 ⚠️ The system supports CUSTOM STATUS CATEGORIES defined by the user!
-⚠️ EXPAND STATUS TERMS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
-You MUST generate semantic equivalents for EACH status in EVERY configured language.
+⚠️ Use your NATIVE LANGUAGE UNDERSTANDING to recognize status concepts in ALL languages: ${languageList}
+NO expansion needed - recognize concepts directly and convert to category keys!
 
 Current status categories:
 ${categoryExamples}
 
-Your task: Generate semantic equivalents in ${languageList} for recognizing these status values.
+Your task: Recognize status concepts in user's query (ANY language) and convert to category keys.
 
 🔑 CRITICAL DISAMBIGUATION RULES:
 1. If a word/phrase EXACTLY MATCHES a status category name (e.g., "${categoryKeys[0]}", "${categoryKeys[1]}"), interpret it as a STATUS FILTER FIRST
@@ -223,25 +230,32 @@ Your task: Generate semantic equivalents in ${languageList} for recognizing thes
 
 STATUS DISTINCTION:
 1. Asking for tasks WITH status (any value) → status: null (rare, usually unnecessary)
-2. Asking for tasks with SPECIFIC status → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
+2. Asking for tasks with SPECIFIC status category → status: "${categoryKeys[0]}", "${categoryKeys[1]}", etc.
+3. Asking for multiple status categories → status: ["${categoryKeys[0]}", "${categoryKeys[1]}"]
 
-EXAMPLES (using current categories):
+RECOGNITION EXAMPLES (using current categories):
 ${Object.entries(settings.taskStatusMapping)
     .slice(0, 4)
     .map(([key, config]) => {
         const displayLower = config.displayName.toLowerCase();
-        return `- "${displayLower}" → status: "${key}" (status category match) ✅\n- "${displayLower} tasks" → status: "${key}" (specific value) ✅`;
+        return `- "${displayLower}" → Recognize concept → status: "${key}" ✅\n- "${displayLower} tasks" → Recognize concept → status: "${key}" ✅`;
     })
     .join("\n")}
 
-DISAMBIGUATION EXAMPLES (IMPORTANT!):
+MULTILINGUAL RECOGNITION (IMPORTANT!):
 ${Object.entries(settings.taskStatusMapping)
     .slice(0, 3)
     .map(([key, config]) => {
         const displayLower = config.displayName.toLowerCase();
-        return `- Query: "${displayLower}" → Check: Does "${displayLower}" match status "${key}"? YES → status: "${key}" ✅`;
+        return `- "${displayLower}" (English) → Recognize concept → status: "${key}" ✅\n- Use native understanding for other languages → status: "${key}" ✅`;
     })
-    .join("\n")}`;
+    .join("\n")}
+
+USER QUERY PATTERNS:
+1. Natural language: "in progress tasks" → Recognize IN_PROGRESS concept → status: "inprogress"
+2. Alias: "wip tasks" → Match alias → status: "inprogress"
+3. Symbol syntax: "s:/" → Match symbol → tasks with [/] symbol
+4. Multiple: "s:open,wip,/" → ["open", "inprogress", symbol [/]]`;
     }
 
     /**
@@ -494,35 +508,37 @@ ${Object.entries(combined.status)
     })
     .join("\n")}
 
-LAYER 3: Semantic Expansion (You provide this!)
-- Apply semantic expansion to ALL property terms across configured languages: ${languageList}
-- Generate semantic equivalents DIRECTLY in each language
-- This enables cross-language property recognition
+LAYER 3: Native Language Understanding (You provide this!)
+- Use your multilingual training to recognize property concepts in ANY language
+- NO expansion needed - direct concept recognition and conversion!
+- This enables cross-language property recognition automatically
 
-PROPERTY EXPANSION FLOW (Like Keywords):
+PROPERTY RECOGNITION FLOW (Different from Keywords!):
 
-Step 1: Identify Core Property Terms
-- Extract property-related terms from query
-- Example: "优先级任务" → core property term: "优先级"
-- Example: "with due date" → core property term: "due date"
+Step 1: Identify Property Concepts in Query
+- Recognize property-related concepts (not just terms)
+- Example: "优先级任务" → Recognize PRIORITY concept
+- Example: "with due date" → Recognize DUE_DATE concept
 
-Step 2: Apply Semantic Expansion
-- Expand EACH core property term into ALL ${queryLanguages.length} languages: ${languageList}
-- Generate semantic equivalents DIRECTLY in each language
-- Example expansion for PRIORITY concept across YOUR configured languages:
-${queryLanguages.map((lang) => `  * ${lang}: [generate semantic equivalents for "priority" in ${lang}]`).join("\n")}
+Step 2: Use Native Language Understanding
+- Recognize property concepts in user's query (ANY language)
+- Use your training to understand what the user means
+- Example: "in progress" (English) → Recognize IN_PROGRESS concept
+- Example: "进行中" (Chinese) → Recognize IN_PROGRESS concept
+- Example: "pågående" (Swedish) → Recognize IN_PROGRESS concept
 
-Step 3: Match Against Combined Terms (Layer 1 + Layer 2)
-- Check expanded terms against user-configured terms (Layer 1)
-- Check expanded terms against base terms (Layer 2)
-- Extract structured property values (priority, dueDate, status)
+Step 3: Convert to Category Keys (Layer 1 + Layer 2 help with this)
+- Map recognized concepts to internal category keys
+- Check against user-configured terms (Layer 1) for aliases
+- Check against base terms (Layer 2) for defaults
+- Convert to structured values: "inprogress", 1, "overdue", etc.
 
-Step 4: Separate Property Terms from Keywords
-- Property terms → structured filters (priority, dueDate, status fields)
+Step 4: Separate Property Concepts from Content Keywords
+- Property concepts → structured filters (priority, dueDate, status fields)
 - Content keywords → keywords array (for text matching)
 - Example: "urgent bug fix" → 
-  * Property: priority = 1 (from "urgent")
-  * Keywords: ["bug", "fix"]
+  * Property: priority = 1 (recognized URGENCY concept)
+  * Keywords: ["bug", "fix"] (content terms)
 `;
     }
 }
