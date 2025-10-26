@@ -302,6 +302,40 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Add detailed setting for chat history context length
+        const chatContextSetting = new Setting(containerEl)
+            .setName("Chat history context length")
+            .setDesc(
+                `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${this.plugin.settings.chatHistoryContextLength}`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 100, 1)
+                    .setValue(this.plugin.settings.chatHistoryContextLength)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.chatHistoryContextLength = value;
+                        await this.plugin.saveSettings();
+                        // Update description to show current value
+                        chatContextSetting.setDesc(
+                            `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${value}`,
+                        );
+                    }),
+            );
+
+        // Add detailed explanation below the slider
+        const chatContextInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        chatContextInfo.createEl("p", {
+            text: "⚠️ Token Usage: More history = higher token cost.",
+        });
+        const chatContextLink = chatContextInfo.createEl("p");
+        chatContextLink.createEl("a", {
+            text: "→ Learn more about chat history context",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_HISTORY_CONTEXT.md",
+        });
+
         new Setting(containerEl)
             .setName("Show task count")
             .setDesc("Show the number of tasks in the filter status")

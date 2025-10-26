@@ -851,15 +851,32 @@ export class AIService {
                     // Use the model info from tokenUsage (the actual model used for this request)
                     // Not getCurrentProviderConfig(settings) which might have changed if user switched models
                     const modelInfo = `${tokenUsage.model} (${tokenUsage.provider})`;
+                    const timestamp = moment().format("HH:mm:ss");
+                    const queryPreview =
+                        message.substring(0, 50) +
+                        (message.length > 50 ? "..." : "");
+
                     const warningMessage =
-                        `⚠️ **AI Model Issue Detected**\n\n` +
-                        `The AI model (${modelInfo}) did not follow the expected response format. ` +
-                        `As a fallback, I've automatically selected the top ${recommendedTasks.length} most relevant tasks based on scoring.\n\n` +
-                        `**Recommendations:**\n` +
-                        `• Switch to a larger model (instead of smaller models)\n` +
-                        `• Use a cloud provider (OpenAI, Anthropic, OpenRouter) for improved performance\n` +
-                        `• Switch to Simple Search mode (no AI parsing required)\n\n` +
-                        `See console logs for technical details.\n\n---\n\n`;
+                        `⚠️ **AI Model May Have Failed to Reference Tasks Correctly**\n\n` +
+                        `**Query:** "${queryPreview}" (${timestamp})\n\n` +
+                        `**🔍 What Went Wrong:**\n` +
+                        `The AI model did not use the correct format to reference specific tasks in its response. ` +
+                        `Without these task IDs, the system cannot match the AI's summary to the actual task list.\n\n` +
+                        `**📋 Your Tasks Are Still Available:**\n` +
+                        `Below you'll see ${recommendedTasks.length} tasks selected by relevance scoring (fallback). ` +
+                        `However, the AI's summary text above may be generic and not reference these specific tasks.\n\n` +
+                        `**🛠️ Common Causes:**\n` +
+                        `• **Model too small**: Small models struggle with complex format requirements\n` +
+                        `• **Response truncated**: Model hit token limit before writing task IDs\n` +
+                        `• **Format confusion**: Model wrote generic advice instead of using task IDs\n` +
+                        `• **Chat history limit**: Too many previous messages might overwhelm the model (adjust in Settings → Chat history context length)\n\n` +
+                        `**💡 Immediate Solutions:**\n` +
+                        `• **Look at task list below** - tasks are correctly ranked by relevance, due date, and priority\n` +
+                        `• **Try again** - Sometimes model fails randomly, retry might work\n` +
+                        `• **Start new chat session** - Clears chat history that might confuse the model\n` +
+                        `• **Adjust chat settings** - Adjust chat history context length, max tokens, and max tasks for AI\n` +
+                        `• **Switch to larger model** - They may be more capable and reliable\n\n` +
+                        `**🔧 Debug Info:** Check console logs at "${timestamp}" | Model: ${modelInfo}\n\n---\n\n`;
                     processedResponse = warningMessage + processedResponse;
                 }
 
@@ -1199,6 +1216,15 @@ Always check the actual due date against ${today} before describing urgency!`;
         // LANGUAGE INSTRUCTION COMES FIRST - most important!
         systemPrompt += languageInstructionBlock;
 
+        // CRITICAL FORMAT REQUIREMENT (simple, prominent, early)
+        systemPrompt += `
+
+🚨 CRITICAL FORMAT REQUIREMENT 🚨
+YOU MUST REFERENCE TASKS USING [TASK_X] FORMAT
+Example: "Start with [TASK_15], then [TASK_42], then [TASK_3]"
+This is MANDATORY - the system will fail if you don't use this exact format!
+`;
+
         systemPrompt += `
 
 ⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST ⚠️
@@ -1320,6 +1346,9 @@ QUERY UNDERSTANDING:
 
 ${PromptBuilderService.buildSortOrderExplanation(sortOrder)}
 
+🚨 REMINDER: You MUST use [TASK_X] format for ALL task references!
+The task list below shows tasks with their IDs. Reference them using those exact IDs.
+
 ${taskContext}`;
 
         const messages: any[] = [
@@ -1329,9 +1358,20 @@ ${taskContext}`;
             },
         ];
 
-        // Add recent chat history (limit to last 6 messages to save tokens)
-        const recentHistory = chatHistory.slice(-6);
-        recentHistory.forEach((msg) => {
+        // Add recent chat history (user-configurable length to balance context and token cost)
+        const historyLength = Math.min(
+            Math.max(1, settings.chatHistoryContextLength),
+            100,
+        ); // Clamp between 1-100
+        const recentHistory = chatHistory.slice(-historyLength);
+
+        Logger.debug(
+            `[Chat History] Sending ${recentHistory.length} messages to AI (user setting: ${settings.chatHistoryContextLength})`,
+        );
+        let warningsRemoved = 0;
+        let taskReferencesReplaced = 0;
+
+        recentHistory.forEach((msg, index) => {
             // Map our custom roles to valid AI API roles
             let apiRole: "user" | "assistant" | "system";
             if (msg.role === "user") {
@@ -1350,12 +1390,59 @@ ${taskContext}`;
             }
 
             if (apiRole !== "system") {
+                // Clean message content before sending to AI
+                let cleanedContent = msg.content;
+                const originalLength = cleanedContent.length;
+
+                // Remove warning messages (they confuse AI about format requirements)
+                if (
+                    cleanedContent.includes(
+                        "AI Model May Have Failed to Reference Tasks Correctly",
+                    )
+                ) {
+                    // Extract only the AI's actual response, removing the warning
+                    const warningSeparator = "---\n\n";
+                    const parts = cleanedContent.split(warningSeparator);
+                    if (parts.length > 1) {
+                        cleanedContent = parts[parts.length - 1].trim();
+                        warningsRemoved++;
+                        Logger.debug(
+                            `[Chat History] Message ${index + 1}: Removed warning (${originalLength} → ${cleanedContent.length} chars)`,
+                        );
+                    }
+                }
+
+                // Remove display task references (Task 1, **Task 2**, etc.)
+                // These are display numbers, not internal [TASK_X] IDs, and could confuse AI
+                // Handle both bold (**Task N**) and non-bold (Task N) since AI might make mistakes
+                const taskRefMatches = cleanedContent.match(
+                    /\*{0,2}Task \d+\*{0,2}/g,
+                );
+                if (taskRefMatches) {
+                    taskReferencesReplaced += taskRefMatches.length;
+                    cleanedContent = cleanedContent.replace(
+                        /\*{0,2}Task \d+\*{0,2}/g,
+                        "a task",
+                    );
+                }
+
                 messages.push({
                     role: apiRole,
-                    content: msg.content,
+                    content: cleanedContent,
                 });
             }
         });
+
+        // Log summary of cleaning operations
+        if (warningsRemoved > 0 || taskReferencesReplaced > 0) {
+            Logger.debug(
+                `[Chat History] Cleaned messages: ${warningsRemoved} warnings removed, ${taskReferencesReplaced} task references replaced`,
+            );
+        } else {
+            Logger.debug(
+                `[Chat History] All messages clean, no warnings or task references found`,
+            );
+        }
 
         // Add current user message
         messages.push({
@@ -2155,11 +2242,25 @@ ${taskContext}`;
         // If no task IDs were found, use fallback: return top relevant tasks
         if (recommended.length === 0) {
             Logger.warn(
-                "⚠️ WARNING: No [TASK_X] references found in AI response!",
+                "⚠️⚠️⚠️ FALLBACK TRIGGERED: AI did NOT use [TASK_X] format! ⚠️⚠️⚠️",
             );
             Logger.warn(
-                "AI response did not follow [TASK_X] format. Using top tasks as fallback.",
+                "REASON: Zero [TASK_X] references found in AI response (regex pattern: /\\[TASK_(\\d+)\\]/g)",
             );
+            Logger.warn(
+                "IMPACT: AI summary may not reference specific tasks. Task list shows fallback (relevance-scored) tasks.",
+            );
+            Logger.warn("=== FALLBACK DEBUGGING INFO ===");
+            Logger.warn(`AI response length: ${response.length} characters`);
+            Logger.warn(
+                `AI response preview (first 500 chars):\n${response.substring(0, 500)}`,
+            );
+            Logger.warn(
+                `AI response preview (last 500 chars):\n${response.substring(Math.max(0, response.length - 500))}`,
+            );
+            Logger.warn(`Available tasks to reference: ${tasks.length} (TASK_1 to TASK_${tasks.length})`);
+            Logger.warn("Expected format: [TASK_1], [TASK_2], [TASK_3], etc.");
+            Logger.warn("===============================");
 
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
             // All modes use comprehensive scoring (with or without expansion)
@@ -2219,7 +2320,18 @@ ${taskContext}`;
             return { tasks: topTasks, indices: topIndices, usedFallback: true };
         }
 
-        Logger.debug(`AI explicitly recommended ${recommended.length} tasks.`);
+        Logger.debug(
+            `✅✅✅ SUCCESS: AI used correct [TASK_X] format! ✅✅✅`,
+        );
+        Logger.debug(
+            `Found ${recommended.length} task references in AI response`,
+        );
+        Logger.debug(
+            `Task IDs referenced by AI: [TASK_${referencedIndices.map((i) => i + 1).join("], [TASK_")}]`,
+        );
+        Logger.debug(
+            `These will display as: Task 1, Task 2, Task 3... (in order mentioned)`,
+        );
 
         // Trust the AI's judgment on how many tasks to recommend
         // The prompt emphasizes comprehensive recommendations, so if AI selects fewer tasks,

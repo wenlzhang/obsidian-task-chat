@@ -164,17 +164,24 @@ Analyze my tasks for this week
 
 **Too many results?**
 - Increase quality filter (Settings → Task Filtering)
-- Add minimum relevance score
+- Raise minimum relevance score
+- Adjust max results limit
 
-**Missing relevant tasks?**
-- Enable semantic expansion (Settings → Semantic Expansion)
-- Increase max keyword expansions
-- Add more query languages
+**Too few results?**
+- Lower quality filter (Settings → Task Filtering)
+- Disable minimum relevance score
+- Check if DataView is enabled
 
-**Wrong task priority?**
+**Results not relevant?**
 - Adjust scoring coefficients (Settings → Task Scoring)
 - Customize priority/due date weights
 
+**AI responses not using context?**
+- Adjust chat history context length (Settings → Task Chat)
+- Default: 5 messages, increase for longer conversations
+- Warnings and task references automatically cleaned
+
+→ [Chat history context guide](docs/CHAT_HISTORY_CONTEXT.md)  
 → [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
 
 ## 📖 Documentation
@@ -216,6 +223,12 @@ Analyze my tasks for this week
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
   - Sort criteria (relevance, due date, priority, status, created, alphabetical)
   - Performance considerations
+
+- **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context ⭐ NEW
+  - User-configurable context length (1-100 messages, default: 5)
+  - Automatic message cleaning (warnings and task references removed)
+  - Token usage optimization
+  - Balance between context quality and cost
 
 - **[Model Parameters](docs/MODEL_PARAMETERS.md)** - Configure AI behavior ⭐ NEW
   - Temperature (recommended 0.1 for JSON output)
@@ -367,6 +380,7 @@ See [LICENSE](LICENSE) for details.
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual search
+- **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria ordering
 
 ## 🆘 Support
