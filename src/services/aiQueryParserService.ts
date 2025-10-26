@@ -470,7 +470,7 @@ PART 3: EXECUTOR & ENVIRONMENT CONTEXT (Reserved for future)
 - Time context, energy state, location, equipment, etc.
 - Not yet implemented
 
-PART 1: TASK CONTENT (Keywords) BREAKDOWN
+1️⃣ PART 1: TASK CONTENT (Keywords) BREAKDOWN
 
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
@@ -515,9 +515,9 @@ Example with ${queryLanguages.length} languages and target ${maxExpansions} expa
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
-PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
+2️⃣ PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
 
-🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
+🚨 2.1 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
 
 **CRITICAL PRINCIPLE**: Properties use CONCEPT RECOGNITION and CONVERSION!
 
@@ -536,14 +536,14 @@ You're working with ${queryLanguages.length} configured languages: ${languageLis
 You have native understanding of ALL human languages. Use this to:
 
 1. **Recognize Property CONCEPTS** (in ANY language the user types):
-    - **DUE_DATE concept** = Deadline, target date, timing, expiration
-    - **PRIORITY concept** = Urgency, criticality, high/low priority
-    - **STATUS concept** = State, condition, progress level, completion state
+    - **DUE_DATE concept** = Deadline, target date, timing, expiration, etc.
+    - **PRIORITY concept** = Urgency, criticality, high/low priority, etc.
+    - **STATUS concept** = State, condition, progress level, completion state, etc.
 
 2. **Convert DIRECTLY to Dataview format** (always English field names):
    - PRIORITY concept → priority: 1-4 (number) or null
      * Urgent/critical/high/asap → 1
-     * Important/medium → 2
+     * Medium → 2
      * Normal → 3
      * Low/minor → 4
      * null = user wants tasks WITH priority (any value, including none value)
@@ -576,18 +576,15 @@ You have native understanding of ALL human languages. Use this to:
 
 **Examples of Direct Conversion**:
 
-English: "urgent tasks" → priority: 1, keywords: ["tasks"]
-中文: "紧急任务" → priority: 1, keywords: ["任务"]  
-русский: "срочные задачи" → priority: 1, keywords: ["задачи"]
-العربية: "مهام عاجلة" → priority: 1, keywords: ["مهام"]
+English: "urgent tasks" → priority: 1, keywords: []
+中文: "紧急任务" → priority: 1, keywords: []
 
 English: "in progress" → status: "inprogress", keywords: []
 中文: "进行中" → status: "inprogress", keywords: []
 Svenska: "pågående" → status: "inprogress", keywords: []
 
-English: "overdue tasks" → dueDate: "overdue", keywords: ["tasks"]
-中文: "过期任务" → dueDate: "overdue", keywords: ["任务"]
-русский: "просроченные задачи" → dueDate: "overdue", keywords: ["задачи"]
+English: "overdue tasks" → dueDate: "overdue", keywords: []
+中文: "过期任务" → dueDate: "overdue", keywords: []
 
 **Key Points**:
 - Properties = concept recognition + direct conversion to category keys (NO expansion)
@@ -607,7 +604,7 @@ ${dueDateValueMapping}
 
 ${statusValueMapping}
 
-⚠️ CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
+⚠️ 2.2 CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
 
 When users mix keywords with property terms, handle them correctly:
 
@@ -636,10 +633,11 @@ Example 2: "urgent bug fix due today"
 Example 3: "高优先级的开发任务，next week"
 - Property term: "高优先级" → priority: 1
 - Property term: "next week" → dueDate: "next-week"
-- Content keywords: "开发", "任务" → expand normally
+- Property term: "任务" → not keywords, just descriptive
+- Content keywords: "开发" → expand normally
 - Result:
   {
-    "coreKeywords": ["开发", "任务"],
+    "coreKeywords": ["开发"],
     "keywords": [<expanded versions in ${languageList}>],
     "priority": 1,
     "dueDate": "next-week"
@@ -655,14 +653,13 @@ Example 4: "open bug reports"
     "status": "open"
   }
 
-Example 5: "已完成的重要项目 due last week"
+Example 5: "已完成的任务 due last week"
 - Property term: "已完成" → status: "completed"
-- Property term: "重要" → keywords (NOT priority - just descriptive)
 - Property term: "last week" → dueDate: "overdue" (past due)
-- Content keywords: "项目" → expand normally
+- Property term: "任务" → not keywords, just descriptive
 - Result:
   {
-    "coreKeywords": ["重要", "项目"],
+    "coreKeywords": [],
     "keywords": [<expanded versions in ${languageList}>],
     "status": "completed",
     "dueDate": "overdue"
@@ -671,10 +668,10 @@ Example 5: "已完成的重要项目 due last week"
 Example 6: "pågående high priority tasks"
 - Property term: "pågående" → status: "inProgress"
 - Property term: "high priority" → priority: 1
-- Content keywords: "tasks" → expand normally
+- Property term: "tasks" → not keywords, just descriptive
 - Result:
   {
-    "coreKeywords": ["tasks"],
+    "coreKeywords": [],
     "keywords": [<expanded versions in ${languageList}>],
     "status": "inProgress",
     "priority": 1
