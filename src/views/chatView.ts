@@ -639,36 +639,32 @@ export class ChatView extends ItemView {
             }
         }
 
-        // AI Query Understanding (compact single-line format)
+        // AI Query Understanding (compact single-line format with grouped sections)
+        // Format: Due, Priority, Status | Lang | other mappings | Confidence
         // Only show if enabled and AI understanding data exists
         if (
             this.plugin.settings.aiEnhancement.showAIUnderstanding &&
             query.aiUnderstanding
         ) {
             const ai = query.aiUnderstanding;
-            const aiParts: string[] = [];
+            const groups: string[] = [];
 
-            // Due date (first)
+            // Group 1: Core properties (Due, Priority, Status)
+            const coreProps: string[] = [];
             if (ai.semanticMappings?.dueDate) {
-                aiParts.push(`Due=${ai.semanticMappings.dueDate}`);
+                coreProps.push(`Due=${ai.semanticMappings.dueDate}`);
             }
-
-            // Priority (second)
             if (ai.semanticMappings?.priority) {
-                aiParts.push(`Priority=${ai.semanticMappings.priority}`);
+                coreProps.push(`Priority=${ai.semanticMappings.priority}`);
             }
-
-            // Status (third)
             if (ai.semanticMappings?.status) {
-                aiParts.push(`Status=${ai.semanticMappings.status}`);
+                coreProps.push(`Status=${ai.semanticMappings.status}`);
+            }
+            if (coreProps.length > 0) {
+                groups.push(coreProps.join(", "));
             }
 
-            // Language (fourth)
-            if (ai.detectedLanguage) {
-                aiParts.push(`Lang=${ai.detectedLanguage}`);
-            }
-
-            // Other semantic mappings (fifth - grouped)
+            // Group 2: Other semantic mappings (folder, tag, etc.)
             if (ai.semanticMappings) {
                 const otherMappings = Object.entries(ai.semanticMappings)
                     .filter(
@@ -676,20 +672,27 @@ export class ChatView extends ItemView {
                             !["priority", "dueDate", "status"].includes(key),
                     )
                     .map(([key, value]) => `${key}=${value}`);
-                aiParts.push(...otherMappings);
+                if (otherMappings.length > 0) {
+                    groups.push(otherMappings.join(", "));
+                }
             }
 
-            // Confidence (last)
+            // Group 3: Language
+            if (ai.detectedLanguage) {
+                groups.push(`Lang=${ai.detectedLanguage}`);
+            }
+
+            // Group 4: Confidence
             if (ai.confidence !== undefined) {
                 const conf = Math.round(ai.confidence * 100);
                 let level = "High";
                 if (ai.confidence < 0.5) level = "Low";
                 else if (ai.confidence < 0.7) level = "Medium";
-                aiParts.push(`Confidence=${level} (${conf}%)`);
+                groups.push(`Confidence=${level} (${conf}%)`);
             }
 
-            if (aiParts.length > 0) {
-                parts.push(`🔍 AI Query: ${aiParts.join(", ")}`);
+            if (groups.length > 0) {
+                parts.push(`🔍 AI Query: ${groups.join(" | ")}`);
             }
         }
 
