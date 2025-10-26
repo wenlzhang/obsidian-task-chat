@@ -61,25 +61,48 @@ IMPORTANT: There's a difference between:
 1. Asking for tasks WITH a property (any value)
 2. Asking for tasks with SPECIFIC property value
 
-DUE DATE NORMALIZATION (using centralized keywords):
-- "${keywords.any}" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "scheduled tasks", "with due date")
-- "${keywords.today}" = tasks due TODAY only (今天, today, due today, 今天到期, idag)
-- "${keywords.tomorrow}" = tasks due TOMORROW only (明天, tomorrow, imorgon, due tomorrow)
-- "${keywords.overdue}" = past due tasks (过期, 逾期, 延迟, overdue, past due, late, försenad)
-- "${keywords.future}" = future tasks (未来, 将来, future, upcoming, later, framtida, kommande)
-- "${keywords.week}" = this week (本周, this week, 这周, denna vecka, 本周内)
-- "${keywords.nextWeek}" = next week (下周, next week, nästa vecka, 下周内)
-- Specific dates in YYYY-MM-DD format
+This guidance is consumed by the AI Query Parser, Property Prompt Builder, and Task Chat prompts. It uses the centralized keywords from TaskPropertyService so that every service shares the exact same vocabulary. Remember: urgency weighting (how "important" each bucket is) comes from the user's configurable scores in settings (dueDateOverdueScore, dueDateWithin7DaysScore, etc.). You only normalize the concept — scoring happens downstream.
+
+🚦 PRESENCE FILTERS
+- "${keywords.any}" / "${keywords.all}" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "with due date")
+- "${keywords.none}" = tasks with NO due date (无截止时间, no deadline)
+
+🕒 SPECIFIC DAYS
+- "${keywords.today}" = due TODAY (今天, today, 今天到期, idag)
+- "${keywords.tomorrow}" = due TOMORROW (明天, tomorrow, imorgon)
+- "${keywords.yesterday}" = due YESTERDAY (昨天, yesterday)
+
+📆 WEEKLY WINDOWS
+- "${keywords.week}" = due THIS week (本周, this week, 本周内, denna vecka)
+- "${keywords.lastWeek}" = due LAST week (上周, last week, förra veckan)
+- "${keywords.nextWeek}" = due NEXT week (下周, next week, nästa vecka)
+
+🗓️ MONTHLY WINDOWS
+- "${keywords.month}" = due THIS month (本月, this month, 本月内)
+- "${keywords.lastMonth}" = due LAST month (上个月, last month)
+- "${keywords.nextMonth}" = due NEXT month (下个月, next month)
+
+📅 YEARLY WINDOWS
+- "${keywords.year}" = due THIS year (今年, this year)
+- "${keywords.lastYear}" = due LAST year (去年, last year)
+- "${keywords.nextYear}" = due NEXT year (明年, next year)
+
+📆 SPECIFIC RANGES
+- "${keywords.overdue}" = past due (过期, 逾期, overdue, past due, late, försenad)
+- "${keywords.future}" = future tasks with a due date (未来, 将来, future, upcoming, later, kommande)
 
 KEY DISTINCTION:
-- "due tasks" or "deadline tasks" = "${keywords.any}" (has a due date) ✅
-- "overdue tasks" = "${keywords.overdue}" (specific value) ✅
-- "tasks due today" = "${keywords.today}" (specific value) ✅
+- "due tasks" or "deadline tasks" → "${keywords.any}" (has a due date) ✅
+- "no deadline" or "no due date" → "${keywords.none}" (no due date) ✅
+- "overdue tasks" → "${keywords.overdue}" (specific range) ✅
+- "tasks due today" → "${keywords.today}" (specific value) ✅
 
-Be smart about implied meanings:
+Be smart about implied meanings using concept recognition (no term matching only!):
 - "deadline" alone → "${keywords.any}" (has deadline)
 - "expired" → "${keywords.overdue}" (past due)
-- "upcoming" → "${keywords.future}" (future tasks)
+- "upcoming" / "即将到来" / "kommande" → "${keywords.future}" (future tasks)
+- Natural language ranges like "later this month" → map to the closest bucket ("${keywords.month}" or a specific date) using context
+- Specific calendar references ("2025-10-20", "next Friday") should be normalized to explicit dates when possible
 `;
     }
 
