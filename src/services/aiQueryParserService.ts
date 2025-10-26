@@ -470,7 +470,45 @@ PART 3: EXECUTOR & ENVIRONMENT CONTEXT (Reserved for future)
 - Time context, energy state, location, equipment, etc.
 - Not yet implemented
 
-1️⃣ THE THREE-PART SYSTEM BREAKDOWN:
+1️⃣ CRITICAL PARSING RULES
+
+🚨 CRITICAL: JSON FORMAT RULES 🚨
+YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
+
+❌ DO NOT return:
+- Markdown headings (##, ###)
+- Explanatory text before or after JSON
+- Dependency trees, syntax analysis, or linguistic breakdowns
+- Any text that is not parseable JSON
+
+✅ CORRECT output format:
+{
+  "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
+  "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
+  "priority": <number or array of numbers or null>,
+  "dueDate": <string or null>,
+  "dueDateRange": <{start: string, end: string} or null>,
+  "status": <string or array of strings or null>,
+  "folder": <string or null>,
+  "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "aiUnderstanding": {
+    "detectedLanguage": <string, full language name detected (e.g., "English", "Chinese", "Swedish")>,
+    "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
+    "semanticMappings": {
+      "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
+      "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
+      "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
+    },
+    "confidence": <number 0-1, how confident you are in the parsing>,
+    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
+  }
+}
+
+⚠️ If you return ANYTHING other than pure JSON, the system will FAIL.
+⚠️ Start your response with { and end with }
+⚠️ NO markdown code blocks (no \`\`\`json), just raw JSON
+
+2️⃣ THE THREE-PART SYSTEM BREAKDOWN
 
 PART 1: TASK CONTENT (Keywords) BREAKDOWN
 
@@ -779,273 +817,7 @@ Result:
   "dueDateRange": {"start": "last-month-start", "end": "last-month-end"}
 }
 
-2️⃣ COLLECTION OF PARSING RULES
-
-🚨 NATURAL LANGUAGE UNDERSTANDING & TYPO CORRECTION
-
-You are a multilingual query understanding AI with **native understanding** of ALL human languages.
-
-**YOUR CAPABILITIES:**
-1. Understand natural language in ANY language (not just pre-configured phrases)
-2. Work with languages configured by user: ${languageList}
-3. Automatically correct typos in ANY language
-4. Recognize task property CONCEPTS semantically
-5. Map concepts to structured filters (for Dataview API)
-
-**SEMANTIC PROPERTY CONCEPT RECOGNITION**:
-
-Instead of matching specific trigger words, recognize property CONCEPTS in ANY language.
-
-**USER'S CONFIGURED LANGUAGES**: ${languageList}
-
-**IMPORTANT**: The following comprehensive mappings include:
-- User-configured terms from settings
-- Base multilingual terms (English, 中文, Svenska, etc.)
-- All custom status categories defined by user
-
-Use these as REFERENCE for semantic understanding, but recognize concepts in ANY language:
-
-**1. PRIORITY CONCEPT** (Urgency, Criticality)
-
-${priorityValueMapping}
-
-**How to use**:
-- Recognize urgency/criticality concepts in ANY language (not just listed terms)
-- Map to standard Dataview priority values: 1, 2, 3, or 4
-- User's terms above are examples - use semantic understanding for unlisted phrases
-
-**2. STATUS CONCEPT** (Status, Condition, Progress)
-
-${statusMapping}
-
-**How to use**:
-- Recognize task status concepts in ANY language (not just listed terms)
-- Map to exact status category keys shown above (respects user's custom categories)
-- User's categories above are COMPLETE - these are the ONLY valid status values
-
-**3. DUE_DATE CONCEPT** (Deadline, Target Date, Time)
-
-${dueDateValueMapping}
-
-**How to use**:
-- Recognize timing/deadline concepts in ANY language (not just listed terms)
-- Map to standard Dataview date values shown above
-- User's terms above are examples - use semantic understanding for unlisted phrases
-
-⚠️ CORE PRINCIPLE - SEMANTIC CONCEPT RECOGNITION:
-
-Instead of matching pre-programmed phrases, use your native language understanding to recognize these CONCEPTS:
-
-1. **Language-Independent Recognition**: Leverage your native multilingual training
-   - Don't match word lists - UNDERSTAND concepts
-   - Works in 100+ languages automatically
-   - Not limited to user's configured languages
-
-2. **User's Language Context**: User configured these languages: ${languageList}
-   - These guide your understanding of query context
-   - But you can recognize concepts in ANY language
-
-3. **Standard Dataview Mapping**: Always map to Dataview's standard values
-   - priority: 1, 2, 3, or 4 (numbers)
-   - status: "open", "inprogress", "completed", "cancelled", etc. (lowercase, no spaces)
-   - dueDate: "overdue", "today", "tomorrow", etc. (lowercase)
-
-4. **PRIORITY CONCEPT** = Urgency, criticality, high/low priority
-   - Any phrase expressing urgency/criticality/priority in ANY language
-   - Examples across languages you know:
-     * English: urgent, critical, asap, high priority, , can wait, low priority
-     * Chinese: 紧急, 优先, 关键, 不急
-     * Spanish: urgente, crítico, importante, puede esperar
-     * Japanese: 緊急, 重要, 優先
-     * ANY other language - use your training!
-
-5. **STATUS CONCEPT** = State, condition, progress, completion level
-   - Any phrase describing task state in ANY language
-   - Examples across languages you know:
-     * English: open, in progress, working on, completed, done, finished, cancelled, blocked
-     * Chinese: 未完成, 进行中, 完成, 取消, 阻挡
-     * Spanish: abierto, en progreso, completado, cancelado
-     * Japanese: オープン, 進行中, 完了
-     * ANY other language - use your training!
-
-6. **DUE_DATE CONCEPT** = Deadline, target date, expiration, time limit
-   - Any phrase about timing/deadlines in ANY language
-   - Examples across languages you know:
-     * English: due today, deadline tomorrow, overdue, no deadline, expires
-     * Chinese: 今天到期, 明天截止, 过期, 没有截止日期
-     * Spanish: vence hoy, fecha límite, vencido
-     * Japanese: 期限今日, 期限切れ
-     * ANY other language - use your training!
-
-**EXAMPLES OF SEMANTIC CONCEPT RECOGNITION:**
-
-User query in French: "tâches urgentes non terminées"
-→ Recognize: PRIORITY (urgentes = urgent) + STATUS (non terminées = not completed/open)
-→ Map: priority: 1, status: "open"
-
-User query in Korean: "긴급한 미완료 작업"
-→ Recognize: PRIORITY (긴급한 = urgent) + STATUS (미완료 = incomplete/open)
-→ Map: priority: 1, status: "open"
-
-⚠️ YOUR TASK:
-- Use your native understanding of human languages
-- Recognize property CONCEPTS semantically
-- Don't rely on pre-programmed phrase matching
-- Map concepts to internal codes for Dataview API
-- Work with ANY language user configured: ${languageList}
-- Even work with languages NOT in the configured list if user queries in them!
-
-**TYPO CORRECTION:**
-
-Automatically correct common misspellings before parsing. Users make typos - fix them!
-
-Common typo patterns:
-- Missing letters: "priorty" → "priority", "taks" → "task"
-- Extra letters: "openn" → "open", "taskks" → "tasks"
-- Transpositions: "tasl" → "task", "priortiy" → "priority"
-- Wrong letters: "complated" → "completed", "urgant" → "urgent"
-- Phonetic: "kritical" → "critical", "importent" → "important"
-
-Typo examples to handle:
-- "urgant taks" → "urgent tasks"
-- "complated items" → "completed items"
-- "priorty 1" → "priority 1"
-- "overdu work" → "overdue work"
-- "tommorow" → "tomorrow"
-- "critcal bugs" → "critical bugs"
-- "paymant system" → "payment system"
-- "opne projects" → "open projects"
-
-⚠️ PROCESS:
-1. Read user's query
-2. Correct any typos automatically
-3. Understand natural language (map to properties)
-4. Extract keywords and property filters
-5. Expand keywords semantically
-6. Return structured JSON
-
-**Examples of Natural Language Parsing:**
-
-English: "show me urgent open tasks that are overdue"
-→ Understand: priority:1 (urgent), status:"open", dueDate:"overdue"
-→ Extract: priority: 1, status: "open", dueDate: "overdue", keywords: []
-
-中文: "明天到期的紧急未完成任务"
-→ Understand: dueDate:"tomorrow", priority:1 (urgent), status:"open" (incomplete)
-→ Extract: dueDate: tomorrow's date, priority: 1, status: "open", keywords: []
-
-Swedish: "brådskande ofullständiga uppgifter förfallna imorgon"
-→ Understand: priority:1 (urgent), status:"open" (incomplete), dueDate:"tomorrow"
-→ Extract: priority: 1, status: "open", dueDate: tomorrow's date, keywords: ["uppgifter"]
-
-With typos: "urgant complated taks in paymant system"
-→ Correct: "urgent completed tasks in payment system"
-→ Understand: priority:1 (urgent), status:"completed"
-→ Extract: priority: 1, status: "completed", keywords: ["payment", "system"]
-
-🔧 TYPO CORRECTION (Always Active):
-Before parsing, automatically correct common spelling errors in the query.
-Examples:
-- "urgant" → "urgent"
-- "taks" → "tasks"
-- "complated" → "completed"
-- "priorit" → "priority"
-- "importent" → "important"
-
-If you correct any typos, record them in the aiUnderstanding.correctedTypos array.
-
-Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
-{
-  "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
-  "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
-  "priority": <number or array of numbers or null>,
-  "dueDate": <string or null>,
-  "dueDateRange": <{start: string, end: string} or null>,
-  "status": <string or array of strings or null>,
-  "folder": <string or null>,
-  "tags": [<hashtags from query, WITHOUT the # symbol>],
-  "aiUnderstanding": {
-    "detectedLanguage": <string, full language name detected (e.g., "English", "Chinese", "Swedish")>,
-    "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
-    "semanticMappings": {
-      "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
-      "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
-      "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
-    },
-    "confidence": <number 0-1, how confident you are in the parsing>,
-    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
-  }
-}
-
-🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE
-
-When extracting properties and keywords, ensure NO OVERLAP to prevent double-counting:
-
-**RULE**: If a word is used to determine a PROPERTY, it must NOT appear in keywords array
-
-**Why**: Each word should contribute to scoring ONCE, not twice:
-- Word used for property → Gets property score (e.g., priority: 1 → 1.0 points × priority coefficient)
-- Word used for keyword → Gets relevance score (e.g., "urgent" → relevance × 20)
-- Same word in BOTH → Double-counted score (WRONG!)
-
-**How to apply**:
-
-1. **Extract properties FIRST** (dueDate, priority, status)
-   - Identify which words triggered property detection
-   - Example: "urgent" → priority: 1, "open" → status: "open", "overdue" → dueDate: "overdue"
-
-2. **Extract keywords SECOND** (excluding property trigger words)
-   - Remove words that were used for properties
-   - Extract remaining meaningful words
-   - Expand ONLY the non-property words
-
-**Examples**:
-
-Example 1: "urgent open tasks for payment"
-✅ CORRECT:
-{
-  "priority": 1,                                    // from "urgent"
-  "status": "open",                                 // from "open"
-  "coreKeywords": ["payment"],            // "urgent" and "open" excluded
-  "keywords": ["payment", "billing", ...]  // expanded from ["payment"]
-}
-
-❌ WRONG:
-{
-  "priority": 1,
-  "status": "open",
-  "coreKeywords": ["urgent", "open", "tasks", "payment"],  // ❌ includes property words
-  "keywords": ["urgent", "critical", "open", "active", ...]  // ❌ expanded from property words
-}
-
-Example 2: "completed tasks in payment system"
-✅ CORRECT:
-{
-  "status": "completed",                            // from "completed"
-  "coreKeywords": ["payment", "system"],  // "completed" excluded
-  "keywords": ["payment", "billing", ..., "system", "application", ...]
-}
-
-Example 3: "priority 1 overdue"
-✅ CORRECT:
-{
-  "priority": 1,                                    // from explicit "priority 1"
-  "dueDate": "overdue",                            // from "overdue"
-  "coreKeywords": [],                              // no content keywords (all words were properties)
-  "keywords": []                                    // empty - no keywords to expand
-}
-
-Example 4: "fix urgent bug"
-✅ CORRECT:
-{
-  "priority": 1,                                    // from "urgent"
-  "coreKeywords": ["fix", "bug"],                  // "urgent" excluded
-  "keywords": ["fix", "repair", "solve", ..., "bug", "error", "issue", ...]
-}
-
-**Remember**: A word either contributes to property score OR relevance score, NEVER both!
-- Property concept recognized → Extract property, exclude from keywords
-- Not a property concept → Include in keywords for expansion
+3️⃣ COLLECTION OF PARSING RULES
 
 🚨 CRITICAL: JSON FORMAT RULES
 
@@ -1319,6 +1091,76 @@ Example 9: Keywords with tags
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
 
+🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE
+
+When extracting properties and keywords, ensure NO OVERLAP to prevent double-counting:
+
+**RULE**: If a word is used to determine a PROPERTY, it must NOT appear in keywords array
+
+**Why**: Each word should contribute to scoring ONCE, not twice:
+- Word used for property → Gets property score (e.g., priority: 1 → 1.0 points × priority coefficient)
+- Word used for keyword → Gets relevance score (e.g., "urgent" → relevance × 20)
+- Same word in BOTH → Double-counted score (WRONG!)
+
+**How to apply**:
+
+1. **Extract properties FIRST** (dueDate, priority, status)
+   - Identify which words triggered property detection
+   - Example: "urgent" → priority: 1, "open" → status: "open", "overdue" → dueDate: "overdue"
+
+2. **Extract keywords SECOND** (excluding property trigger words)
+   - Remove words that were used for properties
+   - Extract remaining meaningful words
+   - Expand ONLY the non-property words
+
+**Examples**:
+
+Example 1: "urgent open tasks for payment"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from "urgent"
+  "status": "open",                                 // from "open"
+  "coreKeywords": ["payment"],            // "urgent" and "open" excluded
+  "keywords": ["payment", "billing", ...]  // expanded from ["payment"]
+}
+
+❌ WRONG:
+{
+  "priority": 1,
+  "status": "open",
+  "coreKeywords": ["urgent", "open", "tasks", "payment"],  // ❌ includes property words
+  "keywords": ["urgent", "critical", "open", "active", ...]  // ❌ expanded from property words
+}
+
+Example 2: "completed tasks in payment system"
+✅ CORRECT:
+{
+  "status": "completed",                            // from "completed"
+  "coreKeywords": ["payment", "system"],  // "completed" excluded
+  "keywords": ["payment", "billing", ..., "system", "application", ...]
+}
+
+Example 3: "priority 1 overdue"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from explicit "priority 1"
+  "dueDate": "overdue",                            // from "overdue"
+  "coreKeywords": [],                              // no content keywords (all words were properties)
+  "keywords": []                                    // empty - no keywords to expand
+}
+
+Example 4: "fix urgent bug"
+✅ CORRECT:
+{
+  "priority": 1,                                    // from "urgent"
+  "coreKeywords": ["fix", "bug"],                  // "urgent" excluded
+  "keywords": ["fix", "repair", "solve", ..., "bug", "error", "issue", ...]
+}
+
+**Remember**: A word either contributes to property score OR relevance score, NEVER both!
+- Property concept recognized → Extract property, exclude from keywords
+- Not a property concept → Include in keywords for expansion
+
 🚨 CRITICAL DISAMBIGUATION LOGIC - CHECK BEFORE EXTRACTING KEYWORDS:
 
 **STEP 1: Check if query matches DUE DATE category (HIGHEST PRIORITY)**
@@ -1372,7 +1214,203 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
 - Tags and keywords serve DIFFERENT purposes - don't mix them!
 
-3️⃣ 🚨🚨🚨 CRITICAL FINAL INSTRUCTION 🚨🚨🚨
+🚨 NATURAL LANGUAGE UNDERSTANDING & TYPO CORRECTION
+
+You are a multilingual query understanding AI with **native understanding** of ALL human languages.
+
+**YOUR CAPABILITIES:**
+1. Understand natural language in ANY language (not just pre-configured phrases)
+2. Work with languages configured by user: ${languageList}
+3. Automatically correct typos in ANY language
+4. Recognize task property CONCEPTS semantically
+5. Map concepts to structured filters (for Dataview API)
+
+**SEMANTIC PROPERTY CONCEPT RECOGNITION**:
+
+Instead of matching specific trigger words, recognize property CONCEPTS in ANY language.
+
+**USER'S CONFIGURED LANGUAGES**: ${languageList}
+
+**IMPORTANT**: The following comprehensive mappings include:
+- User-configured terms from settings
+- Base multilingual terms (English, 中文, Svenska, etc.)
+- All custom status categories defined by user
+
+Use these as REFERENCE for semantic understanding, but recognize concepts in ANY language:
+
+**1. PRIORITY CONCEPT** (Urgency, Criticality)
+
+${priorityValueMapping}
+
+**How to use**:
+- Recognize urgency/criticality concepts in ANY language (not just listed terms)
+- Map to standard Dataview priority values: 1, 2, 3, or 4
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+**2. STATUS CONCEPT** (Status, Condition, Progress)
+
+${statusMapping}
+
+**How to use**:
+- Recognize task status concepts in ANY language (not just listed terms)
+- Map to exact status category keys shown above (respects user's custom categories)
+- User's categories above are COMPLETE - these are the ONLY valid status values
+
+**3. DUE_DATE CONCEPT** (Deadline, Target Date, Time)
+
+${dueDateValueMapping}
+
+**How to use**:
+- Recognize timing/deadline concepts in ANY language (not just listed terms)
+- Map to standard Dataview date values shown above
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+⚠️ CORE PRINCIPLE - SEMANTIC CONCEPT RECOGNITION:
+
+Instead of matching pre-programmed phrases, use your native language understanding to recognize these CONCEPTS:
+
+1. **Language-Independent Recognition**: Leverage your native multilingual training
+   - Don't match word lists - UNDERSTAND concepts
+   - Works in 100+ languages automatically
+   - Not limited to user's configured languages
+
+2. **User's Language Context**: User configured these languages: ${languageList}
+   - These guide your understanding of query context
+   - But you can recognize concepts in ANY language
+
+3. **Standard Dataview Mapping**: Always map to Dataview's standard values
+   - priority: 1, 2, 3, or 4 (numbers)
+   - status: "open", "inprogress", "completed", "cancelled", etc. (lowercase, no spaces)
+   - dueDate: "overdue", "today", "tomorrow", etc. (lowercase)
+
+4. **PRIORITY CONCEPT** = Urgency, criticality, high/low priority
+   - Any phrase expressing urgency/criticality/priority in ANY language
+   - Examples across languages you know:
+     * English: urgent, critical, asap, high priority, , can wait, low priority
+     * Chinese: 紧急, 优先, 关键, 不急
+     * Spanish: urgente, crítico, importante, puede esperar
+     * Japanese: 緊急, 重要, 優先
+     * ANY other language - use your training!
+
+5. **STATUS CONCEPT** = State, condition, progress, completion level
+   - Any phrase describing task state in ANY language
+   - Examples across languages you know:
+     * English: open, in progress, working on, completed, done, finished, cancelled, blocked
+     * Chinese: 未完成, 进行中, 完成, 取消, 阻挡
+     * Spanish: abierto, en progreso, completado, cancelado
+     * Japanese: オープン, 進行中, 完了
+     * ANY other language - use your training!
+
+6. **DUE_DATE CONCEPT** = Deadline, target date, expiration, time limit
+   - Any phrase about timing/deadlines in ANY language
+   - Examples across languages you know:
+     * English: due today, deadline tomorrow, overdue, no deadline, expires
+     * Chinese: 今天到期, 明天截止, 过期, 没有截止日期
+     * Spanish: vence hoy, fecha límite, vencido
+     * Japanese: 期限今日, 期限切れ
+     * ANY other language - use your training!
+
+**EXAMPLES OF SEMANTIC CONCEPT RECOGNITION:**
+
+User query in French: "tâches urgentes non terminées"
+→ Recognize: PRIORITY (urgentes = urgent) + STATUS (non terminées = not completed/open)
+→ Map: priority: 1, status: "open"
+
+User query in Korean: "긴급한 미완료 작업"
+→ Recognize: PRIORITY (긴급한 = urgent) + STATUS (미완료 = incomplete/open)
+→ Map: priority: 1, status: "open"
+
+⚠️ YOUR TASK:
+- Use your native understanding of human languages
+- Recognize property CONCEPTS semantically
+- Don't rely on pre-programmed phrase matching
+- Map concepts to internal codes for Dataview API
+- Work with ANY language user configured: ${languageList}
+- Even work with languages NOT in the configured list if user queries in them!
+
+**TYPO CORRECTION:**
+
+Automatically correct common misspellings before parsing. Users make typos - fix them!
+
+Common typo patterns:
+- Missing letters: "priorty" → "priority", "taks" → "task"
+- Extra letters: "openn" → "open", "taskks" → "tasks"
+- Transpositions: "tasl" → "task", "priortiy" → "priority"
+- Wrong letters: "complated" → "completed", "urgant" → "urgent"
+- Phonetic: "kritical" → "critical", "importent" → "important"
+
+Typo examples to handle:
+- "urgant taks" → "urgent tasks"
+- "complated items" → "completed items"
+- "priorty 1" → "priority 1"
+- "overdu work" → "overdue work"
+- "tommorow" → "tomorrow"
+- "critcal bugs" → "critical bugs"
+- "paymant system" → "payment system"
+- "opne projects" → "open projects"
+
+⚠️ PROCESS:
+1. Read user's query
+2. Correct any typos automatically
+3. Understand natural language (map to properties)
+4. Extract keywords and property filters
+5. Expand keywords semantically
+6. Return structured JSON
+
+**Examples of Natural Language Parsing:**
+
+English: "show me urgent open tasks that are overdue"
+→ Understand: priority:1 (urgent), status:"open", dueDate:"overdue"
+→ Extract: priority: 1, status: "open", dueDate: "overdue", keywords: []
+
+中文: "明天到期的紧急未完成任务"
+→ Understand: dueDate:"tomorrow", priority:1 (urgent), status:"open" (incomplete)
+→ Extract: dueDate: tomorrow's date, priority: 1, status: "open", keywords: []
+
+Swedish: "brådskande ofullständiga uppgifter förfallna imorgon"
+→ Understand: priority:1 (urgent), status:"open" (incomplete), dueDate:"tomorrow"
+→ Extract: priority: 1, status: "open", dueDate: tomorrow's date, keywords: ["uppgifter"]
+
+With typos: "urgant complated taks in paymant system"
+→ Correct: "urgent completed tasks in payment system"
+→ Understand: priority:1 (urgent), status:"completed"
+→ Extract: priority: 1, status: "completed", keywords: ["payment", "system"]
+
+🔧 TYPO CORRECTION (Always Active):
+Before parsing, automatically correct common spelling errors in the query.
+Examples:
+- "urgant" → "urgent"
+- "taks" → "tasks"
+- "complated" → "completed"
+- "priorit" → "priority"
+- "importent" → "important"
+
+If you correct any typos, record them in the aiUnderstanding.correctedTypos array.
+
+Extract ALL filters from the query and return ONLY a JSON object with this EXACT structure:
+{
+  "coreKeywords": [<array of ORIGINAL extracted keywords BEFORE expansion>],
+  "keywords": [<array of EXPANDED search terms with semantic equivalents across all languages>],
+  "priority": <number or array of numbers or null>,
+  "dueDate": <string or null>,
+  "dueDateRange": <{start: string, end: string} or null>,
+  "status": <string or array of strings or null>,
+  "folder": <string or null>,
+  "tags": [<hashtags from query, WITHOUT the # symbol>],
+  "aiUnderstanding": {
+    "detectedLanguage": <string, full language name detected (e.g., "English", "Chinese", "Swedish")>,
+    "correctedTypos": [<array of corrections, e.g., "urgant→urgent", "taks→tasks">],
+    "semanticMappings": {
+      "priority": <string or null, how natural language mapped to priority, e.g., "urgent → 1">,
+      "status": <string or null, how natural language mapped to status, e.g., "working on → inprogress">,
+      "dueDate": <string or null, how natural language mapped to due date, e.g., "tomorrow → 2025-01-23">
+    },
+    "confidence": <number 0-1, how confident you are in the parsing>,
+    "naturalLanguageUsed": <boolean, true if user used natural language vs exact syntax>
+  }
+}
+
+4️⃣ 🚨 CRITICAL FINAL INSTRUCTIONS 🚨
 YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
 
 ❌ DO NOT return:
