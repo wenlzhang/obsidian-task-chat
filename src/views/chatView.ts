@@ -1042,6 +1042,14 @@ export class ChatView extends ItemView {
                 }
             }
 
+            if (message.error.fallbackUsed) {
+                const fallbackEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-fallback",
+                });
+                fallbackEl.createEl("strong", { text: "✓ Fallback: " });
+                fallbackEl.createSpan({ text: message.error.fallbackUsed });
+            }
+
             if (message.error.docsLink) {
                 const docsEl = detailsEl.createEl("div", {
                     cls: "task-chat-api-error-docs",

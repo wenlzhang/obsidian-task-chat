@@ -909,27 +909,32 @@ export class AIService {
                 const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
                 const structured = ErrorHandler.createAnalysisError(error, modelInfo);
                 
-                // FALLBACK: If parser succeeded, we have properly filtered tasks from semantic search
-                // Return them instead of failing completely
-                if (usingAIParsing && sortedTasksForDisplay.length > 0) {
+                // FALLBACK: Stage 1 always provides results (semantic OR simple search)
+                // If parser succeeded → semantic search results
+                // If parser failed → simple search results (from Stage 1 fallback)
+                // Either way, we should have tasks to display!
+                if (sortedTasksForDisplay.length > 0) {
+                    const searchType = usingAIParsing ? "semantic search" : "simple search";
                     Logger.debug(
-                        `Parser succeeded, returning ${sortedTasksForDisplay.length} tasks from semantic search as fallback`,
+                        `Returning ${sortedTasksForDisplay.length} tasks from ${searchType} as fallback`,
                     );
                     
                     // Add fallback info to error
-                    structured.fallbackUsed = `Semantic search succeeded (${sortedTasksForDisplay.length} tasks filtered and sorted). Showing Smart Search results without AI summary.`;
+                    structured.fallbackUsed = usingAIParsing
+                        ? `Semantic search succeeded (${sortedTasksForDisplay.length} tasks filtered and sorted). Showing Smart Search results without AI summary.`
+                        : `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found). Analysis also failed, showing results without AI summary.`;
                     
                     // Return filtered tasks with error info (will be displayed in UI)
                     return {
                         response: `Found ${sortedTasksForDisplay.length} matching task(s)`,
                         recommendedTasks: sortedTasksForDisplay.slice(0, settings.maxRecommendations),
                         tokenUsage: undefined, // No tokens used since AI failed
-                        parsedQuery: parsedQuery,
+                        parsedQuery: usingAIParsing ? parsedQuery : undefined,
                         error: structured, // Attach error for UI display
                     };
                 } else {
-                    // Parser also failed or no tasks - throw error
-                    Logger.error("No fallback available - parser also failed or no tasks found");
+                    // Only throw if we have absolutely no tasks (rare edge case)
+                    Logger.error("No tasks found - cannot provide fallback results");
                     throw new AIError(structured);
                 }
             }
