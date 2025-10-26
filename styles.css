@@ -1355,7 +1355,6 @@
     border-left: 3px solid var(--background-modifier-border);
     margin-left: 12px;
     margin-bottom: 8px;
-    background: var(--background-secondary);
 }
 
 .task-chat-status-advanced-header {

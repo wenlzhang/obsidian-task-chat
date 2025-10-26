@@ -867,52 +867,39 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings.taskStatusMapping,
         );
 
-        // Always show auto-organize button (helpful even without duplicates)
-        const organizerBox = containerEl.createDiv({
-            cls: validation.valid
-                ? "task-chat-info-box"
-                : "task-chat-warning-box",
-        });
+        // Calculate dynamic gap for auto-organize based on category count
+        const categoryCount = Object.keys(
+            this.plugin.settings.taskStatusMapping,
+        ).length;
+        const dynamicGap = Math.max(10, Math.ceil(100 / categoryCount));
 
+        // Show warning messages if duplicates exist
         if (!validation.valid) {
-            // Show warning only if duplicates exist
-            const warningTitle = organizerBox.createEl("div", {
-                cls: "task-chat-warning-title",
-                text: "⚠️ Duplicate sort orders detected",
+            const warningBox = containerEl.createDiv({
+                cls: "task-chat-warning-box",
             });
+            warningBox.style.marginBottom = "16px";
 
             for (const warning of validation.warnings) {
-                const warningText = organizerBox.createEl("p", {
+                const warningText = warningBox.createEl("p", {
                     cls: "task-chat-warning-message",
                 });
-                warningText.textContent = warning;
+                warningText.textContent = "⚠️ " + warning;
+                warningText.style.marginBottom = "4px";
             }
-
-            const warningExplanation = organizerBox.createEl("p", {
-                cls: "task-chat-warning-explanation",
-            });
-            warningExplanation.textContent =
-                "When multiple categories have the same order number, sorting by status becomes unpredictable. Click 'Auto-Organize' to automatically renumber categories with proper gaps (10, 20, 30...).";
-        } else {
-            // Show info when everything is fine
-            const infoText = organizerBox.createEl("p", {
-                text: "✅ Sort orders look good! You can still use Auto-Organize to renumber with consistent gaps (10, 20, 30...).",
-            });
-            infoText.style.marginBottom = "10px";
         }
 
-        // Always show the auto-organize button
-        new Setting(organizerBox)
-            .setName("Auto-organize sort orders")
+        // Auto-organize button (always visible, but styled differently based on validation)
+        const organizeSetting = new Setting(containerEl)
+            .setName("Auto-organize display order")
             .setDesc(
-                "Automatically renumber all categories with consistent gaps (10, 20, 30...). Makes it easy to add new categories between existing ones.",
+                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...). This makes it easy to insert new categories between existing ones. Note: Display order is only used when multiple tasks have the same status score - it determines visual order, not task importance.`,
             )
-            .addButton((button) =>
+            .addButton((button) => {
                 button
                     .setButtonText(
-                        validation.valid ? "Organize now" : "Auto-fix now",
+                        validation.valid ? "Organize now" : "Fix duplicates",
                     )
-                    .setCta()
                     .onClick(async () => {
                         this.plugin.settings.taskStatusMapping =
                             TaskPropertyService.autoFixStatusOrders(
@@ -920,11 +907,18 @@ export class SettingsTab extends PluginSettingTab {
                             );
                         await this.plugin.saveSettings();
                         new Notice(
-                            "Status orders organized! Categories renumbered with gaps (10, 20, 30...)",
+                            `Display order organized! Categories renumbered with gaps of ${dynamicGap}.`,
                         );
                         this.display(); // Refresh UI
-                    }),
-            );
+                    });
+
+                // Style button based on validation state
+                if (!validation.valid) {
+                    button.setWarning(); // Red/warning style when duplicates exist
+                }
+            });
+
+        organizeSetting.settingEl.style.marginBottom = "20px";
 
         // Add column headers
         const headerDiv = containerEl.createDiv({
@@ -2000,18 +1994,18 @@ export class SettingsTab extends PluginSettingTab {
             }
         });
 
-        // Order field with effective order display
+        // Display order field (not the same as score!)
         const effectiveOrder = TaskPropertyService.getStatusOrder(
             categoryKey,
             this.plugin.settings,
         );
         const orderDesc =
             order !== undefined
-                ? `Sort priority (1=highest). Controls task order when sorting by status. Current effective order: ${effectiveOrder}. Leave empty for smart defaults.`
-                : `Sort priority (1=highest). Controls task order when sorting by status. Currently using default: ${effectiveOrder}. Built-in: open=1, inProgress=2, completed=6, cancelled=7. Custom=8.`;
+                ? `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Score determines task importance when sorting by status. Display order only matters when multiple tasks have the SAME score - it breaks ties for visual order. Currently: ${effectiveOrder}. This is a relative value - gaps between numbers don't matter, only their order.`
+                : `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Currently using smart default: ${effectiveOrder}. Built-in defaults: open=1, inProgress=2, completed=6, cancelled=7, custom=8. Leave empty to use smart defaults.`;
 
         const orderSetting = new Setting(advancedFields)
-            .setName("Sort order")
+            .setName("Display order")
             .setDesc(orderDesc);
 
         // Add slider for easier adjustment
@@ -2031,14 +2025,16 @@ export class SettingsTab extends PluginSettingTab {
         // Add clear button to reset to default
         orderSetting.addButton((button) =>
             button
-                .setButtonText("Clear")
-                .setTooltip("Clear custom order (use smart default)")
+                .setButtonText("Use default")
+                .setTooltip("Clear custom priority and use smart default")
                 .onClick(async () => {
                     this.plugin.settings.taskStatusMapping[categoryKey].order =
                         undefined;
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to show new effective order
-                    new Notice(`Reset "${displayName}" to default order`);
+                    new Notice(
+                        `Reset "${displayName}" display order to default`,
+                    );
                 }),
         );
 

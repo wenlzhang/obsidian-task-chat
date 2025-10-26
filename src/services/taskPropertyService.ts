@@ -1921,12 +1921,19 @@ export class TaskPropertyService {
             return orderA - orderB;
         });
 
-        // Assign new orders with gaps: 10, 20, 30...
+        // Calculate dynamic gap based on total category count
+        // For 10 or fewer categories: gap = 10 (10, 20, 30...)
+        // For more categories: smaller gaps to fit within reasonable range
+        // Ensures we can always insert new categories between existing ones
+        const categoryCount = categories.length;
+        const dynamicGap = Math.max(10, Math.ceil(100 / categoryCount));
+
+        // Assign new orders with dynamic gaps
         const fixed = { ...statusMapping };
         categories.forEach(([key], index) => {
             fixed[key] = {
                 ...fixed[key],
-                order: (index + 1) * 10,
+                order: (index + 1) * dynamicGap,
             };
         });
 
