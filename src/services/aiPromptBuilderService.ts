@@ -95,8 +95,9 @@ export class PromptBuilderService {
 
         return `${baseMapping}
 
-⚠️ EXPAND PRIORITY TERMS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
-Generate semantic equivalents for priority levels in EACH configured language.
+⚠️ RECOGNIZE PRIORITY CONCEPTS ACROSS ALL ${queryLanguages.length} LANGUAGES: ${languageList}
+Use your native multilingual understanding to identify priority concepts directly in ANY language.
+Do NOT generate semantic expansions for priority levels – convert concepts straight to Dataview values.
 
 IMPORTANT DISTINCTION:
 1. Asking for tasks WITH priority (any value) → priority: null
@@ -218,7 +219,7 @@ Category keys must be EXACTLY one of: ${categoryList}
 ⚠️ Use your NATIVE LANGUAGE UNDERSTANDING to recognize status concepts in ALL languages: ${languageList}
 NO expansion needed - recognize concepts directly and convert to category keys!
 
-Current status categories:
+Examples of current status categories:
 ${categoryExamples}
 
 Your task: Recognize status concepts in user's query (ANY language) and convert to category keys.
