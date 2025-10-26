@@ -5,6 +5,7 @@ import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 import { DataviewService } from "./dataviewService";
+import { TaskSearchService } from "./taskSearchService";
 import { Logger } from "../utils/logger";
 
 /**
@@ -66,6 +67,10 @@ export interface ParsedQuery {
         confidence?: number; // 0-1, how confident AI is in the parsing
         naturalLanguageUsed?: boolean; // Whether user used natural language vs exact syntax
     };
+
+    // Parser Error Information (for fallback cases)
+    _parserError?: string; // Error message if parsing failed
+    _parserModel?: string; // Model that was attempted (provider/model)
 }
 
 /**
@@ -2098,15 +2103,25 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             Logger.debug("Query parser returning (three-part):", result);
             return result;
         } catch (error) {
+            // Log comprehensive error information including model details
+            const providerConfig = getCurrentProviderConfig(settings);
             Logger.error("Query parsing error:", error);
-            // Fallback: return query as keywords
-            Logger.debug(
-                `Query parser fallback: using entire query as keyword: "${query}"`,
-            );
-            return {
-                keywords: [query],
-                originalQuery: query,
-            };
+            Logger.error("AI Query Parser failed with model:", {
+                provider: settings.aiProvider,
+                model: providerConfig.model,
+                query: query,
+                errorMessage: error instanceof Error ? error.message : String(error)
+            });
+            
+            // Don't create duplicate fallback here - let AIService handle it
+            // AIService will call Simple Search module (TaskSearchService.analyzeQueryIntent)
+            // Re-throw error with structured info for proper error handling
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const enrichedError = new Error(errorMessage);
+            // Add metadata for UI display
+            (enrichedError as any).parserModel = `${settings.aiProvider}/${providerConfig.model}`;
+            (enrichedError as any).isParserError = true;
+            throw enrichedError;
         }
     }
 
@@ -2152,7 +2167,48 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         });
 
         if (response.status !== 200) {
-            throw new Error(`AI API error: ${response.status}`);
+            // Extract detailed error information from API response
+            const errorBody = response.json || {};
+            const errorMessage = errorBody.error?.message || errorBody.message || "Unknown error";
+            const errorType = errorBody.error?.type || "api_error";
+            const errorCode = errorBody.error?.code || "unknown";
+            
+            // Log detailed error for debugging
+            Logger.error("AI Query Parser API Error:", {
+                status: response.status,
+                model: providerConfig.model,
+                provider: settings.aiProvider,
+                errorType: errorType,
+                errorCode: errorCode,
+                errorMessage: errorMessage,
+                maxTokens: providerConfig.maxTokens,
+                fullResponse: errorBody
+            });
+            
+            // Generate actionable solution based on error type
+            let solution = "";
+            if (response.status === 400) {
+                if (errorCode === "context_length_exceeded" || errorMessage.includes("context") || errorMessage.includes("token")) {
+                    solution = "Reduce max tokens in settings (current: " + providerConfig.maxTokens + "). Try 1000-2000 tokens.";
+                } else if (errorCode === "model_not_found" || errorMessage.includes("model") || errorMessage.includes("does not exist")) {
+                    solution = "Check model name in settings. Available models vary by provider.";
+                } else {
+                    solution = "Check API key and model configuration in settings.";
+                }
+            } else if (response.status === 401) {
+                solution = "Invalid API key. Update API key in plugin settings.";
+            } else if (response.status === 429) {
+                solution = "Rate limit exceeded. Wait a moment or switch to another provider.";
+            } else if (response.status === 500 || response.status === 503) {
+                solution = "Provider server error. Try again later or switch providers.";
+            } else {
+                solution = "Check console logs for details.";
+            }
+            
+            // Throw user-friendly error with context and solution
+            throw new Error(
+                `${errorMessage} | ${solution}`
+            );
         }
 
         return response.json.choices[0].message.content.trim();
@@ -2199,7 +2255,49 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         });
 
         if (response.status !== 200) {
-            throw new Error(`Anthropic API error: ${response.status}`);
+            // Extract detailed error information from Anthropic API response
+            const errorBody = response.json || {};
+            const errorMessage = errorBody.error?.message || errorBody.message || "Unknown error";
+            const errorType = errorBody.error?.type || "api_error";
+            const errorCode = errorBody.error?.code || "unknown";
+            
+            // Log detailed error for debugging
+            Logger.error("Anthropic Query Parser API Error:", {
+                status: response.status,
+                model: providerConfig.model,
+                errorType: errorType,
+                errorCode: errorCode,
+                errorMessage: errorMessage,
+                maxTokens: providerConfig.maxTokens,
+                fullResponse: errorBody
+            });
+            
+            // Generate actionable solution based on error type
+            let solution = "";
+            if (response.status === 400) {
+                if (errorType === "invalid_request_error") {
+                    if (errorMessage.includes("max_tokens") || errorMessage.includes("too large")) {
+                        solution = "Reduce max tokens in settings (current: " + providerConfig.maxTokens + "). Try 1000-4000 tokens for Claude.";
+                    } else if (errorMessage.includes("model")) {
+                        solution = "Check model name in settings. Available Claude models: claude-3-5-sonnet, claude-3-opus, claude-3-haiku.";
+                    } else {
+                        solution = "Check request parameters in settings.";
+                    }
+                } else {
+                    solution = "Verify API key and model configuration.";
+                }
+            } else if (response.status === 401) {
+                solution = "Invalid Anthropic API key. Update API key in plugin settings.";
+            } else if (response.status === 429) {
+                solution = "Rate limit exceeded. Wait a moment or upgrade your Anthropic plan.";
+            } else if (response.status === 500 || response.status === 529) {
+                solution = "Anthropic server error or overloaded. Try again later.";
+            } else {
+                solution = "Check console logs for details.";
+            }
+            
+            // Throw user-friendly error with solution
+            throw new Error(`${errorMessage} | ${solution}`);
         }
 
         return response.json.content[0].text.trim();
@@ -2249,13 +2347,31 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             });
 
             if (response.status !== 200) {
-                const errorMsg =
-                    response.json?.error || response.text || "Unknown error";
-                throw new Error(
-                    `Ollama API error (${response.status}): ${errorMsg}. ` +
-                        `Ensure Ollama is running and model '${providerConfig.model}' is available. ` +
-                        `Try: ollama run ${providerConfig.model}`,
-                );
+                const errorBody = response.json || {};
+                const errorMessage = errorBody.error || response.text || "Unknown error";
+                
+                // Log detailed error for debugging
+                Logger.error("Ollama Query Parser API Error:", {
+                    status: response.status,
+                    model: providerConfig.model,
+                    endpoint: endpoint,
+                    errorMessage: errorMessage,
+                    numPredict: providerConfig.maxTokens,
+                    fullResponse: errorBody
+                });
+                
+                // Generate actionable solution based on error
+                let solution = "";
+                if (response.status === 404) {
+                    solution = `Model '${providerConfig.model}' not found. Pull it first: ollama pull ${providerConfig.model}`;
+                } else if (errorMessage.includes("model") && errorMessage.includes("not found")) {
+                    solution = `Model '${providerConfig.model}' not available. Try: ollama pull ${providerConfig.model}`;
+                } else {
+                    solution = `Ensure Ollama is running at ${endpoint}. Check: http://localhost:11434`;
+                }
+                
+                // Throw user-friendly error with solution
+                throw new Error(`${errorMessage} | ${solution}`);
             }
 
             const data = response.json;
@@ -2290,20 +2406,21 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 errorMsg.includes("fetch")
             ) {
                 throw new Error(
-                    `Cannot connect to Ollama at ${endpoint}. ` +
-                        `Please ensure Ollama is running. Start it with: ollama serve`,
+                    `Cannot connect to Ollama at ${endpoint} | Ensure Ollama is running. Start: ollama serve`,
                 );
             }
 
             if (errorMsg.includes("model") || errorMsg.includes("not found")) {
                 throw new Error(
-                    `Model '${providerConfig.model}' not found in Ollama. ` +
-                        `Install it with: ollama pull ${providerConfig.model}`,
+                    `Model '${providerConfig.model}' not found | Pull the model: ollama pull ${providerConfig.model}`,
                 );
             }
 
-            // Re-throw with context
-            throw new Error(`Ollama query parsing failed: ${errorMsg}`);
+            // Re-throw with context if not already formatted
+            if (errorMsg.includes(" | ")) {
+                throw error; // Already has solution
+            }
+            throw new Error(`${errorMsg} | Check Ollama configuration and logs`);
         }
     }
 }

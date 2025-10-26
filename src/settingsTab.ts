@@ -453,13 +453,13 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Max keyword expansions")
+            .setName("Keyword expansions")
             .setDesc(
-                "Maximum variations per keyword per language. Default: 5. Higher values improve recall but increase token usage.",
+                "Variations per keyword per language. Default: 5. Higher values improve recall but increase token usage.",
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(1, 15, 1)
+                    .setLimits(1, 100, 1)
                     .setValue(this.plugin.settings.maxKeywordExpansions)
                     .setDynamicTooltip()
                     .onChange(async (value) => {

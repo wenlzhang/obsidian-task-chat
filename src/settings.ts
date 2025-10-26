@@ -375,7 +375,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Semantic Expansion Settings
-    maxKeywordExpansions: 5, // Max semantic variations per keyword per language (conservative default)
+    maxKeywordExpansions: 10, // Semantic variations per keyword per language (conservative default)
     enableSemanticExpansion: true, // Enable semantic expansion by default
 
     // User-Configurable Property Terms

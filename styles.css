@@ -1146,6 +1146,50 @@
     font-style: italic;
 }
 
+/* Parser Error Warning Box */
+.task-chat-parser-error {
+    background: var(--background-modifier-error);
+    border-left: 3px solid var(--text-error);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.task-chat-parser-error-header {
+    font-weight: 600;
+    color: var(--text-error);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.task-chat-parser-error-details {
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.task-chat-parser-error-details > div {
+    margin: 4px 0;
+}
+
+.task-chat-parser-error-solution {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 3px;
+    color: var(--text-normal);
+}
+
+.task-chat-parser-error-solution strong {
+    color: var(--text-accent);
+}
+
+.task-chat-parser-error-fallback {
+    margin-top: 8px;
+    font-style: italic;
+    color: var(--text-success);
+}
+
 /* Settings Tab - Status Category Grid */
 .task-chat-status-header {
     display: grid;

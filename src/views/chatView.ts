@@ -934,6 +934,61 @@ export class ChatView extends ItemView {
             }
         }
 
+        // Display parser error warning if parsing failed
+        if (message.parsedQuery?._parserError && message.parsedQuery?._parserModel) {
+            const errorEl = messageEl.createDiv({
+                cls: "task-chat-parser-error",
+            });
+            
+            errorEl.createEl("div", {
+                cls: "task-chat-parser-error-header",
+                text: "⚠️ AI Query Parser Failed"
+            });
+            
+            const detailsEl = errorEl.createDiv({
+                cls: "task-chat-parser-error-details",
+            });
+            
+            detailsEl.createEl("div", {
+                text: `Model: ${message.parsedQuery._parserModel}`
+            });
+            
+            // Parse error message and solution (format: "error | solution")
+            const errorParts = message.parsedQuery._parserError.split(" | ");
+            const errorMessage = errorParts[0];
+            const solution = errorParts.length > 1 ? errorParts[1] : null;
+            
+            detailsEl.createEl("div", {
+                text: `Error: ${errorMessage}`
+            });
+            
+            if (solution) {
+                const solutionEl = detailsEl.createEl("div", {
+                    cls: "task-chat-parser-error-solution"
+                });
+                solutionEl.createEl("strong", { text: "💡 Solution: " });
+                solutionEl.createSpan({ text: solution });
+            }
+            
+            // Check if we have semantic expansion metadata to determine what actually happened
+            const hasSemanticExpansion = message.parsedQuery?.expansionMetadata?.enabled && 
+                                        message.parsedQuery?.expansionMetadata?.totalKeywords > 0;
+            
+            let fallbackText = "";
+            if (hasSemanticExpansion) {
+                // AI parsing succeeded before the error - we have expanded keywords
+                fallbackText = `✓ Semantic expansion succeeded (${message.parsedQuery.expansionMetadata.totalKeywords} keywords from ${message.parsedQuery.expansionMetadata.coreKeywordsCount} core). Using AI-filtered results.`;
+            } else {
+                // AI parsing failed completely - using Simple Search fallback
+                fallbackText = "✓ Using fallback: Simple Search mode (regex + character-level keywords)";
+            }
+            
+            detailsEl.createEl("div", {
+                cls: "task-chat-parser-error-fallback",
+                text: fallbackText
+            });
+        }
+
         // Add copy button below message for user messages
         if (message.role === "user") {
             this.addCopyButton(messageEl, message);

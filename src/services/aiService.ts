@@ -174,16 +174,31 @@ export class AIService {
                 Logger.debug("AI parsed query:", parsedQuery);
                 usingAIParsing = true; // AI parsing succeeded
             } catch (error) {
-                Logger.error(
-                    "AI parsing failed, falling back to regex:",
-                    error,
+                // AI parsing failed - capture error metadata for UI display
+                Logger.warn(
+                    "⚠️ AI Query Parser Failed - falling back to Simple Search module",
                 );
-                parsedQuery = null;
+                Logger.error("Parser error details:", error);
+                
+                // Store error info in parsedQuery for UI display
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                const parserModel = (error as any).parserModel || "unknown";
+                
+                parsedQuery = {
+                    _parserError: errorMessage,
+                    _parserModel: parserModel,
+                } as ParsedQuery;
+                
                 usingAIParsing = false;
             }
 
             // Convert ParsedQuery to intent format for compatibility
-            if (parsedQuery) {
+            // Check if parsedQuery has actual parsed data (not just error info)
+            const hasParserError = parsedQuery && parsedQuery._parserError;
+            const hasParsedData = parsedQuery && !hasParserError;
+            
+            if (hasParsedData) {
+                // AI parsing succeeded - use AI-parsed results
                 // If AI returned no filters and no keywords, use query as keyword
                 const hasAnyFilter = !!(
                     parsedQuery.priority ||
@@ -228,12 +243,16 @@ export class AIService {
                         ].filter(Boolean).length > 1,
                 };
             } else {
-                // AI parsing failed, fall back to regex
+                // AI parsing failed - fallback to Simple Search module
+                Logger.debug(
+                    `Fallback: Calling Simple Search module (TaskSearchService.analyzeQueryIntent)`,
+                );
                 try {
                     intent = TaskSearchService.analyzeQueryIntent(
                         message,
                         settings,
                     );
+                    Logger.debug(`Simple Search fallback results:`, intent);
                 } catch (error) {
                     // Handle invalid property values (e.g., s:invalid_status)
                     if (error instanceof Error) {
@@ -249,6 +268,7 @@ export class AIService {
                                 provider: "openai",
                                 isEstimated: false,
                             },
+                            parsedQuery: hasParserError ? parsedQuery : undefined, // Include error info if present
                         };
                     }
                     throw error;
@@ -2192,7 +2212,8 @@ ${taskContext}`;
 
         // Extract [TASK_X] references from response, preserving order
         const taskIdPattern = /\[TASK_(\d+)\]/g;
-        const matches = response.matchAll(taskIdPattern);
+        const matches = Array.from(response.matchAll(taskIdPattern)); // Convert to array to count total attempts
+        const totalAttempts = matches.length; // Count ALL task reference attempts (including invalid)
 
         const referencedIndices: number[] = []; // Array to preserve order
         const seenIndices = new Set<number>(); // Set to track uniqueness
@@ -2228,18 +2249,33 @@ ${taskContext}`;
             recommendedIndices.push(index); // Track original indices
         });
 
-        // If no task IDs were found, use fallback: return top relevant tasks
+        // If no valid task IDs were found, use fallback: return top relevant tasks
         if (recommended.length === 0) {
-            Logger.warn(
-                "⚠️⚠️⚠️ FALLBACK TRIGGERED: AI did NOT use [TASK_X] format! ⚠️⚠️⚠️",
-            );
-            Logger.warn(
-                "REASON: Zero [TASK_X] references found in AI response (regex pattern: /\\[TASK_(\\d+)\\]/g)",
-            );
-            Logger.warn(
-                "IMPACT: AI summary may not reference specific tasks. Task list shows fallback (relevance-scored) tasks.",
-            );
+            // Only show warning if AI ATTEMPTED to reference tasks but used invalid IDs
+            // Don't show warning if AI simply didn't reference any tasks (e.g., said "no matching tasks")
+            const shouldShowWarning = totalAttempts > 0;
+            
+            if (shouldShowWarning) {
+                Logger.warn(
+                    "⚠️⚠️⚠️ FALLBACK TRIGGERED: AI used INVALID [TASK_X] references! ⚠️⚠️⚠️",
+                );
+                Logger.warn(
+                    `REASON: AI attempted ${totalAttempts} task references but ALL were invalid (out of bounds)`,
+                );
+                Logger.warn(
+                    "IMPACT: AI summary references tasks that don't exist. Task list shows fallback (relevance-scored) tasks.",
+                );
+            } else {
+                Logger.debug(
+                    "ℹ️ AI did not reference any tasks (said 'no matching tasks' or similar)",
+                );
+                Logger.debug(
+                    "This is AI's content decision, not a format error. Using fallback to show top relevant tasks anyway.",
+                );
+            }
+            
             Logger.warn("=== FALLBACK DEBUGGING INFO ===");
+            Logger.warn(`Total [TASK_X] attempts: ${totalAttempts} | Valid: 0`);
             Logger.warn(`AI response length: ${response.length} characters`);
             Logger.warn(
                 `AI response preview (first 500 chars):\n${response.substring(0, 500)}`,
@@ -2308,7 +2344,7 @@ ${taskContext}`;
             Logger.debug(
                 `Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
-            return { tasks: topTasks, indices: topIndices, usedFallback: true };
+            return { tasks: topTasks, indices: topIndices, usedFallback: shouldShowWarning };
         }
 
         Logger.debug(`✅✅✅ SUCCESS: AI used correct [TASK_X] format! ✅✅✅`);
