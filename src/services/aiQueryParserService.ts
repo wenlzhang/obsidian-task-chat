@@ -514,6 +514,23 @@ YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
 ⚠️ Start your response with { and end with }
 ⚠️ NO markdown code blocks (no \`\`\`json), just raw JSON
 
+🚨 CRITICAL: SEMANTIC EXPANSION COUNT
+**YOU MUST GENERATE EXACTLY ${expansionsPerLanguage} SEMANTIC EQUIVALENTS PER LANGUAGE FOR EACH CORE KEYWORD**
+
+Your settings:
+- Languages: ${queryLanguages.length} (${languageList})
+- Expansions per language: ${expansionsPerLanguage}
+- Total per core keyword: ${maxKeywordsPerCore} (${expansionsPerLanguage} × ${queryLanguages.length})
+
+⚠️ CRITICAL: If user sets 50 expansions per language:
+- Generate EXACTLY 50 equivalents in English
+- Generate EXACTLY 50 equivalents in 中文
+- Total: 100 keywords per core keyword (NOT 15!)
+
+⚠️ DO NOT limit yourself to examples shown below!
+⚠️ Examples show ~15 items for readability, but you MUST generate ${expansionsPerLanguage} per language!
+⚠️ For high counts (30-100), generate creative variations: synonyms, related terms, alternative phrasings!
+
 2️⃣ THE THREE-PART SYSTEM BREAKDOWN
 
 PART 1: TASK CONTENT (Keywords) BREAKDOWN
@@ -1990,7 +2007,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 // Check for missing languages
                 const missingLanguages: string[] = [];
                 const expectedMinPerLanguage = Math.floor(
-                    expansionsPerLanguage * 0.5,
+                    expansionsPerLanguage * 0.8,
                 ); // At least 50% of expected
 
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {

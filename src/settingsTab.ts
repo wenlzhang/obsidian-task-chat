@@ -459,7 +459,7 @@ export class SettingsTab extends PluginSettingTab {
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(1, 100, 1)
+                    .setLimits(1, 50, 1)
                     .setValue(this.plugin.settings.expansionsPerLanguage)
                     .setDynamicTooltip()
                     .onChange(async (value) => {

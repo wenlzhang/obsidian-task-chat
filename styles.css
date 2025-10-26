@@ -1278,6 +1278,12 @@
 
 .task-chat-api-error-fallback strong {
     color: var(--text-normal);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.task-chat-api-error-fallback > div {
+    margin: 2px 0;
 }
 
 .task-chat-api-error-docs {

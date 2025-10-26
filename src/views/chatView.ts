@@ -842,8 +842,23 @@ export class ChatView extends ItemView {
                 const fallbackEl = detailsEl.createEl("div", {
                     cls: "task-chat-api-error-fallback",
                 });
-                fallbackEl.createEl("strong", { text: "✓ Fallback: " });
-                fallbackEl.createSpan({ text: message.error.fallbackUsed });
+                fallbackEl.createEl("strong", { text: "✓ Fallback" });
+
+                // Split fallback message by period for multi-line display
+                const fallbackMessages = message.error.fallbackUsed
+                    .split(". ")
+                    .filter((s: string) => s.trim())
+                    .map(
+                        (s: string) => s.trim() + (s.endsWith(".") ? "" : "."),
+                    );
+
+                if (fallbackMessages.length > 1) {
+                    fallbackMessages.forEach((msg: string) => {
+                        fallbackEl.createEl("div", { text: msg });
+                    });
+                } else {
+                    fallbackEl.createSpan({ text: message.error.fallbackUsed });
+                }
             }
 
             if (message.error.docsLink) {
