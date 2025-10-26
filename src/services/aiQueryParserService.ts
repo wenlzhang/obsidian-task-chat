@@ -2180,8 +2180,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 message: `API request failed with status ${response.status}`,
             };
             const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
-            const structured = ErrorHandler.parseAPIError(errorData, modelInfo, "parser");
-            
+            const structured = ErrorHandler.parseAPIError(
+                errorData,
+                modelInfo,
+                "parser",
+            );
+
             // Throw with format: "message | solution" for backward compatibility
             throw new Error(`${structured.details} | ${structured.solution}`);
         }
@@ -2237,8 +2241,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 message: `API request failed with status ${response.status}`,
             };
             const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
-            const structured = ErrorHandler.parseAPIError(errorData, modelInfo, "parser");
-            
+            const structured = ErrorHandler.parseAPIError(
+                errorData,
+                modelInfo,
+                "parser",
+            );
+
             // Throw with format: "message | solution" for backward compatibility
             throw new Error(`${structured.details} | ${structured.solution}`);
         }
@@ -2347,8 +2355,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         } catch (error) {
             // Use ErrorHandler to parse API error (consolidates error handling logic)
             const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
-            const structured = ErrorHandler.parseAPIError(error, modelInfo, "parser");
-            
+            const structured = ErrorHandler.parseAPIError(
+                error,
+                modelInfo,
+                "parser",
+            );
+
             // Throw with format: "message | solution" for backward compatibility
             throw new Error(`${structured.details} | ${structured.solution}`);
         }

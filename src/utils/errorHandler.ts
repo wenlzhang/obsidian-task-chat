@@ -1,4 +1,5 @@
 import { Logger } from "./logger";
+import { ModelProviderService } from "../services/modelProviderService";
 
 /**
  * Structured error information for display in chat UI
@@ -153,20 +154,29 @@ export class ErrorHandler {
     ): StructuredError {
         // Detect provider from model string
         const isOllama = model.includes("ollama");
-        const isAnthropic = model.includes("anthropic") || model.includes("claude");
+        const isAnthropic =
+            model.includes("anthropic") || model.includes("claude");
         const isOpenRouter = model.includes("openrouter");
-        
+
+        // Get first model from each provider's default list (most recommended)
+        const defaultOllama = ModelProviderService.getDefaultOllamaModels()[0];
+        const defaultAnthropic =
+            ModelProviderService.getDefaultAnthropicModels()[0];
+        const defaultOpenRouter =
+            ModelProviderService.getDefaultOpenRouterModels()[0];
+        const defaultOpenAI = ModelProviderService.getDefaultOpenAIModels()[0];
+
         // Provide provider-specific suggestions with default models
         let solution: string;
         if (isOllama) {
-            solution = `1. Pull the model: ollama pull <model-name>\n2. Check available models: ollama list\n3. Verify model name in settings matches exactly\n4. Try default: gpt-oss:20b`;
+            solution = `1. Pull the model: ollama pull <model-name>\n2. Check available models: ollama list\n3. Verify model name in settings matches exactly\n4. Try default: ${defaultOllama}`;
         } else if (isAnthropic) {
-            solution = `1. Check model name in settings (case-sensitive)\n2. Verify API key has access to this model\n3. Try default: claude-sonnet-4`;
+            solution = `1. Check model name in settings (case-sensitive)\n2. Verify API key has access to this model\n3. Try default: ${defaultAnthropic}`;
         } else if (isOpenRouter) {
-            solution = `1. Check model format: provider/model-name\n2. Verify model exists on OpenRouter\n3. Try default: openai/gpt-4o-mini`;
+            solution = `1. Check model format: provider/model-name\n2. Verify model exists on OpenRouter\n3. Try default: ${defaultOpenRouter}`;
         } else {
             // OpenAI or generic
-            solution = `1. Check model name in settings (case-sensitive)\n2. Verify model exists for your provider\n3. Try default: gpt-4o-mini`;
+            solution = `1. Check model name in settings (case-sensitive)\n2. Verify model exists for your provider\n3. Try default: ${defaultOpenAI}`;
         }
 
         return {

@@ -660,7 +660,7 @@ export class ChatView extends ItemView {
         }
 
         const ai = message.parsedQuery.aiUnderstanding;
-        
+
         // Create AI understanding box
         const aiBox = container.createDiv({
             cls: "task-chat-ai-understanding",
@@ -700,7 +700,10 @@ export class ChatView extends ItemView {
         }
 
         // Semantic mappings
-        if (ai.semanticMappings && Object.keys(ai.semanticMappings).length > 0) {
+        if (
+            ai.semanticMappings &&
+            Object.keys(ai.semanticMappings).length > 0
+        ) {
             const mappingDiv = details.createDiv({
                 cls: "task-chat-ai-understanding-item",
             });
@@ -719,12 +722,12 @@ export class ChatView extends ItemView {
                 cls: "task-chat-ai-understanding-item",
             });
             confDiv.createEl("strong", { text: "Confidence: " });
-            
+
             const confidence = ai.confidence;
             let emoji = "🎯";
             let level = "High";
             let color = "var(--text-success)";
-            
+
             if (confidence < 0.5) {
                 emoji = "⚠️";
                 level = "Low";
@@ -734,7 +737,7 @@ export class ChatView extends ItemView {
                 level = "Medium";
                 color = "var(--text-warning)";
             }
-            
+
             const confSpan = confDiv.createSpan({
                 text: `${emoji} ${level} (${Math.round(confidence * 100)}%)`,
             });

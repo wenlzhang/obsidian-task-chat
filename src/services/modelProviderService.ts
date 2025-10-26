@@ -103,10 +103,7 @@ export class ModelProviderService {
      * Default Anthropic models
      */
     static getDefaultAnthropicModels(): string[] {
-        return [
-            "claude-sonnet-4",
-            "claude-sonnet-4.5"
-        ];
+        return ["claude-sonnet-4", "claude-sonnet-4.5"];
     }
 
     /**
@@ -147,7 +144,7 @@ export class ModelProviderService {
         return [
             "openai/gpt-4o-mini",
             "openai/gpt-4o",
-            "anthropic/claude-sonnet-4"
+            "anthropic/claude-sonnet-4",
         ];
     }
 
