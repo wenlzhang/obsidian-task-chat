@@ -27,6 +27,80 @@ import { Logger } from "../utils/logger";
  * - Priority: Mapping, comparison, extraction
  * - Date: Parsing, formatting, comparison, filtering
  * - Combined: Multi-property operations
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * CRITICAL: Property Recognition vs Keyword Expansion
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * This service provides term lists (BASE_PRIORITY_TERMS, BASE_STATUS_TERMS, etc.)
+ * that are used in AI prompts. It's CRITICAL to understand how these should be used:
+ *
+ * ⚠️ PROPERTIES: Direct Concept Recognition (NO Expansion)
+ * ════════════════════════════════════════════════════════════
+ * - Use AI's native multilingual understanding to recognize CONCEPTS
+ * - Convert directly to category keys (e.g., "inProgress", 1, "overdue")
+ * - Term lists are REFERENCE EXAMPLES, not exhaustive requirements
+ * - AI should recognize property concepts in ANY language, not just listed terms
+ *
+ * How it works:
+ * 1. AI reads query in ANY language (English, 中文, Svenska, Français, etc.)
+ * 2. AI recognizes CONCEPT semantically:
+ *    - PRIORITY concept = urgency, importance, criticality
+ *    - STATUS concept = task state, progress, completion level
+ *    - DUE_DATE concept = deadline, timing, target date
+ * 3. AI converts concept DIRECTLY to Dataview format:
+ *    - PRIORITY → 1, 2, 3, or 4 (numbers)
+ *    - STATUS → "open", "inProgress", "completed", etc. (category keys)
+ *    - DUE_DATE → "today", "overdue", "next-week", etc. (time keywords)
+ * 4. NO semantic expansion - just direct conversion
+ *
+ * Examples of direct concept recognition:
+ * - "作業進行中" (Japanese - work in progress) → Recognize STATUS → status: "inProgress"
+ * - "vence hoy" (Spanish - due today) → Recognize DUE_DATE → dueDate: "today"
+ *
+ * ⚠️ KEYWORDS: Semantic Expansion (YES Expansion)
+ * ════════════════════════════════════════════════════════════
+ * - Generate semantic equivalents across ALL configured languages
+ * - Expand EACH keyword independently for better matching
+ * - Use translation + synonyms + context-appropriate variants
+ *
+ * How it works:
+ * 1. Extract content keywords from query (after removing property terms)
+ * 2. For EACH keyword, generate semantic equivalents in ALL languages
+ * 3. Include synonyms, related terms, alternative phrases
+ * 4. Result: Expanded keyword array for better task matching
+ *
+ * Examples of semantic expansion:
+ * - "bug" → ["bug", "error", "issue", "defect", "错误", "问题", "bugg", "fel", ...]
+ * - "fix" → ["fix", "repair", "solve", "correct", "修复", "解决", "fixa", "lösa", ...]
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * Why This Distinction Matters
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * Properties need PRECISION:
+ * - "urgent" must map to priority: 1 (not expanded to synonyms)
+ * - "in progress" must map to status: "inProgress" (not expanded)
+ * - Expansion would pollute structured filters with irrelevant variations
+ *
+ * Keywords need RECALL:
+ * - "bug" should match "error", "issue", "defect", etc. in tasks
+ * - Expansion increases chance of finding relevant tasks
+ * - Works across languages automatically
+ *
+ * Term Lists in This Service:
+ * - BASE_PRIORITY_TERMS, BASE_DUE_DATE_TERMS, BASE_STATUS_TERMS
+ * - These provide REFERENCE EXAMPLES for AI prompts
+ * - NOT exhaustive lists - AI should recognize beyond these
+ * - Combined with user-configured terms via getCombined*Terms() methods
+ *
+ * Usage in AI Prompts:
+ * - Show term lists as EXAMPLES of what concepts look like
+ * - Emphasize that AI should recognize concepts in ANY language
+ * - Make clear that term lists are HINTS, not REQUIREMENTS
+ * - Trust AI's native multilingual understanding
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 export class TaskPropertyService {
     // ==========================================
