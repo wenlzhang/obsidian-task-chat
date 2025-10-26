@@ -514,22 +514,51 @@ YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
 ⚠️ Start your response with { and end with }
 ⚠️ NO markdown code blocks (no \`\`\`json), just raw JSON
 
-🚨 CRITICAL: SEMANTIC EXPANSION COUNT
-**YOU MUST GENERATE EXACTLY ${expansionsPerLanguage} SEMANTIC EQUIVALENTS PER LANGUAGE FOR EACH CORE KEYWORD**
+🚨 CRITICAL: SEMANTIC EXPANSION COUNT - DYNAMIC FORMULA
+**YOU MUST CALCULATE AND GENERATE THE EXACT NUMBER DYNAMICALLY**
 
-Your settings:
+Your configuration (USE THESE EXACT VALUES):
 - Languages: ${queryLanguages.length} (${languageList})
 - Expansions per language: ${expansionsPerLanguage}
-- Total per core keyword: ${maxKeywordsPerCore} (${expansionsPerLanguage} × ${queryLanguages.length})
+- Formula: Total per core = ${expansionsPerLanguage} × ${queryLanguages.length} = ${maxKeywordsPerCore}
 
-⚠️ CRITICAL: If user sets 50 expansions per language:
-- Generate EXACTLY 50 equivalents in English
-- Generate EXACTLY 50 equivalents in 中文
-- Total: 100 keywords per core keyword (NOT 15!)
+🔴 MATHEMATICAL FORMULA (FOLLOW THIS EXACTLY):
 
-⚠️ DO NOT limit yourself to examples shown below!
-⚠️ Examples show ~15 items for readability, but you MUST generate ${expansionsPerLanguage} per language!
-⚠️ For high counts (30-100), generate creative variations: synonyms, related terms, alternative phrasings!
+FOR EACH core keyword:
+  expansion_list = []
+  
+  // Generate in FIRST language (${queryLanguages[0] || "language 1"})
+  generate ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[0] || "language 1"}
+  add all ${expansionsPerLanguage} words to expansion_list
+  
+  // Generate in SECOND language (${queryLanguages[1] || "language 2"})
+  generate ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[1] || "language 2"}
+  add all ${expansionsPerLanguage} words to expansion_list
+  ${
+      queryLanguages.length > 2
+          ? `
+  // Generate in THIRD language (${queryLanguages[2]})
+  generate ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[2]}
+  add all ${expansionsPerLanguage} words to expansion_list`
+          : ""
+  }
+  
+  VERIFY: expansion_list.length == ${maxKeywordsPerCore} (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
+  add expansion_list to final keywords array
+END FOR
+
+FINAL VERIFICATION:
+- Count your keywords array length
+- MUST EQUAL: (number_of_core_keywords) × ${maxKeywordsPerCore}
+- Example: 5 core keywords × ${maxKeywordsPerCore} = ${5 * maxKeywordsPerCore} total items
+- Your keywords array MUST have ${5 * maxKeywordsPerCore} items for 5 core keywords!
+
+⚠️ EXAMPLES ARE PLACEHOLDERS ONLY!
+- Examples below use "..." or "[N items]" as placeholders
+- DO NOT copy example arrays literally
+- DO NOT generate only 5 items because examples show 5
+- ALWAYS generate ${expansionsPerLanguage} per language regardless of examples!
+- For high counts (30-100), be creative: synonyms, related terms, alternative phrasings, domain variants!
 
 2️⃣ THE THREE-PART SYSTEM BREAKDOWN
 
@@ -910,32 +939,87 @@ Result:
    - Do NOT skip any configured language!
    - Do NOT include hashtags in keywords
    
-   ⚠️ MANDATORY EXPANSION REQUIREMENT - READ CAREFULLY:
+   ⚠️ MANDATORY EXPANSION REQUIREMENT - DYNAMIC CALCULATION:
    - Return as VALID JSON (NO comments, NO arrows, NO explanations in the array!)
    - EVERY core keyword needs EXACTLY ${maxKeywordsPerCore} total variations
    - Proper nouns (like "Task", "Chat") MUST also be expanded
-   - Generate equivalents in ALL ${queryLanguages.length} configured languages: ${languageList}
-   - For EACH keyword: ${expansionsPerLanguage} equivalents in EACH of the ${queryLanguages.length} languages
-   - DO NOT favor any language over others - ALL must be equally represented!
-   - If a keyword appears to be in one language, still generate ${expansionsPerLanguage} equivalents in that language PLUS ${expansionsPerLanguage} in each other language
-   - Example: For "develop" with [English, 中文], generate ${expansionsPerLanguage} English equivalents + ${expansionsPerLanguage} Chinese equivalents = ${maxKeywordsPerCore} total
-   - If you have 4 core keywords, you MUST return ${maxKeywordsPerCore} × 4 = ${maxKeywordsPerCore * 4} total keywords
-
-   🔴 CRITICAL ALGORITHM - FOLLOW THESE STEPS EXACTLY:
-   Step 1: For EACH core keyword, create an empty expansion list
-   Step 2: For the current keyword, iterate through EVERY language in order: ${languageList}
-   Step 3: For each language, generate EXACTLY ${expansionsPerLanguage} semantic equivalents
-   Step 4: Add all ${expansionsPerLanguage} equivalents to the expansion list
-   Step 5: Repeat steps 2-4 until ALL ${queryLanguages.length} languages are processed
-   Step 6: Verify the expansion list has ${maxKeywordsPerCore} total items (${expansionsPerLanguage} × ${queryLanguages.length})
-   Step 7: Move to next core keyword and repeat steps 1-6
    
-   ⚠️ VERIFICATION CHECKLIST (check before returning):
-   ☐ Did I process ALL ${queryLanguages.length} languages for EVERY keyword?
-   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[0] || "language 1"}?
-   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[1] || "language 2"}?
-${queryLanguages.length > 2 ? `   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[2]}?` : ""}
-   ☐ Total keywords = ${maxKeywordsPerCore} × (number of core keywords)?
+   🔴 CRITICAL: SINGLE WORDS ONLY (NO PHRASES!)
+   
+   ❌ WRONG (multi-word phrases):
+   - "Obsidian plugin" (2 words)
+   - "task chat" (2 words)
+   
+   ✅ CORRECT (single words):
+   - "Obsidian" (1 word)
+   - "plugin" (1 word)
+   - "task" (1 word)
+   - "chat" (1 word)
+   
+   🔴 LANGUAGE DISTRIBUTION REQUIREMENT:
+   
+   For EACH core keyword, you MUST generate:
+   - EXACTLY ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[0] || "language 1"}
+   - EXACTLY ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[1] || "language 2"}
+   ${queryLanguages.length > 2 ? `- EXACTLY ${expansionsPerLanguage} single-word equivalents in ${queryLanguages[2]}` : ""}
+   
+   Total per core keyword: ${maxKeywordsPerCore} words
+   
+   📊 EXAMPLE CALCULATION:
+   - Extract 5 core keywords → N=5
+   - Each needs: ${expansionsPerLanguage} in ${queryLanguages[0] || "lang1"} + ${expansionsPerLanguage} in ${queryLanguages[1] || "lang2"} = ${maxKeywordsPerCore}
+   - Total keywords to return: 5 × ${maxKeywordsPerCore} = ${5 * maxKeywordsPerCore}
+   
+   🚨 CRITICAL: Your keywords array MUST contain BOTH languages intermixed!
+   Example structure for 1 core keyword "improve":
+   [
+     // ${expansionsPerLanguage} English words
+     "improve", "enhance", "boost", "upgrade", "refine", ...
+     // ${expansionsPerLanguage} Chinese words
+     "改善", "提升", "增强", "优化", "改进", ...
+   ]
+
+   🔴 CRITICAL ALGORITHM - STEP BY STEP:
+   
+   STEP 1: Extract core keywords → count = N (example: N=5)
+   
+   STEP 2: FOR EACH core keyword:
+     expansion_list = []
+     
+     // First language: ${queryLanguages[0] || "language 1"}
+     Generate ${expansionsPerLanguage} SINGLE-WORD equivalents in ${queryLanguages[0] || "language 1"}
+     Add all ${expansionsPerLanguage} ${queryLanguages[0] || "language 1"} words to expansion_list
+     
+     // Second language: ${queryLanguages[1] || "language 2"}
+     Generate ${expansionsPerLanguage} SINGLE-WORD equivalents in ${queryLanguages[1] || "language 2"}
+     Add all ${expansionsPerLanguage} ${queryLanguages[1] || "language 2"} words to expansion_list
+     ${
+         queryLanguages.length > 2
+             ? `
+     // Third language: ${queryLanguages[2]}
+     Generate ${expansionsPerLanguage} SINGLE-WORD equivalents in ${queryLanguages[2]}
+     Add all ${expansionsPerLanguage} ${queryLanguages[2]} words to expansion_list`
+             : ""
+     }
+     
+     VERIFY: expansion_list.length == ${maxKeywordsPerCore}
+     Append expansion_list to final keywords array
+   END FOR
+   
+   STEP 3: MANDATORY PRE-RETURN VERIFICATION:
+   
+   Count your keywords array: keywords.length = ___
+   Expected: N × ${maxKeywordsPerCore} = ___
+   
+   ⚠️ VERIFICATION CHECKLIST (MUST COMPLETE BEFORE RETURNING!):
+   ☐ Core keywords extracted: N = ___ (count them!)
+   ☐ For EACH keyword, generated ${expansionsPerLanguage} single words in ${queryLanguages[0] || "language 1"}?
+   ☐ For EACH keyword, generated ${expansionsPerLanguage} single words in ${queryLanguages[1] || "language 2"}?
+   ${queryLanguages.length > 2 ? `☐ For EACH keyword, generated ${expansionsPerLanguage} single words in ${queryLanguages[2]}?` : ""}
+   ☐ NO multi-word phrases in keywords array?
+   ☐ keywords.length == N × ${maxKeywordsPerCore}?
+   
+   🚨 IF VERIFICATION FAILS, DO NOT RETURN! Fix the keywords array first!
 
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
    - ONLY extract tags that are explicitly marked with # in the query
@@ -949,12 +1033,22 @@ KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 ⚠️ CRITICAL: Generate equivalents for ALL ${queryLanguages.length} configured languages: ${languageList}
 Do NOT favor any language - ALL languages must be equally represented!
 
-🔴 IMPORTANT: EXPANSION COUNT IN EXAMPLES
-The example arrays below (e.g., "[develop, build, create, implement, code]") show ${expansionsPerLanguage} items for illustration.
-- If user configured expansionsPerLanguage=${expansionsPerLanguage}, generate EXACTLY ${expansionsPerLanguage} equivalents per language
-- If user configured a DIFFERENT value (e.g., 3 or 7), generate that EXACT number instead
-- The examples are for DEMONSTRATION only - always use the actual ${expansionsPerLanguage} value!
-- DO NOT always generate 5 items just because examples show 5 - respect user's ${expansionsPerLanguage} setting!
+🔴 CRITICAL: EXAMPLES USE PLACEHOLDERS, NOT LITERAL OUTPUT
+⚠️ Arrays in examples show "[...${expansionsPerLanguage} items...]" as PLACEHOLDERS
+⚠️ DO NOT copy example arrays literally!
+⚠️ The number ${expansionsPerLanguage} is a VARIABLE - use this exact value!
+
+📊 YOUR ACTUAL TASK:
+- User configured: ${expansionsPerLanguage} expansions per language
+- You MUST generate: ${expansionsPerLanguage} items per language (NOT 5, NOT 10, EXACTLY ${expansionsPerLanguage}!)
+- For 50 per language: generate 50 creative variations (synonyms, related terms, context variants)
+- For 100 per language: generate 100 variations (be extremely creative!)
+
+✅ CORRECT APPROACH:
+1. Read user's setting: ${expansionsPerLanguage}
+2. Generate that EXACT number per language
+3. Ignore what example arrays show
+4. Focus on the mathematical formula
 
 Example 1: Query with ${queryLanguages.length} configured languages: ${languageList}
     Query: "开发 Task Chat"
@@ -965,52 +1059,55 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
-                    lang === "English"
-                        ? "[develop, build, create, implement, code]"
-                        : lang === "中文"
-                          ? "[开发, 构建, 创建, 编程, 制作]"
-                          : lang.toLowerCase().includes("swed")
-                            ? "[utveckla, bygga, skapa, programmera, implementera]"
-                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
-                }`,
+                `    Language ${idx + 1} (${lang}): Generate ${expansionsPerLanguage} semantic equivalents
+       Examples: ${
+           lang === "English"
+               ? "develop, build, create, ...(${expansionsPerLanguage} total)"
+               : lang === "中文"
+                 ? "开发, 构建, 创建, ...(${expansionsPerLanguage} total)"
+                 : lang.toLowerCase().includes("swed")
+                   ? "utveckla, bygga, skapa, ...(${expansionsPerLanguage} total)"
+                   : `[...${expansionsPerLanguage} equivalents in ${lang}...]`
+       }`,
         )
         .join("\n")}
-    Subtotal: ${maxKeywordsPerCore} equivalents ✓
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓ (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
     
     Core keyword 2: "Task"
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
-                    lang === "English"
-                        ? "[task, work, job, assignment, item]"
-                        : lang === "中文"
-                          ? "[任务, 工作, 事项, 项目, 作业]"
-                          : lang.toLowerCase().includes("swed")
-                            ? "[uppgift, arbete, jobb, uppdrag, ärende]"
-                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
-                }`,
+                `    Language ${idx + 1} (${lang}): Generate ${expansionsPerLanguage} semantic equivalents
+       Examples: ${
+           lang === "English"
+               ? "task, work, job, ...(${expansionsPerLanguage} total)"
+               : lang === "中文"
+                 ? "任务, 工作, 事项, ...(${expansionsPerLanguage} total)"
+                 : lang.toLowerCase().includes("swed")
+                   ? "uppgift, arbete, jobb, ...(${expansionsPerLanguage} total)"
+                   : `[...${expansionsPerLanguage} equivalents in ${lang}...]`
+       }`,
         )
         .join("\n")}
-    Subtotal: ${maxKeywordsPerCore} equivalents ✓
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓ (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
     
     Core keyword 3: "Chat"
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
-                    lang === "English"
-                        ? "[chat, conversation, talk, discussion, dialogue]"
-                        : lang === "中文"
-                          ? "[聊天, 对话, 交流, 谈话, 沟通]"
-                          : lang.toLowerCase().includes("swed")
-                            ? "[chatt, konversation, prata, diskussion, samtal]"
-                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
-                }`,
+                `    Language ${idx + 1} (${lang}): Generate ${expansionsPerLanguage} semantic equivalents
+       Examples: ${
+           lang === "English"
+               ? "chat, conversation, talk, ...(${expansionsPerLanguage} total)"
+               : lang === "中文"
+                 ? "聊天, 对话, 交流, ...(${expansionsPerLanguage} total)"
+                 : lang.toLowerCase().includes("swed")
+                   ? "chatt, konversation, prata, ...(${expansionsPerLanguage} total)"
+                   : `[...${expansionsPerLanguage} equivalents in ${lang}...]`
+       }`,
         )
         .join("\n")}
-    Subtotal: ${maxKeywordsPerCore} equivalents ✓
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓ (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
     
     ✅ VERIFICATION:
     - Core keywords: 3
@@ -1018,48 +1115,46 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     - Equivalents per keyword: ${maxKeywordsPerCore} (${expansionsPerLanguage} × ${queryLanguages.length})
     - Total equivalents: 3 × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore}
 
-    ⚠️ JSON OUTPUT NOTE: Arrays below show ${expansionsPerLanguage} items as examples.
-    In your actual output, generate EXACTLY ${expansionsPerLanguage} equivalents per language (not always 5!).
+    ⚠️ JSON OUTPUT: Generate FULL arrays with ${expansionsPerLanguage} items per language!
+    The structure below shows PLACEHOLDERS - you must generate ${expansionsPerLanguage} × ${queryLanguages.length} = ${maxKeywordsPerCore} items per keyword!
 
     {
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
+        // For "开发": ${maxKeywordsPerCore} items total (${expansionsPerLanguage} per language)
         ${queryLanguages
-            .map((lang, idx) =>
-                lang === "English"
-                    ? '"develop", "build", "create", "implement", "code"'
-                    : lang === "中文"
-                      ? '"开发", "构建", "创建", "编程", "制作"'
-                      : lang.toLowerCase().includes("swed")
-                        ? '"utveckla", "bygga", "skapa", "programmera", "implementera"'
-                        : `"[${expansionsPerLanguage} in ${lang}]"`,
+            .map(
+                (lang, idx) =>
+                    `// ${lang}: ${expansionsPerLanguage} items
+        "item1_${lang}", "item2_${lang}", "item3_${lang}", "..." /* ${expansionsPerLanguage - 3} more */`,
             )
             .join(",\n        ")},
+        
+        // For "Task": ${maxKeywordsPerCore} items total (${expansionsPerLanguage} per language)
         ${queryLanguages
-            .map((lang, idx) =>
-                lang === "English"
-                    ? '"task", "work", "job", "assignment", "item"'
-                    : lang === "中文"
-                      ? '"任务", "工作", "事项", "项目", "作业"'
-                      : lang.toLowerCase().includes("swed")
-                        ? '"uppgift", "arbete", "jobb", "uppdrag", "ärende"'
-                        : `"[${expansionsPerLanguage} in ${lang}]"`,
+            .map(
+                (lang, idx) =>
+                    `// ${lang}: ${expansionsPerLanguage} items
+        "item1_${lang}", "item2_${lang}", "item3_${lang}", "..." /* ${expansionsPerLanguage - 3} more */`,
             )
             .join(",\n        ")},
+        
+        // For "Chat": ${maxKeywordsPerCore} items total (${expansionsPerLanguage} per language)
         ${queryLanguages
-            .map((lang, idx) =>
-                lang === "English"
-                    ? '"chat", "conversation", "talk", "discussion", "dialogue"'
-                    : lang === "中文"
-                      ? '"聊天", "对话", "交流", "谈话", "沟通"'
-                      : lang.toLowerCase().includes("swed")
-                        ? '"chatt", "konversation", "prata", "diskussion", "samtal"'
-                        : `"[${expansionsPerLanguage} in ${lang}]"`,
+            .map(
+                (lang, idx) =>
+                    `// ${lang}: ${expansionsPerLanguage} items
+        "item1_${lang}", "item2_${lang}", "item3_${lang}", "..." /* ${expansionsPerLanguage - 3} more */`,
             )
             .join(",\n        ")}
     ],
     "tags": []
     }
+    
+    🔴 CRITICAL: The above is a STRUCTURE TEMPLATE!
+    - Replace "item1_${queryLanguages[0]}" etc. with ACTUAL semantic equivalents
+    - Generate FULL ${expansionsPerLanguage} items per language (not just 3!)
+    - Total keywords array length: 3 core × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} items
 
     ✅ Result verification:
     - Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
@@ -1076,73 +1171,86 @@ Example 2: Another query showing algorithm - MUST follow same process!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
-                    lang === "English"
-                        ? "[fix, repair, solve, correct, resolve]"
-                        : lang === "中文"
-                          ? "[修复, 解决, 修正, 处理, 纠正]"
-                          : lang.toLowerCase().includes("swed")
-                            ? "[fixa, reparera, lösa, korrigera, åtgärda]"
-                            : `[${expansionsPerLanguage} in ${lang}]`
-                }`,
+                `    Language ${idx + 1} (${lang}): Generate ${expansionsPerLanguage} equivalents
+       Examples: ${
+           lang === "English"
+               ? "fix, repair, solve, ...(${expansionsPerLanguage} total)"
+               : lang === "中文"
+                 ? "修复, 解决, 修正, ...(${expansionsPerLanguage} total)"
+                 : lang.toLowerCase().includes("swed")
+                   ? "fixa, reparera, lösa, ...(${expansionsPerLanguage} total)"
+                   : `[...${expansionsPerLanguage} equivalents in ${lang}...]`
+       }`,
         )
         .join("\n")}
-    Subtotal: ${maxKeywordsPerCore} ✓
+    Subtotal: ${maxKeywordsPerCore} ✓ (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
     
     Core keyword 2: "bug"
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
-                    lang === "English"
-                        ? "[bug, error, issue, defect, problem]"
-                        : lang === "中文"
-                          ? "[错误, 问题, 缺陷, 故障, 漏洞]"
-                          : lang.toLowerCase().includes("swed")
-                            ? "[bugg, fel, problem, defekt, brist]"
-                            : `[${expansionsPerLanguage} in ${lang}]`
-                }`,
+                `    Language ${idx + 1} (${lang}): Generate ${expansionsPerLanguage} equivalents
+       Examples: ${
+           lang === "English"
+               ? "bug, error, issue, ...(${expansionsPerLanguage} total)"
+               : lang === "中文"
+                 ? "错误, 问题, 缺陷, ...(${expansionsPerLanguage} total)"
+                 : lang.toLowerCase().includes("swed")
+                   ? "bugg, fel, problem, ...(${expansionsPerLanguage} total)"
+                   : `[...${expansionsPerLanguage} equivalents in ${lang}...]`
+       }`,
         )
         .join("\n")}
-    Subtotal: ${maxKeywordsPerCore} ✓
+    Subtotal: ${maxKeywordsPerCore} ✓ (${expansionsPerLanguage} per language × ${queryLanguages.length} languages)
 
-    ⚠️ JSON OUTPUT NOTE: Each array shows ${expansionsPerLanguage} items. Generate exactly ${expansionsPerLanguage} per language!
+    ⚠️ JSON OUTPUT: PLACEHOLDER STRUCTURE (Generate FULL ${expansionsPerLanguage} items per language!)
 
     {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
+        // For "fix": ${maxKeywordsPerCore} total (${expansionsPerLanguage} per language)
         ${queryLanguages
-            .map((lang) =>
-                lang === "English"
-                    ? '"fix", "repair", "solve", "correct", "resolve"'
-                    : lang === "中文"
-                      ? '"修复", "解决", "修正", "处理", "纠正"'
-                      : lang.toLowerCase().includes("swed")
-                        ? '"fixa", "reparera", "lösa", "korrigera", "åtgärda"'
-                        : `"[${expansionsPerLanguage} in ${lang}]"`,
+            .map(
+                (lang) =>
+                    `// ${lang}: ${expansionsPerLanguage} items
+        "equiv1_${lang}", "equiv2_${lang}", "..." /* ${expansionsPerLanguage - 2} more */`,
             )
             .join(",\n        ")},
+        
+        // For "bug": ${maxKeywordsPerCore} total (${expansionsPerLanguage} per language)
         ${queryLanguages
-            .map((lang) =>
-                lang === "English"
-                    ? '"bug", "error", "issue", "defect", "problem"'
-                    : lang === "中文"
-                      ? '"错误", "问题", "缺陷", "故障", "漏洞"'
-                      : lang.toLowerCase().includes("swed")
-                        ? '"bugg", "fel", "problem", "defekt", "brist"'
-                        : `"[${expansionsPerLanguage} in ${lang}]"`,
+            .map(
+                (lang) =>
+                    `// ${lang}: ${expansionsPerLanguage} items
+        "equiv1_${lang}", "equiv2_${lang}", "..." /* ${expansionsPerLanguage - 2} more */`,
             )
             .join(",\n        ")}
     ]
     }
+    
+    🔴 CRITICAL REMINDER:
+    - Replace placeholders with REAL semantic equivalents
+    - Generate FULL ${expansionsPerLanguage} items per language per keyword
+    - Total: 2 core × ${maxKeywordsPerCore} = ${2 * maxKeywordsPerCore} keywords
 
-⚠️ CRITICAL: This algorithm MUST be followed for EVERY query - ALL ${queryLanguages.length} languages in ${languageList} for EVERY keyword!
+🚨 MANDATORY FINAL CHECKS BEFORE RETURNING JSON:
 
-🔴 REMINDER: User configured expansionsPerLanguage=${expansionsPerLanguage}
-- Generate EXACTLY ${expansionsPerLanguage} equivalents per language (not always 5!)
-- If expansionsPerLanguage=3: generate 3 per language
-- If expansionsPerLanguage=7: generate 7 per language  
-- DO NOT assume 5 just because examples show 5 items!
+1. Count core keywords: N = ___ (fill in actual count)
+2. Count keywords array length: ___ (fill in actual length)
+3. Verify: keywords.length == N × ${maxKeywordsPerCore}?
+4. Verify: Each core keyword has ${expansionsPerLanguage} words in ${queryLanguages[0] || "language 1"}?
+5. Verify: Each core keyword has ${expansionsPerLanguage} words in ${queryLanguages[1] || "language 2"}?
+6. Verify: NO multi-word phrases (e.g., "Obsidian plugin") in keywords array?
+7. Verify: BOTH ${queryLanguages[0] || "language 1"} AND ${queryLanguages[1] || "language 2"} words present?
+
+❌ IF ANY CHECK FAILS: Fix the keywords array before returning!
+✅ IF ALL CHECKS PASS: Return the JSON
+
+Example verification for 5 core keywords:
+- Expected total: 5 × ${maxKeywordsPerCore} = ${5 * maxKeywordsPerCore}
+- Your keywords.length = ${5 * maxKeywordsPerCore}? ✓
+- Contains ${5 * expansionsPerLanguage} ${queryLanguages[0] || "lang1"} words? ✓
+- Contains ${5 * expansionsPerLanguage} ${queryLanguages[1] || "lang2"} words? ✓
 
 Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     Query: "如何提高在线购物平台性能"
