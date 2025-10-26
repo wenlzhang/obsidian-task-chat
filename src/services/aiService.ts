@@ -863,18 +863,18 @@ export class AIService {
                         `The AI model did not use the correct format to reference specific tasks in its response. ` +
                         `Without these task IDs, the system cannot match the AI's summary to the actual task list.\n\n` +
                         `**📋 Your Tasks Are Still Available:**\n` +
-                        `Below you'll see ${recommendedTasks.length} tasks selected by relevance scoring (fallback). ` +
+                        `Below you'll see ${recommendedTasks.length} tasks filtered by AI. ` +
                         `However, the AI's summary text above may be generic and not reference these specific tasks.\n\n` +
                         `**🛠️ Common Causes:**\n` +
                         `• **Model too small**: Small models struggle with complex format requirements\n` +
                         `• **Response truncated**: Model hit token limit before writing task IDs\n` +
                         `• **Format confusion**: Model wrote generic advice instead of using task IDs\n` +
-                        `• **Chat history limit**: Too many previous messages might overwhelm the model (adjust in Settings → Chat history context length)\n\n` +
+                        `• **Chat history limit**: Too many previous messages might overwhelm the model\n\n` +
                         `**💡 Immediate Solutions:**\n` +
                         `• **Look at task list below** - tasks are correctly ranked by relevance, due date, and priority\n` +
                         `• **Try again** - Sometimes model fails randomly, retry might work\n` +
                         `• **Start new chat session** - Clears chat history that might confuse the model\n` +
-                        `• **Adjust chat settings** - Adjust chat history context length, max tokens, and max tasks for AI\n` +
+                        `• **Adjust chat settings** - Adjust chat history context length, max tokens, max tasks for AI, etc.\n` +
                         `• **Switch to larger model** - They may be more capable and reliable\n\n` +
                         `**🔧 Debug Info:** Check console logs at "${timestamp}" | Model: ${modelInfo}\n\n---\n\n`;
                     processedResponse = warningMessage + processedResponse;
@@ -2258,7 +2258,9 @@ ${taskContext}`;
             Logger.warn(
                 `AI response preview (last 500 chars):\n${response.substring(Math.max(0, response.length - 500))}`,
             );
-            Logger.warn(`Available tasks to reference: ${tasks.length} (TASK_1 to TASK_${tasks.length})`);
+            Logger.warn(
+                `Available tasks to reference: ${tasks.length} (TASK_1 to TASK_${tasks.length})`,
+            );
             Logger.warn("Expected format: [TASK_1], [TASK_2], [TASK_3], etc.");
             Logger.warn("===============================");
 
@@ -2320,9 +2322,7 @@ ${taskContext}`;
             return { tasks: topTasks, indices: topIndices, usedFallback: true };
         }
 
-        Logger.debug(
-            `✅✅✅ SUCCESS: AI used correct [TASK_X] format! ✅✅✅`,
-        );
+        Logger.debug(`✅✅✅ SUCCESS: AI used correct [TASK_X] format! ✅✅✅`);
         Logger.debug(
             `Found ${recommended.length} task references in AI response`,
         );
