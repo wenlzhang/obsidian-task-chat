@@ -784,6 +784,80 @@ export class ChatView extends ItemView {
             }
         });
 
+        // Display structured error if present (API/parser/analysis failures)
+        // Show BEFORE recommended tasks so users see the error first
+        if (message.error) {
+            const errorEl = messageEl.createDiv({
+                cls: "task-chat-api-error",
+            });
+
+            // Make error message more specific based on error type
+            let errorTitle = message.error.message;
+            if (errorTitle.includes("analysis")) {
+                errorTitle = "AI parser failed";
+            }
+
+            errorEl.createEl("div", {
+                cls: "task-chat-api-error-header",
+                text: `⚠️ ${errorTitle}`,
+            });
+
+            const detailsEl = errorEl.createDiv({
+                cls: "task-chat-api-error-details",
+            });
+
+            if (message.error.model) {
+                detailsEl.createEl("div", {
+                    text: `Model: ${message.error.model}`,
+                });
+            }
+
+            detailsEl.createEl("div", {
+                text: `Error: ${message.error.details}`,
+            });
+
+            if (message.error.solution) {
+                const solutionEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-solution",
+                });
+                solutionEl.createEl("strong", { text: "💡 Solutions: " });
+
+                // Split solution by newlines and create list
+                const solutions = message.error.solution
+                    .split("\n")
+                    .filter((s: string) => s.trim());
+                if (solutions.length > 1) {
+                    const listEl = solutionEl.createEl("ol");
+                    solutions.forEach((solution: string) => {
+                        listEl.createEl("li", {
+                            text: solution.replace(/^\d+\.\s*/, ""),
+                        });
+                    });
+                } else {
+                    solutionEl.createSpan({ text: message.error.solution });
+                }
+            }
+
+            if (message.error.fallbackUsed) {
+                const fallbackEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-fallback",
+                });
+                fallbackEl.createEl("strong", { text: "✓ Fallback: " });
+                fallbackEl.createSpan({ text: message.error.fallbackUsed });
+            }
+
+            if (message.error.docsLink) {
+                const docsEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-docs",
+                });
+                docsEl.createEl("strong", { text: "📖 Documentation: " });
+                docsEl.createEl("a", {
+                    text: "Troubleshooting Guide",
+                    href: message.error.docsLink,
+                });
+            }
+        }
+
         // Recommended tasks
         if (message.recommendedTasks && message.recommendedTasks.length > 0) {
             const tasksEl = messageEl.createDiv("task-chat-recommended-tasks");
@@ -889,7 +963,11 @@ export class ChatView extends ItemView {
         }
 
         // Token usage display - moved outside messageEl so border-left doesn't extend to it
-        if (message.tokenUsage && this.plugin.settings.showTokenUsage) {
+        // Show metadata even when error occurs (use error.model as fallback)
+        if (
+            (message.tokenUsage || message.error) &&
+            this.plugin.settings.showTokenUsage
+        ) {
             const usageEl = this.messagesEl.createDiv("task-chat-token-usage");
 
             const parts: string[] = [];
@@ -906,6 +984,19 @@ export class ChatView extends ItemView {
                 parts.push(
                     `Mode: ${message.role === "assistant" ? "Task Chat" : "System"}`,
                 );
+            }
+
+            // If error occurred without tokenUsage, show error model info
+            if (!message.tokenUsage && message.error && message.error.model) {
+                parts.push(`Model: ${message.error.model}`);
+                parts.push("Language: Unknown");
+                usageEl.createEl("small", { text: parts.join(" · ") });
+                return; // Skip rest of processing since no tokenUsage
+            }
+
+            // From here, message.tokenUsage is guaranteed to exist
+            if (!message.tokenUsage) {
+                return; // Safety check
             }
 
             // Determine if AI was used
@@ -1036,72 +1127,7 @@ export class ChatView extends ItemView {
             });
         }
 
-        // Display structured error if present (API/analysis failures)
-        if (message.error) {
-            const errorEl = messageEl.createDiv({
-                cls: "task-chat-api-error",
-            });
-
-            errorEl.createEl("div", {
-                cls: "task-chat-api-error-header",
-                text: `⚠️ ${message.error.message}`,
-            });
-
-            const detailsEl = errorEl.createDiv({
-                cls: "task-chat-api-error-details",
-            });
-
-            if (message.error.model) {
-                detailsEl.createEl("div", {
-                    text: `Model: ${message.error.model}`,
-                });
-            }
-
-            detailsEl.createEl("div", {
-                text: `Error: ${message.error.details}`,
-            });
-
-            if (message.error.solution) {
-                const solutionEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-solution",
-                });
-                solutionEl.createEl("strong", { text: "💡 Solutions: " });
-
-                // Split solution by newlines and create list
-                const solutions = message.error.solution
-                    .split("\n")
-                    .filter((s: string) => s.trim());
-                if (solutions.length > 1) {
-                    const listEl = solutionEl.createEl("ol");
-                    solutions.forEach((solution: string) => {
-                        listEl.createEl("li", {
-                            text: solution.replace(/^\d+\.\s*/, ""),
-                        });
-                    });
-                } else {
-                    solutionEl.createSpan({ text: message.error.solution });
-                }
-            }
-
-            if (message.error.fallbackUsed) {
-                const fallbackEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-fallback",
-                });
-                fallbackEl.createEl("strong", { text: "✓ Fallback: " });
-                fallbackEl.createSpan({ text: message.error.fallbackUsed });
-            }
-
-            if (message.error.docsLink) {
-                const docsEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-docs",
-                });
-                docsEl.createEl("strong", { text: "📖 Documentation: " });
-                docsEl.createEl("a", {
-                    text: "Troubleshooting Guide",
-                    href: message.error.docsLink,
-                });
-            }
-        }
+        // Error display moved to before recommended tasks (see line ~787)
 
         // Add copy button below message for user messages
         if (message.role === "user") {

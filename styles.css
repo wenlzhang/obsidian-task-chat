@@ -1225,22 +1225,19 @@
 .task-chat-parser-error-fallback {
     margin-top: 8px;
     font-style: italic;
-    color: var(--text-success);
 }
 
 /* API/Analysis Error Warning Box */
 .task-chat-api-error {
-    background: var(--background-modifier-error);
     border-left: 3px solid var(--text-error);
-    border-radius: 4px;
-    padding: 12px 16px;
-    margin: 8px 0;
+    padding: 12px 0 12px 14px;
+    margin: 12px 0;
     font-size: 13px;
 }
 
 .task-chat-api-error-header {
     font-weight: 600;
-    color: var(--text-error);
+    color: var(--text-normal);
     margin-bottom: 8px;
     font-size: 14px;
 }
@@ -1255,15 +1252,13 @@
 }
 
 .task-chat-api-error-solution {
-    margin-top: 8px;
-    padding: 8px;
-    background: var(--background-secondary);
-    border-radius: 3px;
+    margin-top: 12px;
+    padding-left: 0;
     color: var(--text-normal);
 }
 
 .task-chat-api-error-solution strong {
-    color: var(--text-accent);
+    color: var(--text-normal);
 }
 
 .task-chat-api-error-solution ol {
@@ -1276,21 +1271,18 @@
 }
 
 .task-chat-api-error-fallback {
-    margin-top: 8px;
-    padding: 8px;
-    background: var(--background-modifier-success);
-    border-radius: 3px;
+    margin-top: 12px;
+    padding-left: 0;
     color: var(--text-normal);
 }
 
 .task-chat-api-error-fallback strong {
-    color: var(--text-success);
+    color: var(--text-normal);
 }
 
 .task-chat-api-error-docs {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 12px;
+    padding-top: 0;
 }
 
 .task-chat-api-error-docs a {
