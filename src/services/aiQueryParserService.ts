@@ -1988,7 +1988,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
                 // Check for missing languages
                 const missingLanguages: string[] = [];
-                const expectedMinPerLanguage = Math.floor(expansionsPerLanguage * 0.5); // At least 50% of expected
+                const expectedMinPerLanguage = Math.floor(
+                    expansionsPerLanguage * 0.5,
+                ); // At least 50% of expected
 
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
@@ -2299,10 +2301,17 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             let solution = "";
             if (response.status === 400) {
                 if (errorType === "invalid_request_error") {
-                    if (errorMessage.includes("max_tokens") || errorMessage.includes("too large")) {
-                        solution = "Options: (1) Reduce 'Max response tokens' in settings (current: " + providerConfig.maxTokens + ", try 1000-4000 for Claude). (2) Clear chat history to reduce context.";
+                    if (
+                        errorMessage.includes("max_tokens") ||
+                        errorMessage.includes("too large")
+                    ) {
+                        solution =
+                            "Options: (1) Reduce 'Max response tokens' in settings (current: " +
+                            providerConfig.maxTokens +
+                            ", try 1000-4000 for Claude). (2) Clear chat history to reduce context.";
                     } else if (errorMessage.includes("model")) {
-                        solution = "Check model name in settings. Available Claude models: claude-3-5-sonnet, claude-3-opus, claude-3-haiku.";
+                        solution =
+                            "Check model name in settings. Available Claude models: claude-3-5-sonnet, claude-3-opus, claude-3-haiku.";
                     } else {
                         solution = "Check request parameters in settings.";
                     }
@@ -2310,11 +2319,14 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     solution = "Verify API key and model configuration.";
                 }
             } else if (response.status === 401) {
-                solution = "Invalid Anthropic API key. Update API key in plugin settings.";
+                solution =
+                    "Invalid Anthropic API key. Update API key in plugin settings.";
             } else if (response.status === 429) {
-                solution = "Rate limit exceeded. Wait a moment or upgrade your Anthropic plan.";
+                solution =
+                    "Rate limit exceeded. Wait a moment or upgrade your Anthropic plan.";
             } else if (response.status === 500 || response.status === 529) {
-                solution = "Anthropic server error or overloaded. Try again later.";
+                solution =
+                    "Anthropic server error or overloaded. Try again later.";
             } else {
                 solution = "Check console logs for details.";
             }

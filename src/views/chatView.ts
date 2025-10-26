@@ -7,6 +7,7 @@ import { SessionModal } from "./sessionModal";
 import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
+import { AIError } from "../utils/errorHandler";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -994,6 +995,65 @@ export class ChatView extends ItemView {
             });
         }
 
+        // Display structured error if present (API/analysis failures)
+        if (message.error) {
+            const errorEl = messageEl.createDiv({
+                cls: "task-chat-api-error",
+            });
+
+            errorEl.createEl("div", {
+                cls: "task-chat-api-error-header",
+                text: `⚠️ ${message.error.message}`,
+            });
+
+            const detailsEl = errorEl.createDiv({
+                cls: "task-chat-api-error-details",
+            });
+
+            if (message.error.model) {
+                detailsEl.createEl("div", {
+                    text: `Model: ${message.error.model}`,
+                });
+            }
+
+            detailsEl.createEl("div", {
+                text: `Error: ${message.error.details}`,
+            });
+
+            if (message.error.solution) {
+                const solutionEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-solution",
+                });
+                solutionEl.createEl("strong", { text: "💡 Solutions: " });
+
+                // Split solution by newlines and create list
+                const solutions = message.error.solution
+                    .split("\n")
+                    .filter((s: string) => s.trim());
+                if (solutions.length > 1) {
+                    const listEl = solutionEl.createEl("ol");
+                    solutions.forEach((solution: string) => {
+                        listEl.createEl("li", {
+                            text: solution.replace(/^\d+\.\s*/, ""),
+                        });
+                    });
+                } else {
+                    solutionEl.createSpan({ text: message.error.solution });
+                }
+            }
+
+            if (message.error.docsLink) {
+                const docsEl = detailsEl.createEl("div", {
+                    cls: "task-chat-api-error-docs",
+                });
+                docsEl.createEl("strong", { text: "📖 Documentation: " });
+                docsEl.createEl("a", {
+                    text: "Troubleshooting Guide",
+                    href: message.error.docsLink,
+                });
+            }
+        }
+
         // Add copy button below message for user messages
         if (message.role === "user") {
             this.addCopyButton(messageEl, message);
@@ -1271,12 +1331,22 @@ export class ChatView extends ItemView {
                 this.hideTypingIndicator();
             }
             Logger.error("Error sending message:", error);
-            new Notice(error.message || "Failed to get AI response");
 
+            // Check if this is a structured AIError
+            const isAIError = error instanceof AIError;
+            const errorMsg = error?.message || "Failed to get AI response";
+
+            // Show brief notice
+            new Notice(errorMsg);
+
+            // Create error message for chat history
             const errorMessage: ChatMessage = {
                 role: "system",
-                content: `Error: ${error.message || "Failed to get AI response"}`,
+                content: isAIError
+                    ? `⚠️ ${error.structured.message}: ${error.structured.details}`
+                    : `Error: ${errorMsg}`,
                 timestamp: Date.now(),
+                error: isAIError ? error.structured : undefined, // Attach structured error for UI display
             };
 
             this.plugin.sessionManager.addMessage(errorMessage);

@@ -37,6 +37,7 @@ export interface ChatMessage {
     recommendedTasks?: Task[];
     tokenUsage?: TokenUsage;
     parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata (for AI enhancement display)
+    error?: any; // Structured error information (for displaying API/analysis errors in chat UI)
 }
 
 export interface TokenUsage {

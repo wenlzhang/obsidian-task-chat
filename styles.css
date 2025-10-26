@@ -1190,6 +1190,68 @@
     color: var(--text-success);
 }
 
+/* API/Analysis Error Warning Box */
+.task-chat-api-error {
+    background: var(--background-modifier-error);
+    border-left: 3px solid var(--text-error);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-size: 13px;
+}
+
+.task-chat-api-error-header {
+    font-weight: 600;
+    color: var(--text-error);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.task-chat-api-error-details {
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.task-chat-api-error-details > div {
+    margin: 4px 0;
+}
+
+.task-chat-api-error-solution {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 3px;
+    color: var(--text-normal);
+}
+
+.task-chat-api-error-solution strong {
+    color: var(--text-accent);
+}
+
+.task-chat-api-error-solution ol {
+    margin: 4px 0 0 20px;
+    padding: 0;
+}
+
+.task-chat-api-error-solution li {
+    margin: 2px 0;
+}
+
+.task-chat-api-error-docs {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-api-error-docs a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.task-chat-api-error-docs a:hover {
+    text-decoration: underline;
+}
+
 /* Settings Tab - Status Category Grid */
 .task-chat-status-header {
     display: grid;

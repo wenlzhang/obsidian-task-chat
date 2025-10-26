@@ -1,5 +1,6 @@
 import { App, requestUrl, moment } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
+import { ErrorHandler, AIError } from "../utils/errorHandler";
 import {
     PluginSettings,
     SortCriterion,
@@ -899,8 +900,18 @@ export class AIService {
                     parsedQuery: usingAIParsing ? parsedQuery : undefined,
                 };
             } catch (error) {
-                Logger.error("AI Service Error:", error);
-                throw error;
+                Logger.error("AI Analysis Error:", error);
+
+                // Create structured error with helpful information and solutions
+                const providerConfig = getCurrentProviderConfig(settings);
+                const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+                const structured = ErrorHandler.createAnalysisError(
+                    error,
+                    modelInfo,
+                );
+
+                // Throw AIError with structured information for chat UI display
+                throw new AIError(structured);
             }
         } else {
             // No filters detected - return all tasks with default sorting
@@ -1401,6 +1412,17 @@ ${taskContext}`;
                 apiRole = "system";
             }
 
+            // Skip system error messages - these are for user display only, not AI context
+            if (
+                apiRole === "system" &&
+                (msg.error || msg.content.startsWith("Error:"))
+            ) {
+                Logger.debug(
+                    `[Chat History] Message ${index + 1}: Skipping system error message (not sent to AI)`,
+                );
+                return; // Skip this message entirely
+            }
+
             if (apiRole !== "system") {
                 // Clean message content before sending to AI
                 let cleanedContent = msg.content;
@@ -1424,7 +1446,7 @@ ${taskContext}`;
                         );
                     }
                 }
-                
+
                 // Type 2: Parser error warning (context exceeded, model not found, etc.)
                 // These warnings are displayed in UI but should NOT be sent to AI
                 if (cleanedContent.includes("⚠️ AI Query Parser Failed")) {
