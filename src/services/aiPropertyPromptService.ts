@@ -61,7 +61,7 @@ IMPORTANT: There's a difference between:
 1. Asking for tasks WITH a property (any value)
 2. Asking for tasks with SPECIFIC property value
 
-This guidance is consumed by the AI Query Parser, Property Prompt Builder, and Task Chat prompts. It uses the centralized keywords from TaskPropertyService so that every service shares the exact same vocabulary. Remember: urgency weighting (how "important" each bucket is) comes from the user's configurable scores in settings (dueDateOverdueScore, dueDateWithin7DaysScore, etc.). You only normalize the concept — scoring happens downstream.
+This guidance is consumed by the AI Query Parser, Property Prompt Builder, Task Chat prompts, etc. It uses the centralized keywords from TaskPropertyService so that every service shares the exact same vocabulary. Remember: urgency weighting (how "important" each bucket is) comes from the user's configurable scores in settings (dueDateOverdueScore, dueDateWithin7DaysScore, etc.). You only normalize the concept — scoring happens downstream.
 
 🚦 PRESENCE FILTERS
 - "${keywords.any}" / "${keywords.all}" = tasks that HAVE a due date (用户要求"有截止日期的任务", "含有deadline", "with due date")

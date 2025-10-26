@@ -1179,7 +1179,7 @@ CRITICAL: DO NOT LIST TASKS IN YOUR RESPONSE TEXT
 
 🚨 CRITICAL: COMPREHENSIVE TASK RECOMMENDATIONS REQUIRED 🚨
 ⚠️ Users want to see MOST relevant tasks, not a small curated subset!
-⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a substantial portion!
+⚠️ With ${taskCount} high-quality tasks available, you MUST recommend a most of them!
 
 RECOMMENDATION TARGETS (based on available tasks):
 - ${taskCount} tasks available, maximum limit: ${settings.maxRecommendations} tasks
