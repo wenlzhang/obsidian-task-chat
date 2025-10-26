@@ -422,7 +422,7 @@ export class QueryParserService {
         const expansionEnabled = settings.enableSemanticExpansion !== false;
         // Max keywords to generate PER core keyword (not total for entire query)
         // Formula: maxExpansions per language × number of languages
-        // Example: 5 expansions × 3 languages = 15 semantic equivalents per keyword
+        // Example: 5 expansions × 2 languages = 10 semantic equivalents per keyword
         const maxKeywordsPerCore = expansionEnabled
             ? maxExpansions * queryLanguages.length
             : queryLanguages.length; // Just original keywords in each language, no semantic expansion
@@ -839,7 +839,42 @@ Result:
    - Extract main concepts/nouns/verbs from the query
    - Remove stop words and filter-related terms
    - These are the BASE keywords before semantic expansion
-   - Example: "How to develop plugin" → ["develop", "plugin"]
+   
+   🔴 CRITICAL: KEYWORD LENGTH & ATOMICITY RULES (applies to ALL ${queryLanguages.length} configured languages: ${languageList})
+   
+   **Goal**: Extract ATOMIC, MEANINGFUL keywords for optimal search matching
+   
+   **English & Latin-script languages**:
+   - Maximum: 1-2 words per keyword
+   - Prefer single words for better substring matching
+   - Split phrases: "AI plugin" → ["AI", "plugin"] NOT ["AI plugin"]
+   - Example: "How to develop Obsidian plugin" → ["develop", "Obsidian", "plugin"]
+   
+   **Chinese (中文) & CJK languages**:
+   - Maximum: 2-3 characters per keyword (NOT 5+ character compounds!)
+   - Split long compounds into atomic meaningful units
+   - Each unit should be independently searchable
+   - ❌ WRONG: "在线购物平台" (6 chars, too long!) → will miss "购物" or "平台" alone
+   - ✅ CORRECT: ["在线", "购物", "平台"] (3 atomic units, each 2 chars)
+   - ❌ WRONG: "数据分析工具" (6 chars) → ["数据分析工具"]
+   - ✅ CORRECT: ["数据", "分析", "工具"] (3 units of 2 chars each)
+   - ❌ WRONG: "项目管理系统" (6 chars) → ["项目管理系统"]
+   - ✅ CORRECT: ["项目", "管理", "系统"] (3 units)
+   
+   **All other configured languages**:
+   - Follow similar atomic principle: break down compounds
+   - Maximum 2-3 meaningful units per keyword
+   - Prioritize searchability over linguistic correctness
+   
+   **Why atomic keywords matter**:
+   - Query "购物" should match tasks containing "在线购物", "网上购物", "购物系统"
+   - Query "algorithm" should match "search algorithm", "sorting algorithm"
+   - Atomic keywords = better coverage + more flexible matching
+   
+   **Examples across languages**:
+   - English: "data analysis" → ["data", "analysis"]
+   - 中文: "数据分析" → ["数据", "分析"]
+   - Svenska: "data analys" → ["data", "analys"]
 
 2. "keywords" field: FULLY EXPANDED keywords with ALL semantic equivalents
    - This should contain ALL semantic equivalents for ALL core keywords combined
@@ -890,6 +925,13 @@ KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 
 ⚠️ CRITICAL: Generate equivalents for ALL ${queryLanguages.length} configured languages: ${languageList}
 Do NOT favor any language - ALL languages must be equally represented!
+
+🔴 IMPORTANT: EXPANSION COUNT IN EXAMPLES
+The example arrays below (e.g., "[develop, build, create, implement, code]") show ${maxExpansions} items for illustration.
+- If user configured maxExpansions=${maxExpansions}, generate EXACTLY ${maxExpansions} equivalents per language
+- If user configured a DIFFERENT value (e.g., 3 or 7), generate that EXACT number instead
+- The examples are for DEMONSTRATION only - always use the actual ${maxExpansions} value!
+- DO NOT always generate 5 items just because examples show 5 - respect user's ${maxExpansions} setting!
 
 Example 1: Query with ${queryLanguages.length} configured languages: ${languageList}
     Query: "开发 Task Chat"
@@ -952,6 +994,9 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     - Languages processed: ${queryLanguages.length} (${languageList})
     - Equivalents per keyword: ${maxKeywordsPerCore} (${maxExpansions} × ${queryLanguages.length})
     - Total equivalents: 3 × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore}
+
+    ⚠️ JSON OUTPUT NOTE: Arrays below show ${maxExpansions} items as examples.
+    In your actual output, generate EXACTLY ${maxExpansions} equivalents per language (not always 5!).
 
     {
     "coreKeywords": ["开发", "Task", "Chat"],
@@ -1038,6 +1083,8 @@ Example 2: Another query showing algorithm - MUST follow same process!
         .join("\n")}
     Subtotal: ${maxKeywordsPerCore} ✓
 
+    ⚠️ JSON OUTPUT NOTE: Each array shows ${maxExpansions} items. Generate exactly ${maxExpansions} per language!
+
     {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
@@ -1067,6 +1114,114 @@ Example 2: Another query showing algorithm - MUST follow same process!
     }
 
 ⚠️ CRITICAL: This algorithm MUST be followed for EVERY query - ALL ${queryLanguages.length} languages in ${languageList} for EVERY keyword!
+
+🔴 REMINDER: User configured maxExpansions=${maxExpansions}
+- Generate EXACTLY ${maxExpansions} equivalents per language (not always 5!)
+- If maxExpansions=3: generate 3 per language
+- If maxExpansions=7: generate 7 per language  
+- DO NOT assume 5 just because examples show 5 items!
+
+Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
+    Query: "如何提高在线购物平台性能"
+    
+    🔴 ATOMICITY ANALYSIS:
+    
+    ❌ WRONG extraction (too long):
+    Core keywords: ["提高", "在线购物平台", "性能"]
+    Problem: "在线购物平台" is 6 characters - too long!
+    Impact: Query "购物" won't match, "平台" won't match separately
+    
+    ✅ CORRECT extraction (atomic):
+    Core keywords: ["提高", "在线", "购物", "平台", "性能"]
+    Benefit: Each 2-char unit is searchable independently
+    - "在线" matches "在线系统", "在线服务"
+    - "购物" matches "购物车", "网上购物", "购物体验"
+    - "平台" matches "电商平台", "平台架构"
+    
+    🔴 APPLY THE SAME ALGORITHM with atomic keywords:
+    
+    Core keyword 1: "提高"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[improve, enhance, boost, increase, raise]"
+                        : lang === "中文"
+                          ? "[提高, 提升, 改善, 增强, 增进]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[förbättra, öka, höja, stärka, förstärka]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    
+    Core keyword 2: "在线" (NOT "在线购物平台"!)
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[online, web-based, internet, digital, virtual]"
+                        : lang === "中文"
+                          ? "[在线, 网上, 线上, 网络, 互联网]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[online, webbaserad, internet, digital, virtuell]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    
+    Core keyword 3: "购物"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[shopping, purchasing, buying, commerce, retail]"
+                        : lang === "中文"
+                          ? "[购物, 购买, 采购, 消费, 交易]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[shopping, köp, inköp, handel, detaljhandel]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    
+    Core keyword 4: "平台"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[platform, system, framework, infrastructure, service]"
+                        : lang === "中文"
+                          ? "[平台, 系统, 框架, 基础, 服务]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[plattform, system, ramverk, infrastruktur, tjänst]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    
+    Core keyword 5: "性能"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[performance, efficiency, capability, speed, optimization]"
+                        : lang === "中文"
+                          ? "[性能, 效率, 能力, 速度, 优化]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[prestanda, effektivitet, kapacitet, hastighet, optimering]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    
+    Result: 5 atomic keywords × ${maxKeywordsPerCore} expansions = ${5 * maxKeywordsPerCore} total keywords
+    ✅ Much better coverage! Each atomic unit independently searchable!
 
 PROPERTY EXPANSION EXAMPLES:
 
@@ -1247,13 +1402,16 @@ Example 9: Keywords with tags
     "tags": ["urgent", "backend"]
   }
 
-⚠️ CRITICAL RULES:
-- Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
-- Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
-- For each meaningful keyword, generate semantic equivalents in ALL configured languages
-- Keywords should be 1-2 words maximum, prefer single words for better substring matching
+⚠️ CRITICAL RULES (SEE DETAILED GUIDELINES ABOVE):
+- Extract ATOMIC keywords following language-specific length rules:
+  * English: 1-2 words maximum ("data analysis" → ["data", "analysis"])
+  * Chinese: 2-3 characters maximum ("在线购物平台" → ["在线", "购物", "平台"])
+  * All languages: Break down compounds for better searchability
+- Always include proper nouns, but split if multi-word (e.g., "Obsidian AI" → ["Obsidian", "AI"])
+- For EACH atomic keyword, generate semantic equivalents in ALL ${queryLanguages.length} configured languages: ${languageList}
 - This enables queries in ANY language to match tasks in ANY other configured language
 - Remove filter-related words (priority, due date, status) from keywords
+- DO NOT extract overly long phrases - prioritize atomic, searchable units!
 
 🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE
 
