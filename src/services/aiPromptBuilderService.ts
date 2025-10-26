@@ -338,7 +338,7 @@ Remember: Inclusion > Exclusion. When in doubt, include the task!`;
                     break;
                 case "dueDate":
                     criteriaDetails.push(
-                        "Due date: Most urgent first (overdue → today → future → no due date, earliest deadlines at top)",
+                        "Due date: Higher-scored categories (based on your configured due date weights) appear first. Default ordering is overdue → today → near-term → future → no due date, but respects user custom scores",
                     );
                     break;
                 case "created":
