@@ -859,24 +859,13 @@ export class AIService {
                     const warningMessage =
                         `⚠️ **AI Model May Have Failed to Reference Tasks Correctly**\n\n` +
                         `**Query:** "${queryPreview}" (${timestamp})\n\n` +
-                        `**🔍 What Went Wrong:**\n` +
-                        `The AI model did not use the correct format to reference specific tasks in its response. ` +
-                        `Without these task IDs, the system cannot match the AI's summary to the actual task list.\n\n` +
-                        `**📋 Your Tasks Are Still Available:**\n` +
-                        `Below you'll see ${recommendedTasks.length} tasks filtered by AI. ` +
-                        `However, the AI's summary text above may be generic and not reference these specific tasks.\n\n` +
-                        `**🛠️ Common Causes:**\n` +
-                        `• **Model too small**: Small models struggle with complex format requirements\n` +
-                        `• **Response truncated**: Model hit token limit before writing task IDs\n` +
-                        `• **Format confusion**: Model wrote generic advice instead of using task IDs\n` +
-                        `• **Chat history limit**: Too many previous messages might overwhelm the model\n\n` +
-                        `**💡 Immediate Solutions:**\n` +
-                        `• **Look at task list below** - tasks are correctly ranked by relevance, due date, and priority\n` +
-                        `• **Try again** - Sometimes model fails randomly, retry might work\n` +
-                        `• **Start new chat session** - Clears chat history that might confuse the model\n` +
-                        `• **Adjust chat settings** - Adjust chat history context length, max tokens, max tasks for AI, etc.\n` +
-                        `• **Switch to larger model** - They may be more capable and reliable\n\n` +
-                        `**🔧 Debug Info:** Check console logs at "${timestamp}" | Model: ${modelInfo}\n\n---\n\n`;
+                        `**🔧 Debug Info:** Model: ${modelInfo} | Console logs: ${timestamp}\n\n` +
+                        `**📋 Your Tasks:** ${recommendedTasks.length} tasks are shown below (filtered by AI). However, the AI summary above may not reference specific tasks correctly.\n\n` +
+                        `**💡 Quick Actions:**\n` +
+                        `• Try again (model behavior varies)\n` +
+                        `• Start new chat session (clears history)\n` +
+                        `• Switch to larger model (more reliable)\n\n` +
+                        `**📖 Troubleshooting Guide:** [Common issues and solutions](https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#ai-model-format-issues)\n\n---\n\n`;
                     processedResponse = warningMessage + processedResponse;
                 }
 

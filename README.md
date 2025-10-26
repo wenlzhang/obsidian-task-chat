@@ -151,13 +151,20 @@ Analyze my tasks for this week
 
 1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
 2. **API Key** - Enter your API key (not needed for Ollama)
-3. **Model Selection** - Pick a model (GPT-4o-mini recommended for balance between performance and cost)
+3. **Model Selection** - Pick a model
 4. **Test Connection** - Verify setup works
 
 **Recommended models:**
-- **GPT-4o-mini** - Fast, cheap, good performance (default)
-- **Local (Ollama)** - Free, private, slower
 
+> **⚠️ Note:** Model performance varies between users based on hardware, query complexity, and use cases. Test different models to find what works best for you.
+
+**Cloud (Paid, Fast, Reliable):**
+- **GPT-4o-mini** - Good balance of speed, cost, and quality
+
+**Local (Free, Private, Hardware-Dependent):**
+- **Qwen3 (8B, 14B, 32B)** - Good instruction following, tested and recommended
+
+→ [Model selection guide](docs/MODEL_PARAMETERS.md#model-selection-guide)
 → [Complete settings guide](docs/SETTINGS_GUIDE.md)
 
 ### Common Adjustments

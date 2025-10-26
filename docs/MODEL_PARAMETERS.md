@@ -325,7 +325,24 @@ Experiencing issues?
 
 ---
 
-## 🎯 Performance Tuning & Model Selection
+## 🎯 Model Selection Guide
+
+> **⚠️ IMPORTANT:** Model performance varies significantly between users depending on hardware, system configuration, query complexity, and individual use cases. The ratings and recommendations below are general guidelines based on testing, not guarantees. Always test models yourself to determine what works best for your specific needs.
+
+### Key Principle: Smart Search Quality Determines Task Chat Quality
+
+```
+User Query
+    ↓
+Smart Search (filters + scores tasks)
+    ↓
+High-quality filtered tasks → Good AI summary ✅
+Low-quality filtered tasks → Poor AI summary ❌
+    ↓
+Task Chat (AI analyzes filtered tasks)
+```
+
+**Critical:** If Smart Search results are poor, Task Chat will very likely be poor regardless of model quality. Always optimize filtering and scoring first!
 
 ### When to Use Local (Ollama) vs Cloud
 
@@ -334,212 +351,88 @@ Experiencing issues?
 ✅ **Cost is a concern** - Zero API fees  
 ✅ **Offline work needed** - No internet required  
 ✅ **Learning/experimenting** - Safe to test freely  
-✅ **Simple queries** - Basic task filtering works well  
 
 #### Use Cloud (OpenAI/Anthropic/OpenRouter) When:
-✅ **Speed is critical** - 3-10x faster responses  
-✅ **Best quality needed** - More accurate analysis  
+✅ **Speed is critical** - Faster responses  
+✅ **Reliability needed** - More consistent format compliance  
 ✅ **Complex queries** - Better reasoning capabilities  
-✅ **Production environment** - Reliability matters  
-✅ **Time-sensitive work** - Can't wait 30+ seconds  
+✅ **Production environment** - Proven track record  
 
-### Model Upgrade Path
+### Recommended Models by Provider
 
-Start small and upgrade only if needed:
+> **Note:** Performance ratings are subjective and may not reflect your experience. Test multiple models to find what works best for you.
 
-```
-Step 1: Try Small Model (Fast, Free)
-├─ Ollama: deepseek-r1:8b or qwen3:8b
-├─ Quality: ⭐⭐⭐
-└─ Best for: Simple queries, testing
+#### Cloud Providers (Paid)
 
-    ↓ Not good enough?
+**OpenAI:**
+- **GPT-4o-mini** ⭐⭐⭐⭐⭐ - Good balance of speed, cost, and quality
+- **GPT-5-mini** ⭐⭐⭐⭐⭐ - Good balance of speed, cost, and quality
+- **GPT-5-nano** ⭐⭐⭐⭐ - Still being evaluated
 
-Step 2: Try Medium Model (Balanced) ⭐ RECOMMENDED
-├─ Ollama: qwen3:14b or gpt-oss:20b
-├─ Quality: ⭐⭐⭐⭐
-└─ Best for: Most users, general usage
+**OpenRouter (Multiple Models):**
+- Access to various models from different providers
+- Pricing and performance vary by model
 
-    ↓ Still not good enough?
+#### Local (Ollama - Free)
 
-Step 3: Try Large Model (High Quality)
-├─ Ollama: qwen3:32b or deepseek-r1:32b
-├─ Quality: ⭐⭐⭐⭐⭐
-└─ Best for: Complex analysis, requires 16GB+ RAM
+> **⚠️ Hardware-Dependent:** Performance varies greatly based on your GPU. Ratings below assume modern hardware (M-series Mac, recent NVIDIA GPU, or powerful CPU).
 
-    ↓ Still not good enough?
+**Qwen3 Series** (Tested, Good Instruction Following):
+- **qwen3:8b** ⭐⭐⭐ - Fast, reasonable quality, good starting point
+- **qwen3:14b** ⭐⭐⭐⭐ - Balanced, good for most users
+- **qwen3:32b** ⭐⭐⭐⭐ - High quality, slower, needs more RAM
 
-Step 4: Switch to Cloud (Best Quality, Costs Money)
-├─ OpenAI: gpt-4o-mini
-├─ Anthropic: claude-sonnet
-├─ Quality: ⭐⭐⭐⭐⭐
-└─ Best for: Production, critical work
-```
+**Gemma Series:**
+- **gemma-3:12b-it** ⭐⭐⭐ - Moderate size and performance
+- **gemma-3:27b-it** ⭐⭐⭐⭐ - Larger, potentially better quality
 
-### Testing Strategy: Compare Before Upgrading
+**Other Options:**
+- **DeepSeek-R1** - Various sizes available
+- **GLM** - Alternative option
 
-**Test same query on different providers isolates the issue:**
-- **Same results** = Model is fine, hardware is slow → Upgrade hardware or accept speed
-- **Better results on cloud** = Model capability issue → Need larger model or cloud provider
-- **Different results** = Configuration issue → Check parameters (temperature, tokens)
+See [Ollama Setup Guide](OLLAMA_SETUP.md) for installation and configuration.
 
-### Approach 1: Tune Parameters (Try This FIRST)
+### General Troubleshooting Approach
 
-Before upgrading model, try adjusting filtering:
+#### Step 1: Optimize Filtering First (Most Important!)
 
-#### Issue: Too Many Irrelevant Results
+Before changing models, ensure Smart Search results are good:
+- Adjust quality filter strength
+- Tune scoring coefficients (relevance, due date, priority)
+- Enable semantic expansion as needed
+- Add custom stop words if needed
 
-**Symptoms:**
-- Seeing tasks not related to query
-- Low-quality matches appearing
-- Results feel scattered
+See: [Scoring System Guide](SCORING_SYSTEM.md) and [Settings Guide](SETTINGS_GUIDE.md)
 
-**Solutions:**
-```yaml
-# Increase filtering strictness
-Quality Filter Strength
-Minimum Relevance Score
+#### Step 2: Check Model Parameters
 
-# Add domain-specific stop words
-Stop Words: Add terms like "draft", "old"
+- **Temperature:** Must be 0.1 for reliable JSON parsing
+- **Max Response Tokens:** Increase if responses are truncated
+- **Context Window (Ollama):** Ensure it's large enough for your task list
 
-# Adjust scoring to emphasize relevance
-Scoring Coefficients:
-  Relevance: 20 → 30 (higher = stricter keyword matching)
-  Due Date: 4 → 2 (lower = less date urgency)
-  Priority: 1 → 1 (unchanged)
-```
+#### Step 3: Test Different Models
 
-#### Issue: Missing Relevant Tasks
+- Start with your current model + optimized settings
+- If issues persist, try a larger model or cloud provider
+- Compare same query across models to identify if model is the bottleneck
 
-**Symptoms:**
-- Tasks you know exist don't appear
-- Results feel incomplete
-- Too strict filtering
+#### Step 4: Consider Hybrid Approach
 
-**Solutions:**
-```yaml
-# Reduce filtering strictness
-Quality Filter Strength
-Minimum Relevance Score
+- Use Simple Search when AI not needed (fastest, free)
+- Use Smart Search with local models for keyword expansion (free)
+- Use Task Chat with cloud models for complex analysis (paid but reliable)
 
-# Enable semantic expansion
-Semantic Expansion: Enable
-Max Keyword Expansions: 5 → 10
-Query Languages: Add more languages
+### Common Issues & Quick Fixes
 
-# Adjust scoring to be more inclusive
-Scoring Coefficients:
-  Relevance: 20 → 15 (lower = more lenient)
-  Due Date: 4 → 6 (higher = more date focus)
-  Priority: 1 → 3 (higher = more priority focus)
-```
+| Issue | Most Likely Cause | First Step |
+|-------|-------------------|------------|
+| Too many irrelevant tasks | Relevance threshold too low | Increase relevance threshold |
+| Missing relevant tasks | Relevance threshold too high | Decrease relevance threshold |
+| AI format errors | Temperature too high or model too small | Set temperature to 0.1, try larger model |
+| Slow responses (Ollama) | Model too large for hardware | Use smaller model (14B instead of 32B) |
+| Truncated responses | Max response tokens too low | Increase max response tokens |
 
-#### Issue: Wrong Task Priority
-
-**Symptoms:**
-- Low-priority tasks appear first
-- Urgent tasks buried in results
-- Ordering feels wrong
-
-**Solutions:**
-```yaml
-# Emphasize urgency in scoring
-Scoring Coefficients:
-  Relevance: 20 → 15
-  Due Date: 4 → 10 (much higher = dates dominate)
-  Priority: 1 → 5 (higher = priority matters more)
-
-# Adjust sub-coefficients
-Due Date Sub-coefficients:
-  Overdue: 1.5 → 2.0 (even more urgent)
-  Within 7 days: 1.0 → 1.5
-  Within 1 month: 0.5 → 0.8
-
-Priority Sub-coefficients:
-  P1: 1.0 → 1.5 (higher priority weight)
-  P2: 0.75 → 1.0
-  P3: 0.5 → 0.5
-```
-
-### Approach 2: Upgrade Model Strategically
-
-**When parameter tuning doesn't help:**
-
-1. **Identify the specific issue:**
-   - JSON parsing errors → Need consistent model (higher quality)
-   - Poor task analysis → Need better reasoning (larger model)
-   - Missing keywords → Need semantic understanding (medium+ model)
-   - Slow responses → Hardware limitation (not a model issue)
-
-2. **Choose appropriate upgrade:**
-   ```
-   JSON errors → qwen3:14b or cloud
-   Poor analysis → qwen3:32b
-   Missing keywords → Enable semantic expansion first
-   Slow responses → Cloud provider or better hardware
-   ```
-
-3. **Test incrementally:**
-   - Don't jump from 8B → 70B immediately
-   - Try 8B → 14B → 32B → cloud
-   - Each step costs more (hardware/time/money)
-
-### Approach 3: Hybrid Strategy
-
-Use different providers for different purposes:
-
-#### Development/Testing
-```yaml
-Provider: Ollama
-Model: qwen3:14b
-Use for:
-  - Testing queries
-  - Learning the system
-  - Iterating on filters
-  - Simple searches
-Cost: $0
-```
-
-#### Production/Critical Work
-```yaml
-Provider: OpenAI or Anthropic
-Model: gpt-4o-mini or claude-sonnet
-Use for:
-  - Important analyses
-  - Time-sensitive queries
-  - Complex reasoning
-  - Client-facing work
-Cost: ~$0.001-0.003 per query
-```
-
-#### Mode-Specific Strategy
-```yaml
-Simple Search:
-  - No AI needed (regex only)
-  - Always fast, always free
-
-Smart Search (Keyword Expansion):
-  - Use Ollama (low cost, acceptable speed)
-  - Only expands keywords, not full analysis
-  - qwen2.5:14b sufficient
-
-Task Chat (Full AI Analysis):
-  - Use cloud for best results
-  - More complex, benefits from quality
-  - Worth the cost for detailed analysis
-```
-
-### Performance Comparison Table
-
-| Approach | Speed | Quality | Cost | Best For |
-|----------|-------|---------|------|----------|
-| **Ollama 8B** | ⚡⚡⚡ | ⭐⭐⭐ | Free | Testing, simple queries |
-| **Ollama 14B** | ⚡⚡ | ⭐⭐⭐⭐ | Free | General use |
-| **Ollama 32B** | ⚡ | ⭐⭐⭐⭐⭐ | Free | High quality, slow OK |
-| **OpenRouter** | ⚡⚡⚡⚡ | ⭐⭐⭐⭐⭐ | Very Low | Best balance |
-| **OpenAI** | ⚡⚡⚡⚡ | ⭐⭐⭐⭐⭐ | Low | Production |
-| **Claude** | ⚡⚡⚡⚡ | ⭐⭐⭐⭐⭐ | Medium | Best quality |
+For detailed troubleshooting, see: [Troubleshooting Guide](TROUBLESHOOTING.md)
 
 ---
 
