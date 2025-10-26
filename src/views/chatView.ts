@@ -1316,6 +1316,7 @@ export class ChatView extends ItemView {
                     recommendedTasks: result.recommendedTasks,
                     tokenUsage: result.tokenUsage,
                     parsedQuery: result.parsedQuery,
+                    error: result.error, // Include error if this is a fallback result
                 };
 
                 this.plugin.sessionManager.addMessage(aiMessage);

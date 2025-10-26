@@ -7,6 +7,7 @@ import { StopWords } from "./stopWords";
 import { DataviewService } from "./dataviewService";
 import { TaskSearchService } from "./taskSearchService";
 import { Logger } from "../utils/logger";
+import { ErrorHandler } from "../utils/errorHandler";
 
 /**
  * Structured query result from AI parsing - Three-part system
@@ -2172,65 +2173,17 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         });
 
         if (response.status !== 200) {
-            // Extract detailed error information from API response
-            const errorBody = response.json || {};
-            const errorMessage =
-                errorBody.error?.message ||
-                errorBody.message ||
-                "Unknown error";
-            const errorType = errorBody.error?.type || "api_error";
-            const errorCode = errorBody.error?.code || "unknown";
-
-            // Log detailed error for debugging
-            Logger.error("AI Query Parser API Error:", {
+            // Use ErrorHandler to parse API error (consolidates error handling logic)
+            const errorData = {
                 status: response.status,
-                model: providerConfig.model,
-                provider: settings.aiProvider,
-                errorType: errorType,
-                errorCode: errorCode,
-                errorMessage: errorMessage,
-                maxTokens: providerConfig.maxTokens,
-                fullResponse: errorBody,
-            });
-
-            // Generate actionable solution based on error type
-            let solution = "";
-            if (response.status === 400) {
-                if (
-                    errorCode === "context_length_exceeded" ||
-                    errorMessage.includes("context") ||
-                    errorMessage.includes("token")
-                ) {
-                    solution =
-                        "Options: (1) Reduce 'Max response tokens' in settings (current: " +
-                        providerConfig.maxTokens +
-                        ", try 1000-4000). (2) Switch to model with larger context window. (3) Clear chat history to reduce context.";
-                } else if (
-                    errorCode === "model_not_found" ||
-                    errorMessage.includes("model") ||
-                    errorMessage.includes("does not exist")
-                ) {
-                    solution =
-                        "Check model name in settings. Available models vary by provider.";
-                } else {
-                    solution =
-                        "Check API key and model configuration in settings.";
-                }
-            } else if (response.status === 401) {
-                solution =
-                    "Invalid API key. Update API key in plugin settings.";
-            } else if (response.status === 429) {
-                solution =
-                    "Rate limit exceeded. Wait a moment or switch to another provider.";
-            } else if (response.status === 500 || response.status === 503) {
-                solution =
-                    "Provider server error. Try again later or switch providers.";
-            } else {
-                solution = "Check console logs for details.";
-            }
-
-            // Throw user-friendly error with context and solution
-            throw new Error(`${errorMessage} | ${solution}`);
+                json: response.json,
+                message: `API request failed with status ${response.status}`,
+            };
+            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            const structured = ErrorHandler.parseAPIError(errorData, modelInfo, "parser");
+            
+            // Throw with format: "message | solution" for backward compatibility
+            throw new Error(`${structured.details} | ${structured.solution}`);
         }
 
         return response.json.choices[0].message.content.trim();
@@ -2277,62 +2230,17 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         });
 
         if (response.status !== 200) {
-            // Extract detailed error information from Anthropic API response
-            const errorBody = response.json || {};
-            const errorMessage =
-                errorBody.error?.message ||
-                errorBody.message ||
-                "Unknown error";
-            const errorType = errorBody.error?.type || "api_error";
-            const errorCode = errorBody.error?.code || "unknown";
-
-            // Log detailed error for debugging
-            Logger.error("Anthropic Query Parser API Error:", {
+            // Use ErrorHandler to parse API error (consolidates error handling logic)
+            const errorData = {
                 status: response.status,
-                model: providerConfig.model,
-                errorType: errorType,
-                errorCode: errorCode,
-                errorMessage: errorMessage,
-                maxTokens: providerConfig.maxTokens,
-                fullResponse: errorBody,
-            });
-
-            // Generate actionable solution based on error type
-            let solution = "";
-            if (response.status === 400) {
-                if (errorType === "invalid_request_error") {
-                    if (
-                        errorMessage.includes("max_tokens") ||
-                        errorMessage.includes("too large")
-                    ) {
-                        solution =
-                            "Options: (1) Reduce 'Max response tokens' in settings (current: " +
-                            providerConfig.maxTokens +
-                            ", try 1000-4000 for Claude). (2) Clear chat history to reduce context.";
-                    } else if (errorMessage.includes("model")) {
-                        solution =
-                            "Check model name in settings. Available Claude models: claude-3-5-sonnet, claude-3-opus, claude-3-haiku.";
-                    } else {
-                        solution = "Check request parameters in settings.";
-                    }
-                } else {
-                    solution = "Verify API key and model configuration.";
-                }
-            } else if (response.status === 401) {
-                solution =
-                    "Invalid Anthropic API key. Update API key in plugin settings.";
-            } else if (response.status === 429) {
-                solution =
-                    "Rate limit exceeded. Wait a moment or upgrade your Anthropic plan.";
-            } else if (response.status === 500 || response.status === 529) {
-                solution =
-                    "Anthropic server error or overloaded. Try again later.";
-            } else {
-                solution = "Check console logs for details.";
-            }
-
-            // Throw user-friendly error with solution
-            throw new Error(`${errorMessage} | ${solution}`);
+                json: response.json,
+                message: `API request failed with status ${response.status}`,
+            };
+            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            const structured = ErrorHandler.parseAPIError(errorData, modelInfo, "parser");
+            
+            // Throw with format: "message | solution" for backward compatibility
+            throw new Error(`${structured.details} | ${structured.solution}`);
         }
 
         return response.json.content[0].text.trim();
@@ -2437,31 +2345,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             return responseContent;
         } catch (error) {
-            // Enhanced error handling for common Ollama issues
-            const errorMsg = error.message || String(error);
-
-            if (
-                errorMsg.includes("ECONNREFUSED") ||
-                errorMsg.includes("fetch")
-            ) {
-                throw new Error(
-                    `Cannot connect to Ollama at ${endpoint} | Ensure Ollama is running. Start: ollama serve`,
-                );
-            }
-
-            if (errorMsg.includes("model") || errorMsg.includes("not found")) {
-                throw new Error(
-                    `Model '${providerConfig.model}' not found | Pull the model: ollama pull ${providerConfig.model}`,
-                );
-            }
-
-            // Re-throw with context if not already formatted
-            if (errorMsg.includes(" | ")) {
-                throw error; // Already has solution
-            }
-            throw new Error(
-                `${errorMsg} | Check Ollama configuration and logs`,
-            );
+            // Use ErrorHandler to parse API error (consolidates error handling logic)
+            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            const structured = ErrorHandler.parseAPIError(error, modelInfo, "parser");
+            
+            // Throw with format: "message | solution" for backward compatibility
+            throw new Error(`${structured.details} | ${structured.solution}`);
         }
     }
 }

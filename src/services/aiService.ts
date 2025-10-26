@@ -69,6 +69,7 @@ export class AIService {
         tokenUsage?: TokenUsage;
         directResults?: Task[];
         parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata
+        error?: any; // Structured error for fallback results
     }> {
         // API key not required for local Ollama
         if (settings.aiProvider !== "ollama") {
@@ -901,17 +902,36 @@ export class AIService {
                 };
             } catch (error) {
                 Logger.error("AI Analysis Error:", error);
-
+                Logger.warn("⚠️ AI Analysis Failed - returning filtered tasks as fallback");
+                
                 // Create structured error with helpful information and solutions
                 const providerConfig = getCurrentProviderConfig(settings);
                 const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
-                const structured = ErrorHandler.createAnalysisError(
-                    error,
-                    modelInfo,
-                );
-
-                // Throw AIError with structured information for chat UI display
-                throw new AIError(structured);
+                const structured = ErrorHandler.createAnalysisError(error, modelInfo);
+                
+                // FALLBACK: If parser succeeded, we have properly filtered tasks from semantic search
+                // Return them instead of failing completely
+                if (usingAIParsing && sortedTasksForDisplay.length > 0) {
+                    Logger.debug(
+                        `Parser succeeded, returning ${sortedTasksForDisplay.length} tasks from semantic search as fallback`,
+                    );
+                    
+                    // Add fallback info to error
+                    structured.fallbackUsed = `Semantic search succeeded (${sortedTasksForDisplay.length} tasks filtered and sorted). Showing Smart Search results without AI summary.`;
+                    
+                    // Return filtered tasks with error info (will be displayed in UI)
+                    return {
+                        response: `Found ${sortedTasksForDisplay.length} matching task(s)`,
+                        recommendedTasks: sortedTasksForDisplay.slice(0, settings.maxRecommendations),
+                        tokenUsage: undefined, // No tokens used since AI failed
+                        parsedQuery: parsedQuery,
+                        error: structured, // Attach error for UI display
+                    };
+                } else {
+                    // Parser also failed or no tasks - throw error
+                    Logger.error("No fallback available - parser also failed or no tasks found");
+                    throw new AIError(structured);
+                }
             }
         } else {
             // No filters detected - return all tasks with default sorting
@@ -1412,13 +1432,18 @@ ${taskContext}`;
                 apiRole = "system";
             }
 
-            // Skip system error messages - these are for user display only, not AI context
+            // Skip ALL error messages - these are for user display only, not AI context
+            // Filter by error field OR error-related content (regardless of role)
             if (
-                apiRole === "system" &&
-                (msg.error || msg.content.startsWith("Error:"))
+                msg.error || // Has structured error
+                msg.content.startsWith("Error:") || // Generic error message
+                msg.content.startsWith("⚠️") || // Warning/error indicator
+                msg.content.includes("AI Analysis Error") || // Analysis failure
+                msg.content.includes("AI Query Parser Failed") || // Parser failure
+                (apiRole === "system" && msg.content.includes("Failed")) // System failures
             ) {
                 Logger.debug(
-                    `[Chat History] Message ${index + 1}: Skipping system error message (not sent to AI)`,
+                    `[Chat History] Message ${index + 1}: Skipping error message (not sent to AI)`,
                 );
                 return; // Skip this message entirely
             }
@@ -1445,18 +1470,6 @@ ${taskContext}`;
                             `[Chat History] Message ${index + 1}: Removed fallback warning (${originalLength} → ${cleanedContent.length} chars)`,
                         );
                     }
-                }
-
-                // Type 2: Parser error warning (context exceeded, model not found, etc.)
-                // These warnings are displayed in UI but should NOT be sent to AI
-                if (cleanedContent.includes("⚠️ AI Query Parser Failed")) {
-                    // Parser errors are in direct results messages like "Found 28 matching task(s)"
-                    // The warning is displayed separately in UI via parsedQuery._parserError
-                    // So we keep the "Found X tasks" content, warnings are only in UI
-                    Logger.debug(
-                        `[Chat History] Message ${index + 1}: Has parser error metadata (kept content, warnings displayed in UI only)`,
-                    );
-                    // No need to modify content - parser errors are shown via parsedQuery, not in content
                 }
 
                 // Remove display task references (Task 1, **Task 2**, etc.)
