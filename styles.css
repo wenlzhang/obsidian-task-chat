@@ -1030,6 +1030,8 @@
 .task-chat-sort-tag-remove {
     background: transparent;
     border: none;
+    outline: none;
+    box-shadow: none;
     color: var(--text-muted);
     cursor: pointer;
     font-size: 18px;
@@ -1045,6 +1047,17 @@
     width: 16px;
     height: 16px;
     flex-shrink: 0;
+}
+
+/* Remove any default button styling that might create square boxes */
+.task-chat-sort-tag-remove:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.task-chat-sort-tag-remove:active {
+    outline: none;
+    box-shadow: none;
 }
 
 .task-chat-sort-tag-remove:hover {

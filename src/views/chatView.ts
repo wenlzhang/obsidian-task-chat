@@ -639,118 +639,61 @@ export class ChatView extends ItemView {
             }
         }
 
+        // AI Query Understanding (compact single-line format)
+        // Only show if enabled and AI understanding data exists
+        if (
+            this.plugin.settings.aiEnhancement.showAIUnderstanding &&
+            query.aiUnderstanding
+        ) {
+            const ai = query.aiUnderstanding;
+            const aiParts: string[] = [];
+
+            // Due date (first)
+            if (ai.semanticMappings?.dueDate) {
+                aiParts.push(`Due=${ai.semanticMappings.dueDate}`);
+            }
+
+            // Priority (second)
+            if (ai.semanticMappings?.priority) {
+                aiParts.push(`Priority=${ai.semanticMappings.priority}`);
+            }
+
+            // Status (third)
+            if (ai.semanticMappings?.status) {
+                aiParts.push(`Status=${ai.semanticMappings.status}`);
+            }
+
+            // Language (fourth)
+            if (ai.detectedLanguage) {
+                aiParts.push(`Lang=${ai.detectedLanguage}`);
+            }
+
+            // Other semantic mappings (fifth - grouped)
+            if (ai.semanticMappings) {
+                const otherMappings = Object.entries(ai.semanticMappings)
+                    .filter(
+                        ([key]) =>
+                            !["priority", "dueDate", "status"].includes(key),
+                    )
+                    .map(([key, value]) => `${key}=${value}`);
+                aiParts.push(...otherMappings);
+            }
+
+            // Confidence (last)
+            if (ai.confidence !== undefined) {
+                const conf = Math.round(ai.confidence * 100);
+                let level = "High";
+                if (ai.confidence < 0.5) level = "Low";
+                else if (ai.confidence < 0.7) level = "Medium";
+                aiParts.push(`Confidence=${level} (${conf}%)`);
+            }
+
+            if (aiParts.length > 0) {
+                parts.push(`🔍 AI Query: ${aiParts.join(", ")}`);
+            }
+        }
+
         return parts.length > 0 ? parts.join("\n") : null;
-    }
-
-    /**
-     * Render AI understanding box in chat interface
-     * Shows detailed AI parsing information for Smart Search and Task Chat
-     */
-    private renderAIUnderstanding(
-        container: HTMLElement,
-        message: ChatMessage,
-    ): void {
-        // Only show if enabled in settings and parsedQuery exists
-        if (
-            !this.plugin.settings.aiEnhancement.showAIUnderstanding ||
-            !message.parsedQuery ||
-            !message.parsedQuery.aiUnderstanding
-        ) {
-            return;
-        }
-
-        const ai = message.parsedQuery.aiUnderstanding;
-
-        // Create AI understanding box
-        const aiBox = container.createDiv({
-            cls: "task-chat-ai-understanding",
-        });
-
-        // Header
-        aiBox.createEl("div", {
-            cls: "task-chat-ai-understanding-header",
-            text: "🤖 AI Query Understanding",
-        });
-
-        const details = aiBox.createDiv({
-            cls: "task-chat-ai-understanding-details",
-        });
-
-        // Detected language
-        if (ai.detectedLanguage) {
-            const langDiv = details.createDiv({
-                cls: "task-chat-ai-understanding-item",
-            });
-            langDiv.createEl("strong", { text: "Language: " });
-            langDiv.createSpan({ text: ai.detectedLanguage });
-        }
-
-        // Typo corrections
-        if (ai.typoCorrections && ai.typoCorrections.length > 0) {
-            const typoDiv = details.createDiv({
-                cls: "task-chat-ai-understanding-item",
-            });
-            typoDiv.createEl("strong", { text: "Typo corrections: " });
-            const typoList = typoDiv.createEl("ul");
-            ai.typoCorrections.forEach((correction: any) => {
-                typoList.createEl("li", {
-                    text: `${correction.original} → ${correction.corrected}`,
-                });
-            });
-        }
-
-        // Semantic mappings
-        if (
-            ai.semanticMappings &&
-            Object.keys(ai.semanticMappings).length > 0
-        ) {
-            const mappingDiv = details.createDiv({
-                cls: "task-chat-ai-understanding-item",
-            });
-            mappingDiv.createEl("strong", { text: "Semantic mappings: " });
-            const mappingList = mappingDiv.createEl("ul");
-            for (const [key, value] of Object.entries(ai.semanticMappings)) {
-                mappingList.createEl("li", {
-                    text: `${key}: ${value}`,
-                });
-            }
-        }
-
-        // Confidence indicator
-        if (ai.confidence !== undefined) {
-            const confDiv = details.createDiv({
-                cls: "task-chat-ai-understanding-item",
-            });
-            confDiv.createEl("strong", { text: "Confidence: " });
-
-            const confidence = ai.confidence;
-            let emoji = "🎯";
-            let level = "High";
-            let color = "var(--text-success)";
-
-            if (confidence < 0.5) {
-                emoji = "⚠️";
-                level = "Low";
-                color = "var(--text-error)";
-            } else if (confidence < 0.7) {
-                emoji = "📊";
-                level = "Medium";
-                color = "var(--text-warning)";
-            }
-
-            const confSpan = confDiv.createSpan({
-                text: `${emoji} ${level} (${Math.round(confidence * 100)}%)`,
-            });
-            confSpan.style.color = color;
-        }
-
-        // Natural language indicator
-        if (ai.usedNaturalLanguage) {
-            details.createDiv({
-                cls: "task-chat-ai-understanding-item",
-                text: "✓ Natural language understanding was used",
-            });
-        }
     }
 
     /**
@@ -837,9 +780,6 @@ export class ChatView extends ItemView {
                 this.handleLinkClick(target as HTMLAnchorElement, contextPath);
             }
         });
-
-        // AI Understanding box (Phase 3: UI Feedback)
-        this.renderAIUnderstanding(messageEl, message);
 
         // Recommended tasks
         if (message.recommendedTasks && message.recommendedTasks.length > 0) {

@@ -2006,7 +2006,10 @@ export class SettingsTab extends PluginSettingTab {
 
         const orderSetting = new Setting(advancedFields)
             .setName("Display order")
-            .setDesc(orderDesc);
+            .setDesc(orderDesc)
+            .setTooltip(
+                "📊 This is a relative number - only the ORDER matters, not the actual values. Gaps don't matter (1,2,3 = 10,20,30 = 5,50,100). Used only when multiple tasks have identical scores.",
+            );
 
         // Add slider for easier adjustment
         orderSetting.addSlider((slider) => {
