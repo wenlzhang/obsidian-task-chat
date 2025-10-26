@@ -868,13 +868,13 @@ Result:
    **Goal**: Extract ATOMIC, MEANINGFUL keywords for optimal search matching
    
    **English & Latin-script languages**:
-   - Maximum: 1-2 words per keyword
+   - Maximum: 1 word per keyword
    - Prefer single words for better substring matching
    - Split phrases: "AI plugin" → ["AI", "plugin"] NOT ["AI plugin"]
    - Example: "How to develop Obsidian plugin" → ["develop", "Obsidian", "plugin"]
    
    **Chinese (中文) & CJK languages**:
-   - Maximum: 2-3 characters per keyword (NOT 5+ character compounds!)
+   - Maximum: 2-3 characters per keyword (NOT 4+ character compounds!)
    - Split long compounds into atomic meaningful units
    - Each unit should be independently searchable
    - ❌ WRONG: "在线购物平台" (6 chars, too long!) → will miss "购物" or "平台" alone
@@ -886,7 +886,7 @@ Result:
    
    **All other configured languages**:
    - Follow similar atomic principle: break down compounds
-   - Maximum 2-3 meaningful units per keyword
+   - Maximum 1-2 meaningful units per keyword
    - Prioritize searchability over linguistic correctness
    
    **Why atomic keywords matter**:
@@ -1427,7 +1427,7 @@ Example 9: Keywords with tags
 
 ⚠️ CRITICAL RULES (SEE DETAILED GUIDELINES ABOVE):
 - Extract ATOMIC keywords following language-specific length rules:
-  * English: 1-2 words maximum ("data analysis" → ["data", "analysis"])
+  * English: 1 word maximum ("data analysis" → ["data", "analysis"])
   * Chinese: 2-3 characters maximum ("在线购物平台" → ["在线", "购物", "平台"])
   * All languages: Break down compounds for better searchability
 - Always include proper nouns, but split if multi-word (e.g., "Obsidian AI" → ["Obsidian", "AI"])

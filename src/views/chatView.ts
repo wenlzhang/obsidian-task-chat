@@ -598,44 +598,85 @@ export class ChatView extends ItemView {
      * Get keyword expansion summary for display
      * Shows core keywords, expanded keywords, and expansion stats
      * Note: Keywords are already clean (deduplicated + stop words filtered) from extraction/AI
+     * IMPORTANT: Always return info when available, even with 0 results (helps user debug)
      */
     private getKeywordExpansionSummary(message: ChatMessage): string | null {
         const query = message.parsedQuery;
-        if (!query) return null;
+        if (!query) {
+            // No parsed query available
+            return null;
+        }
 
         const parts: string[] = [];
+        const hasResults =
+            message.recommendedTasks && message.recommendedTasks.length > 0;
 
         // Core keywords (already clean from extraction/AI)
         // Simple Search: extractKeywords() already deduplicated + filtered
         // Smart Search/Task Chat: AI returns clean keywords per explicit prompt instructions
         if (query.coreKeywords && query.coreKeywords.length > 0) {
-            parts.push(`🔑 Core: ${query.coreKeywords.join(", ")}`);
+            const keywordList = query.coreKeywords.join(", ");
+            // Always show keywords, even with 0 results (helps debug)
+            parts.push(`🔑 Core: ${keywordList}`);
+        } else if (!hasResults && message.role !== "user") {
+            // No core keywords extracted - show this info for 0 results
+            parts.push("🔑 Core: (none extracted)");
         }
 
         // Expanded keywords (if semantic expansion was used)
         // AI returns expanded keywords already deduplicated per prompt instructions
-        if (
-            query.expansionMetadata?.enabled &&
-            query.keywords &&
-            query.keywords.length > query.coreKeywords.length
-        ) {
-            // Find expanded-only keywords (not in core)
-            // Both arrays already clean, no need to deduplicate again
-            const expandedOnly = query.keywords.filter(
-                (k: string) => !query.coreKeywords.includes(k),
-            );
-            if (expandedOnly.length > 0) {
-                parts.push(`🤖 Semantic: ${expandedOnly.join(", ")}`);
+        if (query.expansionMetadata?.enabled) {
+            if (
+                query.keywords &&
+                query.keywords.length > (query.coreKeywords?.length || 0)
+            ) {
+                // Find expanded-only keywords (not in core)
+                // Both arrays already clean, no need to deduplicate again
+                const expandedOnly = query.keywords.filter(
+                    (k: string) =>
+                        !query.coreKeywords || !query.coreKeywords.includes(k),
+                );
+                if (expandedOnly.length > 0) {
+                    // Show first 20 expanded keywords, then count
+                    const displayKeywords = expandedOnly.slice(0, 20);
+                    const remaining = expandedOnly.length - 20;
+                    const keywordDisplay =
+                        displayKeywords.join(", ") +
+                        (remaining > 0 ? ` ...(+${remaining} more)` : "");
+                    parts.push(`🤖 Semantic: ${keywordDisplay}`);
+                }
+            } else if (!hasResults) {
+                // Expansion enabled but no expanded keywords - show this for 0 results
+                parts.push(
+                    "🤖 Semantic: (expansion enabled but no keywords generated)",
+                );
             }
         }
 
-        // Expansion stats
+        // Expansion stats - always show if metadata exists, even with 0 results
         if (query.expansionMetadata) {
             const meta = query.expansionMetadata;
             if (meta.enabled) {
+                // Show expansion statistics
+                const expansionRatio =
+                    meta.coreKeywordsCount > 0
+                        ? (meta.totalKeywords / meta.coreKeywordsCount).toFixed(
+                              1,
+                          )
+                        : "0";
                 parts.push(
-                    `📈 Expansion: ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total`,
+                    `📈 Expansion: ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total (${expansionRatio}× per keyword)`,
                 );
+
+                // For 0 results, add language distribution info
+                if (!hasResults && meta.languagesUsed?.length > 0) {
+                    parts.push(
+                        `🌐 Languages: ${meta.languagesUsed.join(", ")} (${meta.expansionsPerLanguagePerKeyword || "?"} per language)`,
+                    );
+                }
+            } else if (!hasResults) {
+                // Expansion disabled - mention this for 0 results
+                parts.push("📈 Expansion: disabled");
             }
         }
 
@@ -1385,9 +1426,55 @@ export class ChatView extends ItemView {
 
             // Handle direct results (Simple Search or Smart Search)
             if (result.directResults) {
+                // Build informative message, especially for 0 results
+                let content = `Found ${result.directResults.length} matching task(s):`;
+
+                // For 0 results, add helpful context about what was searched
+                if (result.directResults.length === 0 && result.parsedQuery) {
+                    const query = result.parsedQuery;
+                    const searchDetails: string[] = [];
+
+                    // Show what was searched for
+                    if (query.coreKeywords && query.coreKeywords.length > 0) {
+                        searchDetails.push(
+                            `Keywords: ${query.coreKeywords.join(", ")}`,
+                        );
+                    }
+                    if (query.priority) {
+                        searchDetails.push(`Priority: ${query.priority}`);
+                    }
+                    if (query.dueDate) {
+                        searchDetails.push(`Due: ${query.dueDate}`);
+                    }
+                    if (query.status) {
+                        searchDetails.push(`Status: ${query.status}`);
+                    }
+                    if (query.tags && query.tags.length > 0) {
+                        searchDetails.push(`Tags: ${query.tags.join(", ")}`);
+                    }
+                    if (query.folder) {
+                        searchDetails.push(`Folder: ${query.folder}`);
+                    }
+
+                    if (searchDetails.length > 0) {
+                        content += `\n\n**Searched for:**\n${searchDetails.join(" | ")}`;
+
+                        // Add expansion info if available
+                        if (
+                            query.expansionMetadata?.enabled &&
+                            query.expansionMetadata.totalKeywords > 0
+                        ) {
+                            content += `\n\n**Note:** Semantic expansion generated ${query.expansionMetadata.totalKeywords} search terms across ${query.expansionMetadata.languagesUsed?.join(", ") || "configured languages"}, but no tasks matched any of them. See details below.`;
+                        }
+
+                        // Suggest troubleshooting
+                        content += `\n\n**Tip:** Check the expansion details below to see what was searched. You may want to:\n- Verify the keywords are relevant to your tasks\n- Check if you have tasks in your vault matching these terms\n- Try simpler or different search terms`;
+                    }
+                }
+
                 const directMessage: ChatMessage = {
                     role: usedChatMode as "simple" | "smart",
-                    content: `Found ${result.directResults.length} matching task(s):`,
+                    content: content,
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,
