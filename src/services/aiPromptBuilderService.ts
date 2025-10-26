@@ -251,36 +251,49 @@ Remember: Inclusion > Exclusion. When in doubt, include the task!`;
     static buildSortOrderExplanation(sortOrder: SortCriterion[]): string {
         const criteriaMap: Record<
             string,
-            { name: string; desc: string; detail: string }
+            { name: string; desc: string; detail: string; scoring: string }
         > = {
             relevance: {
                 name: "keyword relevance",
                 desc: "best matches",
                 detail: "Higher keyword match (100 → 0)",
+                scoring:
+                    "Comprehensive score: (coreKeywordRatio × coreWeight + allKeywordRatio × 1.0) × relevanceCoefficient",
             },
             dueDate: {
                 name: "due date",
                 desc: "urgency",
                 detail: "Most urgent (overdue → today → future)",
+                scoring:
+                    "Time-range score: overdue=1.5, 7days=1.0, month=0.5, later=0.2, none=0.1 (× dueDateCoefficient)",
             },
             priority: {
                 name: "priority",
                 desc: "importance",
                 detail: "Highest first (1 → 4)",
+                scoring:
+                    "Priority-level score: P1=1.0, P2=0.75, P3=0.5, P4=0.2, none=0.1 (× priorityCoefficient)",
             },
             created: {
                 name: "creation date",
                 desc: "recency",
                 detail: "Newest first (recent → old)",
+                scoring: "Date comparison: newer tasks ranked higher",
             },
             alphabetical: {
                 name: "alphabetical",
                 desc: "A → Z",
                 detail: "Standard order (A → Z)",
+                scoring: "Lexicographic comparison of task content",
             },
         };
 
         const primary = criteriaMap[sortOrder[0]];
+        const secondary =
+            sortOrder.length > 1 ? criteriaMap[sortOrder[1]] : null;
+        const tertiary =
+            sortOrder.length > 2 ? criteriaMap[sortOrder[2]] : null;
+
         const sortChain = sortOrder
             .map((c) => criteriaMap[c]?.name || c)
             .join(" → ");
@@ -289,17 +302,57 @@ Remember: Inclusion > Exclusion. When in doubt, include the task!`;
             .filter(Boolean)
             .join(" | ");
 
+        // Build sort criteria details
+        let criteriaDetails = `PRIMARY CRITERION (${primary?.name}):\n  ${primary?.detail}\n  Scoring: ${primary?.scoring}`;
+
+        if (secondary) {
+            criteriaDetails += `\n\nSECONDARY CRITERION (${secondary.name}):\n  Applied when primary scores are equal\n  ${secondary.detail}\n  Scoring: ${secondary.scoring}`;
+        }
+
+        if (tertiary) {
+            criteriaDetails += `\n\nTERTIARY CRITERION (${tertiary.name}):\n  Applied when primary AND secondary scores are equal\n  ${tertiary.detail}\n  Scoring: ${tertiary.scoring}`;
+        }
+
         return `
-TASK ORDERING (Pre-Sorted):
-Sort: ${sortChain}
-Primary: ${primary?.desc} (${primary?.detail})
+🚨 TASK ORDERING IN USER CONFIGURATION (Pre-Sorted)
+The task list below has been SORTED by the following criteria in this EXACT order:
 
-⚠️ IMPLICATIONS:
-- Lower task IDs = higher relevance/urgency/importance  
-- [TASK_1]-[TASK_3] are TOP ranked by these criteria
-- Prioritize earlier IDs in recommendations
+SORT CHAIN: ${sortChain}
 
-Details: ${details}`;
+${criteriaDetails}
+
+⚠️ CRITICAL IMPLICATIONS FOR YOUR RECOMMENDATIONS:
+
+1. **TASK ID RANKING**:
+   - Lower task IDs = HIGHER ranking by these criteria
+   - [TASK_1], [TASK_2], [TASK_3] are the TOP-RANKED tasks
+   - Task list already reflects user's preferred ordering
+
+2. **PRIORITIZATION GUIDANCE**:
+   - First tasks in list are most relevant/urgent/important by user's criteria
+   - Recommend from early IDs ([TASK_1]-[TASK_10]) for highest-priority work
+   - Later IDs ([TASK_50]+) are lower-ranked but may still be relevant
+
+3. **SORT CRITERIA IN USE**:
+   Primary: ${primary?.desc} - ${primary?.detail}
+   ${secondary ? `Secondary: ${secondary.desc} - ${secondary.detail}` : ""}
+   ${tertiary ? `Tertiary: ${tertiary.desc} - ${tertiary.detail}` : ""}
+
+4. **WHAT THIS MEANS FOR RECOMMENDATIONS**:
+   - Tasks are ALREADY ordered by importance/urgency/relevance
+   - Your job is to identify WHICH of these pre-sorted tasks to recommend
+   - Recommend 80%+ of tasks, prioritizing earlier IDs
+   - Provide brief guidance on prioritization WITHIN these pre-sorted tasks
+
+🔍 UNDERSTANDING TASK METADATA:
+Each task includes clean metadata (Status, Priority, Due, etc.) - use this to understand why tasks are ranked this way.
+
+Example ordering: "keyword relevance → due date → priority"
+→ Best keyword matches first, then by urgency, then by importance
+→ [TASK_1] has highest keyword match + may be most urgent/important
+→ Recommend starting with [TASK_1], [TASK_2], [TASK_3], etc.
+
+Full details: ${details}`;
     }
 
     /**

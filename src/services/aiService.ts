@@ -1165,20 +1165,55 @@ export class AIService {
         // Append technical instructions for task management
         systemPrompt += `
 
-🚨 CRITICAL RULES:
-1. ONLY discuss tasks from the list below - no generic advice
-2. Use [TASK_X] IDs to reference tasks (e.g., [TASK_15], [TASK_42])
-3. Recommend ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)}+ of ${taskCount} tasks (80%, max ${settings.maxRecommendations})
-4. Brief explanation (2-3 sentences), reference MANY tasks
-5. DO NOT list task content - IDs only (they appear below your response)
+⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST BELOW ⚠️
 
-TASK ID FORMAT:
-Use EXACT [TASK_X] IDs from list below (e.g., [TASK_15], [TASK_42], [TASK_3])
-System converts to sequential: [TASK_15] → "Task 1", [TASK_42] → "Task 2"
-Your mention order = user's numbering
+🚨 YOU MUST NOT:
+- Provide generic advice (e.g., "research the market", "organize your workspace")
+- Suggest actions that aren't in the task list
+- Give general productivity tips
+- Recommend creating new tasks
+- Discuss hypothetical tasks
+- Provide knowledge-based answers
 
-Example: "Start with [TASK_42] (most urgent), then [TASK_15], [TASK_3]"
-→ User sees: "Start with Task 1 (most urgent), then Task 2, Task 3"
+🚨 YOU MUST ONLY:
+- Reference SPECIFIC tasks from the list below using [TASK_X] IDs
+- Recommend which tasks to focus on based on the task list
+- Explain prioritization using ACTUAL task details
+- Discuss relationships between EXISTING tasks
+- Your entire response must be grounded in the specific tasks provided
+
+If there are NO relevant tasks in the list, say: "No matching tasks found for this query."
+DO NOT suggest creating tasks or provide generic advice as a fallback.
+
+🚨 CRITICAL TASK RECOMMENDATION RULES:
+
+1. **TASK REFERENCE FORMAT** (REQUIRED):
+   - Use EXACT [TASK_X] IDs from the list below
+   - Examples: [TASK_15], [TASK_42], [TASK_3]
+   - System automatically converts these to sequential numbering for user
+   - Your mention order = user's task numbering
+
+2. **HOW TASK ID CONVERSION WORKS**:
+   - You write: "Start with [TASK_42], then [TASK_15], [TASK_3]"
+   - System converts to: "Start with Task 1, then Task 2, Task 3"
+   - User sees clean sequential numbers in the order YOU mentioned
+   - Original [TASK_X] IDs link to actual task content below
+
+3. **RECOMMENDATION TARGETS**:
+   - ${taskCount} pre-filtered tasks available
+   - Recommend ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)}+ tasks (aim for 80%, minimum 10)
+   - Maximum allowed: ${settings.maxRecommendations} tasks
+   - More tasks = better (comprehensive lists preferred)
+
+4. **RESPONSE FORMAT**:
+   - Brief explanation (2-3 sentences)
+   - Reference MANY tasks with [TASK_X] format
+   - DO NOT list task content (appears automatically below your response)
+   - Focus on prioritization guidance and relationships
+
+5. **EXAMPLE RESPONSE STRUCTURE**:
+   Good: "Start with [TASK_42] (most urgent due today), then [TASK_15] and [TASK_3] (high priority blockers). Follow with [TASK_7], [TASK_8], [TASK_12]..."
+   Bad: "You should research the market and organize your workspace" ❌
 
 ${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
 
@@ -1186,13 +1221,19 @@ ${PromptBuilderService.buildMetadataGuidance(settings)}
 
 ${PromptBuilderService.buildRecommendationLimits(settings)}
 
-QUERY CONTEXT:
-Tasks PRE-FILTERED to match query${filterContext}
-Recommend 80%+ with prioritization guidance
+🚨 QUERY CONTEXT (CRITICAL):
+- Tasks have been PRE-FILTERED to match the user's query${filterContext}
+- The list below contains ONLY tasks that already match the query
+- DO NOT second-guess the filtering - these tasks ARE relevant
+- Your job: Recommend 80%+ of these pre-filtered tasks with prioritization guidance
+- These tasks have ALREADY been scored and sorted for quality
 
 ${PromptBuilderService.buildSortOrderExplanation(sortOrder)}
 
-${taskContext}`;
+📋 TASK LIST (${taskCount} tasks):
+${taskContext}
+
+⚠️ REMINDER: Reference tasks using [TASK_X] IDs only. Task content appears automatically below your response.`;
 
         const messages: any[] = [
             {
