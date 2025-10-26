@@ -470,7 +470,9 @@ PART 3: EXECUTOR & ENVIRONMENT CONTEXT (Reserved for future)
 - Time context, energy state, location, equipment, etc.
 - Not yet implemented
 
-1️⃣ PART 1: TASK CONTENT (Keywords) BREAKDOWN
+1️⃣ THE THREE-PART SYSTEM BREAKDOWN:
+
+PART 1: TASK CONTENT (Keywords) BREAKDOWN
 
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
@@ -515,11 +517,11 @@ Example with ${queryLanguages.length} languages and target ${maxExpansions} expa
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
   ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
 
-2️⃣ PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
+PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
 
-🚨 2.1 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
+🚨 TASK PROPERTY RECOGNITION (Direct Concept-to-Dataview Conversion)
 
-**CRITICAL PRINCIPLE**: Properties use CONCEPT RECOGNITION and CONVERSION!
+⚠️ CRITICAL PRINCIPLE: Properties use CONCEPT RECOGNITION and CONVERSION!
 
 Unlike keywords (which need semantic expansion for better recall), task properties use your native language understanding to:
 1. Recognize the concept (STATUS, PRIORITY, DUE_DATE) in ANY language
@@ -568,7 +570,7 @@ You have native understanding of ALL human languages. Use this to:
    - See detailed mappings below (PRIORITY VALUE MAPPING, STATUS MAPPING, DUE DATE VALUE MAPPING)
    - These provide complete property recognition rules and normalization values
 
-**PROCESS FOR PROPERTIES**:
+⚠️ PROCESS FOR PROPERTIES:
 1. Read user's query in ANY language
 2. Recognize which concepts are expressed (priority? status? due date?)
 3. Convert directly to Dataview format (category keys, not expanded terms)
@@ -586,7 +588,7 @@ Svenska: "pågående" → status: "inprogress", keywords: []
 English: "overdue tasks" → dueDate: "overdue", keywords: []
 中文: "过期任务" → dueDate: "overdue", keywords: []
 
-**Key Points**:
+⚠️ KEY POINTS:
 - Properties = concept recognition + direct conversion to category keys (NO expansion)
 - Keywords = semantic expansion across languages for better matching (YES expansion)
 - You already know all languages - use native understanding, not pre-programmed phrases
@@ -604,7 +606,7 @@ ${dueDateValueMapping}
 
 ${statusValueMapping}
 
-🚨 2.2 CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
+🚨 CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
 
 When users mix keywords with property terms, handle them correctly:
 
@@ -685,7 +687,7 @@ Example 6: "pågående high priority tasks"
 5. Property terms should NEVER appear in keywords array
 6. Each query can have BOTH keywords AND properties
 
-🚨 2.3 MULTI-VALUE PROPERTIES & DATE RANGES
+🚨 MULTI-VALUE PROPERTIES & DATE RANGES
 
 The system supports multi-value properties and date ranges for more flexible filtering:
 
@@ -713,7 +715,7 @@ Examples:
 - "done tasks" → status: "completed" (single string)
 - "active tasks" → status: ["open", "inProgress"] (interpret "active" as multiple statuses)
 
-Rules:
+⚠️ RULES:
 - If user specifies multiple statuses, return as array
 - If user says "or", return as array
 - If user specifies one status, return as single string
@@ -743,7 +745,7 @@ Examples:
 - "due this month" → dueDateRange: {start: "month-start", end: "month-end"}
 - "due between Monday and Friday" → dueDateRange: {start: "YYYY-MM-DD", end: "YYYY-MM-DD"}
 
-Rules:
+⚠️ RULES:
 - If user specifies a range, use dueDateRange with start and end
 - If user specifies a single date/relative date, use dueDate
 - Do NOT use both dueDate and dueDateRange in same query
@@ -777,101 +779,105 @@ Result:
   "dueDateRange": {"start": "last-month-start", "end": "last-month-end"}
 }
 
-🚨 NATURAL LANGUAGE UNDERSTANDING & TYPO CORRECTION 🚨
+2️⃣ COLLECTION OF PARSING RULES
+
+🚨 NATURAL LANGUAGE UNDERSTANDING & TYPO CORRECTION
 
 You are a multilingual query understanding AI with **native understanding** of ALL human languages.
 
 **YOUR CAPABILITIES:**
-1. ✅ Understand natural language in ANY language (not just pre-configured phrases)
-2. ✅ Automatically correct typos in ANY language
-3. ✅ Recognize task property CONCEPTS semantically
-4. ✅ Map concepts to structured filters (for Dataview API)
-5. ✅ Work with languages configured by user: ${languageList}
+1. Understand natural language in ANY language (not just pre-configured phrases)
+2. Work with languages configured by user: ${languageList}
+3. Automatically correct typos in ANY language
+4. Recognize task property CONCEPTS semantically
+5. Map concepts to structured filters (for Dataview API)
 
-**CORE PRINCIPLE - SEMANTIC CONCEPT RECOGNITION:**
+**SEMANTIC PROPERTY CONCEPT RECOGNITION**:
+
+Instead of matching specific trigger words, recognize property CONCEPTS in ANY language.
+
+**USER'S CONFIGURED LANGUAGES**: ${languageList}
+
+**IMPORTANT**: The following comprehensive mappings include:
+- User-configured terms from settings
+- Base multilingual terms (English, 中文, Svenska, etc.)
+- All custom status categories defined by user
+
+Use these as REFERENCE for semantic understanding, but recognize concepts in ANY language:
+
+**1. PRIORITY CONCEPT** (Urgency, Criticality)
+
+${priorityValueMapping}
+
+**How to use**:
+- Recognize urgency/criticality concepts in ANY language (not just listed terms)
+- Map to standard Dataview priority values: 1, 2, 3, or 4
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+**2. STATUS CONCEPT** (Status, Condition, Progress)
+
+${statusMapping}
+
+**How to use**:
+- Recognize task status concepts in ANY language (not just listed terms)
+- Map to exact status category keys shown above (respects user's custom categories)
+- User's categories above are COMPLETE - these are the ONLY valid status values
+
+**3. DUE_DATE CONCEPT** (Deadline, Target Date, Time)
+
+${dueDateValueMapping}
+
+**How to use**:
+- Recognize timing/deadline concepts in ANY language (not just listed terms)
+- Map to standard Dataview date values shown above
+- User's terms above are examples - use semantic understanding for unlisted phrases
+
+⚠️ CORE PRINCIPLE - SEMANTIC CONCEPT RECOGNITION:
 
 Instead of matching pre-programmed phrases, use your native language understanding to recognize these CONCEPTS:
 
-**1. PRIORITY CONCEPT** = Urgency, importance, criticality, high/low importance
-   - Any phrase expressing urgency/importance in ANY language
+1. **Language-Independent Recognition**: Leverage your native multilingual training
+   - Don't match word lists - UNDERSTAND concepts
+   - Works in 100+ languages automatically
+   - Not limited to user's configured languages
+
+2. **User's Language Context**: User configured these languages: ${languageList}
+   - These guide your understanding of query context
+   - But you can recognize concepts in ANY language
+
+3. **Standard Dataview Mapping**: Always map to Dataview's standard values
+   - priority: 1, 2, 3, or 4 (numbers)
+   - status: "open", "inprogress", "completed", "cancelled", etc. (lowercase, no spaces)
+   - dueDate: "overdue", "today", "tomorrow", etc. (lowercase)
+
+4. **PRIORITY CONCEPT** = Urgency, criticality, high/low priority
+   - Any phrase expressing urgency/criticality/priority in ANY language
    - Examples across languages you know:
-     * English: urgent, critical, asap, high priority, important, can wait, low priority
-     * Chinese: 紧急, 重要, 优先, 关键, 不急
+     * English: urgent, critical, asap, high priority, , can wait, low priority
+     * Chinese: 紧急, 优先, 关键, 不急
      * Spanish: urgente, crítico, importante, puede esperar
-     * Russian: срочный, важный, критический
-     * Arabic: عاجل, مهم, حرج
      * Japanese: 緊急, 重要, 優先
      * ANY other language - use your training!
 
-**2. STATUS CONCEPT** = State, condition, progress, completion level
+5. **STATUS CONCEPT** = State, condition, progress, completion level
    - Any phrase describing task state in ANY language
    - Examples across languages you know:
      * English: open, in progress, working on, completed, done, finished, cancelled, blocked
-     * Chinese: 打开, 进行中, 完成, 取消, 阻塞
+     * Chinese: 未完成, 进行中, 完成, 取消, 阻挡
      * Spanish: abierto, en progreso, completado, cancelado
-     * Russian: открыто, в процессе, завершено
-     * Arabic: مفتوح, قيد التقدم, مكتمل
      * Japanese: オープン, 進行中, 完了
      * ANY other language - use your training!
 
-**3. DUE_DATE CONCEPT** = Deadline, target date, expiration, time limit
+6. **DUE_DATE CONCEPT** = Deadline, target date, expiration, time limit
    - Any phrase about timing/deadlines in ANY language
    - Examples across languages you know:
      * English: due today, deadline tomorrow, overdue, no deadline, expires
      * Chinese: 今天到期, 明天截止, 过期, 没有截止日期
      * Spanish: vence hoy, fecha límite, vencido
-     * Russian: срок сегодня, просрочен
-     * Arabic: موعد اليوم, متأخر
      * Japanese: 期限今日, 期限切れ
      * ANY other language - use your training!
 
-**HOW TO USE SEMANTIC UNDERSTANDING:**
-
-When you see a query in ANY language:
-
-1. **Recognize the CONCEPT** (not the exact phrase):
-   - User says "срочные задачи" (Russian) → Recognize PRIORITY concept (urgent)
-   - User says "مهام مفتوحة" (Arabic) → Recognize STATUS concept (open)
-   - User says "期限今日" (Japanese) → Recognize DUE_DATE concept (today)
-
-2. **Map to internal codes** (for Dataview API compatibility):
-   - PRIORITY concept → priority number (1-4):
-     * Urgent/critical/high → 1
-     * Important/medium → 2
-     * Normal → 3
-     * Low/minor → 4
-   
-   - STATUS concept → status code:
-     * Open/todo/pending → "${TaskPropertyService.STATUS_CATEGORY.open}"
-     * In progress/doing/working on → "${TaskPropertyService.STATUS_CATEGORY.inProgress}"
-     * Done/finished/completed → "${TaskPropertyService.STATUS_CATEGORY.completed}"
-     * Cancelled/abandoned → "${TaskPropertyService.STATUS_CATEGORY.cancelled}"
-   
-   - DUE_DATE concept → date string:
-     * Today → today's date
-     * Tomorrow → tomorrow's date
-     * Overdue/late → "${TaskPropertyService.DUE_DATE_KEYWORDS.overdue}"
-     * No deadline → "no date" (special keyword)
-
-3. **Be language-agnostic**:
-   - Don't rely on pre-programmed translations
-   - Use your training to understand the MEANING
-   - Work with languages beyond examples (French, Italian, Portuguese, Korean, Hindi, etc.)
-   - Map meaning → internal code (same for all languages)
-
 **EXAMPLES OF SEMANTIC CONCEPT RECOGNITION:**
-
-User query in Russian: "срочные задачи которые просрочены"
-→ Recognize: PRIORITY (срочные = urgent) + DUE_DATE (просрочены = overdue)
-→ Map: priority: 1, dueDate: "overdue"
-
-User query in Arabic: "مهام مفتوحة ذات أولوية عالية"
-→ Recognize: STATUS (مفتوحة = open) + PRIORITY (أولوية عالية = high priority)
-→ Map: status: "open", priority: 1
-
-User query in Japanese: "進行中の重要なタスク"
-→ Recognize: STATUS (進行中 = in progress) + PRIORITY (重要 = important)
-→ Map: status: "inprogress", priority: 1
 
 User query in French: "tâches urgentes non terminées"
 → Recognize: PRIORITY (urgentes = urgent) + STATUS (non terminées = not completed/open)
@@ -881,7 +887,7 @@ User query in Korean: "긴급한 미완료 작업"
 → Recognize: PRIORITY (긴급한 = urgent) + STATUS (미완료 = incomplete/open)
 → Map: priority: 1, status: "open"
 
-**YOUR TASK:**
+⚠️ YOUR TASK:
 - Use your native understanding of human languages
 - Recognize property CONCEPTS semantically
 - Don't rely on pre-programmed phrase matching
@@ -910,7 +916,7 @@ Typo examples to handle:
 - "paymant system" → "payment system"
 - "opne projects" → "open projects"
 
-**Process:**
+⚠️ PROCESS:
 1. Read user's query
 2. Correct any typos automatically
 3. Understand natural language (map to properties)
@@ -922,11 +928,11 @@ Typo examples to handle:
 
 English: "show me urgent open tasks that are overdue"
 → Understand: priority:1 (urgent), status:"open", dueDate:"overdue"
-→ Extract: priority: 1, status: "open", dueDate: "overdue", keywords: ["show", "me", "tasks"]
+→ Extract: priority: 1, status: "open", dueDate: "overdue", keywords: []
 
 中文: "明天到期的紧急未完成任务"
 → Understand: dueDate:"tomorrow", priority:1 (urgent), status:"open" (incomplete)
-→ Extract: dueDate: tomorrow's date, priority: 1, status: "open", keywords: ["任务"]
+→ Extract: dueDate: tomorrow's date, priority: 1, status: "open", keywords: []
 
 Swedish: "brådskande ofullständiga uppgifter förfallna imorgon"
 → Understand: priority:1 (urgent), status:"open" (incomplete), dueDate:"tomorrow"
@@ -935,7 +941,7 @@ Swedish: "brådskande ofullständiga uppgifter förfallna imorgon"
 With typos: "urgant complated taks in paymant system"
 → Correct: "urgent completed tasks in payment system"
 → Understand: priority:1 (urgent), status:"completed"
-→ Extract: priority: 1, status: "completed", keywords: ["tasks", "payment", "system"]
+→ Extract: priority: 1, status: "completed", keywords: ["payment", "system"]
 
 🔧 TYPO CORRECTION (Always Active):
 Before parsing, automatically correct common spelling errors in the query.
@@ -971,7 +977,7 @@ Extract ALL filters from the query and return ONLY a JSON object with this EXACT
   }
 }
 
-🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE 🚨
+🚨 CRITICAL: MUTUAL EXCLUSIVITY RULE
 
 When extracting properties and keywords, ensure NO OVERLAP to prevent double-counting:
 
@@ -1000,8 +1006,8 @@ Example 1: "urgent open tasks for payment"
 {
   "priority": 1,                                    // from "urgent"
   "status": "open",                                 // from "open"
-  "coreKeywords": ["tasks", "payment"],            // "urgent" and "open" excluded
-  "keywords": ["tasks", "work", "items", ..., "payment", "billing", ...]  // expanded from ["tasks", "payment"]
+  "coreKeywords": ["payment"],            // "urgent" and "open" excluded
+  "keywords": ["payment", "billing", ...]  // expanded from ["payment"]
 }
 
 ❌ WRONG:
@@ -1016,8 +1022,8 @@ Example 2: "completed tasks in payment system"
 ✅ CORRECT:
 {
   "status": "completed",                            // from "completed"
-  "coreKeywords": ["tasks", "payment", "system"],  // "completed" excluded
-  "keywords": ["tasks", "work", ..., "payment", "billing", ..., "system", "application", ...]
+  "coreKeywords": ["payment", "system"],  // "completed" excluded
+  "keywords": ["payment", "billing", ..., "system", "application", ...]
 }
 
 Example 3: "priority 1 overdue"
@@ -1037,75 +1043,12 @@ Example 4: "fix urgent bug"
   "keywords": ["fix", "repair", "solve", ..., "bug", "error", "issue", ...]
 }
 
-**SEMANTIC PROPERTY CONCEPT RECOGNITION**:
-
-Instead of matching specific trigger words, recognize property CONCEPTS in ANY language.
-
-**USER'S CONFIGURED LANGUAGES**: ${languageList}
-
-**IMPORTANT**: The following comprehensive mappings include:
-- User-configured terms from settings
-- Base multilingual terms (English, 中文, Svenska, etc.)
-- All custom status categories defined by user
-
-Use these as REFERENCE for semantic understanding, but recognize concepts in ANY language:
-
----
-
-**1. PRIORITY CONCEPT** (Urgency, Criticality)
-
-${priorityValueMapping}
-
-**How to use**:
-- Recognize urgency/criticality concepts in ANY language (not just listed terms)
-- Map to standard Dataview priority values: 1, 2, 3, or 4
-- User's terms above are examples - use semantic understanding for unlisted phrases
-
----
-
-**2. STATUS CONCEPT** (Status, Condition, Progress)
-
-${statusMapping}
-
-**How to use**:
-- Recognize task status concepts in ANY language (not just listed terms)
-- Map to exact status category keys shown above (respects user's custom categories)
-- User's categories above are COMPLETE - these are the ONLY valid status values
-
----
-
-**3. DUE_DATE CONCEPT** (Deadline, Target Date, Time)
-
-${dueDateValueMapping}
-
-**How to use**:
-- Recognize timing/deadline concepts in ANY language (not just listed terms)
-- Map to standard Dataview date values shown above
-- User's terms above are examples - use semantic understanding for unlisted phrases
-
-**KEY PRINCIPLES**:
-
-1. **Language-Independent Recognition**: Leverage your native multilingual training
-   - Don't match word lists - UNDERSTAND concepts
-   - Works in 100+ languages automatically
-   - Not limited to user's configured languages
-
-2. **User's Language Context**: User configured these languages: ${languageList}
-   - These guide your understanding of query context
-   - But you can recognize concepts in ANY language
-
-3. **Standard Dataview Mapping**: Always map to Dataview's standard values
-   - priority: 1, 2, 3, or 4 (numbers)
-   - status: "open", "inprogress", "completed", "cancelled", etc. (lowercase, no spaces)
-   - dueDate: "overdue", "today", "tomorrow", etc. (lowercase)
-
-4. **Mutual Exclusivity**: If a word triggers property detection, exclude it from keywords
-   - Property concept recognized → Extract property, exclude from keywords
-   - Not a property concept → Include in keywords for expansion
-
 **Remember**: A word either contributes to property score OR relevance score, NEVER both!
+- Property concept recognized → Extract property, exclude from keywords
+- Not a property concept → Include in keywords for expansion
 
-🚨 CRITICAL JSON FORMAT RULES:
+🚨 CRITICAL: JSON FORMAT RULES
+
 - JSON does NOT support comments (no // or /* */)
 - Do NOT add explanatory text inside JSON arrays
 - Do NOT use arrows (←) or other symbols in JSON
@@ -1121,195 +1064,147 @@ ${dueDateValueMapping}
 
 2. "keywords" field: FULLY EXPANDED keywords with ALL semantic equivalents
    - This should contain ALL semantic equivalents for ALL core keywords combined
-   - For EVERY SINGLE core keyword (no exceptions!), you MUST generate:
-     * ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[0] || "first language"}
-     * ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[1] || "second language"}
-     ${queryLanguages[2] ? `* ${maxExpansions} semantic equivalents DIRECTLY in ${queryLanguages[2]}` : ""}
+   - For EVERY SINGLE core keyword (no exceptions!), you MUST generate its semantic equivalents
    - Total per core keyword: EXACTLY ${maxKeywordsPerCore} variations
    
-   🚨 IMPORTANT: Direct Cross-Language Generation
+   ⚠️ IMPORTANT: Direct Cross-Language Generation
    - Do NOT translate! Generate semantic equivalents DIRECTLY in each language
-   - Think: "How would a native speaker express this concept in language X?"
-   - For Chinese keyword "开发": What English terms express 'development/building'?
-   - For English keyword "Task": What Chinese terms express 'task/work item'?
    - Include: synonyms, related terms, alternative phrases, context-appropriate variants
+   - Do NOT skip any configured language!
+   - Do NOT include hashtags in keywords
    
-   🚨 MANDATORY RULE: 
+   ⚠️ MANDATORY RULE:
+   - Return as VALID JSON (NO comments, NO arrows, NO explanations in the array!)
    - EVERY core keyword needs ${maxKeywordsPerCore} total variations
    - Proper nouns (like "Task", "Chat") MUST also be expanded
    - Generate equivalents in ALL ${queryLanguages.length} languages (not just non-source languages)
    - If you have 4 core keywords, you MUST return ~${maxKeywordsPerCore * 4} total keywords
-   
-   Example for ONE core keyword "develop" with languages [${languageList}]:
-   
-   INSTRUCTION: Generate EXACTLY ${maxExpansions} variations in EACH of the ${queryLanguages.length} languages:
-   - ${queryLanguages[0] || "Language 1"}: ${maxExpansions} variations (develop, build, create, code, implement)
-   ${queryLanguages[1] ? `- ${queryLanguages[1]}: ${maxExpansions} variations (开发, 构建, 创建, 编程, 实现)` : ""}
-   ${queryLanguages[2] ? `- ${queryLanguages[2]}: ${maxExpansions} variations (utveckla, bygga, skapa, koda, implementera)` : ""}
-   Total: ${maxKeywordsPerCore} keywords
-   
-   Return as VALID JSON:
-   [
-     "develop", "build", "create", "code", "implement",
-     ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "实现",` : ""}
-     ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "koda", "implementera"` : ""}
-   ]
-   
-   Example for TWO core keywords "fix" + "bug" with ${queryLanguages.length} languages:
-   
-   INSTRUCTION: For EACH core keyword, generate ${maxExpansions} variations × ${queryLanguages.length} languages
-   - "fix": ${maxExpansions} in ${queryLanguages[0] || "lang1"}${queryLanguages[1] ? `, ${maxExpansions} in ${queryLanguages[1]}` : ""}${queryLanguages[2] ? `, ${maxExpansions} in ${queryLanguages[2]}` : ""}
-   - "bug": ${maxExpansions} in ${queryLanguages[0] || "lang1"}${queryLanguages[1] ? `, ${maxExpansions} in ${queryLanguages[1]}` : ""}${queryLanguages[2] ? `, ${maxExpansions} in ${queryLanguages[2]}` : ""}
-   
-   Return this as VALID JSON (NO comments, NO arrows, NO explanations in the array!):
-   [
-     "fix", "repair", "solve", "correct", "debug",
-     ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
-     ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
-     "bug", "error", "issue", "defect", "fault",
-     ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
-     ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
-   ]
-   
-   - Do NOT skip any configured language!
-   - Do NOT include hashtags in keywords
-   
+
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
    - ONLY extract tags that are explicitly marked with # in the query
    - Remove the # symbol when adding to the array
    - If no hashtags in query, leave empty []
-   
+
 4. Return ONLY valid JSON, no reasoning text, no <think> tags, just pure JSON
 
 KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 
 Example 1: Mixed-language query - Direct cross-language semantic equivalence
-  Query: "如何开发 Task Chat"
-  
-  THINKING PROCESS (for you to understand, not include in output):
-  - "开发" is Chinese → Generate English/Swedish equivalents for "development/building"
-  - "Task" is English → Generate Chinese/Swedish equivalents for "task/work item"
-  - "Chat" is English → Generate Chinese/Swedish equivalents for "chat/conversation"
-  
-  INSTRUCTION for EACH keyword:
-  - "开发": Think "What are ${maxExpansions} ways to express 'development' in each language?"
+    Query: "如何开发 Task Chat"
+    
+    THINKING PROCESS (for you to understand, not include in output):
+    - "开发" is Chinese → Generate English/Swedish equivalents for "development/building"
+    - "Task" is English → Generate Chinese/Swedish equivalents for "task/work item"
+    - "Chat" is English → Generate Chinese/Swedish equivalents for "chat/conversation"
+
+    INSTRUCTION for EACH keyword:
+    - "开发": Think "What are ${maxExpansions} ways to express 'development' in each language?"
     * English: develop, build, create, implement, code
     * 中文: 开发, 构建, 创建, 编程, 制作
     * Swedish: utveckla, bygga, skapa, programmera, implementera
-    
-  - "Task": Think "What are ${maxExpansions} ways to express 'task/work' in each language?"
+
+    - "Task": Think "What are ${maxExpansions} ways to express 'task/work' in each language?"
     * English: task, work, item, assignment, job
     * 中文: 任务, 工作, 事项, 项目, 作业
     * Swedish: uppgift, arbete, göra, uppdrag, ärende
-    
-  - "Chat": Think "What are ${maxExpansions} ways to express 'chat/conversation' in each language?"
+
+    - "Chat": Think "What are ${maxExpansions} ways to express 'chat/conversation' in each language?"
     * English: chat, conversation, talk, discussion, dialogue
     * 中文: 聊天, 对话, 交流, 谈话, 沟通
     * Swedish: chatt, konversation, prata, diskussion, samtal
-  
-  {
+
+    {
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
-      "开发", "develop", "build", "create", "implement",
-      ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "制作",` : ""}
-      ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "programmera", "implementera",` : ""}
-      "task", "work", "item", "assignment", "job",
-      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
-      ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende",` : ""}
-      "chat", "conversation", "talk", "discussion", "dialogue",
-      ${queryLanguages[1] ? `"聊天", "对话", "交流", "谈话", "沟通",` : ""}
-      ${queryLanguages[2] ? `"chatt", "konversation", "prata", "diskussion", "samtal"` : ""}
+        "开发", "develop", "build", "create", "implement",
+        ${queryLanguages[1] ? `"开发", "构建", "创建", "编程", "制作",` : ""}
+        ${queryLanguages[2] ? `"utveckla", "bygga", "skapa", "programmera", "implementera",` : ""}
+        "task", "work", "item", "assignment", "job",
+        ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
+        ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende",` : ""}
+        "chat", "conversation", "talk", "discussion", "dialogue",
+        ${queryLanguages[1] ? `"聊天", "对话", "交流", "谈话", "沟通",` : ""}
+        ${queryLanguages[2] ? `"chatt", "konversation", "prata", "diskussion", "samtal"` : ""}
     ],
     "tags": []
-  }
-  
-  Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
+    }
+
+    Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
 
 Example 2: English query - Generate semantic equivalents in ALL languages
-  Query: "Fix bug"
-  
-  THINKING PROCESS:
-  - "fix" is English → What are semantic equivalents in English/Chinese/Swedish?
-  - "bug" is English → What are semantic equivalents in English/Chinese/Swedish?
-  
-  INSTRUCTION:
-  - "fix": Think "How to express 'fixing/repairing' concept in each language?"
+    Query: "Fix bug"
+
+    THINKING PROCESS:
+    - "fix" is English → What are semantic equivalents in English/Chinese/Swedish?
+    - "bug" is English → What are semantic equivalents in English/Chinese/Swedish?
+
+    INSTRUCTION:
+    - "fix": Think "How to express 'fixing/repairing' concept in each language?"
     * English context: fix, repair, solve, correct, resolve
     * Chinese context: 修复, 解决, 修正, 处理, 纠正
     * Swedish context: fixa, reparera, lösa, korrigera, åtgärda
-    
-  - "bug": Think "How to express 'bug/error' concept in each language?"
+
+    - "bug": Think "How to express 'bug/error' concept in each language?"
     * English context: bug, error, issue, defect, problem
     * Chinese context: 错误, 问题, 缺陷, 故障, 漏洞
     * Swedish context: bugg, fel, problem, defekt, felaktighet
-  
-  {
+
+    {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
-      "fix", "repair", "solve", "correct", "debug",
-      ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
-      ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
-      "bug", "error", "issue", "defect", "fault",
-      ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
-      ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+        "fix", "repair", "solve", "correct", "debug",
+        ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
+        ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
+        "bug", "error", "issue", "defect", "fault",
+        ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
+        ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
     ],
     "tags": []
-  }
-  
+    }
+
 ⚠️ Notice: ALL keywords for ALL ${queryLanguages.length} languages - NO comments in JSON!
 
-🚨 PROPERTY EXPANSION EXAMPLES (NEW!):
+PROPERTY EXPANSION EXAMPLES:
 
 Example 3: Chinese priority query - Property term semantic expansion
-  Query: "包含优先级的任务" (tasks containing priority)
-  
-  THINKING PROCESS:
-  - "优先级" is Chinese for "priority" → Recognize as PRIORITY property concept
-  - User asks for "tasks containing priority" → wants tasks WITH priority field
-  - Extract property: priority: null (any tasks with priority)
-  - Extract content keywords: ["包含", "任务"] → expand these normally
-  
-  {
-    "coreKeywords": ["包含", "任务"],
-    "keywords": [
-      "包含", "include", "contain", "involve", "comprise",
-      ${queryLanguages[1] ? `"包含", "包括", "含有", "涉及", "包含在内",` : ""}
-      ${queryLanguages[2] ? `"innehålla", "inkludera", "ha", "omfatta", "beröra",` : ""}
-      "任务", "task", "work", "item", "assignment",
-      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
-      ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende"` : ""}
-    ],
+    Query: "包含优先级的任务" (tasks containing priority)
+
+    THINKING PROCESS:
+    - "优先级" is Chinese for "priority" → Recognize as PRIORITY property concept
+    - User asks for "tasks containing priority" → wants tasks WITH priority field
+    - Extract property: priority: null (any tasks with priority)
+    - Extract content keywords: []
+
+    {
+    "coreKeywords": [],
+    "keywords": [],
     "priority": null,
     "dueDate": null,
     "status": null,
     "tags": []
-  }
-  
-  Result: System will filter for tasks WITH priority field, then match keywords "包含" and "任务"
+    }
+
+    Result: System will filter for tasks WITH priority field.
 
 Example 4: Swedish due date query - Property term semantic expansion
-  Query: "uppgifter med förfallodatum" (tasks with due date)
-  
-  THINKING PROCESS:
-  - "förfallodatum" is Swedish for "due date" → Recognize as DUE DATE property concept
-  - User asks for "tasks with due date" → wants tasks WITH due dates
-  - Extract property: dueDate: "any" (tasks that have due dates)
-  - Extract content keywords: ["uppgifter"] → expand normally
-  
-  {
-    "coreKeywords": ["uppgifter"],
-    "keywords": [
-      "uppgifter", "task", "tasks", "work", "items",
-      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
-      ${queryLanguages[2] ? `"uppgifter", "arbeten", "göromål", "uppdrag", "ärenden"` : ""}
-    ],
+    Query: "uppgifter med förfallodatum" (tasks with due date)
+
+    THINKING PROCESS:
+    - "förfallodatum" is Swedish for "due date" → Recognize as DUE DATE property concept
+    - User asks for "tasks with due date" → wants tasks WITH due dates
+    - Extract property: dueDate: "any" (tasks that have due dates)
+    - Extract content keywords: []
+
+    {
+    "coreKeywords": [],
+    "keywords": [],
     "priority": null,
     "dueDate": "any",
     "status": null,
     "tags": []
-  }
-  
-  Result: System will filter for tasks WITH due dates, then match keyword "uppgifter"
+    }
+
+    Result: System will filter for tasks WITH due dates.
 
 Example 5: Mixed language with specific priority - Property value extraction
   Query: "high priority 任务 due today"
@@ -1317,45 +1212,37 @@ Example 5: Mixed language with specific priority - Property value extraction
   THINKING PROCESS:
   - "high priority" → Recognize as PRIORITY concept with specific value (high = 1)
   - "due today" → Recognize as DUE DATE concept with specific value (today)
-  - "任务" → Content keyword, expand normally
+  - "任务" → Not a content keyword, descriptive only
   
   {
-    "coreKeywords": ["任务"],
-    "keywords": [
-      "任务", "task", "tasks", "work", "item",
-      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
-      ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende"` : ""}
-    ],
+    "coreKeywords": [],
+    "keywords": [],
     "priority": 1,
     "dueDate": "today",
     "status": null,
     "tags": []
   }
   
-  Result: System will filter for P1 tasks due today, then match keyword "任务"
+  Result: System will filter for P1 tasks due today.
 
 Example 6: Multiple properties in Chinese
-  Query: "高优先级的过期任务" (high priority overdue tasks)
-  
-  THINKING PROCESS:
-  - "高优先级" (high priority) → priority: 1
-  - "过期" (overdue) → dueDate: "overdue"
-  - "任务" → Content keyword
-  
-  {
-    "coreKeywords": ["任务"],
-    "keywords": [
-      "任务", "task", "tasks", "work", "item",
-      ${queryLanguages[1] ? `"任务", "工作", "事项", "项目", "作业",` : ""}
-      ${queryLanguages[2] ? `"uppgift", "arbete", "göra", "uppdrag", "ärende"` : ""}
-    ],
+    Query: "高优先级的过期任务" (high priority overdue tasks)
+
+    THINKING PROCESS:
+    - "高优先级" (high priority) → priority: 1
+    - "过期" (overdue) → dueDate: "overdue"
+    - "任务" → Not a content keyword, descriptive only
+
+    {
+    "coreKeywords": [],
+    "keywords": [],
     "priority": 1,
     "dueDate": "overdue",
     "status": null,
     "tags": []
-  }
-  
-  Result: System will filter for P1 overdue tasks, then match keyword "任务"
+    }
+
+    Result: System will filter for P1 overdue tasks.
 
 Example 7: Property + hashtags + keywords
   Query: "Fix urgent bug #backend due today"
@@ -1388,7 +1275,7 @@ Example 8: Properties only with tag
   THINKING PROCESS:
   - Property term: "priority 1" → priority: 1
   - "#work" → tag
-  - "tasks" is stop word → remove
+  - "tasks" is generic word → remove
   - No content keywords
   
   {
@@ -1424,7 +1311,7 @@ Example 9: Keywords with tags
     "tags": ["urgent", "backend"]
   }
 
-CRITICAL RULES:
+⚠️ CRITICAL RULES:
 - Extract INDIVIDUAL words, not phrases (e.g., "Obsidian AI plugin" → ["Obsidian", "AI", "plugin"] NOT ["Obsidian AI plugin"])
 - Always include proper nouns exactly as written (e.g., "Obsidian", "AI", "Task", "Chat")
 - For each meaningful keyword, generate semantic equivalents in ALL configured languages
@@ -1434,7 +1321,11 @@ CRITICAL RULES:
 
 🚨 CRITICAL DISAMBIGUATION LOGIC - CHECK BEFORE EXTRACTING KEYWORDS:
 
-**STEP 1: Check if query matches STATUS category (HIGHEST PRIORITY)**
+**STEP 1: Check if query matches DUE DATE category (HIGHEST PRIORITY)**
+- Check if query contains date indicators (today, overdue, tomorrow, etc.)
+- If yes → extract dueDate value, DO NOT add to keywords
+
+**STEP 2: If not due date, check if query matches STATUS category**
 - Compare query against STATUS MAPPING category names defined above
 - If the query word EXACTLY MATCHES a status display name (case-insensitive), it's a STATUS FILTER
 - Examples based on your STATUS MAPPING:
@@ -1446,30 +1337,26 @@ CRITICAL RULES:
       })
       .join("\n")}
 
-**STEP 2: If not status, check if query matches PRIORITY level**
+**STEP 3: If not due date or status, check if query matches PRIORITY level**
 - Check if query contains priority indicators (high, urgent, medium, low, etc.)
 - If yes → extract priority value, DO NOT add to keywords
-
-**STEP 3: If not status or priority, check if query matches DUE DATE**
-- Check if query contains date indicators (today, overdue, tomorrow, etc.)
-- If yes → extract dueDate value, DO NOT add to keywords
 
 **STEP 4: If none of the above, treat as content KEYWORDS**
 - Extract meaningful words and expand them semantically
 
 ⚠️ DISAMBIGUATION PRIORITY ORDER:
-1. STATUS categories (check first!)
-2. PRIORITY indicators
-3. DUE DATE indicators
-4. KEYWORDS (only if not status/priority/date)
+1. DUE DATE indicators (check first!)
+2. STATUS categories
+3. PRIORITY indicators
+4. KEYWORDS (only if not due date/status/priority)
 
 ⚠️ REAL EXAMPLE WALKTHROUGH:
-Query: "important"
-Step 1: Check STATUS MAPPING → Is "important" a status category? 
-  ${Object.keys(settings.taskStatusMapping).includes("important") ? '→ YES! "important" is a status category' : '→ NO, "important" is not a status category'}
-  ${Object.keys(settings.taskStatusMapping).includes("important") ? `→ Result: status: "important", keywords: []` : `→ Continue to Step 2`}
-Step 2: ${Object.keys(settings.taskStatusMapping).includes("important") ? "(Skipped - already matched as status)" : 'Check PRIORITY → Is "important" a priority indicator?'}
-  ${Object.keys(settings.taskStatusMapping).includes("important") ? "" : "→ Could be, but check if it's a status category FIRST (Step 1)"}
+Query: "urgent"
+Step 1: Check STATUS MAPPING → Is "urgent" a status category? 
+  ${Object.keys(settings.taskStatusMapping).includes("urgent") ? '→ YES! "urgent" is a status category' : '→ NO, "urgent" is not a status category'}
+  ${Object.keys(settings.taskStatusMapping).includes("urgent") ? `→ Result: status: "urgent", keywords: []` : `→ Continue to Step 2`}
+Step 2: ${Object.keys(settings.taskStatusMapping).includes("urgent") ? "(Skipped - already matched as status)" : 'Check PRIORITY → Is "urgent" a priority indicator?'}
+  ${Object.keys(settings.taskStatusMapping).includes("urgent") ? "" : "→ Could be, but check if it's a status category FIRST (Step 1)"}
 
 🚨 STOP WORDS - DO NOT EXTRACT OR EXPAND TO THESE:
 The following ${stopWordsList.length} words are STOP WORDS. You MUST:
@@ -1485,7 +1372,7 @@ Example: For "开发" (develop), use "develop", "build", "create", "implement", 
 
 - Tags and keywords serve DIFFERENT purposes - don't mix them!
 
-🚨🚨🚨 CRITICAL FINAL INSTRUCTION 🚨🚨🚨
+3️⃣ 🚨🚨🚨 CRITICAL FINAL INSTRUCTION 🚨🚨🚨
 YOU MUST RETURN **ONLY** VALID JSON. NO EXPLANATIONS. NO MARKDOWN. NO ANALYSIS.
 
 ❌ DO NOT return:
