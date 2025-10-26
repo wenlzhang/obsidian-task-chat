@@ -1,4 +1,4 @@
-import { App, requestUrl } from "obsidian";
+import { App, requestUrl, moment } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../models/task";
 import {
     PluginSettings,
@@ -1096,17 +1096,25 @@ export class AIService {
         sortOrder: SortCriterion[],
         taskCount: number, // Number of tasks available for recommendation
     ): any[] {
-        // Get language instruction based on settings
-        let languageInstruction = "";
+        // Build prominent language instruction based on user settings
+        let languageInstructionBlock = "";
         switch (settings.responseLanguage) {
             case "english":
-                languageInstruction = "Always respond in English.";
-                break;
-            case "chinese":
-                languageInstruction = "Always respond in Chinese (中文).";
+                languageInstructionBlock = `
+🌍 RESPONSE LANGUAGE REQUIREMENT (User-Configured)
+⚠️ CRITICAL: You MUST respond in English.
+- This is a user setting that overrides all other language considerations
+- ALL your response text must be in English
+- Task descriptions will remain in their original language, but YOUR explanation must be English
+`;
                 break;
             case "custom":
-                languageInstruction = settings.customLanguageInstruction;
+                languageInstructionBlock = `
+🌍 RESPONSE LANGUAGE REQUIREMENT (User-Configured)
+⚠️ CRITICAL: ${settings.customLanguageInstruction}
+- This is a user setting that overrides all other language considerations
+- Follow this instruction precisely for ALL your response text
+`;
                 break;
             case "auto":
             default:
@@ -1116,10 +1124,22 @@ export class AIService {
                     settings.queryLanguages.length > 0
                 ) {
                     const langs = settings.queryLanguages.join(", ");
-                    languageInstruction = `Respond in the same language as the user's query. Supported languages: ${langs}. If the query mixes multiple languages, use the primary language detected from the supported list.`;
+                    languageInstructionBlock = `
+🌍 RESPONSE LANGUAGE (Auto-Detection Mode)
+⚠️ IMPORTANT: Respond in the SAME language as the user's query.
+- Supported languages: ${langs}
+- Detect the primary language from the user's query
+- If the query mixes multiple languages, use the primary language detected from the supported list
+- Match the user's language naturally throughout your entire response
+`;
                 } else {
-                    languageInstruction =
-                        "Respond in the same language as the user's query. If the query mixes multiple languages, use the primary language detected.";
+                    languageInstructionBlock = `
+🌍 RESPONSE LANGUAGE (Auto-Detection Mode)
+⚠️ IMPORTANT: Respond in the SAME language as the user's query.
+- Detect the language from the user's message
+- If the query mixes multiple languages, use the primary language detected
+- Match the user's language naturally throughout your entire response
+`;
                 }
                 break;
         }
@@ -1129,6 +1149,19 @@ export class AIService {
             PromptBuilderService.buildPriorityMapping(settings);
         const dateFormats = PromptBuilderService.buildDateFormats(settings);
         const statusMapping = PromptBuilderService.buildStatusMapping(settings);
+
+        // Add current date context for accurate due date descriptions
+        const today = moment().format("YYYY-MM-DD");
+        const currentDateContext = `
+📅 CURRENT DATE: ${today}
+
+When describing task due dates, be ACCURATE relative to today:
+- Tasks due BEFORE ${today} are OVERDUE (过期) - do NOT say "due soon"!
+- Tasks due ON ${today} are due TODAY (今天到期)
+- Tasks due within next 7 days are due SOON (即将到期)
+- Tasks due after 7+ days are FUTURE tasks (未来任务)
+
+Always check the actual due date against ${today} before describing urgency!`;
 
         // Build filter context description
         let filterContext = "";
@@ -1163,6 +1196,9 @@ export class AIService {
         let systemPrompt = settings.systemPrompt;
 
         // Append technical instructions for task management
+        // LANGUAGE INSTRUCTION COMES FIRST - most important!
+        systemPrompt += languageInstructionBlock;
+
         systemPrompt += `
 
 ⚠️ CRITICAL: ONLY DISCUSS ACTUAL TASKS FROM THE LIST ⚠️
@@ -1204,7 +1240,7 @@ IMPORTANT RULES:
 13. Keep your EXPLANATION brief (2-3 sentences), but REFERENCE MANY tasks using their original [TASK_X] IDs
 14. 🚨 CRITICAL: With ${taskCount} pre-filtered tasks, you MUST recommend at least ${Math.min(Math.max(Math.floor(taskCount * 0.8), 10), settings.maxRecommendations)} tasks (80% of available, up to limit)
 
-${languageInstruction}${priorityMapping}${dateFormats}${statusMapping}
+${currentDateContext}${priorityMapping}${dateFormats}${statusMapping}
 
 ${PromptBuilderService.buildMetadataGuidance(settings)}
 
@@ -1236,9 +1272,45 @@ KEY POINTS:
 - Your mention order determines the visual numbering: first mentioned = Task 1
 - ALWAYS copy the exact [TASK_X] IDs you see in the task list below
 
-RESPONSE FORMAT:
+🎯 RESPONSE STRUCTURE (Multi-Paragraph Format):
 
-MUST: (1) Reference tasks using [TASK_X] IDs, (2) Explain strategy
+Your response should have a clear, organized structure with multiple focused paragraphs.
+
+⚠️ REMEMBER: Use the response language specified at the top of these instructions!
+
+1️⃣ OPENING PARAGRAPH (2-3 sentences):
+   - State the goal/purpose based on the user's query
+   - Provide context about what you'll help them accomplish
+   - Example: "To effectively develop Task Chat, focus on the following relevant tasks."
+   - Write this paragraph in the configured response language
+
+2️⃣ BODY PARAGRAPHS (Main content - group by categories):
+   - **OVERDUE & URGENT**: Group tasks that are overdue or have high priority
+     * Use ACCURATE due date descriptions (check against current date!)
+     * Mention priority levels correctly (use user's configured priority mapping)
+     * Example: "Start with [TASK_X] and [TASK_Y], which are OVERDUE (due ${"<date>"}) with highest priority (P1)."
+   
+   - **HIGH PRIORITY**: Group high-priority tasks by status if relevant
+     * Reference multiple tasks together: "Next, [TASK_A], [TASK_B], and [TASK_C] are all high priority..."
+     * Mention their status accurately (open, in-progress, etc.)
+   
+   - **ADDITIONAL TASKS**: Other relevant tasks
+     * Group related tasks: "Additionally, [TASK_D] and [TASK_E] will enhance functionality."
+
+3️⃣ CLOSING SUMMARY (2-3 sentences):
+   - Explain the strategic benefit of this prioritization
+   - Provide actionable next steps or perspective
+   - Example: "By prioritizing these tasks, you ensure a structured approach to development."
+   - Write this paragraph in the configured response language
+   - Do NOT repeat "Recommended tasks:" at the end (the system shows this automatically)
+
+⚠️ CRITICAL REQUIREMENTS:
+- 🌍 Write ALL paragraphs in the configured response language (see top of instructions)
+- Reference ALL relevant tasks using [TASK_X] IDs throughout your paragraphs
+- Group tasks logically (by urgency, priority, status, relationship, etc.)
+- Make descriptions SPECIFIC and ACCURATE (not generic)
+- Use multiple paragraphs for better readability
+- End with strategic insight, NOT a task list
 
 QUERY UNDERSTANDING:
 - The system has ALREADY extracted and applied ALL filters from the user's query
