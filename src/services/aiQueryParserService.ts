@@ -604,7 +604,7 @@ ${dueDateValueMapping}
 
 ${statusValueMapping}
 
-⚠️ 2.2 CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
+🚨 2.2 CRITICAL: PROPERTY + KEYWORD COMBINED QUERIES
 
 When users mix keywords with property terms, handle them correctly:
 
@@ -677,7 +677,7 @@ Example 6: "pågående high priority tasks"
     "priority": 1
   }
 
-🚨 KEY RULES FOR COMBINED QUERIES:
+⚠️ KEY RULES FOR COMBINED QUERIES:
 1. Identify property terms FIRST (priority, due date, status)
 2. Extract property values to structured fields
 3. Remove property terms from content keywords
@@ -685,9 +685,9 @@ Example 6: "pågående high priority tasks"
 5. Property terms should NEVER appear in keywords array
 6. Each query can have BOTH keywords AND properties
 
-🚨 MULTI-VALUE PROPERTIES & DATE RANGES (NEW!)
+🚨 2.3 MULTI-VALUE PROPERTIES & DATE RANGES
 
-The system now supports multi-value properties and date ranges for more flexible filtering:
+The system supports multi-value properties and date ranges for more flexible filtering:
 
 **MULTI-VALUE PRIORITY:**
 Users can specify multiple priority levels to search across:
@@ -753,8 +753,8 @@ Rules:
 Example 1: "priority 1 2 tasks due this week"
 Result:
 {
-  "coreKeywords": ["tasks"],
-  "keywords": [<expanded>],
+  "coreKeywords": [],
+  "keywords": [],
   "priority": [1, 2],
   "dueDateRange": {"start": "week-start", "end": "week-end"}
 }
@@ -762,8 +762,8 @@ Result:
 Example 2: "open or in progress high priority tasks"
 Result:
 {
-  "coreKeywords": ["tasks"],
-  "keywords": [<expanded>],
+  "coreKeywords": [],
+  "keywords": [],
   "status": ["open", "inProgress"],
   "priority": 1
 }
@@ -771,8 +771,8 @@ Result:
 Example 3: "completed or cancelled tasks from last month"
 Result:
 {
-  "coreKeywords": ["tasks"],
-  "keywords": [<expanded>],
+  "coreKeywords": [],
+  "keywords": [],
   "status": ["completed", "cancelled"],
   "dueDateRange": {"start": "last-month-start", "end": "last-month-end"}
 }
