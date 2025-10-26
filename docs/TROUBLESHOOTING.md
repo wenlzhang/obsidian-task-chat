@@ -5,7 +5,8 @@
 **Related Documentation:**
 - [← Back to README](../README.md)
 - [Complete Settings Guide](SETTINGS_GUIDE.md)
-- [Model Parameters](MODEL_PARAMETERS.md)
+- [AI Provider Configuration](AI_PROVIDER_CONFIGURATION.md)
+- [Model Selection Guide](MODEL_SELECTION_GUIDE.md)
 - [Chat Modes](CHAT_MODES.md)
 
 ---
@@ -303,7 +304,7 @@ The AI model did not use the correct Task ID format to reference tasks in its re
 5. **Switch to Larger Model** - Use models known for reliability:
    - Cloud: GPT-5, Claude Sonnet 4.5
    - Local: Qwen3 (14B+)
-6. **Check Model Configuration** - See [Model Parameters Guide](MODEL_PARAMETERS.md)
+6. **Check Model Configuration** - See [AI Provider Configuration](AI_PROVIDER_CONFIGURATION.md) and [Model Selection Guide](MODEL_SELECTION_GUIDE.md)
 
 **When to Use Smart Search Instead:**
 - If model fails repeatedly

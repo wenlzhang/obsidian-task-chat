@@ -1,5 +1,4 @@
 import { requestUrl } from "obsidian";
-import { PluginSettings, getCurrentProviderConfig } from "../settings";
 import { Logger } from "../utils/logger";
 
 /**
@@ -47,6 +46,10 @@ export class ModelProviderService {
      */
     static getDefaultOpenAIModels(): string[] {
         return [
+            // GPT-4o series
+            "gpt-4o-mini",
+            "gpt-4o",
+
             // GPT-5 series (latest generation)
             "gpt-5",
             "gpt-5-mini",
@@ -57,10 +60,6 @@ export class ModelProviderService {
             "gpt-4.1",
             "gpt-4.1-mini",
             "gpt-4.1-nano",
-
-            // GPT-4o series
-            "gpt-4o",
-            "gpt-4o-mini",
 
             // o-series reasoning models
             "o4-mini",
@@ -104,7 +103,10 @@ export class ModelProviderService {
      * Default Anthropic models
      */
     static getDefaultAnthropicModels(): string[] {
-        return ["claude-sonnet-4"];
+        return [
+            "claude-sonnet-4",
+            "claude-sonnet-4.5"
+        ];
     }
 
     /**
@@ -143,17 +145,9 @@ export class ModelProviderService {
      */
     static getDefaultOpenRouterModels(): string[] {
         return [
-            "openai/gpt-4o",
             "openai/gpt-4o-mini",
-            "openai/gpt-4-turbo",
-            "openai/o1-preview",
-            "anthropic/claude-sonnet-4",
-            "google/gemini-pro-1.5",
-            "google/gemini-flash-1.5",
-            "meta-llama/llama-3.1-70b-instruct",
-            "meta-llama/llama-3.1-8b-instruct",
-            "mistralai/mistral-large",
-            "cohere/command-r-plus",
+            "openai/gpt-4o",
+            "anthropic/claude-sonnet-4"
         ];
     }
 
@@ -204,26 +198,14 @@ export class ModelProviderService {
      */
     static getDefaultOllamaModels(): string[] {
         return [
-            "gpt-oss:20b",
-            "gemma3:12b",
-            "gemma3:12b-it-qat",
-            "deepseek-r1:8b",
-            "deepseek-r1:14b",
             "qwen3:8b-q8_0",
             "qwen3:14b",
-            "llama3.1:8b",
-            "mistral:7b",
+            "gemma3:12b",
+            "gemma3:12b-it-qat",
+            "gpt-oss:20b",
+            "deepseek-r1:8b",
+            "deepseek-r1:14b",
         ];
-    }
-
-    /**
-     * Get current API key for provider
-     */
-    private static getApiKey(
-        provider: string,
-        settings: PluginSettings,
-    ): string {
-        return getCurrentProviderConfig(settings).apiKey || "";
     }
 
     /**

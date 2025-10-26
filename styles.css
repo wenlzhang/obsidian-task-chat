@@ -978,39 +978,53 @@
 .task-chat-sort-tags-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
-    padding: 8px 0;
+    padding: 12px 0;
 }
 
 .task-chat-sort-tag {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 8px 14px;
     background: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
-    border-radius: 12px;
+    border-radius: 16px;
     font-size: 13px;
-    line-height: 1.4;
+    line-height: 1.3;
     transition: all 0.15s ease;
+    min-height: 32px;
 }
 
 .task-chat-sort-tag-locked {
-    background: var(--background-modifier-success);
+    background: rgba(var(--color-green-rgb), 0.15);
     border-color: var(--text-success);
     color: var(--text-normal);
-    padding-right: 12px;
+    font-weight: 500;
+    padding-left: 10px;
+    padding-right: 14px;
 }
 
 .task-chat-sort-tag-text {
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .task-chat-sort-tag-icon {
-    font-size: 13px;
-    opacity: 0.9;
+    font-size: 14px;
+    opacity: 0.85;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 16px;
+}
+
+.task-chat-sort-tag-locked .task-chat-sort-tag-icon {
+    color: var(--text-success);
+    opacity: 1;
 }
 
 .task-chat-sort-tag-remove {
@@ -1018,28 +1032,38 @@
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 500;
     padding: 0;
     margin: 0;
-    margin-left: 2px;
+    margin-left: 4px;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s ease;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 
 .task-chat-sort-tag-remove:hover {
     color: var(--text-error);
-    transform: scale(1.1);
+    transform: scale(1.15);
 }
 
 .task-chat-sort-tag-add {
     background: transparent;
     border: 1px dashed var(--background-modifier-border);
-    padding: 5px 10px;
-    border-radius: 12px;
+    padding: 7px 12px;
+    border-radius: 14px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+.task-chat-sort-tag-add:hover {
+    border-color: var(--text-muted);
 }
 
 .task-chat-sort-tag-add select {
@@ -1049,6 +1073,7 @@
     color: var(--text-muted);
     cursor: pointer;
     padding: 2px 4px;
+    outline: none;
 }
 
 .task-chat-sort-tag-add select:hover {

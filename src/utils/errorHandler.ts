@@ -151,15 +151,29 @@ export class ErrorHandler {
         errorMsg: string,
         model: string,
     ): StructuredError {
+        // Detect provider from model string
         const isOllama = model.includes("ollama");
+        const isAnthropic = model.includes("anthropic") || model.includes("claude");
+        const isOpenRouter = model.includes("openrouter");
+        
+        // Provide provider-specific suggestions with default models
+        let solution: string;
+        if (isOllama) {
+            solution = `1. Pull the model: ollama pull <model-name>\n2. Check available models: ollama list\n3. Verify model name in settings matches exactly\n4. Try default: gpt-oss:20b`;
+        } else if (isAnthropic) {
+            solution = `1. Check model name in settings (case-sensitive)\n2. Verify API key has access to this model\n3. Try default: claude-sonnet-4`;
+        } else if (isOpenRouter) {
+            solution = `1. Check model format: provider/model-name\n2. Verify model exists on OpenRouter\n3. Try default: openai/gpt-4o-mini`;
+        } else {
+            // OpenAI or generic
+            solution = `1. Check model name in settings (case-sensitive)\n2. Verify model exists for your provider\n3. Try default: gpt-4o-mini`;
+        }
 
         return {
             type: "api",
             message: "Model not found",
             details: errorMsg,
-            solution: isOllama
-                ? `1. Pull the model: ollama pull <model-name>\n2. Check available models: ollama list\n3. Verify model name in settings matches exactly`
-                : `1. Check model name in settings (case-sensitive)\n2. Verify model exists for your provider\n3. Try a different model (e.g., gpt-4o-mini)`,
+            solution: solution,
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#2-model-not-found",
             model: model,

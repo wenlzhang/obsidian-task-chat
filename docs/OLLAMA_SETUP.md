@@ -388,8 +388,8 @@ This isolates whether issues are:
 - **Modelfile Guide:** https://github.com/ollama/ollama/blob/main/docs/modelfile.md
 
 ### Task Chat Documentation
-- **Model Parameters Guide:** [MODEL_PARAMETERS.md](MODEL_PARAMETERS.md)
-- **Performance Tuning:** [MODEL_PARAMETERS.md#performance-tuning](MODEL_PARAMETERS.md#performance-tuning)
+- **AI Provider Configuration:** [AI_PROVIDER_CONFIGURATION.md](AI_PROVIDER_CONFIGURATION.md)
+- **Model Selection Guide:** [MODEL_SELECTION_GUIDE.md](MODEL_SELECTION_GUIDE.md)
 - **Settings Guide:** [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md)
 
 ### Community

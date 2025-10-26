@@ -1,6 +1,6 @@
-# Model Parameters Configuration Guide
+# AI Provider Configuration Guide
 
-This guide explains all the model parameters you can configure for each AI provider (OpenAI, Anthropic, OpenRouter, Ollama).
+This guide explains the configuration parameters for AI providers (OpenAI, Anthropic, OpenRouter, Ollama).
 
 ## 📋 Quick Reference
 
@@ -168,7 +168,7 @@ Max Response Tokens: 8000
 
 **Anthropic:**
 ```
-Context Window: 200000 (Claude Sonnet)
+Context Window: 200000 (claude-sonnet-4)
 Max Response Tokens: 8000
 ```
 
@@ -276,19 +276,23 @@ Context Window: 8000
 ### OpenAI
 - Models: https://platform.openai.com/docs/models
 - API Reference: https://platform.openai.com/docs/api-reference
+- Default model: **gpt-4o-mini**
 
 ### Anthropic
 - Models: https://docs.anthropic.com/claude/docs/models-overview
 - API Reference: https://docs.anthropic.com/claude/reference
+- Default model: **claude-sonnet-4**
 
 ### OpenRouter
 - Models: https://openrouter.ai/models
 - Documentation: https://openrouter.ai/docs
+- Default model: **openai/gpt-4o-mini**
 
 ### Ollama
 - Models: https://ollama.com/library
 - API Reference: https://github.com/ollama/ollama/blob/main/docs/api.md
 - Parameter Guide: https://github.com/ollama/ollama/blob/main/docs/modelfile.md#parameter
+- Default model: **gpt-oss:20b**
 
 ---
 
@@ -325,120 +329,11 @@ Experiencing issues?
 
 ---
 
-## 🎯 Model Selection Guide
-
-> **⚠️ IMPORTANT:** Model performance varies significantly between users depending on hardware, system configuration, query complexity, and individual use cases. The ratings and recommendations below are general guidelines based on testing, not guarantees. Always test models yourself to determine what works best for your specific needs.
-
-### Key Principle: Smart Search Quality Determines Task Chat Quality
-
-```
-User Query
-    ↓
-Smart Search (filters + scores tasks)
-    ↓
-High-quality filtered tasks → Good AI summary ✅
-Low-quality filtered tasks → Poor AI summary ❌
-    ↓
-Task Chat (AI analyzes filtered tasks)
-```
-
-**Critical:** If Smart Search results are poor, Task Chat will very likely be poor regardless of model quality. Always optimize filtering and scoring first!
-
-### When to Use Local (Ollama) vs Cloud
-
-#### Use Ollama When:
-✅ **Privacy is critical** - Data never leaves your computer  
-✅ **Cost is a concern** - Zero API fees  
-✅ **Offline work needed** - No internet required  
-✅ **Learning/experimenting** - Safe to test freely  
-
-#### Use Cloud (OpenAI/Anthropic/OpenRouter) When:
-✅ **Speed is critical** - Faster responses  
-✅ **Reliability needed** - More consistent format compliance  
-✅ **Complex queries** - Better reasoning capabilities  
-✅ **Production environment** - Proven track record  
-
-### Recommended Models by Provider
-
-> **Note:** Performance ratings are subjective and may not reflect your experience. Test multiple models to find what works best for you.
-
-#### Cloud Providers (Paid)
-
-**OpenAI:**
-- **GPT-4o-mini** ⭐⭐⭐⭐⭐ - Good balance of speed, cost, and quality
-- **GPT-5-mini** ⭐⭐⭐⭐⭐ - Good balance of speed, cost, and quality
-- **GPT-5-nano** ⭐⭐⭐⭐ - Still being evaluated
-
-**OpenRouter (Multiple Models):**
-- Access to various models from different providers
-- Pricing and performance vary by model
-
-#### Local (Ollama - Free)
-
-> **⚠️ Hardware-Dependent:** Performance varies greatly based on your GPU. Ratings below assume modern hardware (M-series Mac, recent NVIDIA GPU, or powerful CPU).
-
-**Qwen3 Series** (Tested, Good Instruction Following):
-- **qwen3:8b** ⭐⭐⭐ - Fast, reasonable quality, good starting point
-- **qwen3:14b** ⭐⭐⭐⭐ - Balanced, good for most users
-- **qwen3:32b** ⭐⭐⭐⭐ - High quality, slower, needs more RAM
-
-**Gemma Series:**
-- **gemma-3:12b-it** ⭐⭐⭐ - Moderate size and performance
-- **gemma-3:27b-it** ⭐⭐⭐⭐ - Larger, potentially better quality
-
-**Other Options:**
-- **DeepSeek-R1** - Various sizes available
-- **GLM** - Alternative option
-
-See [Ollama Setup Guide](OLLAMA_SETUP.md) for installation and configuration.
-
-### General Troubleshooting Approach
-
-#### Step 1: Optimize Filtering First (Most Important!)
-
-Before changing models, ensure Smart Search results are good:
-- Adjust quality filter strength
-- Tune scoring coefficients (relevance, due date, priority)
-- Enable semantic expansion as needed
-- Add custom stop words if needed
-
-See: [Scoring System Guide](SCORING_SYSTEM.md) and [Settings Guide](SETTINGS_GUIDE.md)
-
-#### Step 2: Check Model Parameters
-
-- **Temperature:** Must be 0.1 for reliable JSON parsing
-- **Max Response Tokens:** Increase if responses are truncated
-- **Context Window (Ollama):** Ensure it's large enough for your task list
-
-#### Step 3: Test Different Models
-
-- Start with your current model + optimized settings
-- If issues persist, try a larger model or cloud provider
-- Compare same query across models to identify if model is the bottleneck
-
-#### Step 4: Consider Hybrid Approach
-
-- Use Simple Search when AI not needed (fastest, free)
-- Use Smart Search with local models for keyword expansion (free)
-- Use Task Chat with cloud models for complex analysis (paid but reliable)
-
-### Common Issues & Quick Fixes
-
-| Issue | Most Likely Cause | First Step |
-|-------|-------------------|------------|
-| Too many irrelevant tasks | Relevance threshold too low | Increase relevance threshold |
-| Missing relevant tasks | Relevance threshold too high | Decrease relevance threshold |
-| AI format errors | Temperature too high or model too small | Set temperature to 0.1, try larger model |
-| Slow responses (Ollama) | Model too large for hardware | Use smaller model (14B instead of 32B) |
-| Truncated responses | Max response tokens too low | Increase max response tokens |
-
-For detailed troubleshooting, see: [Troubleshooting Guide](TROUBLESHOOTING.md)
-
----
-
 ## 🔗 Related Documentation
 
+- [Model Selection Guide](MODEL_SELECTION_GUIDE.md) - Choose the right model for your needs
 - [Ollama Setup Guide](OLLAMA_SETUP.md) - Complete installation and configuration
 - [Chat Modes Guide](CHAT_MODES.md) - Understand the three modes
 - [Scoring System](SCORING_SYSTEM.md) - How tasks are ranked and filtered
 - [Settings Guide](SETTINGS_GUIDE.md) - All configuration options
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions

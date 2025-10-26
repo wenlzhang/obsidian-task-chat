@@ -643,16 +643,111 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render AI understanding box (deprecated - now shown in metadata line)
-     * Kept for backward compatibility but does nothing
+     * Render AI understanding box in chat interface
+     * Shows detailed AI parsing information for Smart Search and Task Chat
      */
     private renderAIUnderstanding(
         container: HTMLElement,
         message: ChatMessage,
     ): void {
-        // AI understanding is now shown compactly in the metadata line
-        // This method is kept for backward compatibility but does nothing
-        return;
+        // Only show if enabled in settings and parsedQuery exists
+        if (
+            !this.plugin.settings.aiEnhancement.showAIUnderstanding ||
+            !message.parsedQuery ||
+            !message.parsedQuery.aiUnderstanding
+        ) {
+            return;
+        }
+
+        const ai = message.parsedQuery.aiUnderstanding;
+        
+        // Create AI understanding box
+        const aiBox = container.createDiv({
+            cls: "task-chat-ai-understanding",
+        });
+
+        // Header
+        aiBox.createEl("div", {
+            cls: "task-chat-ai-understanding-header",
+            text: "🤖 AI Query Understanding",
+        });
+
+        const details = aiBox.createDiv({
+            cls: "task-chat-ai-understanding-details",
+        });
+
+        // Detected language
+        if (ai.detectedLanguage) {
+            const langDiv = details.createDiv({
+                cls: "task-chat-ai-understanding-item",
+            });
+            langDiv.createEl("strong", { text: "Language: " });
+            langDiv.createSpan({ text: ai.detectedLanguage });
+        }
+
+        // Typo corrections
+        if (ai.typoCorrections && ai.typoCorrections.length > 0) {
+            const typoDiv = details.createDiv({
+                cls: "task-chat-ai-understanding-item",
+            });
+            typoDiv.createEl("strong", { text: "Typo corrections: " });
+            const typoList = typoDiv.createEl("ul");
+            ai.typoCorrections.forEach((correction: any) => {
+                typoList.createEl("li", {
+                    text: `${correction.original} → ${correction.corrected}`,
+                });
+            });
+        }
+
+        // Semantic mappings
+        if (ai.semanticMappings && Object.keys(ai.semanticMappings).length > 0) {
+            const mappingDiv = details.createDiv({
+                cls: "task-chat-ai-understanding-item",
+            });
+            mappingDiv.createEl("strong", { text: "Semantic mappings: " });
+            const mappingList = mappingDiv.createEl("ul");
+            for (const [key, value] of Object.entries(ai.semanticMappings)) {
+                mappingList.createEl("li", {
+                    text: `${key}: ${value}`,
+                });
+            }
+        }
+
+        // Confidence indicator
+        if (ai.confidence !== undefined) {
+            const confDiv = details.createDiv({
+                cls: "task-chat-ai-understanding-item",
+            });
+            confDiv.createEl("strong", { text: "Confidence: " });
+            
+            const confidence = ai.confidence;
+            let emoji = "🎯";
+            let level = "High";
+            let color = "var(--text-success)";
+            
+            if (confidence < 0.5) {
+                emoji = "⚠️";
+                level = "Low";
+                color = "var(--text-error)";
+            } else if (confidence < 0.7) {
+                emoji = "📊";
+                level = "Medium";
+                color = "var(--text-warning)";
+            }
+            
+            const confSpan = confDiv.createSpan({
+                text: `${emoji} ${level} (${Math.round(confidence * 100)}%)`,
+            });
+            confSpan.style.color = color;
+        }
+
+        // Natural language indicator
+        if (ai.usedNaturalLanguage) {
+            details.createDiv({
+                cls: "task-chat-ai-understanding-item",
+                text: "✓ Natural language understanding was used",
+            });
+        }
     }
 
     /**

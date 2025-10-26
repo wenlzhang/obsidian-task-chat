@@ -189,7 +189,7 @@ export class SettingsTab extends PluginSettingTab {
         tempSetting.descEl.createEl("br");
         tempSetting.descEl.createEl("a", {
             text: "📖 Learn more about temperature and model parameters",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-temperature",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-temperature",
         });
 
         const tokenSetting = new Setting(containerEl)
@@ -210,7 +210,7 @@ export class SettingsTab extends PluginSettingTab {
         tokenSetting.descEl.createEl("br");
         tokenSetting.descEl.createEl("a", {
             text: "📖 Learn more about max tokens and performance tuning",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-max-response-tokens",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-max-response-tokens",
         });
 
         const contextSetting = new Setting(containerEl)
@@ -231,7 +231,7 @@ export class SettingsTab extends PluginSettingTab {
         contextSetting.descEl.createEl("br");
         contextSetting.descEl.createEl("a", {
             text: "📖 Learn more about context window and troubleshooting",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_PARAMETERS.md#-context-window",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
         new Setting(containerEl)

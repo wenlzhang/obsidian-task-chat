@@ -164,7 +164,7 @@ Analyze my tasks for this week
 **Local (Free, Private, Hardware-Dependent):**
 - **Qwen3 (8B, 14B, 32B)** - Good instruction following, tested and recommended
 
-→ [Model selection guide](docs/MODEL_PARAMETERS.md#model-selection-guide)
+→ [Model selection guide](docs/MODEL_SELECTION_GUIDE.md)
 → [Complete settings guide](docs/SETTINGS_GUIDE.md)
 
 ### Common Adjustments
@@ -237,10 +237,17 @@ Analyze my tasks for this week
   - Token usage optimization
   - Balance between context quality and cost
 
-- **[Model Parameters](docs/MODEL_PARAMETERS.md)** - Configure AI behavior ⭐ NEW
+- **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior ⭐
   - Temperature (recommended 0.1 for JSON output)
   - Max response tokens (default 8000)
   - Context window (critical for Ollama)
+  - Configuration examples and troubleshooting
+
+- **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model ⭐
+  - Cloud vs local comparison
+  - Default models by provider
+  - Hardware requirements
+  - Cost analysis
   - Provider-specific differences
   - **Performance tuning & model selection**
   - When to use Ollama vs cloud providers
