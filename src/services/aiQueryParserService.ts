@@ -863,6 +863,22 @@ Result:
    - Example: For "develop" with [English, 中文], generate ${maxExpansions} English equivalents + ${maxExpansions} Chinese equivalents = ${maxKeywordsPerCore} total
    - If you have 4 core keywords, you MUST return ${maxKeywordsPerCore} × 4 = ${maxKeywordsPerCore * 4} total keywords
 
+   🔴 CRITICAL ALGORITHM - FOLLOW THESE STEPS EXACTLY:
+   Step 1: For EACH core keyword, create an empty expansion list
+   Step 2: For the current keyword, iterate through EVERY language in order: ${languageList}
+   Step 3: For each language, generate EXACTLY ${maxExpansions} semantic equivalents
+   Step 4: Add all ${maxExpansions} equivalents to the expansion list
+   Step 5: Repeat steps 2-4 until ALL ${queryLanguages.length} languages are processed
+   Step 6: Verify the expansion list has ${maxKeywordsPerCore} total items (${maxExpansions} × ${queryLanguages.length})
+   Step 7: Move to next core keyword and repeat steps 1-6
+   
+   ⚠️ VERIFICATION CHECKLIST (check before returning):
+   ☐ Did I process ALL ${queryLanguages.length} languages for EVERY keyword?
+   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[0] || "language 1"}?
+   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[1] || "language 2"}?
+${queryLanguages.length > 2 ? `   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[2]}?` : ""}
+   ☐ Total keywords = ${maxKeywordsPerCore} × (number of core keywords)?
+
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
    - ONLY extract tags that are explicitly marked with # in the query
    - Remove the # symbol when adding to the array
@@ -875,122 +891,182 @@ KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 ⚠️ CRITICAL: Generate equivalents for ALL ${queryLanguages.length} configured languages: ${languageList}
 Do NOT favor any language - ALL languages must be equally represented!
 
-Example 1: Mixed-language query - Direct cross-language semantic equivalence
-    Query: "如何开发 Task Chat"
+Example 1: Query with ${queryLanguages.length} configured languages: ${languageList}
+    Query: "开发 Task Chat"
     
-    THINKING PROCESS (for you to understand, not include in output):
-    - For EACH keyword, generate ${maxExpansions} equivalents in EACH of the ${queryLanguages.length} configured languages
-    - "开发": Generate equivalents in ${languageList}
-    - "Task": Generate equivalents in ${languageList}
-    - "Chat": Generate equivalents in ${languageList}
-
-    INSTRUCTION for EACH keyword:
-${queryLanguages.map((lang) => `    - "开发": ${maxExpansions} ways to express 'development' in ${lang}`).join("\n")}
+    🔴 STEP-BY-STEP ALGORITHM APPLICATION:
     
-${queryLanguages.map((lang) => `    - "Task": ${maxExpansions} ways to express 'task/work' in ${lang}`).join("\n")}
+    Core keyword 1: "开发"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                    lang === "English"
+                        ? "[develop, build, create, implement, code]"
+                        : lang === "中文"
+                          ? "[开发, 构建, 创建, 编程, 制作]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[utveckla, bygga, skapa, programmera, implementera]"
+                            : `[${maxExpansions} equivalents in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓
     
-${queryLanguages.map((lang) => `    - "Chat": ${maxExpansions} ways to express 'chat/conversation' in ${lang}`).join("\n")}
+    Core keyword 2: "Task"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                    lang === "English"
+                        ? "[task, work, job, assignment, item]"
+                        : lang === "中文"
+                          ? "[任务, 工作, 事项, 项目, 作业]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[uppgift, arbete, jobb, uppdrag, ärende]"
+                            : `[${maxExpansions} equivalents in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓
+    
+    Core keyword 3: "Chat"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                    lang === "English"
+                        ? "[chat, conversation, talk, discussion, dialogue]"
+                        : lang === "中文"
+                          ? "[聊天, 对话, 交流, 谈话, 沟通]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[chatt, konversation, prata, diskussion, samtal]"
+                            : `[${maxExpansions} equivalents in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    Subtotal: ${maxKeywordsPerCore} equivalents ✓
+    
+    ✅ VERIFICATION:
+    - Core keywords: 3
+    - Languages processed: ${queryLanguages.length} (${languageList})
+    - Equivalents per keyword: ${maxKeywordsPerCore} (${maxExpansions} × ${queryLanguages.length})
+    - Total equivalents: 3 × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore}
 
     {
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
         ${queryLanguages
-            .map(
-                (lang, idx) =>
-                    `${idx > 0 ? "        " : ""}${
-                        lang === "English"
-                            ? '"develop", "build", "create", "implement", "code"'
-                            : lang === "中文"
-                              ? '"开发", "构建", "创建", "编程", "制作"'
-                              : lang.toLowerCase().includes("swed")
-                                ? '"utveckla", "bygga", "skapa", "programmera", "implementera"'
-                                : `"[${maxExpansions} equivalents in ${lang}]"`
-                    }${idx < queryLanguages.length - 1 ? "," : ""}`,
+            .map((lang, idx) =>
+                lang === "English"
+                    ? '"develop", "build", "create", "implement", "code"'
+                    : lang === "中文"
+                      ? '"开发", "构建", "创建", "编程", "制作"'
+                      : lang.toLowerCase().includes("swed")
+                        ? '"utveckla", "bygga", "skapa", "programmera", "implementera"'
+                        : `"[${maxExpansions} in ${lang}]"`,
             )
-            .join("\n")}
+            .join(",\n        ")},
         ${queryLanguages
-            .map(
-                (lang, idx) =>
-                    `${idx === 0 ? "        " : "        "}${
-                        lang === "English"
-                            ? '"task", "work", "item", "assignment", "job"'
-                            : lang === "中文"
-                              ? '"任务", "工作", "事项", "项目", "作业"'
-                              : lang.toLowerCase().includes("swed")
-                                ? '"uppgift", "arbete", "göra", "uppdrag", "ärende"'
-                                : `"[${maxExpansions} equivalents in ${lang}]"`
-                    }${idx < queryLanguages.length - 1 ? "," : ""}`,
+            .map((lang, idx) =>
+                lang === "English"
+                    ? '"task", "work", "job", "assignment", "item"'
+                    : lang === "中文"
+                      ? '"任务", "工作", "事项", "项目", "作业"'
+                      : lang.toLowerCase().includes("swed")
+                        ? '"uppgift", "arbete", "jobb", "uppdrag", "ärende"'
+                        : `"[${maxExpansions} in ${lang}]"`,
             )
-            .join("\n")}
+            .join(",\n        ")},
         ${queryLanguages
-            .map(
-                (lang, idx) =>
-                    `${idx === 0 ? "        " : "        "}${
-                        lang === "English"
-                            ? '"chat", "conversation", "talk", "discussion", "dialogue"'
-                            : lang === "中文"
-                              ? '"聊天", "对话", "交流", "谈话", "沟通"'
-                              : lang.toLowerCase().includes("swed")
-                                ? '"chatt", "konversation", "prata", "diskussion", "samtal"'
-                                : `"[${maxExpansions} equivalents in ${lang}]"`
-                    }${idx < queryLanguages.length - 1 ? "," : ""}`,
+            .map((lang, idx) =>
+                lang === "English"
+                    ? '"chat", "conversation", "talk", "discussion", "dialogue"'
+                    : lang === "中文"
+                      ? '"聊天", "对话", "交流", "谈话", "沟通"'
+                      : lang.toLowerCase().includes("swed")
+                        ? '"chatt", "konversation", "prata", "diskussion", "samtal"'
+                        : `"[${maxExpansions} in ${lang}]"`,
             )
-            .join("\n")}
+            .join(",\n        ")}
     ],
     "tags": []
     }
 
-    Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
+    ✅ Result verification:
+    - Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
+    - ${queryLanguages[0]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓
+${queryLanguages.length > 1 ? `    - ${queryLanguages[1]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓` : ""}
+${queryLanguages.length > 2 ? `    - ${queryLanguages[2]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓` : ""}
 
-Example 2: Query with any keyword - Generate semantic equivalents in ALL ${queryLanguages.length} languages
+Example 2: Another query showing algorithm - MUST follow same process!
     Query: "Fix bug"
-
-    THINKING PROCESS:
-    - For EACH keyword: "fix", "bug"
-    - Generate ${maxExpansions} equivalents in EACH language: ${languageList}
-    - Do NOT skip any language!
-
-    INSTRUCTION:
-${queryLanguages.map((lang) => `    - "fix": ${maxExpansions} ways to express 'fixing/repairing' in ${lang}`).join("\n")}
     
-${queryLanguages.map((lang) => `    - "bug": ${maxExpansions} ways to express 'bug/error' in ${lang}`).join("\n")}
+    🔴 APPLY THE SAME ALGORITHM:
+    
+    Core keyword 1: "fix"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[fix, repair, solve, correct, resolve]"
+                        : lang === "中文"
+                          ? "[修复, 解决, 修正, 处理, 纠正]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[fixa, reparera, lösa, korrigera, åtgärda]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    Subtotal: ${maxKeywordsPerCore} ✓
+    
+    Core keyword 2: "bug"
+    ${queryLanguages
+        .map(
+            (lang, idx) =>
+                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                    lang === "English"
+                        ? "[bug, error, issue, defect, problem]"
+                        : lang === "中文"
+                          ? "[错误, 问题, 缺陷, 故障, 漏洞]"
+                          : lang.toLowerCase().includes("swed")
+                            ? "[bugg, fel, problem, defekt, brist]"
+                            : `[${maxExpansions} in ${lang}]`
+                }`,
+        )
+        .join("\n")}
+    Subtotal: ${maxKeywordsPerCore} ✓
 
     {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
         ${queryLanguages
-            .map(
-                (lang, idx) =>
-                    `${idx > 0 ? "        " : ""}${
-                        lang === "English"
-                            ? '"fix", "repair", "solve", "correct", "debug"'
-                            : lang === "中文"
-                              ? '"修复", "解决", "处理", "纠正", "调试"'
-                              : lang.toLowerCase().includes("swed")
-                                ? '"fixa", "reparera", "lösa", "korrigera", "felsöka"'
-                                : `"[${maxExpansions} equivalents in ${lang}]"`
-                    }${idx < queryLanguages.length - 1 ? "," : ""}`,
+            .map((lang) =>
+                lang === "English"
+                    ? '"fix", "repair", "solve", "correct", "resolve"'
+                    : lang === "中文"
+                      ? '"修复", "解决", "修正", "处理", "纠正"'
+                      : lang.toLowerCase().includes("swed")
+                        ? '"fixa", "reparera", "lösa", "korrigera", "åtgärda"'
+                        : `"[${maxExpansions} in ${lang}]"`,
             )
-            .join("\n")}
+            .join(",\n        ")},
         ${queryLanguages
-            .map(
-                (lang, idx) =>
-                    `${idx === 0 ? "        " : "        "}${
-                        lang === "English"
-                            ? '"bug", "error", "issue", "defect", "fault"'
-                            : lang === "中文"
-                              ? '"错误", "问题", "缺陷", "故障", "漏洞"'
-                              : lang.toLowerCase().includes("swed")
-                                ? '"bugg", "fel", "problem", "defekt", "brist"'
-                                : `"[${maxExpansions} equivalents in ${lang}]"`
-                    }${idx < queryLanguages.length - 1 ? "," : ""}`,
+            .map((lang) =>
+                lang === "English"
+                    ? '"bug", "error", "issue", "defect", "problem"'
+                    : lang === "中文"
+                      ? '"错误", "问题", "缺陷", "故障", "漏洞"'
+                      : lang.toLowerCase().includes("swed")
+                        ? '"bugg", "fel", "problem", "defekt", "brist"'
+                        : `"[${maxExpansions} in ${lang}]"`,
             )
-            .join("\n")}
-    ],
-    "tags": []
+            .join(",\n        ")}
+    ]
     }
 
-⚠️ CRITICAL: ALL ${queryLanguages.length} languages MUST be represented for EVERY keyword - NO exceptions!
+⚠️ CRITICAL: This algorithm MUST be followed for EVERY query - ALL ${queryLanguages.length} languages in ${languageList} for EVERY keyword!
 
 PROPERTY EXPANSION EXAMPLES:
 
@@ -1079,17 +1155,33 @@ Example 7: Property + hashtags + keywords
   - "urgent" → Recognize as priority indicator (high = 1)
   - "due today" → dueDate: "today"
   - "#backend" → tag
-  - "Fix", "bug" → Content keywords
+  - "Fix", "bug" → Content keywords (expand in ALL ${queryLanguages.length} languages)
   
   {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
-      "fix", "repair", "solve", "correct", "debug",
-      ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
-      ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
-      "bug", "error", "issue", "defect", "fault",
-      ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
-      ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+      ${queryLanguages
+          .map((lang) =>
+              lang === "English"
+                  ? '"fix", "repair", "solve", "correct", "debug"'
+                  : lang === "中文"
+                    ? '"修复", "解决", "处理", "纠正", "调试"'
+                    : lang.toLowerCase().includes("swed")
+                      ? '"fixa", "reparera", "lösa", "korrigera", "felsöka"'
+                      : `"[${maxExpansions} in ${lang}]"`,
+          )
+          .join(",\n      ")},
+      ${queryLanguages
+          .map((lang) =>
+              lang === "English"
+                  ? '"bug", "error", "issue", "defect", "fault"'
+                  : lang === "中文"
+                    ? '"错误", "问题", "缺陷", "故障", "漏洞"'
+                    : lang.toLowerCase().includes("swed")
+                      ? '"bugg", "fel", "problem", "defekt", "brist"'
+                      : `"[${maxExpansions} in ${lang}]"`,
+          )
+          .join(",\n      ")}
     ],
     "priority": 1,
     "dueDate": "today",
@@ -1120,18 +1212,34 @@ Example 9: Keywords with tags
   
   THINKING PROCESS:
   - "urgent" in tag context → just tag, not property (because of #)
-  - Content keywords: "Fix", "bug" → expand normally
+  - Content keywords: "Fix", "bug" → expand in ALL ${queryLanguages.length} languages
   - Tags: "#urgent", "#backend"
   
   {
     "coreKeywords": ["fix", "bug"],
     "keywords": [
-      "fix", "repair", "solve", "correct", "debug",
-      ${queryLanguages[1] ? `"修复", "解决", "处理", "纠正", "调试",` : ""}
-      ${queryLanguages[2] ? `"fixa", "reparera", "lösa", "korrigera", "felsöka",` : ""}
-      "bug", "error", "issue", "defect", "fault",
-      ${queryLanguages[1] ? `"错误", "问题", "缺陷", "故障", "漏洞",` : ""}
-      ${queryLanguages[2] ? `"bugg", "fel", "problem", "defekt", "brist"` : ""}
+      ${queryLanguages
+          .map((lang) =>
+              lang === "English"
+                  ? '"fix", "repair", "solve", "correct", "debug"'
+                  : lang === "中文"
+                    ? '"修复", "解决", "处理", "纠正", "调试"'
+                    : lang.toLowerCase().includes("swed")
+                      ? '"fixa", "reparera", "lösa", "korrigera", "felsöka"'
+                      : `"[${maxExpansions} in ${lang}]"`,
+          )
+          .join(",\n      ")},
+      ${queryLanguages
+          .map((lang) =>
+              lang === "English"
+                  ? '"bug", "error", "issue", "defect", "fault"'
+                  : lang === "中文"
+                    ? '"错误", "问题", "缺陷", "故障", "漏洞"'
+                    : lang.toLowerCase().includes("swed")
+                      ? '"bugg", "fel", "problem", "defekt", "brist"'
+                      : `"[${maxExpansions} in ${lang}]"`,
+          )
+          .join(",\n      ")}
     ],
     "priority": null,
     "dueDate": null,
