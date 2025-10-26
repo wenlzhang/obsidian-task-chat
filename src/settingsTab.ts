@@ -216,7 +216,7 @@ export class SettingsTab extends PluginSettingTab {
         const contextSetting = new Setting(containerEl)
             .setName("Context window")
             .setDesc(
-                "Maximum context size the model can process (input prompt + response). For OpenAI/Anthropic/OpenRouter: informational only (set by model). For Ollama: actively used as 'num_ctx' parameter. IMPORTANT: Input prompt + max response tokens must not exceed model's context capability. ⚠️ If you get context length errors, reduce this value or max response tokens. Default: 32000 (Ollama), 128000+ (cloud providers).",
+                "🔧 OLLAMA ONLY: Sets the 'num_ctx' parameter controlling how much context Ollama can process. Increase if you get 'context length exceeded' errors. ℹ️ OpenAI/Anthropic/OpenRouter: This value is INFORMATIONAL ONLY - these providers use their model's built-in context window (cannot be changed). Model limits: gpt-4o-mini=128K, claude-3-5-sonnet=200K. ⚠️ For context errors with cloud providers, reduce 'Max response tokens' instead (see troubleshooting guide).",
             )
             .addSlider((slider) =>
                 slider
@@ -460,10 +460,10 @@ export class SettingsTab extends PluginSettingTab {
             .addSlider((slider) =>
                 slider
                     .setLimits(1, 100, 1)
-                    .setValue(this.plugin.settings.maxKeywordExpansions)
+                    .setValue(this.plugin.settings.expansionsPerLanguage)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.maxKeywordExpansions = value;
+                        this.plugin.settings.expansionsPerLanguage = value;
                         await this.plugin.saveSettings();
                     }),
             );

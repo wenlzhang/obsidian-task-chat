@@ -12,10 +12,254 @@
 
 ## Quick Navigation
 
+- [AI Query Parser Errors](#ai-query-parser-errors) ⚠️ **Start Here**
 - [AI Model Format Issues](#ai-model-format-issues)
 - [Search Results Issues](#search-results-issues)
 - [Connection Issues](#connection-issues)
 - [Performance Issues](#performance-issues)
+
+---
+
+## AI Query Parser Errors
+
+### Symptom: Warning "⚠️ AI Query Parser Failed"
+
+**What happened:**
+The AI failed to parse your query in Smart Search or Task Chat mode. The plugin automatically falls back to Simple Search mode (character-level keywords + regex).
+
+**Common Error Messages:**
+
+#### 1. Context Length Exceeded
+
+**Error:**
+```
+Maximum context length is 8192 tokens, but you requested 10000 tokens
+```
+
+**What it means:**
+Your current "Max response tokens" setting is higher than the model's context window limit.
+
+**Solutions (in order of effectiveness):**
+
+1. **Reduce Max Response Tokens** (Recommended)
+   - Go to: Settings → AI Provider → [Your Provider] → Max response tokens
+   - Current value shown in error (e.g., 10000)
+   - Try these values:
+     - OpenAI models: 1000-4000 tokens
+     - Claude models: 1000-4000 tokens
+     - Ollama models: 1000-2000 tokens
+
+2. **Clear Chat History**
+   - Click "New Session" button in Task Chat
+   - Or: Settings → Task Chat → Chat history context length → Reduce to 2-3
+
+3. **Switch to Model with Larger Context**
+   - OpenAI: gpt-4o-mini (128K context)
+   - Anthropic: claude-3-5-sonnet (200K context)
+   - Settings → AI Provider → Model
+
+**Understanding Context vs Response Tokens:**
+
+| Setting | What It Controls | Where to Find |
+|---------|------------------|---------------|
+| **Max Response Tokens** | How many tokens AI can generate in its response | Settings → AI Provider → Max response tokens |
+| **Context Window** | Total tokens AI can process (input + output) | Model specification (read-only info) |
+
+**Example:**
+- Model: gpt-4o-mini (128K context window)
+- Your setting: Max response tokens = 10000
+- If your query + chat history = 120K tokens
+- Then: 120K + 10K = 130K > 128K ❌ Error!
+- Solution: Reduce max response tokens to 4000 or clear chat history
+
+#### 2. Model Not Found
+
+**Error:**
+```
+The model 'gpt-5-turbo' does not exist
+```
+
+**What it means:**
+The model name in settings doesn't match any available model from the provider.
+
+**Solutions:**
+
+1. **Check Model Name**
+   - Settings → AI Provider → Model
+   - Common typos: "gpt-4o-mini" vs "gpt4-o-mini"
+   - Case-sensitive for some providers
+
+2. **Verify Available Models**
+   - OpenAI: gpt-4o-mini, gpt-4o, gpt-4-turbo
+   - Anthropic: claude-3-5-sonnet, claude-3-opus, claude-3-haiku
+   - OpenRouter: Varies (check openrouter.ai/models)
+   - Ollama: Run `ollama list` to see installed models
+
+3. **Pull Model (Ollama Only)**
+   ```bash
+   ollama pull llama3.1
+   ollama pull qwen2.5
+   ```
+
+#### 3. Invalid API Key
+
+**Error:**
+```
+Incorrect API key provided
+```
+
+**What it means:**
+Your API key is missing, incorrect, or expired.
+
+**Solutions:**
+
+1. **Update API Key**
+   - Settings → AI Provider → [Your Provider] → API Key
+   - Check for extra spaces before/after key
+   - Verify key is active in provider dashboard
+
+2. **Regenerate Key**
+   - Go to provider dashboard (platform.openai.com, console.anthropic.com, etc.)
+   - Generate new API key
+   - Update in plugin settings
+
+3. **Check Provider Selection**
+   - Ensure Settings → AI Provider matches your API key
+   - OpenAI key won't work with Anthropic, etc.
+
+#### 4. Rate Limit Exceeded
+
+**Error:**
+```
+Rate limit exceeded. Please try again later.
+```
+
+**What it means:**
+You've made too many requests in a short time period.
+
+**Solutions:**
+
+1. **Wait and Retry**
+   - Free tier: Wait 1-5 minutes
+   - Paid tier: Wait 10-30 seconds
+
+2. **Upgrade Plan**
+   - OpenAI: Upgrade to Tier 2+ for higher limits
+   - Anthropic: Upgrade plan for higher RPM
+
+3. **Switch Provider**
+   - Try OpenRouter (aggregates multiple providers)
+   - Or switch between OpenAI/Anthropic
+
+#### 5. Server Error (500/503)
+
+**Error:**
+```
+The server had an error while processing your request
+```
+
+**What it means:**
+Provider's server is experiencing issues or overloaded.
+
+**Solutions:**
+
+1. **Retry After Short Wait**
+   - Usually temporary (1-5 minutes)
+
+2. **Switch Provider**
+   - Use alternative provider as backup
+   - OpenRouter often more stable (uses multiple backends)
+
+3. **Check Provider Status**
+   - OpenAI: status.openai.com
+   - Anthropic: status.anthropic.com
+
+#### 6. Ollama Connection Failed
+
+**Error:**
+```
+Cannot connect to Ollama at http://localhost:11434
+```
+
+**What it means:**
+Ollama server is not running or not accessible.
+
+**Solutions:**
+
+1. **Start Ollama Server**
+   ```bash
+   ollama serve
+   ```
+
+2. **Check Ollama is Running**
+   - Open browser: http://localhost:11434
+   - Should see "Ollama is running"
+
+3. **Verify Model is Installed**
+   ```bash
+   ollama list
+   ollama pull llama3.1  # If not installed
+   ```
+
+4. **Check Endpoint**
+   - Settings → AI Provider → Ollama → API Endpoint
+   - Default: http://localhost:11434/api/chat
+
+### What Happens During Fallback?
+
+When AI Query Parser fails, the plugin automatically:
+
+1. **Smart Search Mode:**
+   - Falls back to Simple Search parsing
+   - Uses character-level keywords (e.g., [如, 何, 提, 高])
+   - Still filters and scores tasks
+   - Returns relevant results without AI expansion
+
+2. **Task Chat Mode:**
+   - Falls back to Simple Search parsing
+   - Filters tasks with character-level keywords
+   - Still sends tasks to AI for analysis
+   - You get AI response + filtered task list
+
+**UI Message:**
+```
+⚠️ AI Query Parser Failed
+
+Model: openai/gpt-4o-mini
+Error: Maximum context length exceeded
+
+💡 Solution: [Specific solution based on error type]
+
+✓ Using fallback: Simple Search mode (regex + character-level keywords)
+
+Found 28 matching task(s)
+```
+
+### Preventing Future Errors
+
+**Best Practices:**
+
+1. **Configure Max Tokens Correctly**
+   - Don't set max response tokens higher than model's context window
+   - Recommended values:
+     - GPT-4o-mini: 2000-4000 tokens
+     - Claude-3-5-Sonnet: 2000-4000 tokens  
+     - Ollama models: 1000-2000 tokens
+
+2. **Manage Chat History**
+   - Keep chat history context length at 2-3 messages
+   - Start new session for unrelated queries
+   - Clear history if responses slow down
+
+3. **Verify Configuration**
+   - Test connection: Settings → AI Provider → Test Connection
+   - Check model name matches available models
+   - Ensure API key is valid and active
+
+4. **Monitor Token Usage**
+   - Enable: Settings → Usage Tracking → Show token usage
+   - Watch for high token counts
+   - Adjust settings if costs too high
 
 ---
 

@@ -151,7 +151,7 @@ export interface PluginSettings {
     queryLanguages: string[]; // Languages for semantic keyword expansion (e.g., ["English", "中文"])
 
     // Semantic Expansion Settings (Smart Search & Task Chat modes)
-    maxKeywordExpansions: number; // Max semantic variations per keyword (e.g., 10). Total = maxKeywordExpansions * number of languages
+    expansionsPerLanguage: number; // Semantic equivalents to generate per keyword per language (e.g., 5). Total per keyword = expansionsPerLanguage × number of languages
     enableSemanticExpansion: boolean; // Enable/disable semantic keyword expansion
 
     // User-Configurable Property Terms (used across all modes)
@@ -375,7 +375,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     queryLanguages: ["English", "中文"], // Default: English and Chinese
 
     // Semantic Expansion Settings
-    maxKeywordExpansions: 10, // Semantic variations per keyword per language (conservative default)
+    expansionsPerLanguage: 10, // Semantic equivalents per keyword per language (conservative default)
     enableSemanticExpansion: true, // Enable semantic expansion by default
 
     // User-Configurable Property Terms

@@ -179,16 +179,17 @@ export class AIService {
                     "⚠️ AI Query Parser Failed - falling back to Simple Search module",
                 );
                 Logger.error("Parser error details:", error);
-                
+
                 // Store error info in parsedQuery for UI display
-                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorMessage =
+                    error instanceof Error ? error.message : String(error);
                 const parserModel = (error as any).parserModel || "unknown";
-                
+
                 parsedQuery = {
                     _parserError: errorMessage,
                     _parserModel: parserModel,
                 } as ParsedQuery;
-                
+
                 usingAIParsing = false;
             }
 
@@ -196,7 +197,7 @@ export class AIService {
             // Check if parsedQuery has actual parsed data (not just error info)
             const hasParserError = parsedQuery && parsedQuery._parserError;
             const hasParsedData = parsedQuery && !hasParserError;
-            
+
             if (hasParsedData) {
                 // AI parsing succeeded - use AI-parsed results
                 // If AI returned no filters and no keywords, use query as keyword
@@ -268,7 +269,9 @@ export class AIService {
                                 provider: "openai",
                                 isEstimated: false,
                             },
-                            parsedQuery: hasParserError ? parsedQuery : undefined, // Include error info if present
+                            parsedQuery: hasParserError
+                                ? parsedQuery
+                                : undefined, // Include error info if present
                         };
                     }
                     throw error;
@@ -760,7 +763,7 @@ export class AIService {
                         keywords: intent.keywords, // Already clean from extractKeywords()
                         expansionMetadata: {
                             enabled: false,
-                            maxExpansionsPerKeyword: 0,
+                            expansionsPerLanguagePerKeyword: 0,
                             languagesUsed: [],
                             totalKeywords: intent.keywords.length,
                             coreKeywordsCount: intent.keywords.length,
@@ -1404,6 +1407,7 @@ ${taskContext}`;
                 const originalLength = cleanedContent.length;
 
                 // Remove warning messages (they confuse AI about format requirements)
+                // Type 1: Task reference fallback warning
                 if (
                     cleanedContent.includes(
                         "AI Model May Have Failed to Reference Tasks Correctly",
@@ -1416,9 +1420,21 @@ ${taskContext}`;
                         cleanedContent = parts[parts.length - 1].trim();
                         warningsRemoved++;
                         Logger.debug(
-                            `[Chat History] Message ${index + 1}: Removed warning (${originalLength} → ${cleanedContent.length} chars)`,
+                            `[Chat History] Message ${index + 1}: Removed fallback warning (${originalLength} → ${cleanedContent.length} chars)`,
                         );
                     }
+                }
+                
+                // Type 2: Parser error warning (context exceeded, model not found, etc.)
+                // These warnings are displayed in UI but should NOT be sent to AI
+                if (cleanedContent.includes("⚠️ AI Query Parser Failed")) {
+                    // Parser errors are in direct results messages like "Found 28 matching task(s)"
+                    // The warning is displayed separately in UI via parsedQuery._parserError
+                    // So we keep the "Found X tasks" content, warnings are only in UI
+                    Logger.debug(
+                        `[Chat History] Message ${index + 1}: Has parser error metadata (kept content, warnings displayed in UI only)`,
+                    );
+                    // No need to modify content - parser errors are shown via parsedQuery, not in content
                 }
 
                 // Remove display task references (Task 1, **Task 2**, etc.)
@@ -2254,7 +2270,7 @@ ${taskContext}`;
             // Only show warning if AI ATTEMPTED to reference tasks but used invalid IDs
             // Don't show warning if AI simply didn't reference any tasks (e.g., said "no matching tasks")
             const shouldShowWarning = totalAttempts > 0;
-            
+
             if (shouldShowWarning) {
                 Logger.warn(
                     "⚠️⚠️⚠️ FALLBACK TRIGGERED: AI used INVALID [TASK_X] references! ⚠️⚠️⚠️",
@@ -2273,7 +2289,7 @@ ${taskContext}`;
                     "This is AI's content decision, not a format error. Using fallback to show top relevant tasks anyway.",
                 );
             }
-            
+
             Logger.warn("=== FALLBACK DEBUGGING INFO ===");
             Logger.warn(`Total [TASK_X] attempts: ${totalAttempts} | Valid: 0`);
             Logger.warn(`AI response length: ${response.length} characters`);
@@ -2344,7 +2360,11 @@ ${taskContext}`;
             Logger.debug(
                 `Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
             );
-            return { tasks: topTasks, indices: topIndices, usedFallback: shouldShowWarning };
+            return {
+                tasks: topTasks,
+                indices: topIndices,
+                usedFallback: shouldShowWarning,
+            };
         }
 
         Logger.debug(`✅✅✅ SUCCESS: AI used correct [TASK_X] format! ✅✅✅`);

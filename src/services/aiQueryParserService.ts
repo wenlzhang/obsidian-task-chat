@@ -48,7 +48,7 @@ export interface ParsedQuery {
     originalQuery?: string;
     expansionMetadata?: {
         enabled: boolean;
-        maxExpansionsPerKeyword: number;
+        expansionsPerLanguagePerKeyword: number;
         languagesUsed: string[];
         totalKeywords: number; // Total after expansion
         coreKeywordsCount: number; // Original count before expansion
@@ -423,13 +423,13 @@ export class QueryParserService {
         const languageList = queryLanguages.join(", ");
 
         // Get semantic expansion settings
-        const maxExpansions = settings.maxKeywordExpansions || 5;
+        const expansionsPerLanguage = settings.expansionsPerLanguage || 5;
         const expansionEnabled = settings.enableSemanticExpansion !== false;
-        // Max keywords to generate PER core keyword (not total for entire query)
-        // Formula: maxExpansions per language × number of languages
-        // Example: 5 expansions × 2 languages = 10 semantic equivalents per keyword
+        // Total keywords to generate PER core keyword (not total for entire query)
+        // Formula: expansionsPerLanguage × number of languages
+        // Example: 5 expansions/language × 2 languages = 10 semantic equivalents per keyword
         const maxKeywordsPerCore = expansionEnabled
-            ? maxExpansions * queryLanguages.length
+            ? expansionsPerLanguage * queryLanguages.length
             : queryLanguages.length; // Just original keywords in each language, no semantic expansion
 
         // Build property term mappings (three-layer system: user + internal + semantic)
@@ -520,10 +520,10 @@ PART 1: TASK CONTENT (Keywords) BREAKDOWN
 SEMANTIC KEYWORD EXPANSION SETTINGS:
 - Languages configured: ${languageList}
 - Number of languages: ${queryLanguages.length}
-- Target expansions per keyword per language: ${maxExpansions}
+- Target expansions per keyword per language: ${expansionsPerLanguage}
 - Expansion enabled: ${expansionEnabled}
 - Target variations to generate PER core keyword: ${maxKeywordsPerCore}
-  (Formula: ${maxExpansions} expansions/language × ${queryLanguages.length} languages)
+  (Formula: ${expansionsPerLanguage} expansions/language × ${queryLanguages.length} languages)
 
 🚨 CRITICAL EXPANSION REQUIREMENT:
 You MUST expand EVERY SINGLE core keyword into ALL ${queryLanguages.length} configured languages: ${languageList}
@@ -544,10 +544,10 @@ ${
         ? queryLanguages
               .map(
                   (lang, idx) =>
-                      `  - queryLanguages[${idx}] = ${lang} → Generate ${maxExpansions} semantic equivalents DIRECTLY in this language`,
+                      `  - queryLanguages[${idx}] = ${lang} → Generate ${expansionsPerLanguage} semantic equivalents DIRECTLY in this language`,
               )
               .join("\n")
-        : `  - No additional languages configured → Generate ${maxExpansions} semantic equivalents identified from the user's query language`
+        : `  - No additional languages configured → Generate ${expansionsPerLanguage} semantic equivalents identified from the user's query language`
 }
 - Total: EXACTLY ${maxKeywordsPerCore} variations per core keyword
 
@@ -558,9 +558,9 @@ ${
 - Do NOT just translate - generate semantic equivalents!
 - EVERY core keyword MUST have ${maxKeywordsPerCore} total variations
 
-Example with ${queryLanguages.length} languages and target ${maxExpansions} expansions:
+Example with ${queryLanguages.length} languages and target ${expansionsPerLanguage} expansions:
   Core keyword "develop" → ~${maxKeywordsPerCore} variations total:
-  ${queryLanguages.map((lang, idx) => `[variations ${idx * maxExpansions + 1}-${(idx + 1) * maxExpansions} in ${lang}]`).join(", ")}
+  ${queryLanguages.map((lang, idx) => `[variations ${idx * expansionsPerLanguage + 1}-${(idx + 1) * expansionsPerLanguage} in ${lang}]`).join(", ")}
 
 PART 2: TASK ATTRIBUTES (Structured Filters) BREAKDOWN
 
@@ -897,26 +897,26 @@ Result:
    - EVERY core keyword needs EXACTLY ${maxKeywordsPerCore} total variations
    - Proper nouns (like "Task", "Chat") MUST also be expanded
    - Generate equivalents in ALL ${queryLanguages.length} configured languages: ${languageList}
-   - For EACH keyword: ${maxExpansions} equivalents in EACH of the ${queryLanguages.length} languages
+   - For EACH keyword: ${expansionsPerLanguage} equivalents in EACH of the ${queryLanguages.length} languages
    - DO NOT favor any language over others - ALL must be equally represented!
-   - If a keyword appears to be in one language, still generate ${maxExpansions} equivalents in that language PLUS ${maxExpansions} in each other language
-   - Example: For "develop" with [English, 中文], generate ${maxExpansions} English equivalents + ${maxExpansions} Chinese equivalents = ${maxKeywordsPerCore} total
+   - If a keyword appears to be in one language, still generate ${expansionsPerLanguage} equivalents in that language PLUS ${expansionsPerLanguage} in each other language
+   - Example: For "develop" with [English, 中文], generate ${expansionsPerLanguage} English equivalents + ${expansionsPerLanguage} Chinese equivalents = ${maxKeywordsPerCore} total
    - If you have 4 core keywords, you MUST return ${maxKeywordsPerCore} × 4 = ${maxKeywordsPerCore * 4} total keywords
 
    🔴 CRITICAL ALGORITHM - FOLLOW THESE STEPS EXACTLY:
    Step 1: For EACH core keyword, create an empty expansion list
    Step 2: For the current keyword, iterate through EVERY language in order: ${languageList}
-   Step 3: For each language, generate EXACTLY ${maxExpansions} semantic equivalents
-   Step 4: Add all ${maxExpansions} equivalents to the expansion list
+   Step 3: For each language, generate EXACTLY ${expansionsPerLanguage} semantic equivalents
+   Step 4: Add all ${expansionsPerLanguage} equivalents to the expansion list
    Step 5: Repeat steps 2-4 until ALL ${queryLanguages.length} languages are processed
-   Step 6: Verify the expansion list has ${maxKeywordsPerCore} total items (${maxExpansions} × ${queryLanguages.length})
+   Step 6: Verify the expansion list has ${maxKeywordsPerCore} total items (${expansionsPerLanguage} × ${queryLanguages.length})
    Step 7: Move to next core keyword and repeat steps 1-6
    
    ⚠️ VERIFICATION CHECKLIST (check before returning):
    ☐ Did I process ALL ${queryLanguages.length} languages for EVERY keyword?
-   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[0] || "language 1"}?
-   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[1] || "language 2"}?
-${queryLanguages.length > 2 ? `   ☐ Does each keyword have ${maxExpansions} equivalents in ${queryLanguages[2]}?` : ""}
+   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[0] || "language 1"}?
+   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[1] || "language 2"}?
+${queryLanguages.length > 2 ? `   ☐ Does each keyword have ${expansionsPerLanguage} equivalents in ${queryLanguages[2]}?` : ""}
    ☐ Total keywords = ${maxKeywordsPerCore} × (number of core keywords)?
 
 3. "tags" field: Extract hashtags/tags from query (e.g., #work → ["work"])
@@ -932,11 +932,11 @@ KEYWORD EXTRACTION & EXPANSION EXAMPLES:
 Do NOT favor any language - ALL languages must be equally represented!
 
 🔴 IMPORTANT: EXPANSION COUNT IN EXAMPLES
-The example arrays below (e.g., "[develop, build, create, implement, code]") show ${maxExpansions} items for illustration.
-- If user configured maxExpansions=${maxExpansions}, generate EXACTLY ${maxExpansions} equivalents per language
+The example arrays below (e.g., "[develop, build, create, implement, code]") show ${expansionsPerLanguage} items for illustration.
+- If user configured expansionsPerLanguage=${expansionsPerLanguage}, generate EXACTLY ${expansionsPerLanguage} equivalents per language
 - If user configured a DIFFERENT value (e.g., 3 or 7), generate that EXACT number instead
-- The examples are for DEMONSTRATION only - always use the actual ${maxExpansions} value!
-- DO NOT always generate 5 items just because examples show 5 - respect user's ${maxExpansions} setting!
+- The examples are for DEMONSTRATION only - always use the actual ${expansionsPerLanguage} value!
+- DO NOT always generate 5 items just because examples show 5 - respect user's ${expansionsPerLanguage} setting!
 
 Example 1: Query with ${queryLanguages.length} configured languages: ${languageList}
     Query: "开发 Task Chat"
@@ -947,14 +947,14 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
                     lang === "English"
                         ? "[develop, build, create, implement, code]"
                         : lang === "中文"
                           ? "[开发, 构建, 创建, 编程, 制作]"
                           : lang.toLowerCase().includes("swed")
                             ? "[utveckla, bygga, skapa, programmera, implementera]"
-                            : `[${maxExpansions} equivalents in ${lang}]`
+                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -964,14 +964,14 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
                     lang === "English"
                         ? "[task, work, job, assignment, item]"
                         : lang === "中文"
                           ? "[任务, 工作, 事项, 项目, 作业]"
                           : lang.toLowerCase().includes("swed")
                             ? "[uppgift, arbete, jobb, uppdrag, ärende]"
-                            : `[${maxExpansions} equivalents in ${lang}]`
+                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -981,14 +981,14 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} equivalents → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} equivalents → ${
                     lang === "English"
                         ? "[chat, conversation, talk, discussion, dialogue]"
                         : lang === "中文"
                           ? "[聊天, 对话, 交流, 谈话, 沟通]"
                           : lang.toLowerCase().includes("swed")
                             ? "[chatt, konversation, prata, diskussion, samtal]"
-                            : `[${maxExpansions} equivalents in ${lang}]`
+                            : `[${expansionsPerLanguage} equivalents in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -997,11 +997,11 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     ✅ VERIFICATION:
     - Core keywords: 3
     - Languages processed: ${queryLanguages.length} (${languageList})
-    - Equivalents per keyword: ${maxKeywordsPerCore} (${maxExpansions} × ${queryLanguages.length})
+    - Equivalents per keyword: ${maxKeywordsPerCore} (${expansionsPerLanguage} × ${queryLanguages.length})
     - Total equivalents: 3 × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore}
 
-    ⚠️ JSON OUTPUT NOTE: Arrays below show ${maxExpansions} items as examples.
-    In your actual output, generate EXACTLY ${maxExpansions} equivalents per language (not always 5!).
+    ⚠️ JSON OUTPUT NOTE: Arrays below show ${expansionsPerLanguage} items as examples.
+    In your actual output, generate EXACTLY ${expansionsPerLanguage} equivalents per language (not always 5!).
 
     {
     "coreKeywords": ["开发", "Task", "Chat"],
@@ -1014,7 +1014,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
                       ? '"开发", "构建", "创建", "编程", "制作"'
                       : lang.toLowerCase().includes("swed")
                         ? '"utveckla", "bygga", "skapa", "programmera", "implementera"'
-                        : `"[${maxExpansions} in ${lang}]"`,
+                        : `"[${expansionsPerLanguage} in ${lang}]"`,
             )
             .join(",\n        ")},
         ${queryLanguages
@@ -1025,7 +1025,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
                       ? '"任务", "工作", "事项", "项目", "作业"'
                       : lang.toLowerCase().includes("swed")
                         ? '"uppgift", "arbete", "jobb", "uppdrag", "ärende"'
-                        : `"[${maxExpansions} in ${lang}]"`,
+                        : `"[${expansionsPerLanguage} in ${lang}]"`,
             )
             .join(",\n        ")},
         ${queryLanguages
@@ -1036,7 +1036,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
                       ? '"聊天", "对话", "交流", "谈话", "沟通"'
                       : lang.toLowerCase().includes("swed")
                         ? '"chatt", "konversation", "prata", "diskussion", "samtal"'
-                        : `"[${maxExpansions} in ${lang}]"`,
+                        : `"[${expansionsPerLanguage} in ${lang}]"`,
             )
             .join(",\n        ")}
     ],
@@ -1045,9 +1045,9 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
 
     ✅ Result verification:
     - Total: 3 keywords × ${maxKeywordsPerCore} = ${3 * maxKeywordsPerCore} total variations
-    - ${queryLanguages[0]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓
-${queryLanguages.length > 1 ? `    - ${queryLanguages[1]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓` : ""}
-${queryLanguages.length > 2 ? `    - ${queryLanguages[2]}: ${maxExpansions} + ${maxExpansions} + ${maxExpansions} = ${maxExpansions * 3} keywords ✓` : ""}
+    - ${queryLanguages[0]}: ${expansionsPerLanguage} + ${expansionsPerLanguage} + ${expansionsPerLanguage} = ${expansionsPerLanguage * 3} keywords ✓
+${queryLanguages.length > 1 ? `    - ${queryLanguages[1]}: ${expansionsPerLanguage} + ${expansionsPerLanguage} + ${expansionsPerLanguage} = ${expansionsPerLanguage * 3} keywords ✓` : ""}
+${queryLanguages.length > 2 ? `    - ${queryLanguages[2]}: ${expansionsPerLanguage} + ${expansionsPerLanguage} + ${expansionsPerLanguage} = ${expansionsPerLanguage * 3} keywords ✓` : ""}
 
 Example 2: Another query showing algorithm - MUST follow same process!
     Query: "Fix bug"
@@ -1058,14 +1058,14 @@ Example 2: Another query showing algorithm - MUST follow same process!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[fix, repair, solve, correct, resolve]"
                         : lang === "中文"
                           ? "[修复, 解决, 修正, 处理, 纠正]"
                           : lang.toLowerCase().includes("swed")
                             ? "[fixa, reparera, lösa, korrigera, åtgärda]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1075,20 +1075,20 @@ Example 2: Another query showing algorithm - MUST follow same process!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[bug, error, issue, defect, problem]"
                         : lang === "中文"
                           ? "[错误, 问题, 缺陷, 故障, 漏洞]"
                           : lang.toLowerCase().includes("swed")
                             ? "[bugg, fel, problem, defekt, brist]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
     Subtotal: ${maxKeywordsPerCore} ✓
 
-    ⚠️ JSON OUTPUT NOTE: Each array shows ${maxExpansions} items. Generate exactly ${maxExpansions} per language!
+    ⚠️ JSON OUTPUT NOTE: Each array shows ${expansionsPerLanguage} items. Generate exactly ${expansionsPerLanguage} per language!
 
     {
     "coreKeywords": ["fix", "bug"],
@@ -1101,7 +1101,7 @@ Example 2: Another query showing algorithm - MUST follow same process!
                       ? '"修复", "解决", "修正", "处理", "纠正"'
                       : lang.toLowerCase().includes("swed")
                         ? '"fixa", "reparera", "lösa", "korrigera", "åtgärda"'
-                        : `"[${maxExpansions} in ${lang}]"`,
+                        : `"[${expansionsPerLanguage} in ${lang}]"`,
             )
             .join(",\n        ")},
         ${queryLanguages
@@ -1112,7 +1112,7 @@ Example 2: Another query showing algorithm - MUST follow same process!
                       ? '"错误", "问题", "缺陷", "故障", "漏洞"'
                       : lang.toLowerCase().includes("swed")
                         ? '"bugg", "fel", "problem", "defekt", "brist"'
-                        : `"[${maxExpansions} in ${lang}]"`,
+                        : `"[${expansionsPerLanguage} in ${lang}]"`,
             )
             .join(",\n        ")}
     ]
@@ -1120,10 +1120,10 @@ Example 2: Another query showing algorithm - MUST follow same process!
 
 ⚠️ CRITICAL: This algorithm MUST be followed for EVERY query - ALL ${queryLanguages.length} languages in ${languageList} for EVERY keyword!
 
-🔴 REMINDER: User configured maxExpansions=${maxExpansions}
-- Generate EXACTLY ${maxExpansions} equivalents per language (not always 5!)
-- If maxExpansions=3: generate 3 per language
-- If maxExpansions=7: generate 7 per language  
+🔴 REMINDER: User configured expansionsPerLanguage=${expansionsPerLanguage}
+- Generate EXACTLY ${expansionsPerLanguage} equivalents per language (not always 5!)
+- If expansionsPerLanguage=3: generate 3 per language
+- If expansionsPerLanguage=7: generate 7 per language  
 - DO NOT assume 5 just because examples show 5 items!
 
 Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
@@ -1149,14 +1149,14 @@ Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[improve, enhance, boost, increase, raise]"
                         : lang === "中文"
                           ? "[提高, 提升, 改善, 增强, 增进]"
                           : lang.toLowerCase().includes("swed")
                             ? "[förbättra, öka, höja, stärka, förstärka]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1165,14 +1165,14 @@ Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[online, web-based, internet, digital, virtual]"
                         : lang === "中文"
                           ? "[在线, 网上, 线上, 网络, 互联网]"
                           : lang.toLowerCase().includes("swed")
                             ? "[online, webbaserad, internet, digital, virtuell]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1181,14 +1181,14 @@ Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[shopping, purchasing, buying, commerce, retail]"
                         : lang === "中文"
                           ? "[购物, 购买, 采购, 消费, 交易]"
                           : lang.toLowerCase().includes("swed")
                             ? "[shopping, köp, inköp, handel, detaljhandel]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1197,14 +1197,14 @@ Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[platform, system, framework, infrastructure, service]"
                         : lang === "中文"
                           ? "[平台, 系统, 框架, 基础, 服务]"
                           : lang.toLowerCase().includes("swed")
                             ? "[plattform, system, ramverk, infrastruktur, tjänst]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1213,14 +1213,14 @@ Example 2.5: Chinese compound splitting - CRITICAL for atomicity!
     ${queryLanguages
         .map(
             (lang, idx) =>
-                `    Language ${idx + 1} (${lang}): ${maxExpansions} → ${
+                `    Language ${idx + 1} (${lang}): ${expansionsPerLanguage} → ${
                     lang === "English"
                         ? "[performance, efficiency, capability, speed, optimization]"
                         : lang === "中文"
                           ? "[性能, 效率, 能力, 速度, 优化]"
                           : lang.toLowerCase().includes("swed")
                             ? "[prestanda, effektivitet, kapacitet, hastighet, optimering]"
-                            : `[${maxExpansions} in ${lang}]`
+                            : `[${expansionsPerLanguage} in ${lang}]`
                 }`,
         )
         .join("\n")}
@@ -1328,7 +1328,7 @@ Example 7: Property + hashtags + keywords
                     ? '"修复", "解决", "处理", "纠正", "调试"'
                     : lang.toLowerCase().includes("swed")
                       ? '"fixa", "reparera", "lösa", "korrigera", "felsöka"'
-                      : `"[${maxExpansions} in ${lang}]"`,
+                      : `"[${expansionsPerLanguage} in ${lang}]"`,
           )
           .join(",\n      ")},
       ${queryLanguages
@@ -1339,7 +1339,7 @@ Example 7: Property + hashtags + keywords
                     ? '"错误", "问题", "缺陷", "故障", "漏洞"'
                     : lang.toLowerCase().includes("swed")
                       ? '"bugg", "fel", "problem", "defekt", "brist"'
-                      : `"[${maxExpansions} in ${lang}]"`,
+                      : `"[${expansionsPerLanguage} in ${lang}]"`,
           )
           .join(",\n      ")}
     ],
@@ -1386,7 +1386,7 @@ Example 9: Keywords with tags
                     ? '"修复", "解决", "处理", "纠正", "调试"'
                     : lang.toLowerCase().includes("swed")
                       ? '"fixa", "reparera", "lösa", "korrigera", "felsöka"'
-                      : `"[${maxExpansions} in ${lang}]"`,
+                      : `"[${expansionsPerLanguage} in ${lang}]"`,
           )
           .join(",\n      ")},
       ${queryLanguages
@@ -1397,7 +1397,7 @@ Example 9: Keywords with tags
                     ? '"错误", "问题", "缺陷", "故障", "漏洞"'
                     : lang.toLowerCase().includes("swed")
                       ? '"bugg", "fel", "problem", "defekt", "brist"'
-                      : `"[${maxExpansions} in ${lang}]"`,
+                      : `"[${expansionsPerLanguage} in ${lang}]"`,
           )
           .join(",\n      ")}
     ],
@@ -1897,7 +1897,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Build expansion metadata
             const expansionMetadata = {
                 enabled: expansionEnabled,
-                maxExpansionsPerKeyword: maxExpansions,
+                expansionsPerLanguagePerKeyword: expansionsPerLanguage,
                 languagesUsed: queryLanguages,
                 coreKeywordsCount: coreKeywords.length,
                 totalKeywords: expandedKeywords.length,
@@ -1907,7 +1907,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             Logger.debug("========== SEMANTIC EXPANSION DETAILS ==========");
             Logger.debug("User Settings:", {
                 languages: queryLanguages,
-                maxExpansionsPerLanguage: maxExpansions,
+                expansionsPerLanguage: expansionsPerLanguage,
                 targetPerCore: maxKeywordsPerCore,
                 expansionEnabled: expansionEnabled,
             });
@@ -1988,7 +1988,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
                 // Check for missing languages
                 const missingLanguages: string[] = [];
-                const expectedMinPerLanguage = Math.floor(maxExpansions * 0.5); // At least 50% of expected
+                const expectedMinPerLanguage = Math.floor(expansionsPerLanguage * 0.5); // At least 50% of expected
 
                 Object.entries(languageBreakdown).forEach(([lang, words]) => {
                     if (words.length > 0) {
@@ -2110,16 +2110,19 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 provider: settings.aiProvider,
                 model: providerConfig.model,
                 query: query,
-                errorMessage: error instanceof Error ? error.message : String(error)
+                errorMessage:
+                    error instanceof Error ? error.message : String(error),
             });
-            
+
             // Don't create duplicate fallback here - let AIService handle it
             // AIService will call Simple Search module (TaskSearchService.analyzeQueryIntent)
             // Re-throw error with structured info for proper error handling
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
             const enrichedError = new Error(errorMessage);
             // Add metadata for UI display
-            (enrichedError as any).parserModel = `${settings.aiProvider}/${providerConfig.model}`;
+            (enrichedError as any).parserModel =
+                `${settings.aiProvider}/${providerConfig.model}`;
             (enrichedError as any).isParserError = true;
             throw enrichedError;
         }
@@ -2169,10 +2172,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         if (response.status !== 200) {
             // Extract detailed error information from API response
             const errorBody = response.json || {};
-            const errorMessage = errorBody.error?.message || errorBody.message || "Unknown error";
+            const errorMessage =
+                errorBody.error?.message ||
+                errorBody.message ||
+                "Unknown error";
             const errorType = errorBody.error?.type || "api_error";
             const errorCode = errorBody.error?.code || "unknown";
-            
+
             // Log detailed error for debugging
             Logger.error("AI Query Parser API Error:", {
                 status: response.status,
@@ -2182,33 +2188,47 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 errorCode: errorCode,
                 errorMessage: errorMessage,
                 maxTokens: providerConfig.maxTokens,
-                fullResponse: errorBody
+                fullResponse: errorBody,
             });
-            
+
             // Generate actionable solution based on error type
             let solution = "";
             if (response.status === 400) {
-                if (errorCode === "context_length_exceeded" || errorMessage.includes("context") || errorMessage.includes("token")) {
-                    solution = "Reduce max tokens in settings (current: " + providerConfig.maxTokens + "). Try 1000-2000 tokens.";
-                } else if (errorCode === "model_not_found" || errorMessage.includes("model") || errorMessage.includes("does not exist")) {
-                    solution = "Check model name in settings. Available models vary by provider.";
+                if (
+                    errorCode === "context_length_exceeded" ||
+                    errorMessage.includes("context") ||
+                    errorMessage.includes("token")
+                ) {
+                    solution =
+                        "Options: (1) Reduce 'Max response tokens' in settings (current: " +
+                        providerConfig.maxTokens +
+                        ", try 1000-4000). (2) Switch to model with larger context window. (3) Clear chat history to reduce context.";
+                } else if (
+                    errorCode === "model_not_found" ||
+                    errorMessage.includes("model") ||
+                    errorMessage.includes("does not exist")
+                ) {
+                    solution =
+                        "Check model name in settings. Available models vary by provider.";
                 } else {
-                    solution = "Check API key and model configuration in settings.";
+                    solution =
+                        "Check API key and model configuration in settings.";
                 }
             } else if (response.status === 401) {
-                solution = "Invalid API key. Update API key in plugin settings.";
+                solution =
+                    "Invalid API key. Update API key in plugin settings.";
             } else if (response.status === 429) {
-                solution = "Rate limit exceeded. Wait a moment or switch to another provider.";
+                solution =
+                    "Rate limit exceeded. Wait a moment or switch to another provider.";
             } else if (response.status === 500 || response.status === 503) {
-                solution = "Provider server error. Try again later or switch providers.";
+                solution =
+                    "Provider server error. Try again later or switch providers.";
             } else {
                 solution = "Check console logs for details.";
             }
-            
+
             // Throw user-friendly error with context and solution
-            throw new Error(
-                `${errorMessage} | ${solution}`
-            );
+            throw new Error(`${errorMessage} | ${solution}`);
         }
 
         return response.json.choices[0].message.content.trim();
@@ -2257,10 +2277,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         if (response.status !== 200) {
             // Extract detailed error information from Anthropic API response
             const errorBody = response.json || {};
-            const errorMessage = errorBody.error?.message || errorBody.message || "Unknown error";
+            const errorMessage =
+                errorBody.error?.message ||
+                errorBody.message ||
+                "Unknown error";
             const errorType = errorBody.error?.type || "api_error";
             const errorCode = errorBody.error?.code || "unknown";
-            
+
             // Log detailed error for debugging
             Logger.error("Anthropic Query Parser API Error:", {
                 status: response.status,
@@ -2269,15 +2292,15 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 errorCode: errorCode,
                 errorMessage: errorMessage,
                 maxTokens: providerConfig.maxTokens,
-                fullResponse: errorBody
+                fullResponse: errorBody,
             });
-            
+
             // Generate actionable solution based on error type
             let solution = "";
             if (response.status === 400) {
                 if (errorType === "invalid_request_error") {
                     if (errorMessage.includes("max_tokens") || errorMessage.includes("too large")) {
-                        solution = "Reduce max tokens in settings (current: " + providerConfig.maxTokens + "). Try 1000-4000 tokens for Claude.";
+                        solution = "Options: (1) Reduce 'Max response tokens' in settings (current: " + providerConfig.maxTokens + ", try 1000-4000 for Claude). (2) Clear chat history to reduce context.";
                     } else if (errorMessage.includes("model")) {
                         solution = "Check model name in settings. Available Claude models: claude-3-5-sonnet, claude-3-opus, claude-3-haiku.";
                     } else {
@@ -2295,7 +2318,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             } else {
                 solution = "Check console logs for details.";
             }
-            
+
             // Throw user-friendly error with solution
             throw new Error(`${errorMessage} | ${solution}`);
         }
@@ -2348,8 +2371,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             if (response.status !== 200) {
                 const errorBody = response.json || {};
-                const errorMessage = errorBody.error || response.text || "Unknown error";
-                
+                const errorMessage =
+                    errorBody.error || response.text || "Unknown error";
+
                 // Log detailed error for debugging
                 Logger.error("Ollama Query Parser API Error:", {
                     status: response.status,
@@ -2357,19 +2381,22 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     endpoint: endpoint,
                     errorMessage: errorMessage,
                     numPredict: providerConfig.maxTokens,
-                    fullResponse: errorBody
+                    fullResponse: errorBody,
                 });
-                
+
                 // Generate actionable solution based on error
                 let solution = "";
                 if (response.status === 404) {
                     solution = `Model '${providerConfig.model}' not found. Pull it first: ollama pull ${providerConfig.model}`;
-                } else if (errorMessage.includes("model") && errorMessage.includes("not found")) {
+                } else if (
+                    errorMessage.includes("model") &&
+                    errorMessage.includes("not found")
+                ) {
                     solution = `Model '${providerConfig.model}' not available. Try: ollama pull ${providerConfig.model}`;
                 } else {
                     solution = `Ensure Ollama is running at ${endpoint}. Check: http://localhost:11434`;
                 }
-                
+
                 // Throw user-friendly error with solution
                 throw new Error(`${errorMessage} | ${solution}`);
             }
@@ -2420,7 +2447,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             if (errorMsg.includes(" | ")) {
                 throw error; // Already has solution
             }
-            throw new Error(`${errorMsg} | Check Ollama configuration and logs`);
+            throw new Error(
+                `${errorMsg} | Check Ollama configuration and logs`,
+            );
         }
     }
 }
