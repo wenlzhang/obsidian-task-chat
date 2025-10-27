@@ -242,7 +242,15 @@ export class SettingsTab extends PluginSettingTab {
                 .addOption("ollama", "Ollama (Local)")
                 .setValue(this.plugin.settings.parsingProvider)
                 .onChange(async (value) => {
-                    this.plugin.settings.parsingProvider = value as any;
+                    const newProvider = value as
+                        | "openai"
+                        | "anthropic"
+                        | "openrouter"
+                        | "ollama";
+                    this.plugin.settings.parsingProvider = newProvider;
+                    // Reset parsing model to new provider's default when switching providers
+                    this.plugin.settings.parsingModel =
+                        this.plugin.settings.providerConfigs[newProvider].model;
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to update model dropdown
                 });
@@ -347,7 +355,15 @@ export class SettingsTab extends PluginSettingTab {
                 .addOption("ollama", "Ollama (Local)")
                 .setValue(this.plugin.settings.analysisProvider)
                 .onChange(async (value) => {
-                    this.plugin.settings.analysisProvider = value as any;
+                    const newProvider = value as
+                        | "openai"
+                        | "anthropic"
+                        | "openrouter"
+                        | "ollama";
+                    this.plugin.settings.analysisProvider = newProvider;
+                    // Reset analysis model to new provider's default when switching providers
+                    this.plugin.settings.analysisModel =
+                        this.plugin.settings.providerConfigs[newProvider].model;
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to update model dropdown
                 });

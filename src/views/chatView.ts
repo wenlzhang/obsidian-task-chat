@@ -123,12 +123,7 @@ export class ChatView extends ItemView {
             "task-chat-chat-mode",
         );
 
-        // Just the dropdown with an icon prefix
-        chatModeContainer.createSpan({
-            text: "💬",
-            cls: "task-chat-chat-mode-icon",
-        });
-
+        // Dropdown with icon inside option text
         this.chatModeSelect = chatModeContainer.createEl("select", {
             cls: "task-chat-chat-mode-select",
         });
@@ -334,18 +329,18 @@ export class ChatView extends ItemView {
 
         this.chatModeSelect.empty();
 
-        // Create all three mode options
+        // Create all three mode options with emoji icons
         this.chatModeSelect.createEl("option", {
             value: "simple",
-            text: "Simple Search",
+            text: "💬 Simple Search",
         });
         this.chatModeSelect.createEl("option", {
             value: "smart",
-            text: "Smart Search",
+            text: "💬 Smart Search",
         });
         this.chatModeSelect.createEl("option", {
             value: "chat",
-            text: "Task Chat",
+            text: "💬 Task Chat",
         });
 
         // Set to current setting (or override if one exists)
@@ -1060,8 +1055,8 @@ export class ChatView extends ItemView {
                 };
 
                 // Show model info based on mode and configuration
-                if (!isTaskChatMode || !hasParsingModel || modelsSame) {
-                    // Simple/Smart Search OR Task Chat with same model for both
+                if (!isTaskChatMode || !hasParsingModel) {
+                    // Simple/Smart Search - no parsing/analysis distinction
                     const displayModel = hasParsingModel
                         ? message.tokenUsage.parsingModel
                         : message.tokenUsage.model;
@@ -1071,6 +1066,14 @@ export class ChatView extends ItemView {
 
                     const providerName = formatProvider(displayProvider);
                     parts.push(`${providerName}: ${displayModel}`);
+                } else if (modelsSame) {
+                    // Task Chat with same model for both - clarify it's used for both
+                    const displayProvider = message.tokenUsage.parsingProvider!;
+                    const displayModel = message.tokenUsage.parsingModel!;
+                    const providerName = formatProvider(displayProvider);
+                    parts.push(
+                        `${providerName}: ${displayModel} (parser + analysis)`,
+                    );
                 } else {
                     // Task Chat with different models for parsing and analysis
                     // Check if same provider
