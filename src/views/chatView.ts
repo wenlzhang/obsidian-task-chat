@@ -795,7 +795,16 @@ export class ChatView extends ItemView {
 
         // Display structured error if present (API/parser/analysis failures)
         // Show BEFORE recommended tasks so users see the error first
+        // DEBUG: Check if error exists when rendering
+        Logger.debug("[RENDER ERROR CHECK] message.role:", message.role);
+        Logger.debug(
+            "[RENDER ERROR CHECK] message.error exists:",
+            !!message.error,
+        );
+        Logger.debug("[RENDER ERROR CHECK] message.error:", message.error);
+
         if (message.error) {
+            Logger.debug("[RENDER ERROR CHECK] ✓ Rendering error display");
             const errorEl = messageEl.createDiv({
                 cls: "task-chat-api-error",
             });
@@ -989,10 +998,11 @@ export class ChatView extends ItemView {
         }
 
         // Token usage display - moved outside messageEl so border-left doesn't extend to it
-        // Show metadata even when error occurs (use error.model as fallback)
+        // CRITICAL: Show metadata when error occurs OR when showTokenUsage is enabled
+        // This ensures users ALWAYS see parser/analysis failures with troubleshooting info
         if (
-            (message.tokenUsage || message.error) &&
-            this.plugin.settings.showTokenUsage
+            message.error ||
+            (message.tokenUsage && this.plugin.settings.showTokenUsage)
         ) {
             const usageEl = this.messagesEl.createDiv("task-chat-token-usage");
 
@@ -1022,7 +1032,59 @@ export class ChatView extends ItemView {
                 return; // Skip rest of processing since no tokenUsage
             }
 
-            // From here, message.tokenUsage is guaranteed to exist
+            // If error exists but showTokenUsage is false, show enhanced minimal metadata
+            // This ensures users see complete error context even with token display disabled
+            if (message.error && !this.plugin.settings.showTokenUsage) {
+                // Show mode, model, failure indicator, and token info
+                if (message.tokenUsage && message.tokenUsage.model !== "none") {
+                    const modelInfo =
+                        message.tokenUsage.parsingModel ||
+                        message.tokenUsage.model;
+                    const providerInfo =
+                        message.tokenUsage.parsingProvider ||
+                        message.tokenUsage.provider;
+                    const providerName =
+                        providerInfo === "openai"
+                            ? "OpenAI"
+                            : providerInfo === "anthropic"
+                              ? "Anthropic"
+                              : providerInfo === "openrouter"
+                                ? "OpenRouter"
+                                : "Ollama";
+
+                    // Add failure indicator for parser/analysis errors
+                    const isSmartSearch = message.role === "smart";
+                    const isTaskChat = message.role === "chat";
+                    let failureIndicator = "";
+                    if (isSmartSearch && message.error.type === "api") {
+                        failureIndicator = " (parser failed)";
+                    } else if (isTaskChat && message.error.type === "api") {
+                        failureIndicator = " (analysis failed)";
+                    }
+
+                    parts.push(
+                        `${providerName}: ${modelInfo}${failureIndicator}`,
+                    );
+
+                    // Show token counts (even if estimated/zero) for transparency
+                    const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
+                    const totalTokens = message.tokenUsage.totalTokens || 0;
+                    const promptTokens = message.tokenUsage.promptTokens || 0;
+                    const completionTokens =
+                        message.tokenUsage.completionTokens || 0;
+                    parts.push(
+                        `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
+                    );
+
+                    // Show cost (even if zero)
+                    const cost = message.tokenUsage.estimatedCost || 0;
+                    parts.push(`${tokenStr}$${cost.toFixed(4)}`);
+                }
+                usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
+                return; // Skip additional details when showTokenUsage is false
+            }
+
+            // From here, either no error OR showTokenUsage is enabled
             if (!message.tokenUsage) {
                 return; // Safety check
             }
@@ -1075,10 +1137,19 @@ export class ChatView extends ItemView {
 
                     const providerName = formatProvider(displayProvider);
 
-                    // Add "(parser)" for Smart Search to maintain consistency
+                    // Add status indicator for Smart Search
                     const isSmartSearch = message.role === "smart";
-                    const suffix =
-                        isSmartSearch && hasParsingModel ? " (parser)" : "";
+                    let suffix = "";
+                    if (isSmartSearch && hasParsingModel) {
+                        // Check if parser failed (error exists and is parser-related)
+                        const parserFailed =
+                            message.error &&
+                            (message.error.type === "parser" ||
+                                message.error.type === "api");
+                        suffix = parserFailed
+                            ? " (parser failed)"
+                            : " (parser)";
+                    }
                     parts.push(`${providerName}: ${displayModel}${suffix}`);
                 } else if (modelsSame) {
                     // Task Chat with same model for both - clarify it's used for both
@@ -1571,6 +1642,13 @@ export class ChatView extends ItemView {
                     }
                 }
 
+                // DEBUG: Log error propagation
+                Logger.debug(
+                    "[UI ERROR CHECK] result.error exists:",
+                    !!result.error,
+                );
+                Logger.debug("[UI ERROR CHECK] result.error:", result.error);
+
                 const directMessage: ChatMessage = {
                     role: usedChatMode as "simple" | "smart",
                     content: content, // Keep warnings in chat history for UI display
@@ -1578,7 +1656,17 @@ export class ChatView extends ItemView {
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,
                     parsedQuery: result.parsedQuery,
+                    error: result.error, // Include error info for parser failures
                 };
+
+                Logger.debug(
+                    "[UI ERROR CHECK] directMessage.error exists:",
+                    !!directMessage.error,
+                );
+                Logger.debug(
+                    "[UI ERROR CHECK] directMessage.error:",
+                    directMessage.error,
+                );
 
                 this.plugin.sessionManager.addMessage(directMessage);
                 await this.renderMessages();

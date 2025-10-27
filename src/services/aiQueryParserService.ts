@@ -13,7 +13,7 @@ import { DataviewService } from "./dataviewService";
 import { TaskSearchService } from "./taskSearchService";
 import { PricingService } from "./pricingService";
 import { Logger } from "../utils/logger";
-import { ErrorHandler } from "../utils/errorHandler";
+import { ErrorHandler, AIError } from "../utils/errorHandler";
 
 /**
  * Structured query result from AI parsing - Three-part system
@@ -2152,12 +2152,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 _parserTokenUsage: tokenUsage, // Include token usage from query parsing
             };
         } catch (error) {
-            // Log comprehensive error information including model details
-            const providerConfig = getCurrentProviderConfig(settings);
+            // Log comprehensive error information including ACTUAL parsing model details
+            const { provider: parsingProvider, model: parsingModel } =
+                getProviderForPurpose(settings, "parsing");
             Logger.error("Query parsing error:", error);
             Logger.error("AI Query Parser failed with model:", {
-                provider: settings.aiProvider,
-                model: providerConfig.model,
+                provider: parsingProvider,
+                model: parsingModel,
                 query: query,
                 errorMessage:
                     error instanceof Error ? error.message : String(error),
@@ -2169,9 +2170,17 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
             const enrichedError = new Error(errorMessage);
-            // Add metadata for UI display
+            // Add metadata for UI display - format as "Provider: model" not "provider/model"
+            const providerName =
+                parsingProvider === "openai"
+                    ? "OpenAI"
+                    : parsingProvider === "anthropic"
+                      ? "Anthropic"
+                      : parsingProvider === "openrouter"
+                        ? "OpenRouter"
+                        : "Ollama";
             (enrichedError as any).parserModel =
-                `${settings.aiProvider}/${providerConfig.model}`;
+                `${providerName}: ${parsingModel}`;
             (enrichedError as any).isParserError = true;
             throw enrichedError;
         }
@@ -2285,8 +2294,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 "parser",
             );
 
-            // Throw with format: "message | solution" for backward compatibility
-            throw new Error(`${structured.details} | ${structured.solution}`);
+            // Throw AIError to preserve structured information
+            throw new AIError(structured);
         }
 
         const data = response.json;
@@ -2393,8 +2402,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 "parser",
             );
 
-            // Throw with format: "message | solution" for backward compatibility
-            throw new Error(`${structured.details} | ${structured.solution}`);
+            // Throw AIError to preserve structured information
+            throw new AIError(structured);
         }
 
         const data = response.json;
@@ -2575,8 +2584,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 "parser",
             );
 
-            // Throw with format: "message | solution" for backward compatibility
-            throw new Error(`${structured.details} | ${structured.solution}`);
+            // Throw AIError to preserve structured information
+            throw new AIError(structured);
         }
     }
 }

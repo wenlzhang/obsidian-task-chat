@@ -71,6 +71,16 @@ export class ErrorHandler {
             return this.createModelNotFoundError(errorMsg, model);
         }
 
+        // Check for 400 Bad Request errors (invalid request/model/parameters)
+        if (
+            errorMsg.includes("400") ||
+            errorMsg.includes("bad request") ||
+            errorMsg.includes("invalid request") ||
+            errorBody?.error?.code === "invalid_request_error"
+        ) {
+            return this.createBadRequestError(errorMsg, errorBody, model);
+        }
+
         // Check for API key errors
         if (
             errorMsg.includes("API key") ||
@@ -186,6 +196,41 @@ export class ErrorHandler {
             solution: solution,
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#2-model-not-found",
+            model: model,
+        };
+    }
+
+    /**
+     * 400 Bad Request error
+     */
+    private static createBadRequestError(
+        errorMsg: string,
+        errorBody: any,
+        model: string,
+    ): StructuredError {
+        // Try to extract specific error from response body
+        let details = errorMsg;
+        let solution =
+            "1. Check model name is correct\n2. Verify request parameters are valid\n3. Check API endpoint configuration\n4. Try a different model";
+
+        // Check if it's a model validation error
+        if (errorBody?.error?.message) {
+            details = errorBody.error.message;
+
+            // Specific guidance for model errors
+            if (details.toLowerCase().includes("model")) {
+                solution =
+                    "1. The model name may be invalid or not exist\n2. Check available models for your provider\n3. Try 'gpt-4o-mini' for OpenAI\n4. Verify model format for OpenRouter (provider/model)";
+            }
+        }
+
+        return {
+            type: "api",
+            message: "Bad Request (400)",
+            details: details,
+            solution: solution,
+            docsLink:
+                "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md",
             model: model,
         };
     }

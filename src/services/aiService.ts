@@ -190,14 +190,26 @@ export class AIService {
                 Logger.error("Parser error details:", error);
 
                 // Store error info in parsedQuery for UI display
-                const errorMessage =
-                    error instanceof Error ? error.message : String(error);
-                const parserModel = (error as any).parserModel || "unknown";
-
-                parsedQuery = {
-                    _parserError: errorMessage,
-                    _parserModel: parserModel,
-                } as ParsedQuery;
+                // Check if it's an AIError with structured information
+                let errorMessage: string;
+                if (error instanceof AIError && error.structured) {
+                    // AIError has full structured info - store it for later use
+                    errorMessage = error.structured.details;
+                    parsedQuery = {
+                        _parserError: errorMessage,
+                        _parserModel: error.structured.model || "unknown",
+                        _structuredError: error.structured, // Store full structured error!
+                    } as ParsedQuery;
+                } else {
+                    // Fallback for plain errors
+                    errorMessage =
+                        error instanceof Error ? error.message : String(error);
+                    const parserModel = (error as any).parserModel || "unknown";
+                    parsedQuery = {
+                        _parserError: errorMessage,
+                        _parserModel: parserModel,
+                    } as ParsedQuery;
+                }
 
                 usingAIParsing = false;
             }
@@ -673,6 +685,43 @@ export class AIService {
                             topScores,
                         );
 
+                        // Create error object for Smart Search if parser failed
+                        // CRITICAL: Must create BEFORE early return
+                        let errorForEarlyReturn = undefined;
+                        if (
+                            chatMode === "smart" &&
+                            !usingAIParsing &&
+                            parsedQuery &&
+                            parsedQuery._parserError
+                        ) {
+                            if ((parsedQuery as any)._structuredError) {
+                                errorForEarlyReturn = (parsedQuery as any)
+                                    ._structuredError;
+                                errorForEarlyReturn.fallbackUsed = `AI parser failed, used Simple Search fallback (0 tasks found after filtering).`;
+                            } else {
+                                const {
+                                    provider: parsingProvider,
+                                    model: parsingModel,
+                                } = getProviderForPurpose(settings, "parsing");
+                                const providerName =
+                                    parsingProvider === "openai"
+                                        ? "OpenAI"
+                                        : parsingProvider === "anthropic"
+                                          ? "Anthropic"
+                                          : parsingProvider === "openrouter"
+                                            ? "OpenRouter"
+                                            : "Ollama";
+
+                                errorForEarlyReturn =
+                                    ErrorHandler.createParserError(
+                                        new Error(parsedQuery._parserError),
+                                        `${providerName}: ${parsingModel}`,
+                                        "simple",
+                                    );
+                                errorForEarlyReturn.fallbackUsed = `AI parser failed, used Simple Search fallback (0 tasks found after filtering).`;
+                            }
+                        }
+
                         // Return diagnostic message for ALL modes
                         // Simple/Smart Search: Return as direct results with diagnostic
                         // Task Chat: Return as response with diagnostic
@@ -686,6 +735,7 @@ export class AIService {
                                 parsedQuery: usingAIParsing
                                     ? parsedQuery
                                     : undefined,
+                                error: errorForEarlyReturn, // Include error for parser failures
                             };
                         } else {
                             // For Simple/Smart Search modes
@@ -698,6 +748,7 @@ export class AIService {
                                 parsedQuery: usingAIParsing
                                     ? parsedQuery
                                     : undefined,
+                                error: errorForEarlyReturn, // Include error for parser failures
                             };
                         }
                     }
@@ -817,16 +868,62 @@ export class AIService {
                         };
                     } else {
                         // Fallback to estimates if parser token usage not available
+                        // Use ACTUAL parsing provider/model, not default
+                        const {
+                            provider: parsingProvider,
+                            model: parsingModel,
+                        } = getProviderForPurpose(settings, "parsing");
                         tokenUsage = {
                             promptTokens: 200,
                             completionTokens: 50,
                             totalTokens: 250,
                             estimatedCost: 0.0001,
-                            model: getCurrentProviderConfig(settings).model,
-                            provider: settings.aiProvider,
+                            model: parsingModel,
+                            provider: parsingProvider,
                             isEstimated: true,
                             directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
+                            // Add parsing-specific fields for metadata consistency
+                            parsingModel: parsingModel,
+                            parsingProvider: parsingProvider,
                         };
+                    }
+                }
+
+                // Create error object if parser failed (Smart Search with AI parsing failure)
+                // CRITICAL: Must create error BEFORE finalParsedQuery to preserve error info
+                let error = undefined;
+                if (
+                    chatMode === "smart" &&
+                    !usingAIParsing &&
+                    parsedQuery &&
+                    parsedQuery._parserError
+                ) {
+                    // Use stored structured error from AIError if available
+                    if ((parsedQuery as any)._structuredError) {
+                        error = (parsedQuery as any)._structuredError;
+                        error.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found).`;
+                    } else {
+                        // Create structured error from basic info
+                        const {
+                            provider: parsingProvider,
+                            model: parsingModel,
+                        } = getProviderForPurpose(settings, "parsing");
+                        const providerName =
+                            parsingProvider === "openai"
+                                ? "OpenAI"
+                                : parsingProvider === "anthropic"
+                                  ? "Anthropic"
+                                  : parsingProvider === "openrouter"
+                                    ? "OpenRouter"
+                                    : "Ollama";
+                        const modelInfo = `${providerName}: ${parsingModel}`;
+
+                        error = ErrorHandler.createParserError(
+                            new Error(parsedQuery._parserError),
+                            modelInfo,
+                            "simple",
+                        );
+                        error.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found).`;
                     }
                 }
 
@@ -841,8 +938,8 @@ export class AIService {
                     intent.keywords.length > 0
                 ) {
                     finalParsedQuery = {
-                        coreKeywords: intent.keywords, // Already clean from extractKeywords()
-                        keywords: intent.keywords, // Already clean from extractKeywords()
+                        coreKeywords: intent.keywords,
+                        keywords: intent.keywords,
                         expansionMetadata: {
                             enabled: false,
                             expansionsPerLanguagePerKeyword: 0,
@@ -861,6 +958,7 @@ export class AIService {
                     ),
                     tokenUsage,
                     parsedQuery: finalParsedQuery,
+                    error, // Include error info for UI display
                 };
             }
 
@@ -1028,23 +1126,61 @@ export class AIService {
                 );
 
                 // Create structured error with helpful information and solutions
-                // IMPORTANT: Use the ACTUAL analysis provider/model, not the default provider
-                const { provider: analysisProvider, model: analysisModel } =
-                    getProviderForPurpose(settings, "analysis");
-                // Format model info for display: "Provider: model" not "provider/model"
-                const providerName =
-                    analysisProvider === "openai"
-                        ? "OpenAI"
-                        : analysisProvider === "anthropic"
-                          ? "Anthropic"
-                          : analysisProvider === "openrouter"
-                            ? "OpenRouter"
-                            : "Ollama";
-                const modelInfo = `${providerName}: ${analysisModel}`;
-                const structured = ErrorHandler.createAnalysisError(
-                    error,
-                    modelInfo,
-                );
+                // IMPORTANT: If PARSER failed (not just analysis), show parser error
+                let structured;
+                if (
+                    !usingAIParsing &&
+                    parsedQuery &&
+                    parsedQuery._parserError
+                ) {
+                    // Parser failed - use PARSER error (parser is primary issue)
+                    if ((parsedQuery as any)._structuredError) {
+                        // Use stored structured error from AIError
+                        structured = (parsedQuery as any)._structuredError;
+                    } else {
+                        // Fallback: create structured error from basic info
+                        const {
+                            provider: parsingProvider,
+                            model: parsingModel,
+                        } = getProviderForPurpose(settings, "parsing");
+                        const providerName =
+                            parsingProvider === "openai"
+                                ? "OpenAI"
+                                : parsingProvider === "anthropic"
+                                  ? "Anthropic"
+                                  : parsingProvider === "openrouter"
+                                    ? "OpenRouter"
+                                    : "Ollama";
+                        const modelInfo = `${providerName}: ${parsingModel}`;
+
+                        // Create error from original parser error
+                        const originalError = new Error(
+                            parsedQuery._parserError,
+                        );
+                        structured = ErrorHandler.createParserError(
+                            originalError,
+                            modelInfo,
+                            "simple", // Used Simple Search fallback
+                        );
+                    }
+                } else {
+                    // Parsing succeeded but analysis failed - create ANALYSIS error
+                    const { provider: analysisProvider, model: analysisModel } =
+                        getProviderForPurpose(settings, "analysis");
+                    const providerName =
+                        analysisProvider === "openai"
+                            ? "OpenAI"
+                            : analysisProvider === "anthropic"
+                              ? "Anthropic"
+                              : analysisProvider === "openrouter"
+                                ? "OpenRouter"
+                                : "Ollama";
+                    const modelInfo = `${providerName}: ${analysisModel}`;
+                    structured = ErrorHandler.createAnalysisError(
+                        error,
+                        modelInfo,
+                    );
+                }
 
                 // FALLBACK: Stage 1 always provides results (semantic OR simple search)
                 // If parser succeeded → semantic search results
@@ -1093,8 +1229,24 @@ export class AIService {
                             // Note: No analysis fields since analysis failed
                         };
                     } else {
-                        // No parsing or parsing also failed
-                        tokenUsageForError = undefined;
+                        // Parsing failed - use fallback estimates with PARSING model
+                        const {
+                            provider: parsingProvider,
+                            model: parsingModel,
+                        } = getProviderForPurpose(settings, "parsing");
+                        tokenUsageForError = {
+                            promptTokens: 200,
+                            completionTokens: 50,
+                            totalTokens: 250,
+                            estimatedCost: 0.0001,
+                            model: parsingModel,
+                            provider: parsingProvider,
+                            isEstimated: true,
+                            // Add parsing-specific fields for metadata
+                            parsingModel: parsingModel,
+                            parsingProvider: parsingProvider,
+                            // Note: No analysis fields since analysis also failed
+                        };
                     }
 
                     // Return filtered tasks with error info (will be displayed in UI)
