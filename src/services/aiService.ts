@@ -685,11 +685,11 @@ export class AIService {
                             topScores,
                         );
 
-                        // Create error object for Smart Search if parser failed
+                        // Create error object if parser failed (for Smart Search and Task Chat)
                         // CRITICAL: Must create BEFORE early return
                         let errorForEarlyReturn = undefined;
                         if (
-                            chatMode === "smart" &&
+                            (chatMode === "smart" || chatMode === "chat") &&
                             !usingAIParsing &&
                             parsedQuery &&
                             parsedQuery._parserError
@@ -724,7 +724,10 @@ export class AIService {
 
                         // Create tokenUsage for error cases (for metadata display)
                         let tokenUsageForError;
-                        if (chatMode === "smart" && errorForEarlyReturn) {
+                        if (
+                            (chatMode === "smart" || chatMode === "chat") &&
+                            errorForEarlyReturn
+                        ) {
                             if (parsedQuery && parsedQuery._parserTokenUsage) {
                                 // Use actual parser token usage (error occurred after some processing)
                                 const parserUsage =
@@ -758,7 +761,8 @@ export class AIService {
                                     errorForEarlyReturn.details.includes(
                                         "403",
                                     ) ||
-                                    errorForEarlyReturn.details.includes("404"))
+                                    errorForEarlyReturn.details.includes("404") ||
+                                    errorForEarlyReturn.message.includes("Bad Request"))
                             ) {
                                 // Pre-request errors (400/401/403/404) - no tokens consumed
                                 const {
@@ -1045,6 +1049,38 @@ export class AIService {
                 `[Task Chat] Result delivery: AI analysis (Task Chat mode, ${sortedTasksForDisplay.length} tasks)`,
             );
 
+            // Create error object if parser failed (Task Chat with AI parsing failure)
+            let parserError = undefined;
+            if (!usingAIParsing && parsedQuery && parsedQuery._parserError) {
+                // Use stored structured error from AIError if available
+                if ((parsedQuery as any)._structuredError) {
+                    parserError = (parsedQuery as any)._structuredError;
+                    parserError.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found, continuing to AI analysis).`;
+                } else {
+                    // Create structured error from basic info
+                    const {
+                        provider: parsingProvider,
+                        model: parsingModel,
+                    } = getProviderForPurpose(settings, "parsing");
+                    const providerName =
+                        parsingProvider === "openai"
+                            ? "OpenAI"
+                            : parsingProvider === "anthropic"
+                              ? "Anthropic"
+                              : parsingProvider === "openrouter"
+                                ? "OpenRouter"
+                                : "Ollama";
+                    const modelInfo = `${providerName}: ${parsingModel}`;
+
+                    parserError = ErrorHandler.createParserError(
+                        new Error(parsedQuery._parserError),
+                        modelInfo,
+                        "simple",
+                    );
+                    parserError.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found, continuing to AI analysis).`;
+                }
+            }
+
             // Use same sort order for AI context
             // Coefficients already determine importance, order is just for tiebreaking
             const sortedTasksForAI = sortedTasksForDisplay; // Same as display
@@ -1143,11 +1179,8 @@ export class AIService {
 
                 // Combine parser token usage with final analysis token usage
                 let combinedTokenUsage = tokenUsage;
-                if (
-                    usingAIParsing &&
-                    parsedQuery &&
-                    parsedQuery._parserTokenUsage
-                ) {
+                if (parsedQuery && parsedQuery._parserTokenUsage) {
+                    // Parser succeeded - use actual token usage
                     const parserUsage = parsedQuery._parserTokenUsage;
 
                     // Simplify model display when parser and analysis use same model
@@ -1188,6 +1221,26 @@ export class AIService {
                     Logger.debug(
                         `[Task Chat] Combined token usage: Parser (${parserUsage.provider}/${parserUsage.model}: ${parserUsage.totalTokens}) + Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
                     );
+                } else if (parserError) {
+                    // Parser failed - add parsing model info for UI display (0 tokens for parser)
+                    const {
+                        provider: parsingProvider,
+                        model: parsingModel,
+                    } = getProviderForPurpose(settings, "parsing");
+                    combinedTokenUsage = {
+                        ...tokenUsage,
+                        parsingModel: parsingModel,
+                        parsingProvider: parsingProvider,
+                        parsingTokens: 0,
+                        parsingCost: 0,
+                        analysisModel: tokenUsage.model,
+                        analysisProvider: tokenUsage.provider,
+                        analysisTokens: tokenUsage.totalTokens,
+                        analysisCost: tokenUsage.estimatedCost,
+                    };
+                    Logger.debug(
+                        `[Task Chat] Parser failed, analysis only: Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
+                    );
                 }
 
                 return {
@@ -1195,6 +1248,7 @@ export class AIService {
                     recommendedTasks,
                     tokenUsage: combinedTokenUsage,
                     parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                    error: parserError, // Include parser error if parser failed (even though analysis succeeded)
                 };
             } catch (error) {
                 Logger.error("AI Analysis Error:", error);

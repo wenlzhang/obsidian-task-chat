@@ -4,7 +4,7 @@ import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
 import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
-import { getCurrentProviderConfig } from "../settings";
+import { getCurrentProviderConfig, getProviderForPurpose } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../utils/errorHandler";
@@ -1046,16 +1046,37 @@ export class ChatView extends ItemView {
                     // Add failure indicator for parser/analysis errors
                     const isSmartSearch = message.role === "smart";
                     const isTaskChat = message.role === "chat";
-                    let failureIndicator = "";
-                    if (isSmartSearch && message.error.type === "api") {
-                        failureIndicator = " (parser failed)";
-                    } else if (isTaskChat && message.error.type === "api") {
-                        failureIndicator = " (analysis failed)";
-                    }
 
-                    parts.push(
-                        `${providerName}: ${modelInfo}${failureIndicator}`,
-                    );
+                    if (isTaskChat && message.error.type === "api") {
+                        // Task Chat: Show parser failed + analysis not executed
+                        // Get analysis model from settings
+                        const {
+                            provider: analysisProvider,
+                            model: analysisModel,
+                        } = getProviderForPurpose(
+                            this.plugin.settings,
+                            "analysis",
+                        );
+                        const analysisProviderName =
+                            analysisProvider === "openai"
+                                ? "OpenAI"
+                                : analysisProvider === "anthropic"
+                                  ? "Anthropic"
+                                  : analysisProvider === "openrouter"
+                                    ? "OpenRouter"
+                                    : "Ollama";
+
+                        parts.push(
+                            `${providerName}: ${modelInfo} (parser failed), ${analysisProviderName}: ${analysisModel} (not executed - 0 tasks)`,
+                        );
+                    } else if (isSmartSearch && message.error.type === "api") {
+                        // Smart Search: Show parser failed only
+                        parts.push(
+                            `${providerName}: ${modelInfo} (parser failed)`,
+                        );
+                    } else {
+                        parts.push(`${providerName}: ${modelInfo}`);
+                    }
 
                     // Show token counts (even if zero for failed requests)
                     const totalTokens = message.tokenUsage.totalTokens || 0;
@@ -1070,13 +1091,13 @@ export class ChatView extends ItemView {
                     const cost = message.tokenUsage.estimatedCost || 0;
                     parts.push(`$${cost.toFixed(2)}`);
 
-                    // Show language info (or parser failed note)
+                    // Show language info (or Undetected for failed parsing)
                     const detectedLang =
                         message.parsedQuery?.aiUnderstanding?.detectedLanguage;
                     if (detectedLang) {
                         parts.push(`Language: ${detectedLang}`);
                     } else {
-                        parts.push("Language: (parser failed)");
+                        parts.push("Language: Undetected");
                     }
                 }
                 usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
@@ -1151,26 +1172,47 @@ export class ChatView extends ItemView {
                     }
                     parts.push(`${providerName}: ${displayModel}${suffix}`);
                 } else if (modelsSame) {
-                    // Task Chat with same model for both - clarify it's used for both
+                    // Task Chat with same model for both
                     const displayProvider = message.tokenUsage.parsingProvider!;
                     const displayModel = message.tokenUsage.parsingModel!;
                     const providerName = formatProvider(displayProvider);
-                    parts.push(
-                        `${providerName}: ${displayModel} (parser + analysis)`,
-                    );
+                    
+                    if (message.error && message.error.type === "api") {
+                        // Parser failed, analysis not executed
+                        parts.push(
+                            `${providerName}: ${displayModel} (parser failed, analysis not executed - 0 tasks)`,
+                        );
+                    } else {
+                        // Both succeeded
+                        parts.push(
+                            `${providerName}: ${displayModel} (parser + analysis)`,
+                        );
+                    }
                 } else if (
                     !hasAnalysisModel &&
                     message.error &&
                     message.error.model
                 ) {
-                    // Task Chat: Parsing succeeded, but analysis failed
-                    // Show parsing model from tokenUsage + analysis model from error
+                    // Task Chat: Parsing failed, analysis not executed
+                    // Get analysis model from settings since it was never run
+                    const { provider: analysisProvider, model: analysisModel } =
+                        getProviderForPurpose(this.plugin.settings, "analysis");
                     const parsingProviderName = formatProvider(
                         message.tokenUsage.parsingProvider!,
                     );
-                    parts.push(
-                        `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser), ${message.error.model} (analysis failed)`,
-                    );
+                    const analysisProviderName = formatProvider(analysisProvider);
+                    
+                    if (parsingProviderName === analysisProviderName) {
+                        // Same provider, show combined
+                        parts.push(
+                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser failed), ${analysisModel} (analysis not executed - 0 tasks)`,
+                        );
+                    } else {
+                        // Different providers
+                        parts.push(
+                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser failed), ${analysisProviderName}: ${analysisModel} (analysis not executed - 0 tasks)`,
+                        );
+                    }
                 } else {
                     // Task Chat with different models for parsing and analysis
                     // Check if same provider
