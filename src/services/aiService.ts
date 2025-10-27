@@ -1028,8 +1028,19 @@ export class AIService {
                 );
 
                 // Create structured error with helpful information and solutions
-                const providerConfig = getCurrentProviderConfig(settings);
-                const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+                // IMPORTANT: Use the ACTUAL analysis provider/model, not the default provider
+                const { provider: analysisProvider, model: analysisModel } =
+                    getProviderForPurpose(settings, "analysis");
+                // Format model info for display: "Provider: model" not "provider/model"
+                const providerName =
+                    analysisProvider === "openai"
+                        ? "OpenAI"
+                        : analysisProvider === "anthropic"
+                          ? "Anthropic"
+                          : analysisProvider === "openrouter"
+                            ? "OpenRouter"
+                            : "Ollama";
+                const modelInfo = `${providerName}: ${analysisModel}`;
                 const structured = ErrorHandler.createAnalysisError(
                     error,
                     modelInfo,

@@ -803,6 +803,8 @@ export class ChatView extends ItemView {
             // Make error message more specific based on error type
             let errorTitle = message.error.message;
             if (errorTitle.includes("analysis")) {
+                errorTitle = "AI analysis failed";
+            } else if (errorTitle.includes("parsing")) {
                 errorTitle = "AI parser failed";
             }
 
@@ -1007,7 +1009,8 @@ export class ChatView extends ItemView {
 
             // If error occurred without tokenUsage, show error model info
             if (!message.tokenUsage && message.error && message.error.model) {
-                parts.push(`Model: ${message.error.model}`);
+                // Error model is already formatted as "Provider: model" from error handler
+                parts.push(message.error.model);
                 parts.push("Language: Unknown");
                 usageEl.createEl("small", { text: parts.join(" · ") });
                 return; // Skip rest of processing since no tokenUsage

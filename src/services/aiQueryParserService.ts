@@ -2274,7 +2274,11 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 json: response.json,
                 message: `API request failed with status ${response.status}`,
             };
-            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            // Format model info for display: "Provider: model" not "provider/model"
+            // At this point, provider can only be openai or openrouter (others returned early)
+            const providerName =
+                provider === "openai" ? "OpenAI" : "OpenRouter";
+            const modelInfo = `${providerName}: ${model}`;
             const structured = ErrorHandler.parseAPIError(
                 errorData,
                 modelInfo,
@@ -2379,7 +2383,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 json: response.json,
                 message: `API request failed with status ${response.status}`,
             };
-            const modelInfo = `${provider}/${model}`;
+            // Format model info for display: "Provider: model" not "provider/model"
+            // Provider is always anthropic in this function
+            const providerName = "Anthropic";
+            const modelInfo = `${providerName}: ${model}`;
             const structured = ErrorHandler.parseAPIError(
                 errorData,
                 modelInfo,
@@ -2558,7 +2565,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             return { response: responseContent, tokenUsage };
         } catch (error) {
             // Use ErrorHandler to parse API error (consolidates error handling logic)
-            const modelInfo = `${provider}/${model}`;
+            // Format model info for display: "Provider: model" not "provider/model"
+            // Provider is always ollama in this function
+            const providerName = "Ollama";
+            const modelInfo = `${providerName}: ${model}`;
             const structured = ErrorHandler.parseAPIError(
                 error,
                 modelInfo,
