@@ -45,10 +45,20 @@ export interface TokenUsage {
     completionTokens: number;
     totalTokens: number;
     estimatedCost: number;
-    model: string;
-    provider: "openai" | "anthropic" | "openrouter" | "ollama";
+    model: string; // For backward compatibility - represents analysis model (or single model when same)
+    provider: "openai" | "anthropic" | "openrouter" | "ollama"; // For backward compatibility
     isEstimated: boolean; // true for Ollama (no real token counts), false for API providers
     directSearchReason?: string; // Explanation why direct search was used (when model === "none")
+
+    // NEW - Separate tracking for parsing and analysis models
+    parsingModel?: string; // Model used for query parsing (if different from analysis)
+    parsingProvider?: "openai" | "anthropic" | "openrouter" | "ollama"; // Provider for parsing
+    analysisModel?: string; // Model used for task analysis (explicitly tracked)
+    analysisProvider?: "openai" | "anthropic" | "openrouter" | "ollama"; // Provider for analysis
+    parsingTokens?: number; // Tokens used for parsing only
+    analysisTokens?: number; // Tokens used for analysis only
+    parsingCost?: number; // Cost for parsing only
+    analysisCost?: number; // Cost for analysis only
 }
 
 export interface ChatContext {

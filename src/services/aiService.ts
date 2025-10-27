@@ -6,6 +6,8 @@ import {
     SortCriterion,
     StatusMapping,
     getCurrentProviderConfig,
+    getProviderForPurpose,
+    getProviderConfigForPurpose,
 } from "../settings";
 import { TaskSearchService } from "./taskSearchService";
 import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
@@ -650,15 +652,18 @@ export class AIService {
                     Logger.debug(
                         `User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
                     );
-                    
+
                     // If quality filter resulted in zero tasks, add detailed diagnostic
                     // This works for ALL modes (Simple, Smart, Task Chat)
-                    if (qualityFilteredTasks.length === 0 && filteredTasks.length > 0) {
+                    if (
+                        qualityFilteredTasks.length === 0 &&
+                        filteredTasks.length > 0
+                    ) {
                         // Get top 3 task scores for analysis
                         const topScores = scoredTasks
                             .sort((a, b) => b.score - a.score)
                             .slice(0, 3);
-                        
+
                         const diagnosticMessage = generateZeroResultsDiagnostic(
                             settings,
                             queryType,
@@ -667,24 +672,32 @@ export class AIService {
                             filteredTasks.length,
                             topScores,
                         );
-                        
+
                         // Return diagnostic message for ALL modes
                         // Simple/Smart Search: Return as direct results with diagnostic
                         // Task Chat: Return as response with diagnostic
                         if (chatMode === "chat") {
                             return {
-                                response: diagnosticMessage + `No tasks match your current filter settings.`,
+                                response:
+                                    diagnosticMessage +
+                                    `No tasks match your current filter settings.`,
                                 recommendedTasks: [],
                                 tokenUsage: undefined,
-                                parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                                parsedQuery: usingAIParsing
+                                    ? parsedQuery
+                                    : undefined,
                             };
                         } else {
                             // For Simple/Smart Search modes
                             return {
-                                response: diagnosticMessage + `No tasks match your current filter settings.`,
+                                response:
+                                    diagnosticMessage +
+                                    `No tasks match your current filter settings.`,
                                 directResults: [],
                                 tokenUsage: undefined,
-                                parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                                parsedQuery: usingAIParsing
+                                    ? parsedQuery
+                                    : undefined,
                             };
                         }
                     }
@@ -951,13 +964,13 @@ export class AIService {
                     parsedQuery._parserTokenUsage
                 ) {
                     const parserUsage = parsedQuery._parserTokenUsage;
-                    
+
                     // Simplify model display when parser and analysis use same model
                     const modelDisplay =
                         parserUsage.model === tokenUsage.model
                             ? parserUsage.model // Same model - show once
                             : `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`; // Different - show both
-                    
+
                     combinedTokenUsage = {
                         promptTokens:
                             parserUsage.promptTokens + tokenUsage.promptTokens,
@@ -1680,14 +1693,19 @@ ${taskContext}`;
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
-        const providerConfig = getCurrentProviderConfig(settings);
+        // Use analysis model configuration for Task Chat responses
+        const { provider, model } = getProviderForPurpose(settings, "analysis");
+        const providerConfig = getProviderConfigForPurpose(
+            settings,
+            "analysis",
+        );
         const endpoint = providerConfig.apiEndpoint;
 
         // Check if streaming is enabled and callback is provided
         const useStreaming =
             settings.aiEnhancement.enableStreaming && onStream !== undefined;
 
-        if (settings.aiProvider === "ollama") {
+        if (provider === "ollama") {
             return this.callOllama(
                 messages,
                 settings,
@@ -1697,7 +1715,7 @@ ${taskContext}`;
             );
         }
 
-        if (settings.aiProvider === "anthropic") {
+        if (provider === "anthropic") {
             return this.callAnthropic(
                 messages,
                 settings,
@@ -1718,7 +1736,7 @@ ${taskContext}`;
         }
 
         // Non-streaming fallback
-        const apiKey = this.getApiKeyForProvider(settings);
+        const apiKey = settings.providerConfigs[provider].apiKey;
         const response = await requestUrl({
             url: endpoint,
             method: "POST",
@@ -1727,10 +1745,10 @@ ${taskContext}`;
                 Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: providerConfig.model,
+                model: model,
                 messages: messages,
-                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for Task Chat
-                max_tokens: providerConfig.maxTokens, // User-configurable response length
+                temperature: providerConfig.temperature,
+                max_tokens: providerConfig.maxTokens,
             }),
         });
 
@@ -1760,13 +1778,24 @@ ${taskContext}`;
             estimatedCost: this.calculateCost(
                 promptTokens,
                 completionTokens,
-                providerConfig.model,
-                settings.aiProvider,
+                model,
+                provider,
                 settings.pricingCache.data,
             ),
-            model: providerConfig.model,
-            provider: settings.aiProvider,
-            isEstimated: false, // Real token counts from API
+            model: model,
+            provider: provider,
+            isEstimated: false,
+            // Track analysis model separately
+            analysisModel: model,
+            analysisProvider: provider,
+            analysisTokens: totalTokens,
+            analysisCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                model,
+                provider,
+                settings.pricingCache.data,
+            ),
         };
 
         return {
@@ -1785,9 +1814,14 @@ ${taskContext}`;
         onStream: (chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
-        const providerConfig = getCurrentProviderConfig(settings);
+        // Use analysis model configuration
+        const { provider, model } = getProviderForPurpose(settings, "analysis");
+        const providerConfig = getProviderConfigForPurpose(
+            settings,
+            "analysis",
+        );
         const endpoint = providerConfig.apiEndpoint;
-        const apiKey = this.getApiKeyForProvider(settings);
+        const apiKey = settings.providerConfigs[provider].apiKey;
 
         Logger.debug("Starting OpenAI streaming call...");
 
@@ -1800,11 +1834,11 @@ ${taskContext}`;
                     Authorization: `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
-                    model: providerConfig.model,
+                    model: model,
                     messages: messages,
-                    stream: true, // Enable streaming!
+                    stream: true,
                     stream_options: {
-                        include_usage: true, // Get token usage in streaming mode
+                        include_usage: true,
                     },
                     temperature: providerConfig.temperature,
                     max_tokens: providerConfig.maxTokens,
@@ -1829,7 +1863,7 @@ ${taskContext}`;
 
             for await (const chunk of StreamingService.parseSSE(
                 reader,
-                settings.aiProvider,
+                provider,
             )) {
                 if (chunk.content) {
                     fullResponse += chunk.content;
@@ -1885,13 +1919,24 @@ ${taskContext}`;
                 estimatedCost: this.calculateCost(
                     promptTokens,
                     completionTokens,
-                    providerConfig.model,
-                    settings.aiProvider,
+                    model,
+                    provider,
                     settings.pricingCache.data,
                 ),
-                model: providerConfig.model,
-                provider: settings.aiProvider,
+                model: model,
+                provider: provider,
                 isEstimated,
+                // Track analysis model separately
+                analysisModel: model,
+                analysisProvider: provider,
+                analysisTokens: promptTokens + completionTokens,
+                analysisCost: this.calculateCost(
+                    promptTokens,
+                    completionTokens,
+                    model,
+                    provider,
+                    settings.pricingCache.data,
+                ),
             };
 
             Logger.debug("Streaming completed successfully");

@@ -1073,19 +1073,67 @@ export class ChatView extends ItemView {
 
             // Show model and token details when AI was used (parsing or analysis)
             if (hasModelInfo) {
-                // Show provider and model
-                if (message.tokenUsage.provider === "ollama") {
-                    // Ollama: Show "Model: ollama/modelname"
-                    parts.push(`Ollama: ${message.tokenUsage.model}`);
+                // Smart model display logic
+                // Simple/Smart Search: Show parsing model only
+                // Task Chat: Show parsing and analysis separately if different, or once if same
+                const isTaskChatMode = message.role === "chat";
+                const hasParsingModel =
+                    message.tokenUsage.parsingModel &&
+                    message.tokenUsage.parsingProvider;
+                const hasAnalysisModel =
+                    message.tokenUsage.analysisModel &&
+                    message.tokenUsage.analysisProvider;
+                const modelsSame =
+                    hasParsingModel &&
+                    hasAnalysisModel &&
+                    message.tokenUsage.parsingModel ===
+                        message.tokenUsage.analysisModel &&
+                    message.tokenUsage.parsingProvider ===
+                        message.tokenUsage.analysisProvider;
+
+                // Helper to format provider name
+                const formatProvider = (
+                    provider: "openai" | "anthropic" | "openrouter" | "ollama",
+                ): string => {
+                    if (provider === "ollama") return "Ollama";
+                    if (provider === "openai") return "OpenAI";
+                    if (provider === "anthropic") return "Anthropic";
+                    return "OpenRouter";
+                };
+
+                // Show model info based on mode and configuration
+                if (!isTaskChatMode || !hasParsingModel || modelsSame) {
+                    // Simple/Smart Search OR Task Chat with same model for both
+                    // Show single model
+                    if (message.tokenUsage.provider === "ollama") {
+                        parts.push(`Ollama: ${message.tokenUsage.model}`);
+                    } else {
+                        const providerName = formatProvider(
+                            message.tokenUsage.provider,
+                        );
+                        parts.push(
+                            `${providerName}: ${message.tokenUsage.model}`,
+                        );
+                    }
                 } else {
-                    // OpenAI/Anthropic/OpenRouter: Show "Provider modelname"
-                    const providerName =
-                        message.tokenUsage.provider === "openai"
-                            ? "OpenAI"
-                            : message.tokenUsage.provider === "anthropic"
-                              ? "Anthropic"
-                              : "OpenRouter";
-                    parts.push(`${providerName}: ${message.tokenUsage.model}`);
+                    // Task Chat with different models for parsing and analysis
+                    // Show both models separately
+                    if (hasParsingModel) {
+                        const parsingProviderName = formatProvider(
+                            message.tokenUsage.parsingProvider!,
+                        );
+                        parts.push(
+                            `Parsing: ${parsingProviderName}/${message.tokenUsage.parsingModel}`,
+                        );
+                    }
+                    if (hasAnalysisModel) {
+                        const analysisProviderName = formatProvider(
+                            message.tokenUsage.analysisProvider!,
+                        );
+                        parts.push(
+                            `Analysis: ${analysisProviderName}/${message.tokenUsage.analysisModel}`,
+                        );
+                    }
                 }
 
                 // Token count with details (always show, even if 0)
@@ -1299,9 +1347,7 @@ export class ChatView extends ItemView {
      * NOTE: This creates a cleaned COPY for AI context only.
      * Original messages in chat history remain unchanged (warnings stay visible in UI).
      */
-    private cleanWarningsFromHistory(
-        messages: ChatMessage[],
-    ): ChatMessage[] {
+    private cleanWarningsFromHistory(messages: ChatMessage[]): ChatMessage[] {
         return messages.map((msg) => ({
             ...msg,
             content: this.removeWarningsFromContent(msg.content),
@@ -1430,7 +1476,7 @@ export class ChatView extends ItemView {
             const cleanedHistory = this.cleanWarningsFromHistory(
                 this.plugin.sessionManager.getCurrentMessages(),
             );
-            
+
             const result = await AIService.sendMessage(
                 this.plugin.app,
                 message,

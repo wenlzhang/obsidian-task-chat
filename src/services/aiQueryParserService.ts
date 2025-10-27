@@ -1,5 +1,10 @@
 import { requestUrl } from "obsidian";
-import { PluginSettings, getCurrentProviderConfig } from "../settings";
+import {
+    PluginSettings,
+    getCurrentProviderConfig,
+    getProviderForPurpose,
+    getProviderConfigForPurpose,
+} from "../settings";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
@@ -2225,23 +2230,23 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: any[],
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
-        if (settings.aiProvider === "ollama") {
+        // Use parsing model configuration
+        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const providerConfig = getProviderConfigForPurpose(settings, "parsing");
+
+        if (provider === "ollama") {
             return this.callOllama(messages, settings);
         }
 
-        if (settings.aiProvider === "anthropic") {
+        if (provider === "anthropic") {
             return this.callAnthropic(messages, settings);
         }
 
         // Get provider-specific API key
-        const apiKey = this.getApiKeyForProvider(settings);
+        const apiKey = settings.providerConfigs[provider].apiKey;
         if (!apiKey) {
-            throw new Error(
-                `API key for ${settings.aiProvider} is not configured`,
-            );
+            throw new Error(`API key for ${provider} is not configured`);
         }
-
-        const providerConfig = getCurrentProviderConfig(settings);
 
         // OpenAI-compatible API (OpenAI and OpenRouter)
         const response = await requestUrl({
@@ -2252,10 +2257,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: providerConfig.model,
+                model: model,
                 messages: messages,
-                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
-                max_tokens: providerConfig.maxTokens, // User-configurable response length
+                temperature: providerConfig.temperature,
+                max_tokens: providerConfig.maxTokens,
             }),
         });
 
@@ -2294,13 +2299,24 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             estimatedCost: this.calculateCost(
                 promptTokens,
                 completionTokens,
-                providerConfig.model,
-                settings.aiProvider,
+                model,
+                provider,
                 settings.pricingCache.data,
             ),
-            model: providerConfig.model,
-            provider: settings.aiProvider,
-            isEstimated: false, // Real token counts from API
+            model: model,
+            provider: provider,
+            isEstimated: false,
+            // Track parsing model separately
+            parsingModel: model,
+            parsingProvider: provider,
+            parsingTokens: totalTokens,
+            parsingCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                model,
+                provider,
+                settings.pricingCache.data,
+            ),
         };
 
         return { response: content, tokenUsage };
@@ -2314,12 +2330,15 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: any[],
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
-        const apiKey = this.getApiKeyForProvider(settings);
+        // Use parsing model configuration
+        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const providerConfig = getProviderConfigForPurpose(settings, "parsing");
+
+        const apiKey = settings.providerConfigs[provider].apiKey;
         if (!apiKey) {
-            throw new Error("Anthropic API key is not configured");
+            throw new Error(`API key for ${provider} is not configured`);
         }
 
-        const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
             providerConfig.apiEndpoint ||
             "https://api.anthropic.com/v1/messages";
@@ -2339,11 +2358,11 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-                model: providerConfig.model,
+                model: model,
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
-                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
-                max_tokens: providerConfig.maxTokens, // User-configurable response length
+                temperature: providerConfig.temperature,
+                max_tokens: providerConfig.maxTokens,
             }),
         });
 
@@ -2354,7 +2373,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 json: response.json,
                 message: `API request failed with status ${response.status}`,
             };
-            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            const modelInfo = `${provider}/${model}`;
             const structured = ErrorHandler.parseAPIError(
                 errorData,
                 modelInfo,
@@ -2381,13 +2400,24 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             estimatedCost: this.calculateCost(
                 promptTokens,
                 completionTokens,
-                providerConfig.model,
-                settings.aiProvider,
+                model,
+                provider,
                 settings.pricingCache.data,
             ),
-            model: providerConfig.model,
-            provider: settings.aiProvider,
-            isEstimated: false, // Real token counts from API
+            model: model,
+            provider: provider,
+            isEstimated: false,
+            // Track parsing model separately
+            parsingModel: model,
+            parsingProvider: provider,
+            parsingTokens: totalTokens,
+            parsingCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                model,
+                provider,
+                settings.pricingCache.data,
+            ),
         };
 
         return { response: content, tokenUsage };
@@ -2414,7 +2444,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: any[],
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
-        const providerConfig = getCurrentProviderConfig(settings);
+        // Use parsing model configuration
+        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const providerConfig = getProviderConfigForPurpose(settings, "parsing");
+
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
@@ -2426,13 +2459,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: providerConfig.model,
+                    model: model,
                     messages: messages,
-                    stream: false, // Query parsing must NOT stream - needs complete JSON response
+                    stream: false,
                     options: {
-                        temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for JSON parsing
-                        num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)
-                        num_ctx: providerConfig.contextWindow, // User-configurable context window (Ollama-specific)
+                        temperature: providerConfig.temperature,
+                        num_predict: providerConfig.maxTokens,
+                        num_ctx: providerConfig.contextWindow,
                     },
                 }),
             });
@@ -2445,7 +2478,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 // Log detailed error for debugging
                 Logger.error("Ollama Query Parser API Error:", {
                     status: response.status,
-                    model: providerConfig.model,
+                    model: model,
                     endpoint: endpoint,
                     errorMessage: errorMessage,
                     numPredict: providerConfig.maxTokens,
@@ -2455,12 +2488,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 // Generate actionable solution based on error
                 let solution = "";
                 if (response.status === 404) {
-                    solution = `Model '${providerConfig.model}' not found. Pull it first: ollama pull ${providerConfig.model}`;
+                    solution = `Model '${model}' not found. Pull it first: ollama pull ${model}`;
                 } else if (
                     errorMessage.includes("model") &&
                     errorMessage.includes("not found")
                 ) {
-                    solution = `Model '${providerConfig.model}' not available. Try: ollama pull ${providerConfig.model}`;
+                    solution = `Model '${model}' not available. Try: ollama pull ${model}`;
                 } else {
                     solution = `Ensure Ollama is running at ${endpoint}. Check: http://localhost:11434`;
                 }
@@ -2488,7 +2521,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             }
 
             Logger.debug(
-                `[Ollama Query Parser] Received ${responseContent.length} chars from ${providerConfig.model}`,
+                `[Ollama Query Parser] Received ${responseContent.length} chars from ${model}`,
             );
 
             // Ollama doesn't provide token counts - estimate based on character count
@@ -2502,16 +2535,21 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 promptTokens,
                 completionTokens,
                 totalTokens,
-                estimatedCost: 0, // Ollama is free (local)
-                model: providerConfig.model,
-                provider: settings.aiProvider,
-                isEstimated: true, // Ollama doesn't provide real token counts
+                estimatedCost: 0,
+                model: model,
+                provider: provider,
+                isEstimated: true,
+                // Track parsing model separately
+                parsingModel: model,
+                parsingProvider: provider,
+                parsingTokens: totalTokens,
+                parsingCost: 0,
             };
 
             return { response: responseContent, tokenUsage };
         } catch (error) {
             // Use ErrorHandler to parse API error (consolidates error handling logic)
-            const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
+            const modelInfo = `${provider}/${model}`;
             const structured = ErrorHandler.parseAPIError(
                 error,
                 modelInfo,

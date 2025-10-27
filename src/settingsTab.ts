@@ -271,6 +271,125 @@ export class SettingsTab extends PluginSettingTab {
             ollamaInfo.appendText(" (recommended model)");
         }
 
+        // Model Purpose Configuration
+        new Setting(containerEl)
+            .setName("Model purpose configuration")
+            .setHeading();
+
+        const purposeInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        purposeInfo.createEl("p", {
+            text: "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
+        });
+        const purposeLink = purposeInfo.createEl("p");
+        purposeLink.createEl("a", {
+            text: "→ Learn more about model purpose configuration",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
+        });
+
+        // Parsing Model Configuration
+        const parsingProviderSetting = new Setting(containerEl)
+            .setName("Query parsing provider")
+            .setDesc(
+                "Provider for AI query parsing (Smart Search & Task Chat). Uses main provider if 'default'.",
+            );
+
+        parsingProviderSetting.addDropdown((dropdown) => {
+            dropdown
+                .addOption("default", "Default (use main provider)")
+                .addOption("openai", "OpenAI")
+                .addOption("anthropic", "Anthropic")
+                .addOption("openrouter", "OpenRouter")
+                .addOption("ollama", "Ollama (Local)")
+                .setValue(this.plugin.settings.parsingProvider)
+                .onChange(async (value) => {
+                    this.plugin.settings.parsingProvider = value as any;
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh to update model dropdown
+                });
+        });
+
+        const parsingModelSetting = new Setting(containerEl)
+            .setName("Query parsing model")
+            .setDesc(
+                "Model for query parsing. Leave empty to use provider's default model.",
+            );
+
+        parsingModelSetting.addText((text) => {
+            // Get the effective provider for parsing
+            const parsingProvider =
+                this.plugin.settings.parsingProvider === "default"
+                    ? this.plugin.settings.aiProvider
+                    : this.plugin.settings.parsingProvider;
+            const placeholder =
+                parsingProvider === "openai"
+                    ? "gpt-4o-mini (recommended)"
+                    : parsingProvider === "anthropic"
+                      ? "claude-haiku-3-5"
+                      : parsingProvider === "ollama"
+                        ? "qwen2.5:14b"
+                        : "openai/gpt-4o-mini";
+
+            text.setPlaceholder(placeholder)
+                .setValue(this.plugin.settings.parsingModel)
+                .onChange(async (value) => {
+                    this.plugin.settings.parsingModel = value;
+                    await this.plugin.saveSettings();
+                });
+        });
+
+        // Analysis Model Configuration
+        const analysisProviderSetting = new Setting(containerEl)
+            .setName("Task analysis provider")
+            .setDesc(
+                "Provider for AI task analysis (Task Chat mode only). Smart Search does not use this. Uses main provider if 'default'.",
+            );
+
+        analysisProviderSetting.addDropdown((dropdown) => {
+            dropdown
+                .addOption("default", "Default (use main provider)")
+                .addOption("openai", "OpenAI")
+                .addOption("anthropic", "Anthropic")
+                .addOption("openrouter", "OpenRouter")
+                .addOption("ollama", "Ollama (Local)")
+                .setValue(this.plugin.settings.analysisProvider)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysisProvider = value as any;
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh to update model dropdown
+                });
+        });
+
+        const analysisModelSetting = new Setting(containerEl)
+            .setName("Task analysis model")
+            .setDesc(
+                "Model for task analysis in Task Chat mode. Leave empty to use provider's default model.",
+            );
+
+        analysisModelSetting.addText((text) => {
+            // Get the effective provider for analysis
+            const analysisProvider =
+                this.plugin.settings.analysisProvider === "default"
+                    ? this.plugin.settings.aiProvider
+                    : this.plugin.settings.analysisProvider;
+            const placeholder =
+                analysisProvider === "openai"
+                    ? "gpt-4o (recommended)"
+                    : analysisProvider === "anthropic"
+                      ? "claude-sonnet-4"
+                      : analysisProvider === "ollama"
+                        ? "qwen2.5:32b"
+                        : "openai/gpt-4o";
+
+            text.setPlaceholder(placeholder)
+                .setValue(this.plugin.settings.analysisModel)
+                .onChange(async (value) => {
+                    this.plugin.settings.analysisModel = value;
+                    await this.plugin.saveSettings();
+                });
+        });
+
         // Chat Settings
         new Setting(containerEl).setName("Task chat").setHeading();
 

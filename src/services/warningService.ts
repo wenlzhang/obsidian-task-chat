@@ -70,10 +70,7 @@ export function generateZeroResultsDiagnostic(
     }
 
     // Analyze relevance coefficient if very low
-    if (
-        queryType.hasKeywords &&
-        settings.relevanceCoefficient < 10
-    ) {
+    if (queryType.hasKeywords && settings.relevanceCoefficient < 10) {
         reasons.push(
             `• **Low Relevance Coefficient:** ${settings.relevanceCoefficient} reduces keyword match importance (default: 20)`,
         );
@@ -103,9 +100,9 @@ export function generateZeroResultsDiagnostic(
         const topRelevance = topScores[0].relevanceScore;
         if (topRelevance < settings.minimumRelevanceScore) {
             const actualPct = (topRelevance * 100).toFixed(0);
-            const requiredPct = (
-                settings.minimumRelevanceScore * 100
-            ).toFixed(0);
+            const requiredPct = (settings.minimumRelevanceScore * 100).toFixed(
+                0,
+            );
             reasons.push(
                 `• **Keyword Matches Too Weak:** ${actualPct}% < ${requiredPct}% minimum`,
             );
@@ -147,10 +144,7 @@ export function generateZeroResultsDiagnostic(
     }
 
     // Suggest increasing relevance coefficient if low
-    if (
-        queryType.hasKeywords &&
-        settings.relevanceCoefficient < 15
-    ) {
+    if (queryType.hasKeywords && settings.relevanceCoefficient < 15) {
         fixes.push(
             `• Increase relevance coefficient to 20 (currently ${settings.relevanceCoefficient})`,
         );
