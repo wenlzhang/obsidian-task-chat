@@ -1007,12 +1007,17 @@ export class ChatView extends ItemView {
                 parts.push("Mode: Task Chat");
             }
 
-            // If error occurred without tokenUsage, show error model info
-            if (!message.tokenUsage && message.error && message.error.model) {
-                // Error model is already formatted as "Provider: model" from error handler
-                parts.push(message.error.model);
-                parts.push("Language: Unknown");
-                usageEl.createEl("small", { text: parts.join(" · ") });
+            // If error occurred, check if we still have parsing token usage
+            // (parsing may have succeeded even if analysis failed)
+            if (message.error && !message.tokenUsage) {
+                // Neither parsing nor analysis succeeded - show minimal error info
+                if (message.error.model) {
+                    parts.push(message.error.model);
+                }
+                // Try to get language from parsedQuery if available
+                const detectedLang = message.parsedQuery?.aiUnderstanding?.detectedLanguage;
+                parts.push(`Language: ${detectedLang || "Unknown"}`);
+                usageEl.createEl("small", { text: parts.join(" \u00b7 ") });
                 return; // Skip rest of processing since no tokenUsage
             }
 
@@ -1081,6 +1086,15 @@ export class ChatView extends ItemView {
                     const providerName = formatProvider(displayProvider);
                     parts.push(
                         `${providerName}: ${displayModel} (parser + analysis)`,
+                    );
+                } else if (!hasAnalysisModel && message.error && message.error.model) {
+                    // Task Chat: Parsing succeeded, but analysis failed
+                    // Show parsing model from tokenUsage + analysis model from error
+                    const parsingProviderName = formatProvider(
+                        message.tokenUsage.parsingProvider!,
+                    );
+                    parts.push(
+                        `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser), ${message.error.model} (analysis failed)`,
                     );
                 } else {
                     // Task Chat with different models for parsing and analysis

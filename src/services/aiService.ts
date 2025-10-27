@@ -1063,6 +1063,36 @@ export class AIService {
                         ? `Semantic search succeeded (${sortedTasksForDisplay.length} tasks filtered and sorted). Showing Smart Search results without AI summary.`
                         : `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found). Analysis also failed, showing results without AI summary.`;
 
+                    // Calculate token usage - show parsing tokens even if analysis failed
+                    let tokenUsageForError;
+                    if (usingAIParsing && parsedQuery && parsedQuery._parserTokenUsage) {
+                        // Parsing succeeded - show its token usage and cost
+                        const parserUsage = parsedQuery._parserTokenUsage;
+                        const parsingProvider = parserUsage.provider as
+                            | "openai"
+                            | "anthropic"
+                            | "openrouter"
+                            | "ollama";
+                        tokenUsageForError = {
+                            promptTokens: parserUsage.promptTokens,
+                            completionTokens: parserUsage.completionTokens,
+                            totalTokens: parserUsage.totalTokens,
+                            estimatedCost: parserUsage.estimatedCost,
+                            model: parserUsage.model,
+                            provider: parsingProvider,
+                            isEstimated: parserUsage.isEstimated,
+                            // Add parsing-specific fields for metadata
+                            parsingModel: parserUsage.model,
+                            parsingProvider: parsingProvider,
+                            parsingTokens: parserUsage.totalTokens,
+                            parsingCost: parserUsage.estimatedCost,
+                            // Note: No analysis fields since analysis failed
+                        };
+                    } else {
+                        // No parsing or parsing also failed
+                        tokenUsageForError = undefined;
+                    }
+
                     // Return filtered tasks with error info (will be displayed in UI)
                     return {
                         response: `Found ${sortedTasksForDisplay.length} matching task(s)`,
@@ -1070,7 +1100,7 @@ export class AIService {
                             0,
                             settings.maxRecommendations,
                         ),
-                        tokenUsage: undefined, // No tokens used since AI failed
+                        tokenUsage: tokenUsageForError, // Show parsing tokens even if analysis failed
                         parsedQuery: usingAIParsing ? parsedQuery : undefined,
                         error: structured, // Attach error for UI display
                     };
