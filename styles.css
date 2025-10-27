@@ -107,7 +107,7 @@
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .task-chat-model-config-button:hover {

@@ -795,15 +795,25 @@ export class AIService {
                     // Use actual token usage from query parser
                     if (parsedQuery && parsedQuery._parserTokenUsage) {
                         const parserUsage = parsedQuery._parserTokenUsage;
+                        const parsingProvider = parserUsage.provider as
+                            | "openai"
+                            | "anthropic"
+                            | "openrouter"
+                            | "ollama";
                         tokenUsage = {
                             promptTokens: parserUsage.promptTokens,
                             completionTokens: parserUsage.completionTokens,
                             totalTokens: parserUsage.totalTokens,
                             estimatedCost: parserUsage.estimatedCost,
                             model: parserUsage.model,
-                            provider: settings.aiProvider,
+                            provider: parsingProvider, // Use actual parsing provider
                             isEstimated: parserUsage.isEstimated,
                             directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
+                            // Add parsing-specific fields for metadata consistency
+                            parsingModel: parserUsage.model,
+                            parsingProvider: parsingProvider,
+                            parsingTokens: parserUsage.totalTokens,
+                            parsingCost: parserUsage.estimatedCost,
                         };
                     } else {
                         // Fallback to estimates if parser token usage not available

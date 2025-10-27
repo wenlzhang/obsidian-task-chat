@@ -1056,7 +1056,7 @@ export class ChatView extends ItemView {
 
                 // Show model info based on mode and configuration
                 if (!isTaskChatMode || !hasParsingModel) {
-                    // Simple/Smart Search - no parsing/analysis distinction
+                    // Simple/Smart Search
                     const displayModel = hasParsingModel
                         ? message.tokenUsage.parsingModel
                         : message.tokenUsage.model;
@@ -1065,7 +1065,11 @@ export class ChatView extends ItemView {
                         : message.tokenUsage.provider;
 
                     const providerName = formatProvider(displayProvider);
-                    parts.push(`${providerName}: ${displayModel}`);
+                    
+                    // Add "(parser)" for Smart Search to maintain consistency
+                    const isSmartSearch = message.role === "smart";
+                    const suffix = isSmartSearch && hasParsingModel ? " (parser)" : "";
+                    parts.push(`${providerName}: ${displayModel}${suffix}`);
                 } else if (modelsSame) {
                     // Task Chat with same model for both - clarify it's used for both
                     const displayProvider = message.tokenUsage.parsingProvider!;
