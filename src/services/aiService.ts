@@ -736,18 +736,32 @@ export class AIService {
                     };
                 } else {
                     // Smart Search: AI used for keyword expansion only
-                    // Note: Actual token usage from QueryParserService would need to be tracked
-                    // For now, using estimated values
-                    tokenUsage = {
-                        promptTokens: 200,
-                        completionTokens: 50,
-                        totalTokens: 250,
-                        estimatedCost: 0.0001,
-                        model: getCurrentProviderConfig(settings).model,
-                        provider: settings.aiProvider,
-                        isEstimated: true,
-                        directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
-                    };
+                    // Use actual token usage from query parser
+                    if (parsedQuery && parsedQuery._parserTokenUsage) {
+                        const parserUsage = parsedQuery._parserTokenUsage;
+                        tokenUsage = {
+                            promptTokens: parserUsage.promptTokens,
+                            completionTokens: parserUsage.completionTokens,
+                            totalTokens: parserUsage.totalTokens,
+                            estimatedCost: parserUsage.estimatedCost,
+                            model: parserUsage.model,
+                            provider: settings.aiProvider,
+                            isEstimated: parserUsage.isEstimated,
+                            directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
+                        };
+                    } else {
+                        // Fallback to estimates if parser token usage not available
+                        tokenUsage = {
+                            promptTokens: 200,
+                            completionTokens: 50,
+                            totalTokens: 250,
+                            estimatedCost: 0.0001,
+                            model: getCurrentProviderConfig(settings).model,
+                            provider: settings.aiProvider,
+                            isEstimated: true,
+                            directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
+                        };
+                    }
                 }
 
                 // For Simple Search, create a minimal parsedQuery with core keywords
@@ -894,10 +908,39 @@ export class AIService {
                     processedResponse = warningMessage + processedResponse;
                 }
 
+                // Combine parser token usage with final analysis token usage
+                let combinedTokenUsage = tokenUsage;
+                if (
+                    usingAIParsing &&
+                    parsedQuery &&
+                    parsedQuery._parserTokenUsage
+                ) {
+                    const parserUsage = parsedQuery._parserTokenUsage;
+                    combinedTokenUsage = {
+                        promptTokens:
+                            parserUsage.promptTokens + tokenUsage.promptTokens,
+                        completionTokens:
+                            parserUsage.completionTokens +
+                            tokenUsage.completionTokens,
+                        totalTokens:
+                            parserUsage.totalTokens + tokenUsage.totalTokens,
+                        estimatedCost:
+                            parserUsage.estimatedCost +
+                            tokenUsage.estimatedCost,
+                        model: `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`,
+                        provider: settings.aiProvider,
+                        isEstimated:
+                            parserUsage.isEstimated || tokenUsage.isEstimated,
+                    };
+                    Logger.debug(
+                        `[Task Chat] Combined token usage: Parser (${parserUsage.totalTokens}) + Analysis (${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
+                    );
+                }
+
                 return {
                     response: processedResponse,
                     recommendedTasks,
-                    tokenUsage,
+                    tokenUsage: combinedTokenUsage,
                     parsedQuery: usingAIParsing ? parsedQuery : undefined,
                 };
             } catch (error) {

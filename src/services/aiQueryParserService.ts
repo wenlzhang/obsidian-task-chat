@@ -6,6 +6,7 @@ import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 import { DataviewService } from "./dataviewService";
 import { TaskSearchService } from "./taskSearchService";
+import { PricingService } from "./pricingService";
 import { Logger } from "../utils/logger";
 import { ErrorHandler } from "../utils/errorHandler";
 
@@ -72,6 +73,17 @@ export interface ParsedQuery {
     // Parser Error Information (for fallback cases)
     _parserError?: string; // Error message if parsing failed
     _parserModel?: string; // Model that was attempted (provider/model)
+
+    // Token Usage from Query Parsing (AI calls made during parsing)
+    _parserTokenUsage?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+        estimatedCost: number;
+        model: string;
+        provider: string;
+        isEstimated: boolean;
+    };
 }
 
 /**
@@ -1806,11 +1818,15 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         ];
 
         try {
-            const response = await this.callAI(messages, settings);
-            Logger.debug("AI query parser raw response:", response);
+            const { response: aiResponse, tokenUsage } = await this.callAI(
+                messages,
+                settings,
+            );
+            Logger.debug("AI query parser raw response:", aiResponse);
+            Logger.debug("AI query parser token usage:", tokenUsage);
 
             // Extract JSON from response (handles DeepSeek's <think> tags and other wrappers)
-            const jsonString = this.extractJSON(response);
+            const jsonString = this.extractJSON(aiResponse);
             const parsed = JSON.parse(jsonString);
             Logger.debug("AI query parser parsed:", parsed);
 
@@ -1834,7 +1850,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 Logger.error(
                     `Model: ${getCurrentProviderConfig(settings).model}, Provider: ${settings.aiProvider}`,
                 );
-                Logger.error("Full response:", response.substring(0, 500));
+                Logger.error("Full response:", aiResponse.substring(0, 500));
                 Logger.error(
                     "Recommendation: Switch to a larger model or cloud provider (OpenAI, Anthropic, OpenRouter).",
                 );
@@ -2117,29 +2133,19 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 );
             }
 
-            // PART 1-3: Return complete three-part query result
-            const result: ParsedQuery = {
-                // PART 1: Task Content (Keywords)
+            return {
                 coreKeywords: coreKeywords,
                 keywords: expandedKeywords,
-
-                // PART 2: Task Attributes
-                priority: parsed.priority || undefined,
-                dueDate: parsed.dueDate || undefined,
-                status: parsed.status || undefined,
-                folder: parsed.folder || undefined,
+                priority: parsed.priority,
+                dueDate: parsed.dueDate,
+                dueDateRange: parsed.dueDateRange,
+                status: parsed.status,
+                folder: parsed.folder,
                 tags: parsed.tags || [],
-
-                // Metadata
-                originalQuery: query,
                 expansionMetadata: expansionMetadata,
-
-                // AI Understanding (for UI display and fallback decisions)
-                aiUnderstanding: parsed.aiUnderstanding || undefined,
+                aiUnderstanding: parsed.aiUnderstanding, // Pass through AI understanding metadata
+                _parserTokenUsage: tokenUsage, // Include token usage from query parsing
             };
-
-            Logger.debug("Query parser returning (three-part):", result);
-            return result;
         } catch (error) {
             // Log comprehensive error information including model details
             const providerConfig = getCurrentProviderConfig(settings);
@@ -2167,12 +2173,58 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     }
 
     /**
+     * Calculate cost based on token usage and model (using dynamic pricing from API)
+     * Pricing data fetched from OpenRouter API and updated automatically
+     */
+    private static calculateCost(
+        promptTokens: number,
+        completionTokens: number,
+        model: string,
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+        cachedPricing: Record<string, { input: number; output: number }>,
+    ): number {
+        // Ollama is free (local)
+        if (provider === "ollama") {
+            return 0;
+        }
+
+        // Get pricing from cache or embedded rates using provider-prefixed lookup
+        const rates = PricingService.getPricing(model, provider, cachedPricing);
+
+        // Default to gpt-4o-mini pricing if unknown
+        if (!rates) {
+            Logger.warn(
+                `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
+            );
+            const fallback = PricingService.getPricing(
+                "gpt-4o-mini",
+                "openai",
+                {},
+            );
+            if (!fallback) {
+                return 0; // Should never happen
+            }
+            // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
+            const inputCost = (promptTokens / 1000000) * fallback.input;
+            const outputCost = (completionTokens / 1000000) * fallback.output;
+            return inputCost + outputCost;
+        }
+
+        // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
+        const inputCost = (promptTokens / 1000000) * rates.input;
+        const outputCost = (completionTokens / 1000000) * rates.output;
+
+        return inputCost + outputCost;
+    }
+
+    /**
      * Call AI API for parsing
+     * Returns both response text and token usage information
      */
     private static async callAI(
         messages: any[],
         settings: PluginSettings,
-    ): Promise<string> {
+    ): Promise<{ response: string; tokenUsage: any }> {
         if (settings.aiProvider === "ollama") {
             return this.callOllama(messages, settings);
         }
@@ -2225,16 +2277,43 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             throw new Error(`${structured.details} | ${structured.solution}`);
         }
 
-        return response.json.choices[0].message.content.trim();
+        const data = response.json;
+        const content = data.choices[0].message.content.trim();
+
+        // Extract token usage
+        const usage = data.usage || {};
+        const promptTokens = usage.prompt_tokens || 0;
+        const completionTokens = usage.completion_tokens || 0;
+        const totalTokens =
+            usage.total_tokens || promptTokens + completionTokens;
+
+        const tokenUsage = {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            estimatedCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                providerConfig.model,
+                settings.aiProvider,
+                settings.pricingCache.data,
+            ),
+            model: providerConfig.model,
+            provider: settings.aiProvider,
+            isEstimated: false, // Real token counts from API
+        };
+
+        return { response: content, tokenUsage };
     }
 
     /**
      * Call Anthropic API (different format than OpenAI)
+     * Returns both response text and token usage information
      */
     private static async callAnthropic(
         messages: any[],
         settings: PluginSettings,
-    ): Promise<string> {
+    ): Promise<{ response: string; tokenUsage: any }> {
         const apiKey = this.getApiKeyForProvider(settings);
         if (!apiKey) {
             throw new Error("Anthropic API key is not configured");
@@ -2286,7 +2365,32 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             throw new Error(`${structured.details} | ${structured.solution}`);
         }
 
-        return response.json.content[0].text.trim();
+        const data = response.json;
+        const content = data.content[0].text.trim();
+
+        // Extract token usage (Anthropic format)
+        const usage = data.usage || {};
+        const promptTokens = usage.input_tokens || 0;
+        const completionTokens = usage.output_tokens || 0;
+        const totalTokens = promptTokens + completionTokens;
+
+        const tokenUsage = {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            estimatedCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                providerConfig.model,
+                settings.aiProvider,
+                settings.pricingCache.data,
+            ),
+            model: providerConfig.model,
+            provider: settings.aiProvider,
+            isEstimated: false, // Real token counts from API
+        };
+
+        return { response: content, tokenUsage };
     }
 
     /**
@@ -2304,11 +2408,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
      * - Uses 'num_predict' instead of 'max_tokens'
      * - Response has 'message' field directly (not 'choices')
      * - Requires consistent formatting with aiService.ts
+     * Returns both response text and estimated token usage
      */
     private static async callOllama(
         messages: any[],
         settings: PluginSettings,
-    ): Promise<string> {
+    ): Promise<{ response: string; tokenUsage: any }> {
         const providerConfig = getCurrentProviderConfig(settings);
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
@@ -2386,7 +2491,24 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 `[Ollama Query Parser] Received ${responseContent.length} chars from ${providerConfig.model}`,
             );
 
-            return responseContent;
+            // Ollama doesn't provide token counts - estimate based on character count
+            // Rough estimate: 1 token ≈ 4 characters
+            const promptText = messages.map((m: any) => m.content).join(" ");
+            const promptTokens = Math.ceil(promptText.length / 4);
+            const completionTokens = Math.ceil(responseContent.length / 4);
+            const totalTokens = promptTokens + completionTokens;
+
+            const tokenUsage = {
+                promptTokens,
+                completionTokens,
+                totalTokens,
+                estimatedCost: 0, // Ollama is free (local)
+                model: providerConfig.model,
+                provider: settings.aiProvider,
+                isEstimated: true, // Ollama doesn't provide real token counts
+            };
+
+            return { response: responseContent, tokenUsage };
         } catch (error) {
             // Use ErrorHandler to parse API error (consolidates error handling logic)
             const modelInfo = `${settings.aiProvider}/${providerConfig.model}`;
