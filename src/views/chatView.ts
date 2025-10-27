@@ -637,12 +637,9 @@ export class ChatView extends ItemView {
                         !query.coreKeywords || !query.coreKeywords.includes(k),
                 );
                 if (expandedOnly.length > 0) {
-                    // Show first 20 expanded keywords, then count
-                    const displayKeywords = expandedOnly.slice(0, 20);
-                    const remaining = expandedOnly.length - 20;
-                    const keywordDisplay =
-                        displayKeywords.join(", ") +
-                        (remaining > 0 ? ` ...(+${remaining} more)` : "");
+                    // Show ALL expanded keywords (no limit)
+                    // User wants to see all semantic variations for debugging
+                    const keywordDisplay = expandedOnly.join(", ");
                     parts.push(`🤖 Semantic: ${keywordDisplay}`);
                 }
             } else if (!hasResults) {
@@ -657,23 +654,35 @@ export class ChatView extends ItemView {
         if (query.expansionMetadata) {
             const meta = query.expansionMetadata;
             if (meta.enabled) {
-                // Show expansion statistics
-                const expansionRatio =
-                    meta.coreKeywordsCount > 0
-                        ? (meta.totalKeywords / meta.coreKeywordsCount).toFixed(
-                              1,
-                          )
-                        : "0";
-                parts.push(
-                    `📈 Expansion: ${meta.coreKeywordsCount} core → ${meta.totalKeywords} total (${expansionRatio}× per keyword)`,
-                );
+                // Show expansion statistics in compact format with vertical bars
+                // Example: "4 core → 27 expansion | 3/core/lang | English, 中文"
 
-                // For 0 results, add language distribution info
-                if (!hasResults && meta.languagesUsed?.length > 0) {
-                    parts.push(
-                        `🌐 Languages: ${meta.languagesUsed.join(", ")} (${meta.expansionsPerLanguagePerKeyword || "?"} per language)`,
-                    );
+                // Calculate ACTUAL per-core-per-lang from EXPANDED keywords (not total, not user setting)
+                // expandedOnly = semantic/expanded keywords (excluding core)
+                const expandedOnly =
+                    meta.totalKeywords - meta.coreKeywordsCount;
+                const numLanguages = meta.languagesUsed?.length || 1;
+                const numCore = meta.coreKeywordsCount || 0;
+                const denominator = numCore > 0 ? numCore * numLanguages : 0;
+                const actualPerCoreLangValue =
+                    denominator > 0 ? expandedOnly / denominator : 0;
+                const actualPerCoreLang = actualPerCoreLangValue.toFixed(1);
+
+                // Build expansion line with vertical bar separators (like AI Query line)
+                // Show "X core → Y expansion" (not "total") since this line is about expansion
+                const expansionParts: string[] = [
+                    `${meta.coreKeywordsCount} core → ${expandedOnly} semantic`,
+                ];
+
+                // Add per-keyword-per-language count (shortened format) - calculated from EXPANDED only
+                expansionParts.push(`${actualPerCoreLang}/core/lang`);
+
+                // Add languages if available
+                if (meta.languagesUsed && meta.languagesUsed.length > 0) {
+                    expansionParts.push(meta.languagesUsed.join(", "));
                 }
+
+                parts.push(`📈 Expansion: ${expansionParts.join(" | ")}`);
             } else if (!hasResults) {
                 // Expansion disabled - mention this for 0 results
                 parts.push("📈 Expansion: disabled");
@@ -1464,7 +1473,26 @@ export class ChatView extends ItemView {
                             query.expansionMetadata?.enabled &&
                             query.expansionMetadata.totalKeywords > 0
                         ) {
-                            content += `\n\n**Note:** Semantic expansion generated ${query.expansionMetadata.totalKeywords} search terms across ${query.expansionMetadata.languagesUsed?.join(", ") || "configured languages"}, but no tasks matched any of them. See details below.`;
+                            // Calculate ACTUAL per-core-per-lang from expanded (semantic) keywords
+                            const meta = query.expansionMetadata;
+                            const expandedOnly =
+                                meta.totalKeywords - meta.coreKeywordsCount;
+                            const numLanguages =
+                                meta.languagesUsed?.length || 1;
+                            const numCore = meta.coreKeywordsCount || 0;
+                            const denominator =
+                                numCore > 0 ? numCore * numLanguages : 0;
+                            const actualPerCoreLangValue =
+                                denominator > 0
+                                    ? expandedOnly / denominator
+                                    : 0;
+                            const actualPerCoreLang =
+                                actualPerCoreLangValue.toFixed(1);
+
+                            const languages =
+                                meta.languagesUsed?.join(", ") ||
+                                "configured languages";
+                            content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
                         }
 
                         // Suggest troubleshooting
