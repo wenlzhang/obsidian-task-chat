@@ -2231,7 +2231,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "parsing",
+        );
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         if (provider === "ollama") {
@@ -2331,7 +2334,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "parsing",
+        );
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         const apiKey = settings.providerConfigs[provider].apiKey;
@@ -2445,7 +2451,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "parsing",
+        );
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         const endpoint =

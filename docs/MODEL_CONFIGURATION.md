@@ -46,78 +46,91 @@ Go to **Settings → Task Chat → AI Provider → Model Purpose Configuration**
 
 ### Options
 
-#### Query Parsing Provider/Model
-- **Provider**: Which AI provider for parsing
-  - Default (use main provider)
+#### Query Parsing Configuration
+- **Provider**: Which AI provider for parsing (required)
   - OpenAI
   - Anthropic
   - OpenRouter
   - Ollama (Local)
-- **Model**: Which model for parsing (leave empty for provider default)
-  - Examples: "gpt-4o-mini", "claude-haiku-3-5", "qwen2.5:14b"
+- **Model**: Select from dropdown of available models
+  - Click 'Refresh' to fetch latest models
+  - Examples: "gpt-4o-mini", "claude-haiku-3-5", "qwen3:14b"
+- **Temperature**: Control consistency (0-2, default 0.1)
+  - Lower = more consistent JSON output
 
-#### Task Analysis Provider/Model
+#### Task Analysis Configuration
 - **Provider**: Which AI provider for analysis (Task Chat only)
-  - Default (use main provider)
   - OpenAI
   - Anthropic
   - OpenRouter
   - Ollama (Local)
-- **Model**: Which model for analysis (leave empty for provider default)
-  - Examples: "gpt-4o", "claude-sonnet-4", "qwen2.5:32b"
+- **Model**: Select from dropdown of available models
+  - Click 'Refresh' to fetch latest models  
+  - Examples: "gpt-4o", "claude-sonnet-4", "qwen3:14b"
+- **Temperature**: Control creativity (0-2, default 0.1)
+  - Lower = more structured, higher = more creative
 
 ## Example Configurations
 
 ### 1. Cost-Optimized (Recommended)
 
 **Setup**:
-- Main Provider: OpenAI (gpt-4o-mini)
-- Parsing: Default (gpt-4o-mini)
-- Analysis: gpt-4o
+- Parsing Provider: OpenAI
+- Parsing Model: gpt-4o-mini
+- Parsing Temperature: 0.1
+- Analysis Provider: OpenAI
+- Analysis Model: gpt-4o-mini
+- Analysis Temperature: 0.1
 
 **Benefits**:
-- 50% cost savings vs all gpt-4o
-- Fast parsing, quality analysis
+- Low cost for both phases
+- Fast parsing and analysis
 - Single provider (simple API key management)
 
-**Monthly Cost** (50 queries/day):
+**Monthly Cost** (100 queries/day):
 - Parsing: ~$1.50
-- Analysis: ~$18.00
-- **Total**: ~$19.50
+- Analysis: ~$1.50
+- **Total**: ~$3.00
 
-### 2. Local + Cloud Hybrid
+### 2. Local + Cloud Hybrid (Privacy-First)
 
 **Setup**:
-- Main Provider: Anthropic (claude-sonnet-4)
-- Parsing: Ollama (qwen2.5:14b)
-- Analysis: Default (claude-sonnet-4)
+- Parsing Provider: Ollama
+- Parsing Model: qwen3:14b
+- Parsing Temperature: 0.1
+- Analysis Provider: Anthropic
+- Analysis Model: claude-sonnet-4
+- Analysis Temperature: 0.1
 
 **Benefits**:
 - Zero parsing costs (local Ollama)
-- Privacy (queries stay local)
+- Privacy (queries stay local, never sent to cloud)
 - Premium analysis when needed
 
-**Monthly Cost** (50 queries/day):
+**Monthly Cost** (100 queries/day):
 - Parsing: $0 (free, local)
-- Analysis: ~$30.00
-- **Total**: ~$30.00
+- Analysis: ~$45.00
+- **Total**: ~$45.00
 
-### 3. Performance-Focused
+### 3. Quality-Focused
 
 **Setup**:
-- Main Provider: OpenAI (gpt-4o)
-- Parsing: gpt-4o-mini
-- Analysis: Default (gpt-4o)
+- Parsing Provider: OpenAI
+- Parsing Model: gpt-4o-mini
+- Parsing Temperature: 0.1
+- Analysis Provider: Anthropic
+- Analysis Model: claude-sonnet-4
+- Analysis Temperature: 0.3
 
 **Benefits**:
-- Fastest JSON parsing
-- High-quality analysis
-- Single provider
+- Fast, reliable parsing
+- Highest quality analysis
+- Best of both providers
 
-**Monthly Cost** (50 queries/day):
+**Monthly Cost** (100 queries/day):
 - Parsing: ~$1.50
-- Analysis: ~$18.00
-- **Total**: ~$19.50
+- Analysis: ~$45.00
+- **Total**: ~$46.50
 
 ### 4. Multi-Provider
 
@@ -288,18 +301,23 @@ Separate tracking for each purpose:
 
 View in chat metadata (hover over token count).
 
-### Model Resolution
+### Model Selection
 
-How models are resolved:
-1. If purpose provider is "default" → use main provider
-2. If purpose model is empty → use provider's configured model
-3. Otherwise → use specified provider and model
+How models work:
+1. Each purpose (parsing/analysis) has independent provider selection
+2. Select model from dropdown (populated from provider's API)
+3. Click 'Refresh' to fetch latest available models
+4. Model list cached per provider (shared between purposes)
 
 **Example**:
 ```
-Main Provider: OpenAI (gpt-4o-mini)
-Parsing: default, "" → Uses OpenAI/gpt-4o-mini
-Analysis: Anthropic, "claude-sonnet-4" → Uses Anthropic/claude-sonnet-4
+Parsing: OpenAI/gpt-4o-mini (temp 0.1)
+Analysis: Anthropic/claude-sonnet-4 (temp 0.3)
+
+When you query:
+- Parsing uses OpenAI's API with gpt-4o-mini
+- Analysis uses Anthropic's API with claude-sonnet-4
+- Each purpose uses its configured temperature
 ```
 
 ## FAQ
@@ -308,13 +326,13 @@ Analysis: Anthropic, "claude-sonnet-4" → Uses Anthropic/claude-sonnet-4
 A: No, defaults work perfectly. This is for optimization.
 
 **Q: Can I use the same model for both?**  
-A: Yes, set both to "default" (the default behavior).
+A: Yes, set both parsing and analysis to the same provider and model.
 
 **Q: Can I mix free and paid models?**  
-A: Yes! Use Ollama for parsing (free) and cloud for analysis (paid).
+A: Yes! Use Ollama for parsing (free, local) and cloud for analysis (paid, quality).
 
-**Q: Will this break my existing setup?**  
-A: No, it's 100% backward compatible. Defaults use your main provider.
+**Q: What if I switch providers mid-session?**  
+A: All settings persist. Switching parsing provider doesn't affect analysis settings.
 
 **Q: How much can I save?**  
 A: 50-95% on parsing costs by using gpt-4o-mini or Ollama.

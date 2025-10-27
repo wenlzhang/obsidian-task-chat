@@ -95,6 +95,69 @@
     line-height: 1.6;
 }
 
+/* Model Purpose Configuration Display */
+.task-chat-model-purpose-config {
+    padding: 12px;
+    background: var(--background-secondary);
+    border-left: 3px solid var(--interactive-accent);
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+.task-chat-model-config-header {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-normal);
+    margin-bottom: 10px;
+}
+
+.task-chat-model-config-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.task-chat-model-label {
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 80px;
+}
+
+.task-chat-model-display {
+    font-family: var(--font-monospace);
+    color: var(--text-normal);
+    flex: 1;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: var(--background-primary);
+    border-radius: 3px;
+}
+
+.task-chat-model-change-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.task-chat-model-change-btn:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.task-chat-model-config-info {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--background-modifier-border);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
 /* Controls */
 .task-chat-controls {
     display: flex;

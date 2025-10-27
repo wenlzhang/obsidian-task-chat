@@ -95,6 +95,9 @@ export class ChatView extends ItemView {
         // Dataview warning banner (persistent)
         this.renderDataviewWarning();
 
+        // Model Purpose Configuration display (NEW)
+        this.renderModelPurposeConfig();
+
         // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
 
@@ -477,6 +480,120 @@ export class ChatView extends ItemView {
         infoText.createEl("br");
         infoText.appendText(
             "4️⃣ Verify tasks exist in your vault with proper syntax (e.g., - [ ] Task)",
+        );
+    }
+
+    /**
+     * Render Model Purpose Configuration display
+     * Shows current parsing and analysis models with quick change buttons
+     */
+    private renderModelPurposeConfig(): void {
+        const configEl = this.contentEl.createDiv(
+            "task-chat-model-purpose-config",
+        );
+
+        // Header
+        configEl.createEl("div", {
+            text: "⚙️ Model Configuration",
+            cls: "task-chat-model-config-header",
+        });
+
+        // Parsing model display
+        const parsingRow = configEl.createDiv("task-chat-model-config-row");
+        parsingRow.createSpan({
+            text: "🔍 Parsing:",
+            cls: "task-chat-model-label",
+        });
+
+        const parsingDisplay = parsingRow.createSpan({
+            cls: "task-chat-model-display",
+        });
+
+        const { provider: parsingProvider, model: parsingModel } =
+            this.plugin.settings.parsingProvider &&
+            this.plugin.settings.parsingModel
+                ? {
+                      provider: this.plugin.settings.parsingProvider,
+                      model:
+                          this.plugin.settings.parsingModel ||
+                          this.plugin.settings.providerConfigs[
+                              this.plugin.settings.parsingProvider
+                          ].model,
+                  }
+                : {
+                      provider: this.plugin.settings.parsingProvider,
+                      model: this.plugin.settings.providerConfigs[
+                          this.plugin.settings.parsingProvider
+                      ].model,
+                  };
+
+        parsingDisplay.setText(`${parsingProvider}/${parsingModel}`);
+
+        const parsingChangeBtn = parsingRow.createEl("button", {
+            text: "Change",
+            cls: "task-chat-model-change-btn",
+        });
+        parsingChangeBtn.addEventListener("click", () => {
+            // Open settings to parsing model section
+            // @ts-ignore - app.setting exists but not in types
+            this.app.setting.open();
+            // @ts-ignore
+            this.app.setting.openTabById("task-chat");
+            new Notice(
+                "Navigate to 'Model Purpose Configuration' to change parsing model",
+            );
+        });
+
+        // Analysis model display
+        const analysisRow = configEl.createDiv("task-chat-model-config-row");
+        analysisRow.createSpan({
+            text: "💬 Analysis:",
+            cls: "task-chat-model-label",
+        });
+
+        const analysisDisplay = analysisRow.createSpan({
+            cls: "task-chat-model-display",
+        });
+
+        const { provider: analysisProvider, model: analysisModel } =
+            this.plugin.settings.analysisProvider &&
+            this.plugin.settings.analysisModel
+                ? {
+                      provider: this.plugin.settings.analysisProvider,
+                      model:
+                          this.plugin.settings.analysisModel ||
+                          this.plugin.settings.providerConfigs[
+                              this.plugin.settings.analysisProvider
+                          ].model,
+                  }
+                : {
+                      provider: this.plugin.settings.analysisProvider,
+                      model: this.plugin.settings.providerConfigs[
+                          this.plugin.settings.analysisProvider
+                      ].model,
+                  };
+
+        analysisDisplay.setText(`${analysisProvider}/${analysisModel}`);
+
+        const analysisChangeBtn = analysisRow.createEl("button", {
+            text: "Change",
+            cls: "task-chat-model-change-btn",
+        });
+        analysisChangeBtn.addEventListener("click", () => {
+            // Open settings to analysis model section
+            // @ts-ignore - app.setting exists but not in types
+            this.app.setting.open();
+            // @ts-ignore
+            this.app.setting.openTabById("task-chat");
+            new Notice(
+                "Navigate to 'Model Purpose Configuration' to change analysis model",
+            );
+        });
+
+        // Info text
+        const infoText = configEl.createDiv("task-chat-model-config-info");
+        infoText.setText(
+            "Parsing: Query understanding (Smart Search & Task Chat) • Analysis: AI responses (Task Chat only)",
         );
     }
 

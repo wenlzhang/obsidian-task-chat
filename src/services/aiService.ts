@@ -1694,7 +1694,10 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration for Task Chat responses
-        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "analysis",
+        );
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -1815,7 +1818,10 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "analysis",
+        );
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -1968,8 +1974,14 @@ ${taskContext}`;
         useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
-        const providerConfig = getProviderConfigForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "analysis",
+        );
+        const providerConfig = getProviderConfigForPurpose(
+            settings,
+            "analysis",
+        );
         const endpoint =
             providerConfig.apiEndpoint ||
             "https://api.anthropic.com/v1/messages";
@@ -2177,8 +2189,14 @@ ${taskContext}`;
         useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
-        const providerConfig = getProviderConfigForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(
+            settings,
+            "analysis",
+        );
+        const providerConfig = getProviderConfigForPurpose(
+            settings,
+            "analysis",
+        );
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 

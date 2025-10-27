@@ -267,6 +267,9 @@ export class SettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.parsingModel = value;
                     await this.plugin.saveSettings();
+
+                    // Validate model selection
+                    this.validateModel(parsingProvider, value, "parsing");
                 });
         });
 
@@ -365,6 +368,9 @@ export class SettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.analysisModel = value;
                     await this.plugin.saveSettings();
+
+                    // Validate model selection
+                    this.validateModel(analysisProvider, value, "analysis");
                 });
         });
 
@@ -2983,5 +2989,49 @@ export class SettingsTab extends PluginSettingTab {
         ];
 
         return allCriteria.filter((c) => !currentOrder.includes(c));
+    }
+
+    /**
+     * Validate model selection and show warning if model not in available list
+     * @param provider Provider name
+     * @param model Model name to validate
+     * @param purpose "parsing" or "analysis"
+     */
+    private validateModel(
+        provider: string,
+        model: string,
+        purpose: "parsing" | "analysis",
+    ): void {
+        // Empty model is OK (uses provider default)
+        if (!model || model.trim() === "") {
+            return;
+        }
+
+        const availableModels = this.getAvailableModelsForProvider(provider);
+
+        // No models cached yet - show info notice
+        if (availableModels.length === 0) {
+            new Notice(
+                `⚠️ Model list not loaded for ${provider}. Click 'Refresh' to fetch available models.`,
+                5000,
+            );
+            Logger.debug(`Model validation: No cached models for ${provider}`);
+            return;
+        }
+
+        // Check if model is in available list
+        if (!availableModels.includes(model)) {
+            new Notice(
+                `⚠️ Model '${model}' not found in ${provider}'s available models list. It may still work if it's a valid model name. Click 'Refresh' to update the model list.`,
+                8000,
+            );
+            Logger.warn(
+                `Model validation: ${model} not found in ${provider} models (${purpose})`,
+            );
+        } else {
+            Logger.debug(
+                `Model validation: ${model} found in ${provider} models (${purpose}) ✓`,
+            );
+        }
     }
 }
