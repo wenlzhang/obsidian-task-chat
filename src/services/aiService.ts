@@ -1967,7 +1967,9 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
         useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
-        const providerConfig = getCurrentProviderConfig(settings);
+        // Use analysis model configuration
+        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
+        const providerConfig = getProviderConfigForPurpose(settings, "analysis");
         const endpoint =
             providerConfig.apiEndpoint ||
             "https://api.anthropic.com/v1/messages";
@@ -1993,11 +1995,11 @@ ${taskContext}`;
                         "anthropic-version": "2023-06-01",
                     },
                     body: JSON.stringify({
-                        model: providerConfig.model,
+                        model: model,
                         messages: conversationMessages,
                         system: systemMessage?.content || "",
                         stream: true, // Enable streaming!
-                        temperature: providerConfig.temperature,
+                        temperature: temperature,
                         max_tokens: providerConfig.maxTokens,
                     }),
                     signal: abortSignal,
@@ -2110,10 +2112,10 @@ ${taskContext}`;
                 "anthropic-version": "2023-06-01",
             },
             body: JSON.stringify({
-                model: providerConfig.model,
+                model: model,
                 messages: conversationMessages,
                 system: systemMessage?.content || "",
-                temperature: providerConfig.temperature, // User-configurable, recommended 0.1 for Task Chat
+                temperature: temperature, // User-configurable per purpose
                 max_tokens: providerConfig.maxTokens, // User-configurable response length
             }),
         });
@@ -2174,7 +2176,9 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
         useStreaming: boolean = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
-        const providerConfig = getCurrentProviderConfig(settings);
+        // Use analysis model configuration
+        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
+        const providerConfig = getProviderConfigForPurpose(settings, "analysis");
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
 
@@ -2189,11 +2193,11 @@ ${taskContext}`;
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        model: providerConfig.model,
+                        model: model,
                         messages: messages,
                         stream: true, // Enable streaming!
                         options: {
-                            temperature: providerConfig.temperature,
+                            temperature: temperature,
                             num_predict: providerConfig.maxTokens,
                             num_ctx: providerConfig.contextWindow,
                         },
@@ -2205,7 +2209,7 @@ ${taskContext}`;
                     const errorText = await response.text();
                     throw new Error(
                         `Ollama API error (${response.status}): ${errorText}. ` +
-                            `Ensure Ollama is running and model '${providerConfig.model}' is available.`,
+                            `Ensure Ollama is running and model '${model}' is available.`,
                     );
                 }
 
@@ -2293,11 +2297,11 @@ ${taskContext}`;
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    model: providerConfig.model,
+                    model: model,
                     messages: messages,
                     stream: false,
                     options: {
-                        temperature: providerConfig.temperature, // User-configurable
+                        temperature: temperature, // User-configurable per purpose
                         num_predict: providerConfig.maxTokens, // User-configurable response length (Ollama parameter name)
                         num_ctx: providerConfig.contextWindow, // User-configurable context window (Ollama-specific)
                     },
