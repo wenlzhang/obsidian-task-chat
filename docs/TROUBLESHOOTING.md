@@ -14,6 +14,7 @@
 ## Quick Navigation
 
 - [AI Query Parser Errors](#ai-query-parser-errors) ⚠️ **Start Here**
+- [No Results Found](#no-results-found) 🔍 **Common Issue**
 - [AI Model Format Issues](#ai-model-format-issues)
 - [Search Results Issues](#search-results-issues)
 - [Connection Issues](#connection-issues)
@@ -264,53 +265,467 @@ Found 28 matching task(s)
 
 ---
 
-## AI Model Format Issues
+## No Results Found
 
-### Symptom: Warning "AI Model May Have Failed to Reference Tasks Correctly"
+### Symptom: Warning "⚠️ No Tasks Found After Filtering"
 
 **What happened:**
-The AI model did not use the correct Task ID format to reference tasks in its response. Your tasks are still shown below, but the AI summary may be generic.
+Tasks were found matching your query, but they were all filtered out by quality filter or minimum relevance settings.
 
-**Common Causes:**
+**How Filtering Works:**
 
-1. **Model Too Small**
-   - Small models (especially those under 7B parameters) struggle with complex format requirements
-   - Symptom: Generic advice instead of specific task references
+```
+Query: "urgent tasks due today"
+    ↓
+Step 1: DataView Filter (keyword + property matching)
+    → Found 50 matching tasks ✅
+    ↓
+Step 2: Quality Filter (score threshold)
+    → Threshold: 20.00 points (50% of max 40.0)
+    → Top task score: 10.6 points
+    → Result: 0 tasks pass ❌
+    ↓
+Step 3: Minimum Relevance Filter (optional)
+    → Threshold: 75%
+    → Top task relevance: 30%
+    → Result: 0 tasks pass ❌
+```
 
-2. **Response Truncated**
-   - Model hit token limit before writing task IDs
-   - Check: Settings → Task Chat → Max response tokens
-   - Solution: Increase max response tokens OR reduce max tasks for AI
+### Common Causes & Solutions
 
-3. **Chat History Overload**
-   - Too many previous messages overwhelm the model's context window
-   - Check: Settings → Task Chat → Chat history context length
-   - Solution: Reduce from 5 to 2-3 messages
+#### 1. Quality Filter Too Strict
 
-4. **Task List Too Large**
-   - Too many tasks for model to process
-   - Check: Settings → Task Chat → Max tasks for AI
-   - Solution: Reduce from 30 to 15-20 tasks
+**Symptom in warning:**
+```
+Quality Filter: 50% threshold eliminates low-scoring tasks
+(threshold: 20.00/40.0 points)
+```
 
-**Solutions (In Order of Effectiveness):**
+**What it means:**
+- Your quality filter is set to 50%
+- Maximum possible score is 40.0 points
+- Threshold is 50% × 40 = 20.00 points
+- Your top task only scored 10.6 points
 
-1. **Look at task list below** - tasks are correctly ranked by relevance, due date, and priority
-2. **Try Again** - Model behavior has inherent randomness, retry might work
-3. **Start New Chat Session** - Clears history that might confuse the model
-4. **Adjust Settings**:
-   - Reduce max tasks for AI (30 → 15)
-   - Reduce chat history length (5 → 2)
-   - Increase max response tokens (8000 → 12000)
-5. **Switch to Larger Model** - Use models known for reliability:
-   - Cloud: GPT-5, Claude Sonnet 4.5
-   - Local: Qwen3 (14B+)
-6. **Check Model Configuration** - See [AI Provider Configuration](AI_PROVIDER_CONFIGURATION.md) and [Model Selection Guide](MODEL_SELECTION_GUIDE.md)
+**Solutions:**
 
-**When to Use Smart Search Instead:**
-- If model fails repeatedly
-- If you just need filtered tasks (no AI analysis)
-- If you want to save tokens/cost
-- Smart Search provides filtered + scored tasks without AI summary
+**Quick Fix:**
+- **Settings → Task Filtering → Quality filter strength**
+- Current: 50% → Try: **30%** or **20%**
+- Lower percentage = more permissive filter
+
+**Recommended Values:**
+- **0%** (Adaptive): Let system auto-adjust (recommended for most users)
+- **20-30%**: Balanced - filters obvious irrelevant tasks
+- **40-50%**: Strict - only high-quality matches (your current setting)
+- **60%+**: Very strict - may eliminate too many tasks
+
+**Example Impact:**
+```
+With 50% filter:
+- Threshold: 20.0 points
+- Task score: 10.6
+- Result: Filtered out ❌
+
+With 30% filter:
+- Threshold: 12.0 points  
+- Task score: 10.6
+- Result: Still filtered out ❌
+
+With 20% filter:
+- Threshold: 8.0 points
+- Task score: 10.6
+- Result: Passes! ✅
+```
+
+#### 2. Minimum Relevance Too High
+
+**Symptom in warning:**
+```
+Minimum Relevance: 75% threshold requires strong keyword matches
+```
+
+**What it means:**
+- Your minimum relevance is set to 75%
+- Tasks need very strong keyword matches to pass
+- Top task only has 30% keyword relevance
+
+**Solutions:**
+
+**Quick Fix:**
+- **Settings → Task Filtering → Minimum relevance score**
+- Current: 75% → Try: **30%** or **0%** (disable)
+
+**Recommended Values:**
+- **0%** (Disabled): No minimum required (recommended for most queries)
+- **20-30%**: Moderate - reasonable keyword match required
+- **40-60%**: Strict - strong keyword match required
+- **70%+**: Very strict - near-perfect keyword match (your current setting)
+
+**When to Use High Values:**
+- Keyword-heavy queries where you need exact matches
+- When you have many tasks and want only perfect matches
+- Not recommended for properties-only queries (e.g., "due today")
+
+**When to Disable (0%):**
+- Properties-only queries ("priority 1", "overdue tasks")
+- Broad semantic searches
+- When you're getting zero results
+
+#### 3. Low Relevance Coefficient
+
+**Symptom in warning:**
+```
+Low relevance coefficient (5) reduces keyword match importance
+```
+
+**What it means:**
+- Your relevance coefficient is set very low (5)
+- Default is 20-30
+- This significantly reduces the impact of keyword matches on scores
+
+**Solutions:**
+
+**Quick Fix:**
+- **Settings → Task Scoring → Main Coefficients → Relevance**
+- Current: 5 → Try: **20** (default) or **30**
+
+**Understanding Coefficients:**
+```
+Score = (Relevance × R) + (DueDate × D) + (Priority × P) + (Status × S)
+
+With R=5, D=2, P=1, S=1:
+Task: relevance=0.8, dueDate=1.5, priority=1.0, status=0.8
+Score = (0.8 × 5) + (1.5 × 2) + (1.0 × 1) + (0.8 × 1)
+      = 4.0 + 3.0 + 1.0 + 0.8 = 8.8 points
+
+With R=20, D=2, P=1, S=1 (default):
+Same task would score:
+      = 16.0 + 3.0 + 1.0 + 0.8 = 20.8 points ✅ Much higher!
+```
+
+**Recommended Values:**
+- **Keyword-focused:** R:30, D:5, P:1, S:1
+- **Balanced (default):** R:20, D:4, P:1, S:1  
+- **Deadline-focused:** R:10, D:20, P:5, S:1
+- **Priority-focused:** R:10, D:5, P:15, S:1
+
+#### 4. Tasks Are Close But Not Enough
+
+**Symptom in warning:**
+```
+Top Task Score: 10.6 points (needed: 20.0)
+Tasks are close to threshold but not quite enough
+```
+
+**What it means:**
+- Your top task is at 53% of the threshold (10.6 / 20.0)
+- Tasks are relevant but slightly below cutoff
+- Small adjustment needed
+
+**Solutions:**
+
+1. **Lower quality filter slightly:**
+   - 50% → 40%: Threshold becomes 16.0 (task still fails)
+   - 50% → 30%: Threshold becomes 12.0 (task still fails)
+   - 50% → 25%: Threshold becomes 10.0 (task passes! ✅)
+
+2. **Check why score is low:**
+   - Weak keyword matches? → Adjust relevance coefficient
+   - Missing due dates? → Check task properties
+   - Low priority? → Review scoring sub-coefficients
+
+#### 5. Keyword Matches Too Weak
+
+**Symptom in warning:**
+```
+Keyword matches are too weak (30% < 75% minimum)
+```
+
+**What it means:**
+- Your task content has weak keyword overlap with query
+- Top task only matches 30% of search keywords
+- Your minimum threshold requires 75%
+
+**Solutions:**
+
+1. **Lower minimum relevance:**
+   - 75% → 30%: Matches your actual task relevance
+   - Or set to 0% to disable this filter entirely
+
+2. **Simplify your query:**
+   - Remove some keywords
+   - Use broader terms
+   - Focus on main concepts
+
+3. **Check semantic expansion:**
+   - **Settings → Semantic Expansion → Enable**
+   - Increases keyword variations
+   - Better cross-language matching
+
+**Example:**
+```
+Query: "urgent important critical high-priority overdue tasks"
+Problem: Too many keywords, hard to match all
+
+Better: "urgent overdue tasks"  
+Result: Fewer keywords = higher match percentage
+```
+
+### Step-by-Step Diagnostic
+
+When you see zero results, check these in order:
+
+1. **Check the warning message** - Shows specific reasons
+   - Quality filter threshold
+   - Minimum relevance threshold
+   - Top task scores
+   - Specific settings values
+
+2. **Lower quality filter first:**
+   - Settings → Task Filtering → Quality filter strength
+   - Try 30% or 20% or 0% (adaptive)
+
+3. **Disable minimum relevance:**
+   - Settings → Task Filtering → Minimum relevance score
+   - Set to 0%
+
+4. **Check relevance coefficient:**
+   - Settings → Task Scoring → Relevance coefficient
+   - Should be 20-30 for keyword queries
+
+5. **Review advanced settings:**
+   - Settings → Task Scoring → Advanced coefficients
+   - Reset to defaults if unsure
+
+6. **Simplify query:**
+   - Remove extra filters
+   - Use fewer keywords
+   - Try basic search first
+
+### Understanding the Warning Message
+
+The warning shows you exactly why tasks were filtered:
+
+```
+⚠️ No Tasks Found After Filtering
+
+Found 50 matching tasks, but all were filtered out.
+
+Top Task Score: 10.6 points (needed: 20.00) | Relevance: 30%
+
+Why Tasks Were Filtered:
+• Quality Filter: 50% threshold eliminates low-scoring tasks 
+  (threshold: 20.00/40.0 points)
+• Minimum Relevance: 75% threshold requires strong keyword matches
+• Tasks are close to threshold but not quite enough
+
+💡 Quick Fixes:
+• Lower quality filter to 30% (currently 50%)
+• Lower minimum relevance to 30% or disable (currently 75%)
+
+🔧 More Options:
+• Simplify your query (remove some filters)
+• Check if tasks exist with these criteria
+• Review Advanced Scoring settings
+```
+
+**What each part means:**
+
+- **Found X matching tasks**: DataView found these tasks with your keywords/properties
+- **Top Task Score**: The highest-scoring task (still wasn't enough)
+- **Why Tasks Were Filtered**: Lists specific reasons based on YOUR settings
+- **Quick Fixes**: Actionable solutions with your current values shown
+- **More Options**: Additional troubleshooting steps
+
+### Best Practices to Avoid Zero Results
+
+**For Most Users:**
+
+1. **Use Adaptive Mode (0% quality filter)**
+   - Let system auto-adjust thresholds
+   - Works for 95% of queries
+   - Settings → Task Filtering → Quality filter strength → 0%
+
+2. **Disable Minimum Relevance**
+   - Only enable for specific use cases
+   - Set to 0% by default
+   - Settings → Task Filtering → Minimum relevance score → 0%
+
+3. **Use Default Coefficients**
+   - R:20, D:4, P:1, S:1
+   - Balanced for most queries
+   - Settings → Task Scoring → Reset to defaults
+
+**For Power Users:**
+
+1. **Test in Smart Search First**
+   - Verify filtering before using Task Chat
+   - Adjust settings based on Smart Search results
+   - Only use Task Chat when results are good
+
+2. **Use Explicit Filters Carefully**
+   - Quality filter > 0% disables adaptive mode
+   - System respects your strict settings
+   - May result in zero results if too strict
+
+3. **Monitor Your Settings**
+   - Quality filter: 0-30% for most queries
+   - Minimum relevance: 0% unless needed
+   - Relevance coefficient: 20-30 for keywords
+
+4. **Understand Query Types**
+   - **Keywords-only** ("fix bug"): Needs high relevance coefficient
+   - **Properties-only** ("priority 1"): Disable minimum relevance
+   - **Mixed** ("urgent tasks due today"): Balance both
+
+---
+
+## AI Model Format Issues
+
+### Symptom: Warning "⚠️ AI Response Format Issue"
+
+**What happened:**
+The AI didn't use the expected task reference format (`[TASK_1]`, `[TASK_2]`, etc.). Your tasks are still shown below (scored by relevance), but the AI summary may not reference them correctly.
+
+**Example of Issue:**
+```
+AI wrote: "Focus on urgent tasks first"
+Instead of: "Focus on [TASK_2] and [TASK_5] first"
+```
+
+**Your tasks are still correctly filtered and ranked** - only the AI summary format is affected.
+
+### Quick Solutions
+
+**Try these in order:**
+
+1. **Use the task list below** ✅
+   - Tasks are correctly filtered and ranked
+   - Ignore the generic AI summary
+   - Trust the scored task list
+
+2. **Try your query again** 🔄
+   - AI behavior varies between requests
+   - Often works on second attempt
+
+3. **Start new chat session** 🆕
+   - Click "New Session" button
+   - Clears conversation history
+   - May help model stay focused
+
+4. **Switch to larger model** 🚀
+   - **Recommended:** GPT-4o, Claude-3.5-Sonnet
+   - Larger models more reliable with format
+   - Settings → AI Provider → Model
+
+### Common Causes
+
+**1. Model Too Small**
+- Models under 7-8B parameters struggle with format requirements
+- **Solution:** Use GPT-4o-mini (cloud) or Qwen-14B+ (local)
+
+**2. Response Truncated**
+- Model ran out of tokens before finishing
+- **Check:** Settings → AI Provider → Max response length
+- **Solution:** Increase from 1500 to 3000+ tokens
+
+**3. Too Many Tasks**
+- Model overwhelmed by long task list
+- **Check:** Settings → Task Chat → Max tasks for AI
+- **Solution:** Reduce from 100 to 30-50 tasks
+
+**4. Chat History Too Long**
+- Previous messages confuse the model
+- **Check:** Settings → Task Chat → Chat history context length
+- **Solution:** Reduce from 5 to 2-3 messages
+
+### When This Isn't a Problem
+
+**You can safely ignore this warning when:**
+- The task list below is exactly what you need
+- You don't need AI analysis/prioritization
+- Tasks are correctly filtered and sorted
+
+**Consider using Smart Search mode instead:**
+- Provides filtered + scored tasks without AI
+- No token cost
+- No format issues
+- Faster results
+
+### Settings to Adjust
+
+If this happens frequently:
+
+**Reduce Complexity:**
+```
+Settings → Task Chat:
+• Max tasks for AI: 100 → 30
+• Chat history: 5 → 2
+```
+
+**Increase Response Space:**
+```
+Settings → AI Provider:
+• Max response length: 1500 → 3000
+```
+
+**Upgrade Model:**
+```
+Settings → AI Provider → Model:
+• Current: gpt-4o-nano ❌
+• Better: gpt-4o-mini ✅
+• Best: gpt-4o or claude-3.5-sonnet ✅
+```
+
+### Understanding the Warning
+
+```
+⚠️ AI Response Format Issue
+
+The AI didn't use the expected task reference format. 
+Showing 28 tasks (scored by relevance) instead.
+
+💡 Quick Fixes:
+• Try your query again (AI behavior varies)
+• Start new session (may help with consistency)  
+• Use larger model like GPT-4 (more reliable)
+
+🔧 Debug Info: Model: openai/gpt-4o-nano | Time: 12:25:18
+📖 Troubleshooting: AI format issues guide
+```
+
+**What this means:**
+- **28 tasks shown**: Your results are valid and ranked correctly
+- **scored by relevance**: Used comprehensive scoring as fallback
+- **Quick Fixes**: Actionable solutions to try
+- **Debug Info**: For console log correlation if needed
+
+### Advanced Troubleshooting
+
+**Check Console Logs:**
+1. Press `Cmd/Ctrl + Shift + I` to open Developer Tools
+2. Look for lines starting with `[Task Chat]`
+3. Check for:
+   - "Invalid task reference [TASK_X]" warnings
+   - "FALLBACK TRIGGERED" messages
+   - Task count and scoring information
+
+**Verify Model Configuration:**
+- Settings → AI Provider → Test Connection
+- Ensure model supports longer responses
+- Check token limits match model capabilities
+
+**Test Different Queries:**
+- Simple query ("urgent tasks"): Should work better
+- Complex query with many filters: May trigger issue more often
+- Properties-only query ("priority 1"): Less likely to have issue
+
+### Related Issues
+
+- [AI Query Parser Errors](#ai-query-parser-errors) - If AI parsing fails
+- [No Results Found](#no-results-found) - If filtering too strict
+- [Performance Issues](#performance-issues) - If responses too slow
 
 ---
 

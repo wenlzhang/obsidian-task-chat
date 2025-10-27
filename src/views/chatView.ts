@@ -8,6 +8,7 @@ import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../utils/errorHandler";
+import { cleanWarningsFromContent } from "../services/warningService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -1294,6 +1295,29 @@ export class ChatView extends ItemView {
     }
 
     /**
+     * Clean warnings from chat history messages before sending to AI
+     * NOTE: This creates a cleaned COPY for AI context only.
+     * Original messages in chat history remain unchanged (warnings stay visible in UI).
+     */
+    private cleanWarningsFromHistory(
+        messages: ChatMessage[],
+    ): ChatMessage[] {
+        return messages.map((msg) => ({
+            ...msg,
+            content: this.removeWarningsFromContent(msg.content),
+        }));
+    }
+
+    /**
+     * Remove warning blocks from content
+     * Used by cleanWarningsFromHistory to strip warnings when sending to AI
+     */
+    private removeWarningsFromContent(content: string): string {
+        // Use the centralized cleanup function
+        return cleanWarningsFromContent(content);
+    }
+
+    /**
      * Send a message to AI
      */
     private async sendMessage(): Promise<void> {
@@ -1402,11 +1426,16 @@ export class ChatView extends ItemView {
                 : undefined;
 
             // Get AI response or direct results
+            // Clean warnings from history before sending to AI (warnings stay in UI)
+            const cleanedHistory = this.cleanWarningsFromHistory(
+                this.plugin.sessionManager.getCurrentMessages(),
+            );
+            
             const result = await AIService.sendMessage(
                 this.plugin.app,
                 message,
                 this.currentTasks,
-                this.plugin.sessionManager.getCurrentMessages(),
+                cleanedHistory, // Send cleaned history to AI
                 effectiveSettings,
                 onStream, // Pass streaming callback
                 this.abortController?.signal, // Pass abort signal
@@ -1504,7 +1533,7 @@ export class ChatView extends ItemView {
 
                 const directMessage: ChatMessage = {
                     role: usedChatMode as "simple" | "smart",
-                    content: content,
+                    content: content, // Keep warnings in chat history for UI display
                     timestamp: Date.now(),
                     recommendedTasks: result.directResults,
                     tokenUsage: result.tokenUsage,
@@ -1518,7 +1547,7 @@ export class ChatView extends ItemView {
                 // Add AI analysis response (Task Chat mode)
                 const aiMessage: ChatMessage = {
                     role: "chat",
-                    content: result.response,
+                    content: result.response, // Keep warnings in chat history for UI display
                     timestamp: Date.now(),
                     recommendedTasks: result.recommendedTasks,
                     tokenUsage: result.tokenUsage,

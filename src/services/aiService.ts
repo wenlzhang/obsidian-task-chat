@@ -15,6 +15,11 @@ import { PromptBuilderService } from "./aiPromptBuilderService";
 import { DataviewService } from "./dataviewService";
 import { Logger } from "../utils/logger";
 import { StreamingService, StreamChunk } from "./streamingService";
+import {
+    generateZeroResultsDiagnostic,
+    generateAIFormatWarning,
+    cleanWarningsFromContent,
+} from "./warningService";
 
 /**
  * Service for AI chat functionality
@@ -645,6 +650,44 @@ export class AIService {
                     Logger.debug(
                         `User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
                     );
+                    
+                    // If quality filter resulted in zero tasks, add detailed diagnostic
+                    // This works for ALL modes (Simple, Smart, Task Chat)
+                    if (qualityFilteredTasks.length === 0 && filteredTasks.length > 0) {
+                        // Get top 3 task scores for analysis
+                        const topScores = scoredTasks
+                            .sort((a, b) => b.score - a.score)
+                            .slice(0, 3);
+                        
+                        const diagnosticMessage = generateZeroResultsDiagnostic(
+                            settings,
+                            queryType,
+                            maxScore,
+                            finalThreshold,
+                            filteredTasks.length,
+                            topScores,
+                        );
+                        
+                        // Return diagnostic message for ALL modes
+                        // Simple/Smart Search: Return as direct results with diagnostic
+                        // Task Chat: Return as response with diagnostic
+                        if (chatMode === "chat") {
+                            return {
+                                response: diagnosticMessage + `No tasks match your current filter settings.`,
+                                recommendedTasks: [],
+                                tokenUsage: undefined,
+                                parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                            };
+                        } else {
+                            // For Simple/Smart Search modes
+                            return {
+                                response: diagnosticMessage + `No tasks match your current filter settings.`,
+                                directResults: [],
+                                tokenUsage: undefined,
+                                parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                            };
+                        }
+                    }
                 }
             }
 
@@ -891,20 +934,12 @@ export class AIService {
                     // Not getCurrentProviderConfig(settings) which might have changed if user switched models
                     const modelInfo = `${tokenUsage.model} (${tokenUsage.provider})`;
                     const timestamp = moment().format("HH:mm:ss");
-                    const queryPreview =
-                        message.substring(0, 50) +
-                        (message.length > 50 ? "..." : "");
 
-                    const warningMessage =
-                        `⚠️ **AI Model May Have Failed to Reference Tasks Correctly**\n\n` +
-                        `**Query:** "${queryPreview}" (${timestamp})\n\n` +
-                        `**🔧 Debug Info:** Model: ${modelInfo} | Console logs: ${timestamp}\n\n` +
-                        `**📋 Your Tasks:** ${recommendedTasks.length} tasks are shown below (filtered by AI). However, the AI summary above may not reference specific tasks correctly.\n\n` +
-                        `**💡 Quick Actions:**\n` +
-                        `• Try again (model behavior varies)\n` +
-                        `• Start new chat session (clears history)\n` +
-                        `• Switch to larger model (more reliable)\n\n` +
-                        `**📖 Troubleshooting Guide:** [Common issues and solutions](https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#ai-model-format-issues)\n\n---\n\n`;
+                    const warningMessage = generateAIFormatWarning(
+                        recommendedTasks.length,
+                        modelInfo,
+                        timestamp,
+                    );
                     processedResponse = warningMessage + processedResponse;
                 }
 
@@ -916,6 +951,13 @@ export class AIService {
                     parsedQuery._parserTokenUsage
                 ) {
                     const parserUsage = parsedQuery._parserTokenUsage;
+                    
+                    // Simplify model display when parser and analysis use same model
+                    const modelDisplay =
+                        parserUsage.model === tokenUsage.model
+                            ? parserUsage.model // Same model - show once
+                            : `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`; // Different - show both
+                    
                     combinedTokenUsage = {
                         promptTokens:
                             parserUsage.promptTokens + tokenUsage.promptTokens,
@@ -927,7 +969,7 @@ export class AIService {
                         estimatedCost:
                             parserUsage.estimatedCost +
                             tokenUsage.estimatedCost,
-                        model: `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`,
+                        model: modelDisplay,
                         provider: settings.aiProvider,
                         isEstimated:
                             parserUsage.isEstimated || tokenUsage.isEstimated,
