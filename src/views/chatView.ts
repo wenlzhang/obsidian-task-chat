@@ -1224,7 +1224,7 @@ export class ChatView extends ItemView {
                         parts.push(`~$${cost.toFixed(2)}`);
                     }
                 }
-                
+
                 // Language information (for Smart Search and Task Chat)
                 if (!isSimpleSearch) {
                     const detectedLang =

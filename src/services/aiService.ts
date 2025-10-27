@@ -752,8 +752,12 @@ export class AIService {
                             } else if (
                                 errorForEarlyReturn.details &&
                                 (errorForEarlyReturn.details.includes("400") ||
-                                    errorForEarlyReturn.details.includes("401") ||
-                                    errorForEarlyReturn.details.includes("403") ||
+                                    errorForEarlyReturn.details.includes(
+                                        "401",
+                                    ) ||
+                                    errorForEarlyReturn.details.includes(
+                                        "403",
+                                    ) ||
                                     errorForEarlyReturn.details.includes("404"))
                             ) {
                                 // Pre-request errors (400/401/403/404) - no tokens consumed
@@ -769,7 +773,8 @@ export class AIService {
                                     model: parsingModel,
                                     provider: parsingProvider,
                                     isEstimated: false,
-                                    directSearchReason: "0 results (error before request)",
+                                    directSearchReason:
+                                        "0 results (error before request)",
                                     parsingModel: parsingModel,
                                     parsingProvider: parsingProvider,
                                 };
