@@ -27,8 +27,6 @@ export class ChatView extends ItemView {
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
     private abortController: AbortController | null = null; // For canceling AI requests
     private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
-    private providerSelectEl: HTMLSelectElement | null = null; // Provider dropdown
-    private modelSelectEl: HTMLSelectElement | null = null; // Model dropdown
     private tokenEstimateEl: HTMLElement | null = null; // Token estimate display
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
@@ -207,68 +205,10 @@ export class ChatView extends ItemView {
         // Note: Hotkey for sending messages is now handled by the command system
         // Users can customize the hotkey in Settings → Hotkeys → "Send chat message"
 
-        // Control bar (provider + model dropdowns + send button on one line)
+        // Control bar (send button only - model config moved below)
         const toolbarEl = inputContainerEl.createDiv("task-chat-input-toolbar");
 
-        // Provider selector
-        const providerContainer = toolbarEl.createDiv(
-            "task-chat-provider-selector",
-        );
-        providerContainer.createSpan({
-            text: "🤖",
-            cls: "task-chat-provider-icon",
-        });
-
-        const providerSelect = providerContainer.createEl("select", {
-            cls: "task-chat-provider-dropdown",
-        });
-        providerSelect.createEl("option", {
-            value: "openai",
-            text: "OpenAI",
-        });
-        providerSelect.createEl("option", {
-            value: "anthropic",
-            text: "Anthropic",
-        });
-        providerSelect.createEl("option", {
-            value: "openrouter",
-            text: "OpenRouter",
-        });
-        providerSelect.createEl("option", {
-            value: "ollama",
-            text: "Ollama",
-        });
-        providerSelect.value = this.plugin.settings.aiProvider;
-
-        providerSelect.addEventListener("change", async () => {
-            this.plugin.settings.aiProvider = providerSelect.value as any;
-            await this.plugin.saveSettings();
-            this.updateModelSelector();
-        });
-
-        // Model selector
-        const modelContainer = toolbarEl.createDiv("task-chat-model-selector");
-        const modelSelect = modelContainer.createEl("select", {
-            cls: "task-chat-model-dropdown",
-        });
-
-        // Store reference for updates
-        this.providerSelectEl = providerSelect;
-        this.modelSelectEl = modelSelect;
-
-        // Initialize model selector
-        this.updateModelSelector();
-
-        modelSelect.addEventListener("change", async () => {
-            const providerConfig =
-                this.plugin.settings.providerConfigs[
-                    this.plugin.settings.aiProvider
-                ];
-            providerConfig.model = modelSelect.value;
-            await this.plugin.saveSettings();
-        });
-
-        // Send button (on same line as provider/model)
+        // Send button
         this.sendButtonEl = toolbarEl.createEl("button", {
             text: "Send",
             cls: "task-chat-send-button",
@@ -489,60 +429,109 @@ export class ChatView extends ItemView {
 
     /**
      * Render Model Configuration display
-     * Shows current parsing and analysis models in a compact format
+     * Shows current parsing and analysis models with clickable buttons
      */
     private renderModelPurposeConfig(): void {
         const configEl = this.contentEl.createDiv(
             "task-chat-model-purpose-config",
         );
 
-        // Compact single-line display
-        const configRow = configEl.createDiv("task-chat-model-config-compact");
-
-        // Icon
-        configRow.createSpan({
-            text: "⚙️",
-            cls: "task-chat-config-icon",
+        // Header text
+        configEl.createSpan({
+            text: "Model configuration",
+            cls: "task-chat-model-config-header-text",
         });
 
-        // Parsing model
+        // Buttons container
+        const buttonsRow = configEl.createDiv("task-chat-model-config-buttons");
+
+        // Parsing model button
         const parsingProvider = this.plugin.settings.parsingProvider;
         const parsingModel =
             this.plugin.settings.parsingModel ||
             this.plugin.settings.providerConfigs[parsingProvider].model;
 
-        const parsingText = configRow.createSpan({
-            cls: "task-chat-model-compact-label",
+        const parsingBtn = buttonsRow.createEl("button", {
+            cls: "task-chat-model-config-btn",
         });
-        parsingText.setText(
-            `Parser: ${parsingProvider}/${parsingModel.length > 15 ? parsingModel.substring(0, 12) + "..." : parsingModel}`,
+        parsingBtn.createSpan({
+            text: "🔍",
+            cls: "task-chat-model-btn-icon",
+        });
+        const parsingLabel = parsingBtn.createDiv(
+            "task-chat-model-btn-content",
         );
+        parsingLabel.createSpan({
+            text: "Parser",
+            cls: "task-chat-model-btn-label",
+        });
+        parsingLabel.createSpan({
+            text: `${this.formatProviderName(parsingProvider)}: ${this.truncateModel(parsingModel)}`,
+            cls: "task-chat-model-btn-model",
+        });
 
-        // Analysis model
+        parsingBtn.addEventListener("click", () => {
+            // @ts-ignore - app.setting exists but not in types
+            this.app.setting.open();
+            // @ts-ignore
+            this.app.setting.openTabById("task-chat");
+            new Notice("Opening Settings → Query parsing model");
+        });
+
+        // Analysis model button
         const analysisProvider = this.plugin.settings.analysisProvider;
         const analysisModel =
             this.plugin.settings.analysisModel ||
             this.plugin.settings.providerConfigs[analysisProvider].model;
 
-        const analysisText = configRow.createSpan({
-            cls: "task-chat-model-compact-label",
+        const analysisBtn = buttonsRow.createEl("button", {
+            cls: "task-chat-model-config-btn",
         });
-        analysisText.setText(
-            `Analysis: ${analysisProvider}/${analysisModel.length > 15 ? analysisModel.substring(0, 12) + "..." : analysisModel}`,
+        analysisBtn.createSpan({
+            text: "💬",
+            cls: "task-chat-model-btn-icon",
+        });
+        const analysisLabel = analysisBtn.createDiv(
+            "task-chat-model-btn-content",
         );
-
-        // Settings link button
-        const settingsBtn = configRow.createEl("button", {
-            text: "⚙️ Settings",
-            cls: "task-chat-settings-link-btn",
+        analysisLabel.createSpan({
+            text: "Analysis",
+            cls: "task-chat-model-btn-label",
         });
-        settingsBtn.addEventListener("click", () => {
+        analysisLabel.createSpan({
+            text: `${this.formatProviderName(analysisProvider)}: ${this.truncateModel(analysisModel)}`,
+            cls: "task-chat-model-btn-model",
+        });
+
+        analysisBtn.addEventListener("click", () => {
             // @ts-ignore - app.setting exists but not in types
             this.app.setting.open();
             // @ts-ignore
             this.app.setting.openTabById("task-chat");
-            new Notice("Opening Settings → Model configuration");
+            new Notice("Opening Settings → Task analysis model");
         });
+    }
+
+    /**
+     * Format provider name for display
+     */
+    private formatProviderName(
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+    ): string {
+        const names = {
+            openai: "OpenAI",
+            anthropic: "Anthropic",
+            openrouter: "OpenRouter",
+            ollama: "Ollama",
+        };
+        return names[provider] || provider;
+    }
+
+    /**
+     * Truncate model name if too long
+     */
+    private truncateModel(model: string): string {
+        return model.length > 20 ? model.substring(0, 17) + "..." : model;
     }
 
     /**
@@ -1898,39 +1887,6 @@ export class ChatView extends ItemView {
                 });
             });
         });
-    }
-
-    /**
-     * Update model selector dropdown based on current provider
-     */
-    private updateModelSelector(): void {
-        if (!this.modelSelectEl) return;
-
-        const provider = this.plugin.settings.aiProvider;
-        const providerConfig = this.plugin.settings.providerConfigs[provider];
-        const availableModels = providerConfig.availableModels;
-
-        // Clear existing options
-        this.modelSelectEl.empty();
-
-        // Add available models
-        if (availableModels && availableModels.length > 0) {
-            availableModels.forEach((model) => {
-                const option = this.modelSelectEl!.createEl("option", {
-                    value: model,
-                    text: model,
-                });
-            });
-        } else {
-            // Show loading/default message if no models cached
-            this.modelSelectEl.createEl("option", {
-                value: providerConfig.model,
-                text: providerConfig.model || "Loading models...",
-            });
-        }
-
-        // Set current model as selected
-        this.modelSelectEl.value = providerConfig.model;
     }
 
     /**

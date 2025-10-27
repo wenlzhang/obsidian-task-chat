@@ -983,12 +983,25 @@ export class AIService {
                             parserUsage.estimatedCost +
                             tokenUsage.estimatedCost,
                         model: modelDisplay,
-                        provider: settings.aiProvider,
+                        provider: tokenUsage.provider, // Use analysis provider (not aiProvider)
                         isEstimated:
                             parserUsage.isEstimated || tokenUsage.isEstimated,
+                        // Add separate tracking for parsing and analysis
+                        parsingModel: parserUsage.model,
+                        parsingProvider: parserUsage.provider as
+                            | "openai"
+                            | "anthropic"
+                            | "openrouter"
+                            | "ollama",
+                        parsingTokens: parserUsage.totalTokens,
+                        parsingCost: parserUsage.estimatedCost,
+                        analysisModel: tokenUsage.model,
+                        analysisProvider: tokenUsage.provider,
+                        analysisTokens: tokenUsage.totalTokens,
+                        analysisCost: tokenUsage.estimatedCost,
                     };
                     Logger.debug(
-                        `[Task Chat] Combined token usage: Parser (${parserUsage.totalTokens}) + Analysis (${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
+                        `[Task Chat] Combined token usage: Parser (${parserUsage.provider}/${parserUsage.model}: ${parserUsage.totalTokens}) + Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
                     );
                 }
 
