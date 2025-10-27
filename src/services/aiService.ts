@@ -1065,7 +1065,11 @@ export class AIService {
 
                     // Calculate token usage - show parsing tokens even if analysis failed
                     let tokenUsageForError;
-                    if (usingAIParsing && parsedQuery && parsedQuery._parserTokenUsage) {
+                    if (
+                        usingAIParsing &&
+                        parsedQuery &&
+                        parsedQuery._parserTokenUsage
+                    ) {
                         // Parsing succeeded - show its token usage and cost
                         const parserUsage = parsedQuery._parserTokenUsage;
                         const parsingProvider = parserUsage.provider as

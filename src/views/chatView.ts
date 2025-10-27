@@ -1015,9 +1015,10 @@ export class ChatView extends ItemView {
                     parts.push(message.error.model);
                 }
                 // Try to get language from parsedQuery if available
-                const detectedLang = message.parsedQuery?.aiUnderstanding?.detectedLanguage;
+                const detectedLang =
+                    message.parsedQuery?.aiUnderstanding?.detectedLanguage;
                 parts.push(`Language: ${detectedLang || "Unknown"}`);
-                usageEl.createEl("small", { text: parts.join(" \u00b7 ") });
+                usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
                 return; // Skip rest of processing since no tokenUsage
             }
 
@@ -1087,7 +1088,11 @@ export class ChatView extends ItemView {
                     parts.push(
                         `${providerName}: ${displayModel} (parser + analysis)`,
                     );
-                } else if (!hasAnalysisModel && message.error && message.error.model) {
+                } else if (
+                    !hasAnalysisModel &&
+                    message.error &&
+                    message.error.model
+                ) {
                     // Task Chat: Parsing succeeded, but analysis failed
                     // Show parsing model from tokenUsage + analysis model from error
                     const parsingProviderName = formatProvider(
