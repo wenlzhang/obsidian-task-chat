@@ -1490,8 +1490,10 @@ export class ChatView extends ItemView {
                                 actualPerCoreLangValue.toFixed(1);
 
                             const languages =
-                                meta.languagesUsed?.join(", ") ||
-                                "configured languages";
+                                meta.languagesUsed &&
+                                meta.languagesUsed.length > 0
+                                    ? meta.languagesUsed.join(", ")
+                                    : "English";
                             content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
                         }
 

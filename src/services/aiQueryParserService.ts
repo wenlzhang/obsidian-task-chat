@@ -417,10 +417,11 @@ export class QueryParserService {
         settings: PluginSettings,
     ): Promise<ParsedQuery> {
         // Get configured languages for semantic search
+        // Default to English if user hasn't configured any languages
         const queryLanguages =
             settings.queryLanguages && settings.queryLanguages.length > 0
                 ? settings.queryLanguages
-                : ["English", "中文"];
+                : ["English"];
         const languageList = queryLanguages.join(", ");
 
         // Get semantic expansion settings
@@ -1890,7 +1891,24 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 );
             }
 
-            const expandedKeywords = filteredKeywords;
+            // Ensure all core keywords are included in expanded keywords
+            // AI should include them, but sometimes misses them - this is a safety net
+            const missingCoreKeywords = coreKeywords.filter(
+                (k: string) => !filteredKeywords.includes(k),
+            );
+            if (missingCoreKeywords.length > 0) {
+                Logger.warn(
+                    `[AI Parser] AI missed ${missingCoreKeywords.length} core keywords in expansion. Adding them back:`,
+                    missingCoreKeywords,
+                );
+            }
+            // Merge: core keywords first, then expanded keywords (deduplicated)
+            const expandedKeywords = [
+                ...coreKeywords,
+                ...filteredKeywords.filter(
+                    (k: string) => !coreKeywords.includes(k),
+                ),
+            ];
 
             // Validate expansion worked correctly
             if (expansionEnabled && coreKeywords.length > 0) {
