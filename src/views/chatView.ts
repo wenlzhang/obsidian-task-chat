@@ -795,16 +795,7 @@ export class ChatView extends ItemView {
 
         // Display structured error if present (API/parser/analysis failures)
         // Show BEFORE recommended tasks so users see the error first
-        // DEBUG: Check if error exists when rendering
-        Logger.debug("[RENDER ERROR CHECK] message.role:", message.role);
-        Logger.debug(
-            "[RENDER ERROR CHECK] message.error exists:",
-            !!message.error,
-        );
-        Logger.debug("[RENDER ERROR CHECK] message.error:", message.error);
-
         if (message.error) {
-            Logger.debug("[RENDER ERROR CHECK] ✓ Rendering error display");
             const errorEl = messageEl.createDiv({
                 cls: "task-chat-api-error",
             });
@@ -1066,19 +1057,27 @@ export class ChatView extends ItemView {
                         `${providerName}: ${modelInfo}${failureIndicator}`,
                     );
 
-                    // Show token counts (even if estimated/zero) for transparency
-                    const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
+                    // Show token counts (even if zero for failed requests)
                     const totalTokens = message.tokenUsage.totalTokens || 0;
                     const promptTokens = message.tokenUsage.promptTokens || 0;
                     const completionTokens =
                         message.tokenUsage.completionTokens || 0;
                     parts.push(
-                        `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
+                        `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
                     );
 
-                    // Show cost (even if zero)
+                    // Show cost (always $0.00 for failed requests)
                     const cost = message.tokenUsage.estimatedCost || 0;
-                    parts.push(`${tokenStr}$${cost.toFixed(4)}`);
+                    parts.push(`$${cost.toFixed(2)}`);
+
+                    // Show language info (or parser failed note)
+                    const detectedLang =
+                        message.parsedQuery?.aiUnderstanding?.detectedLanguage;
+                    if (detectedLang) {
+                        parts.push(`Language: ${detectedLang}`);
+                    } else {
+                        parts.push("Language: (parser failed)");
+                    }
                 }
                 usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
                 return; // Skip additional details when showTokenUsage is false
@@ -1642,13 +1641,6 @@ export class ChatView extends ItemView {
                     }
                 }
 
-                // DEBUG: Log error propagation
-                Logger.debug(
-                    "[UI ERROR CHECK] result.error exists:",
-                    !!result.error,
-                );
-                Logger.debug("[UI ERROR CHECK] result.error:", result.error);
-
                 const directMessage: ChatMessage = {
                     role: usedChatMode as "simple" | "smart",
                     content: content, // Keep warnings in chat history for UI display
@@ -1658,15 +1650,6 @@ export class ChatView extends ItemView {
                     parsedQuery: result.parsedQuery,
                     error: result.error, // Include error info for parser failures
                 };
-
-                Logger.debug(
-                    "[UI ERROR CHECK] directMessage.error exists:",
-                    !!directMessage.error,
-                );
-                Logger.debug(
-                    "[UI ERROR CHECK] directMessage.error:",
-                    directMessage.error,
-                );
 
                 this.plugin.sessionManager.addMessage(directMessage);
                 await this.renderMessages();

@@ -722,6 +722,54 @@ export class AIService {
                             }
                         }
 
+                        // Create tokenUsage for error cases (for metadata display)
+                        let tokenUsageForError;
+                        if (chatMode === "smart") {
+                            if (parsedQuery && parsedQuery._parserTokenUsage) {
+                                // Use actual parser token usage if available
+                                const parserUsage =
+                                    parsedQuery._parserTokenUsage;
+                                const parsingProvider = parserUsage.provider as
+                                    | "openai"
+                                    | "anthropic"
+                                    | "openrouter"
+                                    | "ollama";
+                                tokenUsageForError = {
+                                    promptTokens: parserUsage.promptTokens,
+                                    completionTokens:
+                                        parserUsage.completionTokens,
+                                    totalTokens: parserUsage.totalTokens,
+                                    estimatedCost: parserUsage.estimatedCost,
+                                    model: parserUsage.model,
+                                    provider: parsingProvider,
+                                    isEstimated: parserUsage.isEstimated,
+                                    directSearchReason: "0 results",
+                                    parsingModel: parserUsage.model,
+                                    parsingProvider: parsingProvider,
+                                    parsingTokens: parserUsage.totalTokens,
+                                    parsingCost: parserUsage.estimatedCost,
+                                };
+                            } else {
+                                // Create zero token usage for API errors (request failed, no tokens consumed)
+                                const {
+                                    provider: parsingProvider,
+                                    model: parsingModel,
+                                } = getProviderForPurpose(settings, "parsing");
+                                tokenUsageForError = {
+                                    promptTokens: 0,
+                                    completionTokens: 0,
+                                    totalTokens: 0,
+                                    estimatedCost: 0,
+                                    model: parsingModel,
+                                    provider: parsingProvider,
+                                    isEstimated: false, // Not estimated - actually 0
+                                    directSearchReason: "0 results",
+                                    parsingModel: parsingModel,
+                                    parsingProvider: parsingProvider,
+                                };
+                            }
+                        }
+
                         // Return diagnostic message for ALL modes
                         // Simple/Smart Search: Return as direct results with diagnostic
                         // Task Chat: Return as response with diagnostic
@@ -731,7 +779,7 @@ export class AIService {
                                     diagnosticMessage +
                                     `No tasks match your current filter settings.`,
                                 recommendedTasks: [],
-                                tokenUsage: undefined,
+                                tokenUsage: tokenUsageForError,
                                 parsedQuery: usingAIParsing
                                     ? parsedQuery
                                     : undefined,
@@ -744,7 +792,7 @@ export class AIService {
                                     diagnosticMessage +
                                     `No tasks match your current filter settings.`,
                                 directResults: [],
-                                tokenUsage: undefined,
+                                tokenUsage: tokenUsageForError,
                                 parsedQuery: usingAIParsing
                                     ? parsedQuery
                                     : undefined,
