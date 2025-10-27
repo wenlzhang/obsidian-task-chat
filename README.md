@@ -151,20 +151,42 @@ Analyze my tasks for this week
 
 1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
 2. **API Key** - Enter your API key (not needed for Ollama)
-3. **Model Selection** - Pick a model
-4. **Test Connection** - Verify setup works
+3. **Test Connection** - Verify setup works
 
-**Recommended models:**
+### Model Purpose Configuration
+
+**NEW**: Use different models for different purposes to optimize cost and performance!
+
+**Query Parsing** (Smart Search & Task Chat query understanding):
+- **Recommended**: Fast, cost-effective models
+- GPT-4o-mini, Claude Sonnet 4, or Qwen3:14b
+- Lower temperature (0.1) for consistent results
+
+**Task Analysis** (Task Chat AI responses):
+- **Recommended**: Quality models for better insights
+- GPT-4o-mini, Claude Sonnet 4, or Qwen3:14b
+- Adjustable temperature (0.1-2.0) based on needs
+
+**Example configurations:**
+```
+Cost-Optimized:
+  Parsing: OpenAI gpt-4o-mini
+  Analysis: OpenAI gpt-4o-mini
+
+Quality-Focused:
+  Parsing: OpenAI gpt-4o-mini (fast)
+  Analysis: Anthropic claude-sonnet-4 (quality)
+
+Privacy-First:
+  Parsing: OpenAI gpt-4o-mini (cloud)
+  Analysis: Ollama qwen3:14b (local)
+  Analysis stays local, only queries sent to cloud
+```
 
 > **⚠️ Note:** Model performance varies between users based on hardware, query complexity, and use cases. Test different models to find what works best for you.
 
-**Cloud (Paid, Fast, Reliable):**
-- **GPT-4o-mini** - Good balance of speed, cost, and quality
-
-**Local (Free, Private, Hardware-Dependent):**
-- **Qwen3 (8B, 14B, 32B)** - Good instruction following, tested and recommended
-
 → [Model selection guide](docs/MODEL_SELECTION_GUIDE.md)
+→ [Model purpose configuration](docs/MODEL_CONFIGURATION.md)
 → [Complete settings guide](docs/SETTINGS_GUIDE.md)
 
 ### Common Adjustments
