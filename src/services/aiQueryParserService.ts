@@ -2231,7 +2231,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         if (provider === "ollama") {
@@ -2259,7 +2259,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             body: JSON.stringify({
                 model: model,
                 messages: messages,
-                temperature: providerConfig.temperature,
+                temperature: temperature,
                 max_tokens: providerConfig.maxTokens,
             }),
         });
@@ -2331,7 +2331,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         const apiKey = settings.providerConfigs[provider].apiKey;
@@ -2361,7 +2361,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 model: model,
                 messages: conversationMessages,
                 system: systemMessage ? systemMessage.content : undefined,
-                temperature: providerConfig.temperature,
+                temperature: temperature,
                 max_tokens: providerConfig.maxTokens,
             }),
         });
@@ -2445,7 +2445,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         settings: PluginSettings,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
-        const { provider, model } = getProviderForPurpose(settings, "parsing");
+        const { provider, model, temperature } = getProviderForPurpose(settings, "parsing");
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         const endpoint =
@@ -2463,7 +2463,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     messages: messages,
                     stream: false,
                     options: {
-                        temperature: providerConfig.temperature,
+                        temperature: temperature,
                         num_predict: providerConfig.maxTokens,
                         num_ctx: providerConfig.contextWindow,
                     },

@@ -324,7 +324,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     parsingModel: "gpt-4o-mini",
     parsingTemperature: 0.1,
     analysisProvider: "openai",
-    analysisModel: "gpt-4o",
+    analysisModel: "gpt-4o-mini",
     analysisTemperature: 0.1,
 
     pricingCache: {

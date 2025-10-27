@@ -101,6 +101,19 @@ export class SettingsTab extends PluginSettingTab {
                 );
         }
 
+        new Setting(containerEl)
+            .setName("API endpoint")
+            .setDesc(this.getEndpointDescription())
+            .addText((text) =>
+                text
+                    .setPlaceholder(this.getEndpointPlaceholder())
+                    .setValue(this.getCurrentProviderConfig().apiEndpoint)
+                    .onChange(async (value) => {
+                        this.getCurrentProviderConfig().apiEndpoint = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Add Test Connection button
         const testConnectionSetting = new Setting(containerEl)
             .setName("Connection")
@@ -168,19 +181,6 @@ export class SettingsTab extends PluginSettingTab {
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
-        new Setting(containerEl)
-            .setName("API endpoint")
-            .setDesc(this.getEndpointDescription())
-            .addText((text) =>
-                text
-                    .setPlaceholder(this.getEndpointPlaceholder())
-                    .setValue(this.getCurrentProviderConfig().apiEndpoint)
-                    .onChange(async (value) => {
-                        this.getCurrentProviderConfig().apiEndpoint = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
         // Add provider-specific setup links
         if (this.plugin.settings.aiProvider === "ollama") {
             const ollamaInfo = containerEl.createDiv({
@@ -246,9 +246,7 @@ export class SettingsTab extends PluginSettingTab {
 
         const parsingModelSetting = new Setting(containerEl)
             .setName("Query parsing model")
-            .setDesc(
-                "Model for query parsing. Leave empty to use provider's default model.",
-            );
+            .setDesc(this.getParsingModelDescription());
 
         // Add dropdown for parsing model selection
         parsingModelSetting.addDropdown((dropdown) => {
@@ -346,9 +344,7 @@ export class SettingsTab extends PluginSettingTab {
 
         const analysisModelSetting = new Setting(containerEl)
             .setName("Task analysis model")
-            .setDesc(
-                "Model for task analysis in Task Chat mode. Leave empty to use provider's default model.",
-            );
+            .setDesc(this.getAnalysisModelDescription());
 
         // Add dropdown for analysis model selection
         analysisModelSetting.addDropdown((dropdown) => {
@@ -2370,6 +2366,42 @@ export class SettingsTab extends PluginSettingTab {
                 return "Local model name. Must be pulled first with 'ollama pull <model>'.";
             default:
                 return "AI model to use";
+        }
+    }
+
+    /**
+     * Get parsing model description based on parsing provider
+     */
+    private getParsingModelDescription(): string {
+        switch (this.plugin.settings.parsingProvider) {
+            case "openai":
+                return "Model for AI query parsing. GPT-4o-mini is recommended for fast, cost-effective, and JSON parsing.";
+            case "anthropic":
+                return "Model for AI query parsing. Claude Sonnet 4 is recommended for quality parsing.";
+            case "openrouter":
+                return "Model for AI query parsing. Use any OpenAI or Anthropic model via OpenRouter. GPT-4o-mini recommended.";
+            case "ollama":
+                return "Local model for query parsing. Qwen3:14b is recommended for good speed and accuracy.";
+            default:
+                return "Model for AI query parsing.";
+        }
+    }
+
+    /**
+     * Get analysis model description based on analysis provider
+     */
+    private getAnalysisModelDescription(): string {
+        switch (this.plugin.settings.analysisProvider) {
+            case "openai":
+                return "Model for task analysis in Task Chat. GPT-4o-mini is recommended for high-quality insights. Smart Search does not use this.";
+            case "anthropic":
+                return "Model for task analysis in Task Chat. Claude Sonnet 4 is recommended for comprehensive analysis. Smart Search does not use this.";
+            case "openrouter":
+                return "Model for task analysis in Task Chat. Use any model via OpenRouter. GPT-4o-mini or Claude Sonnet 4 recommended. Smart Search does not use this.";
+            case "ollama":
+                return "Local model for task analysis. Qwen3:14b is recommended for good speed and accuracy. Smart Search does not use this.";
+            default:
+                return "Model for task analysis in Task Chat.";
         }
     }
 

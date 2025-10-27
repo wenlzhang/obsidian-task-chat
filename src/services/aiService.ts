@@ -1694,7 +1694,7 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration for Task Chat responses
-        const { provider, model } = getProviderForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -1747,7 +1747,7 @@ ${taskContext}`;
             body: JSON.stringify({
                 model: model,
                 messages: messages,
-                temperature: providerConfig.temperature,
+                temperature: temperature,
                 max_tokens: providerConfig.maxTokens,
             }),
         });
@@ -1815,7 +1815,7 @@ ${taskContext}`;
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider, model } = getProviderForPurpose(settings, "analysis");
+        const { provider, model, temperature } = getProviderForPurpose(settings, "analysis");
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -1840,7 +1840,7 @@ ${taskContext}`;
                     stream_options: {
                         include_usage: true,
                     },
-                    temperature: providerConfig.temperature,
+                    temperature: temperature,
                     max_tokens: providerConfig.maxTokens,
                 }),
                 signal: abortSignal,
