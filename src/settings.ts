@@ -120,9 +120,13 @@ export function getProviderConfigForPurpose(
 
 export interface PluginSettings {
     // AI Provider Settings
+    // Note: aiProvider is the "default" provider shown in main settings tab
+    // Actual parsing uses parsingProvider, actual analysis uses analysisProvider
     aiProvider: "openai" | "anthropic" | "openrouter" | "ollama";
 
-    // Per-provider configurations (each provider saves its own settings)
+    // Per-provider configurations
+    // These store DEFAULT settings for each provider (API key, endpoint, default model, etc.)
+    // When parsingModel or analysisModel is empty, falls back to provider's default model
     providerConfigs: {
         openai: ProviderConfig;
         anthropic: ProviderConfig;
@@ -428,10 +432,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Default Chat Mode
     defaultChatMode: "simple", // Default to free mode for new sessions
     currentChatMode: "simple", // Current session's chat mode (stored in data.json)
-    queryLanguages: ["English", "中文"], // Default: English and Chinese
+    queryLanguages: ["English"], // Default: English only (most users are monolingual)
 
     // Semantic Expansion Settings
-    expansionsPerLanguage: 10, // Semantic equivalents per keyword per language (conservative default)
+    expansionsPerLanguage: 5, // Semantic equivalents per keyword per language (3 is optimal for cost/speed/recall balance)
     enableSemanticExpansion: true, // Enable semantic expansion by default
 
     // User-Configurable Property Terms

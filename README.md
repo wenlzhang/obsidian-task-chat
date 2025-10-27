@@ -321,14 +321,12 @@ Configure DataView field names:
 
 Search and manage tasks in multiple languages:
 
-**Supported languages:**
-- English
-- 中文 (Chinese)
-- Add more in Settings → Semantic Expansion → Query Languages
+- English (default)
+- Any language - configure in Settings → Semantic Expansion
 
 **How it works:**
-- AI expands keywords into multiple languages
-- Example: "fix" → "repair, solve, 修复, 修理, 解决"
+- AI generates semantic equivalents in configured languages
+- Default: 5 variations per keyword
 - Works in Smart Search and Task Chat modes
 
 **Examples:**
@@ -337,12 +335,6 @@ Search and manage tasks in multiple languages:
 ```
 urgent tasks → finds "critical", "important", "high-priority"
 fix bug → finds "repair error", "solve issue", "correct problem"
-```
-
-*中文:*
-```
-紧急任务 → finds "关键", "重要", "高优先级"
-修复错误 → finds "修理", "解决", "修正"
 ```
 
 → [Semantic expansion guide](docs/SEMANTIC_EXPANSION.md)

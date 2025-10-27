@@ -398,7 +398,7 @@ export class AIService {
                         totalTokens: 0,
                         estimatedCost: 0,
                         model: "none",
-                        provider: settings.aiProvider,
+                        provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
                         isEstimated: true,
                         directSearchReason: reason,
                     },
@@ -786,7 +786,7 @@ export class AIService {
                         totalTokens: 0,
                         estimatedCost: 0,
                         model: "none",
-                        provider: settings.aiProvider,
+                        provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
                         isEstimated: false,
                         directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
                     };
@@ -1096,7 +1096,7 @@ export class AIService {
                     totalTokens: 0,
                     estimatedCost: 0,
                     model: "none",
-                    provider: settings.aiProvider,
+                    provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
                     isEstimated: true,
                     directSearchReason: `${sortedTasks.length} task${sortedTasks.length !== 1 ? "s" : ""}`,
                 },

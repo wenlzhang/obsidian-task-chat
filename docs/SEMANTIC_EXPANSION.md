@@ -31,8 +31,8 @@ Result: Finds tasks with any of these terms!
 ```
 
 **Configuration:**
-- `Query languages`: Languages for expansion (e.g., "English, 中文, Svenska")
-- `Max keyword expansions`: Maximum variations per keyword per language (default: 5)
+- `Query languages`: Languages for expansion (e.g., "English")
+- `Expansions per language`: Semantic variations per keyword per language (default: 5)
 - `Enable semantic expansion`: Toggle on/off
 
 ### 2. Property Concept Recognition
@@ -110,31 +110,31 @@ English, 中文
 **How it works:**
 - AI generates synonyms in each language
 - Each keyword expanded in all languages
-- Example: "fix" → 5 English + 5 中文 = 10 variations
+- Example with 1 language: "fix" → 3 variations (repair, solve, correct)
+- Example with 2 languages: "fix" → 3 English + 3 中文 = 6 variations
 
-**Tip:** Add languages you use in your tasks
+**Tip:** Most users need only 1 language (English). Add more if your tasks use multiple languages.
 
-### Max Keyword Expansions
+### Expansions Per Language
 
-**What it is:** Maximum variations per keyword per language
+**What it is:** Number of semantic variations per keyword per language
 
 **Default:** 5
 
 **How it works:**
 ```
-maxExpansions = 5
-languages = 2 (English, 中文)
+expansionsPerLanguage = 5
+languages = 1 (English)
 
 "fix" expands to:
+- 5 English variations (repair, solve, correct)
+= 5 total variations per keyword
+
+With 2 languages (English, 中文):
 - 5 English variations
 - 5 中文 variations
 = 10 total variations per keyword
 ```
-
-**Tip:** 
-- Higher = Better recall but more tokens
-- Lower = Faster but might miss some tasks
-- 5 is a good balance
 
 ### Enable Semantic Expansion
 
@@ -261,18 +261,26 @@ q1, q2, q3, q4
 1. **Use Simple Search for exact matches**
    - No AI needed
    - Instant results
+   - Best for queries with specific keywords
 
-2. **Limit max expansions for speed**
-   - 3-5 is usually sufficient
-   - Higher values = more tokens
+2. **Start with default settings (5 expansions, 1 language)**
+   - Only increase if you notice missing results
+   - Test before increasing permanently
 
-3. **Configure only needed languages**
-   - Each language adds tokens
-   - Only add languages you actually use
+3. **Add languages only if needed**
+   - Default: English only
+   - Add more only if your tasks use multiple languages
+   - Each language multiplies token usage
 
-4. **Disable features you don't need**
-   - Turn off typo correction if not needed
-   - Disable natural language for predictable queries
+4. **Adjust expansions based on vocabulary**
+   - Technical tasks (code, API names)
+   - General tasks (broad terminology)
+   - Creative tasks (diverse vocabulary)
+
+5. **Monitor token usage**
+   - Check costs in metadata after queries
+   - If costs too high, reduce expansions
+   - If missing results, increase expansions
 
 ## Troubleshooting
 
