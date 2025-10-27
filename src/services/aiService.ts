@@ -724,9 +724,9 @@ export class AIService {
 
                         // Create tokenUsage for error cases (for metadata display)
                         let tokenUsageForError;
-                        if (chatMode === "smart") {
+                        if (chatMode === "smart" && errorForEarlyReturn) {
                             if (parsedQuery && parsedQuery._parserTokenUsage) {
-                                // Use actual parser token usage if available
+                                // Use actual parser token usage (error occurred after some processing)
                                 const parserUsage =
                                     parsedQuery._parserTokenUsage;
                                 const parsingProvider = parserUsage.provider as
@@ -749,8 +749,14 @@ export class AIService {
                                     parsingTokens: parserUsage.totalTokens,
                                     parsingCost: parserUsage.estimatedCost,
                                 };
-                            } else {
-                                // Create zero token usage for API errors (request failed, no tokens consumed)
+                            } else if (
+                                errorForEarlyReturn.details &&
+                                (errorForEarlyReturn.details.includes("400") ||
+                                    errorForEarlyReturn.details.includes("401") ||
+                                    errorForEarlyReturn.details.includes("403") ||
+                                    errorForEarlyReturn.details.includes("404"))
+                            ) {
+                                // Pre-request errors (400/401/403/404) - no tokens consumed
                                 const {
                                     provider: parsingProvider,
                                     model: parsingModel,
@@ -762,8 +768,26 @@ export class AIService {
                                     estimatedCost: 0,
                                     model: parsingModel,
                                     provider: parsingProvider,
-                                    isEstimated: false, // Not estimated - actually 0
-                                    directSearchReason: "0 results",
+                                    isEstimated: false,
+                                    directSearchReason: "0 results (error before request)",
+                                    parsingModel: parsingModel,
+                                    parsingProvider: parsingProvider,
+                                };
+                            } else {
+                                // Other errors (network, timeout, etc.) - estimate tokens
+                                const {
+                                    provider: parsingProvider,
+                                    model: parsingModel,
+                                } = getProviderForPurpose(settings, "parsing");
+                                tokenUsageForError = {
+                                    promptTokens: 200,
+                                    completionTokens: 50,
+                                    totalTokens: 250,
+                                    estimatedCost: 0.0001,
+                                    model: parsingModel,
+                                    provider: parsingProvider,
+                                    isEstimated: true,
+                                    directSearchReason: "0 results (estimated)",
                                     parsingModel: parsingModel,
                                     parsingProvider: parsingProvider,
                                 };

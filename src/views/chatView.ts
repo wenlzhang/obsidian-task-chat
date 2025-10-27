@@ -1224,6 +1224,17 @@ export class ChatView extends ItemView {
                         parts.push(`~$${cost.toFixed(2)}`);
                     }
                 }
+                
+                // Language information (for Smart Search and Task Chat)
+                if (!isSimpleSearch) {
+                    const detectedLang =
+                        message.parsedQuery?.aiUnderstanding?.detectedLanguage;
+                    if (detectedLang) {
+                        parts.push(`Language: ${detectedLang}`);
+                    } else if (message.error) {
+                        parts.push("Language: Undetected");
+                    }
+                }
             } else if (isSimpleSearch) {
                 // Simple Search: No AI used
                 parts.push("$0.00");
