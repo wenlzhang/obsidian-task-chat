@@ -310,7 +310,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         },
         ollama: {
             apiKey: "", // Not needed for Ollama but kept for consistency
-            model: "gpt-oss:20b",
+            model: "qwen3:14b",
             apiEndpoint: "http://localhost:11434/api/chat",
             temperature: 0.1,
             maxTokens: 8000,

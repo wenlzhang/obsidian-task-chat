@@ -195,8 +195,8 @@ export class ModelProviderService {
      */
     static getDefaultOllamaModels(): string[] {
         return [
-            "qwen3:8b-q8_0",
             "qwen3:14b",
+            "qwen3:8b-q8_0",
             "gemma3:12b",
             "gemma3:12b-it-qat",
             "gpt-oss:20b",
