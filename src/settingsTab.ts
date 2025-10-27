@@ -101,51 +101,6 @@ export class SettingsTab extends PluginSettingTab {
                 );
         }
 
-        const modelSetting = new Setting(containerEl)
-            .setName("Model")
-            .setDesc(this.getModelDescription());
-
-        // Add dropdown for model selection
-        modelSetting.addDropdown((dropdown) => {
-            const availableModels = this.getAvailableModels();
-
-            if (availableModels.length === 0) {
-                dropdown.addOption("", "Loading models...");
-            } else {
-                availableModels.forEach((model) => {
-                    dropdown.addOption(model, model);
-                });
-            }
-
-            dropdown
-                .setValue(this.getCurrentProviderConfig().model)
-                .onChange(async (value) => {
-                    this.getCurrentProviderConfig().model = value;
-                    await this.plugin.saveSettings();
-                });
-        });
-
-        // Add refresh button to reload models
-        modelSetting.addButton((button) =>
-            button
-                .setButtonText("Refresh")
-                .setTooltip("Fetch latest available models")
-                .onClick(async () => {
-                    button.setButtonText("Loading...");
-                    button.setDisabled(true);
-                    await this.refreshModels();
-                    button.setButtonText("Refresh");
-                    button.setDisabled(false);
-                    this.display(); // Refresh UI to show new models
-                }),
-        );
-
-        // Add model info based on provider
-        const modelInfo = containerEl.createDiv({
-            cls: "setting-item-description model-info-display",
-        });
-        this.renderModelInfo(modelInfo);
-
         // Add Test Connection button
         const testConnectionSetting = new Setting(containerEl)
             .setName("Connection")
@@ -170,27 +125,6 @@ export class SettingsTab extends PluginSettingTab {
                     this.showConnectionTestResult(containerEl, result);
                 }),
         );
-
-        const tempSetting = new Setting(containerEl)
-            .setName("Temperature")
-            .setDesc(
-                "Controls AI response randomness (0.0-2.0). Lower values (e.g., 0.1) produce consistent, focused responses ideal for JSON format output in Smart Search and Task Chat. Higher values (e.g., 1.0) produce more creative, varied responses. ⚠️ RECOMMENDED: 0.1 for reliable JSON parsing and structured output. Higher values may impact performance in Smart Search/Task Chat modes.",
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 2, 0.1)
-                    .setValue(this.getCurrentProviderConfig().temperature)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.getCurrentProviderConfig().temperature = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-        tempSetting.descEl.createEl("br");
-        tempSetting.descEl.createEl("a", {
-            text: "📖 Learn more about temperature and model parameters",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-temperature",
-        });
 
         const tokenSetting = new Setting(containerEl)
             .setName("Max response tokens")
@@ -271,18 +205,19 @@ export class SettingsTab extends PluginSettingTab {
             ollamaInfo.appendText(" (recommended model)");
         }
 
-        // Model Purpose Configuration
-        new Setting(containerEl)
-            .setName("Model purpose configuration")
-            .setHeading();
+        // Model Purpose Configuration - Subsection (not a separate main heading)
+        containerEl.createEl("br"); // Add spacing before subsection
 
-        const purposeInfo = containerEl.createDiv({
+        const purposeSubsectionContainer = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        purposeInfo.createEl("p", {
+        purposeSubsectionContainer.createEl("strong", {
+            text: "Model Purpose Configuration",
+        });
+        purposeSubsectionContainer.createEl("p", {
             text: "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
         });
-        const purposeLink = purposeInfo.createEl("p");
+        const purposeLink = purposeSubsectionContainer.createEl("p");
         purposeLink.createEl("a", {
             text: "→ Learn more about model purpose configuration",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
@@ -292,12 +227,11 @@ export class SettingsTab extends PluginSettingTab {
         const parsingProviderSetting = new Setting(containerEl)
             .setName("Query parsing provider")
             .setDesc(
-                "Provider for AI query parsing (Smart Search & Task Chat). Uses main provider if 'default'.",
+                "Provider for AI query parsing (Smart Search & Task Chat).",
             );
 
         parsingProviderSetting.addDropdown((dropdown) => {
             dropdown
-                .addOption("default", "Default (use main provider)")
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
                 .addOption("openrouter", "OpenRouter")
@@ -316,39 +250,88 @@ export class SettingsTab extends PluginSettingTab {
                 "Model for query parsing. Leave empty to use provider's default model.",
             );
 
-        parsingModelSetting.addText((text) => {
-            // Get the effective provider for parsing
-            const parsingProvider =
-                this.plugin.settings.parsingProvider === "default"
-                    ? this.plugin.settings.aiProvider
-                    : this.plugin.settings.parsingProvider;
-            const placeholder =
-                parsingProvider === "openai"
-                    ? "gpt-4o-mini (recommended)"
-                    : parsingProvider === "anthropic"
-                      ? "claude-haiku-3-5"
-                      : parsingProvider === "ollama"
-                        ? "qwen2.5:14b"
-                        : "openai/gpt-4o-mini";
+        // Add dropdown for parsing model selection
+        parsingModelSetting.addDropdown((dropdown) => {
+            const parsingProvider = this.plugin.settings.parsingProvider;
+            const availableModels =
+                this.getAvailableModelsForProvider(parsingProvider);
 
-            text.setPlaceholder(placeholder)
-                .setValue(this.plugin.settings.parsingModel)
+            if (availableModels.length === 0) {
+                dropdown.addOption("", "Loading models...");
+            } else {
+                availableModels.forEach((model: string) => {
+                    dropdown.addOption(model, model);
+                });
+            }
+
+            dropdown
+                .setValue(this.plugin.settings.parsingModel || "")
                 .onChange(async (value) => {
                     this.plugin.settings.parsingModel = value;
                     await this.plugin.saveSettings();
                 });
         });
 
+        // Add refresh button for parsing models
+        parsingModelSetting.addButton((button) =>
+            button
+                .setButtonText("Refresh")
+                .setTooltip("Fetch latest available models")
+                .onClick(async () => {
+                    button.setButtonText("Loading...");
+                    button.setDisabled(true);
+                    await this.refreshModelsForProvider(
+                        this.plugin.settings.parsingProvider,
+                    );
+                    button.setButtonText("Refresh");
+                    button.setDisabled(false);
+                    this.display(); // Refresh UI to show new models
+                }),
+        );
+
+        // Add model count info for parsing
+        const parsingModelInfo = containerEl.createDiv({
+            cls: "setting-item-description model-info-display",
+        });
+        const parsingModelsCount = this.getAvailableModelsForProvider(
+            this.plugin.settings.parsingProvider,
+        ).length;
+        if (parsingModelsCount > 0) {
+            parsingModelInfo.setText(
+                `${parsingModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.parsingProvider}`,
+            );
+        } else {
+            parsingModelInfo.setText(
+                "Click 'Refresh' to fetch available models",
+            );
+        }
+
+        // Parsing Temperature
+        new Setting(containerEl)
+            .setName("Query parsing temperature")
+            .setDesc(
+                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: 0.1 for reliable JSON output.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 2, 0.1)
+                    .setValue(this.plugin.settings.parsingTemperature)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.parsingTemperature = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
         // Analysis Model Configuration
         const analysisProviderSetting = new Setting(containerEl)
             .setName("Task analysis provider")
             .setDesc(
-                "Provider for AI task analysis (Task Chat mode only). Smart Search does not use this. Uses main provider if 'default'.",
+                "Provider for AI task analysis (Task Chat mode only). Smart Search does not use this.",
             );
 
         analysisProviderSetting.addDropdown((dropdown) => {
             dropdown
-                .addOption("default", "Default (use main provider)")
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
                 .addOption("openrouter", "OpenRouter")
@@ -367,28 +350,78 @@ export class SettingsTab extends PluginSettingTab {
                 "Model for task analysis in Task Chat mode. Leave empty to use provider's default model.",
             );
 
-        analysisModelSetting.addText((text) => {
-            // Get the effective provider for analysis
-            const analysisProvider =
-                this.plugin.settings.analysisProvider === "default"
-                    ? this.plugin.settings.aiProvider
-                    : this.plugin.settings.analysisProvider;
-            const placeholder =
-                analysisProvider === "openai"
-                    ? "gpt-4o (recommended)"
-                    : analysisProvider === "anthropic"
-                      ? "claude-sonnet-4"
-                      : analysisProvider === "ollama"
-                        ? "qwen2.5:32b"
-                        : "openai/gpt-4o";
+        // Add dropdown for analysis model selection
+        analysisModelSetting.addDropdown((dropdown) => {
+            const analysisProvider = this.plugin.settings.analysisProvider;
+            const availableModels =
+                this.getAvailableModelsForProvider(analysisProvider);
 
-            text.setPlaceholder(placeholder)
-                .setValue(this.plugin.settings.analysisModel)
+            if (availableModels.length === 0) {
+                dropdown.addOption("", "Loading models...");
+            } else {
+                availableModels.forEach((model: string) => {
+                    dropdown.addOption(model, model);
+                });
+            }
+
+            dropdown
+                .setValue(this.plugin.settings.analysisModel || "")
                 .onChange(async (value) => {
                     this.plugin.settings.analysisModel = value;
                     await this.plugin.saveSettings();
                 });
         });
+
+        // Add refresh button for analysis models
+        analysisModelSetting.addButton((button) =>
+            button
+                .setButtonText("Refresh")
+                .setTooltip("Fetch latest available models")
+                .onClick(async () => {
+                    button.setButtonText("Loading...");
+                    button.setDisabled(true);
+                    await this.refreshModelsForProvider(
+                        this.plugin.settings.analysisProvider,
+                    );
+                    button.setButtonText("Refresh");
+                    button.setDisabled(false);
+                    this.display(); // Refresh UI to show new models
+                }),
+        );
+
+        // Add model count info for analysis
+        const analysisModelInfo = containerEl.createDiv({
+            cls: "setting-item-description model-info-display",
+        });
+        const analysisModelsCount = this.getAvailableModelsForProvider(
+            this.plugin.settings.analysisProvider,
+        ).length;
+        if (analysisModelsCount > 0) {
+            analysisModelInfo.setText(
+                `${analysisModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.analysisProvider}`,
+            );
+        } else {
+            analysisModelInfo.setText(
+                "Click 'Refresh' to fetch available models",
+            );
+        }
+
+        // Analysis Temperature
+        new Setting(containerEl)
+            .setName("Task analysis temperature")
+            .setDesc(
+                "Temperature for task analysis (0.0-2.0). Lower = consistent, higher = creative. Recommended: 0.1 for structured responses, 1.0 for creative.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(0, 2, 0.1)
+                    .setValue(this.plugin.settings.analysisTemperature)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.analysisTemperature = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
 
         // Chat Settings
         new Setting(containerEl).setName("Task chat").setHeading();
@@ -2484,6 +2517,100 @@ export class SettingsTab extends PluginSettingTab {
         } catch (error) {
             Logger.error("Error refreshing models:", error);
             new Notice("Failed to fetch models. Using defaults.");
+        }
+    }
+
+    /**
+     * Get available models for a specific provider (not just current)
+     */
+    private getAvailableModelsForProvider(provider: string): string[] {
+        const providerConfig =
+            this.plugin.settings.providerConfigs[
+                provider as keyof typeof this.plugin.settings.providerConfigs
+            ];
+        const cached = providerConfig?.availableModels;
+
+        if (cached && cached.length > 0) {
+            return cached;
+        }
+
+        // Return default models based on provider
+        switch (provider) {
+            case "openai":
+                return ModelProviderService.getDefaultOpenAIModels();
+            case "anthropic":
+                return ModelProviderService.getDefaultAnthropicModels();
+            case "openrouter":
+                return ModelProviderService.getDefaultOpenRouterModels();
+            case "ollama":
+                return ModelProviderService.getDefaultOllamaModels();
+            default:
+                return [];
+        }
+    }
+
+    /**
+     * Refresh models for a specific provider
+     */
+    private async refreshModelsForProvider(provider: string): Promise<void> {
+        const providerConfig =
+            this.plugin.settings.providerConfigs[
+                provider as keyof typeof this.plugin.settings.providerConfigs
+            ];
+        const apiKey = providerConfig?.apiKey || "";
+
+        try {
+            let models: string[] = [];
+
+            switch (provider) {
+                case "openai":
+                    if (!apiKey) {
+                        new Notice("Please set OpenAI API key first");
+                        return;
+                    }
+                    new Notice("Fetching OpenAI models...");
+                    models =
+                        await ModelProviderService.fetchOpenAIModels(apiKey);
+                    break;
+
+                case "anthropic":
+                    new Notice("Loading Anthropic models...");
+                    models =
+                        await ModelProviderService.fetchAnthropicModels(apiKey);
+                    break;
+
+                case "openrouter":
+                    if (!apiKey) {
+                        new Notice("Please set OpenRouter API key first");
+                        return;
+                    }
+                    new Notice("Fetching OpenRouter models...");
+                    models =
+                        await ModelProviderService.fetchOpenRouterModels(
+                            apiKey,
+                        );
+                    break;
+
+                case "ollama":
+                    new Notice("Fetching local Ollama models...");
+                    models = await ModelProviderService.fetchOllamaModels(
+                        providerConfig.apiEndpoint,
+                    );
+                    break;
+            }
+
+            if (models.length > 0) {
+                providerConfig.availableModels = models;
+                await this.plugin.saveSettings();
+                new Notice(`Loaded ${models.length} models for ${provider}`);
+            } else {
+                new Notice("No models found. Using defaults.");
+            }
+        } catch (error) {
+            Logger.error(`Error refreshing models for ${provider}:`, error);
+            new Notice(
+                `Failed to fetch models for ${provider}. Using defaults.`,
+            );
         }
     }
 

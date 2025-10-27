@@ -81,32 +81,32 @@ export function updateCurrentProviderConfig(
 }
 
 // Helper to get provider and model for a specific purpose
-// Returns {provider, model} - resolves "default" to actual provider/model
 export function getProviderForPurpose(
     settings: PluginSettings,
     purpose: "parsing" | "analysis",
 ): {
     provider: "openai" | "anthropic" | "openrouter" | "ollama";
     model: string;
+    temperature: number;
 } {
-    const purposeProvider =
+    const provider =
         purpose === "parsing"
             ? settings.parsingProvider
             : settings.analysisProvider;
     const purposeModel =
         purpose === "parsing" ? settings.parsingModel : settings.analysisModel;
-
-    // Resolve "default" to actual provider
-    const actualProvider: "openai" | "anthropic" | "openrouter" | "ollama" =
-        purposeProvider === "default" ? settings.aiProvider : purposeProvider;
+    const temperature =
+        purpose === "parsing"
+            ? settings.parsingTemperature
+            : settings.analysisTemperature;
 
     // Resolve empty model to provider's configured model
-    const actualModel =
+    const model =
         purposeModel && purposeModel.trim() !== ""
             ? purposeModel
-            : settings.providerConfigs[actualProvider].model;
+            : settings.providerConfigs[provider].model;
 
-    return { provider: actualProvider, model: actualModel };
+    return { provider, model, temperature };
 }
 
 // Helper to get provider config for a specific purpose
@@ -130,24 +130,15 @@ export interface PluginSettings {
         ollama: ProviderConfig;
     };
 
-    // Model Purpose Configuration (NEW - for separate parsing and analysis models)
-    // Allows different models for query parsing vs task analysis
-    // Benefits: Cost optimization (cheap for parsing, powerful for analysis), performance optimization
-    // "default" = use aiProvider's configured model
-    parsingProvider:
-        | "default"
-        | "openai"
-        | "anthropic"
-        | "openrouter"
-        | "ollama"; // Provider for query parsing
-    parsingModel: string; // Model for query parsing (empty string = use provider's default)
-    analysisProvider:
-        | "default"
-        | "openai"
-        | "anthropic"
-        | "openrouter"
-        | "ollama"; // Provider for task analysis
-    analysisModel: string; // Model for task analysis (empty string = use provider's default)
+    // Model Purpose Configuration
+    // Use different models for query parsing vs task analysis
+    // Benefits: Cost optimization, performance tuning
+    parsingProvider: "openai" | "anthropic" | "openrouter" | "ollama";
+    parsingModel: string; // Empty = use provider's configured model
+    parsingTemperature: number; // Temperature for query parsing
+    analysisProvider: "openai" | "anthropic" | "openrouter" | "ollama";
+    analysisModel: string; // Empty = use provider's configured model
+    analysisTemperature: number; // Temperature for task analysis
 
     // Cached pricing data (fetched from APIs)
     pricingCache: {
@@ -328,12 +319,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         },
     },
 
-    // Model Purpose Configuration Defaults
-    // By default, use the main provider's model for both purposes (backward compatible)
-    parsingProvider: "default", // Use aiProvider
-    parsingModel: "", // Empty = use provider's configured model
-    analysisProvider: "default", // Use aiProvider
-    analysisModel: "", // Empty = use provider's configured model
+    // Model Purpose Configuration
+    parsingProvider: "openai",
+    parsingModel: "gpt-4o-mini",
+    parsingTemperature: 0.1,
+    analysisProvider: "openai",
+    analysisModel: "gpt-4o",
+    analysisTemperature: 0.1,
 
     pricingCache: {
         data: {},
