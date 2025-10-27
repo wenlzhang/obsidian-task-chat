@@ -11,6 +11,10 @@ import {
 } from "./settings";
 import { StopWords } from "./services/stopWords";
 import { Logger } from "./utils/logger";
+import {
+    generateModelValidationWarning,
+    generateModelListNotLoadedInfo,
+} from "./services/warningService";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -205,21 +209,21 @@ export class SettingsTab extends PluginSettingTab {
             ollamaInfo.appendText(" (recommended model)");
         }
 
-        // Model Purpose Configuration - Subsection (not a separate main heading)
+        // Model Configuration - Subsection (not a separate main heading)
         containerEl.createEl("br"); // Add spacing before subsection
 
         const purposeSubsectionContainer = containerEl.createDiv({
             cls: "setting-item-description",
         });
         purposeSubsectionContainer.createEl("strong", {
-            text: "Model Purpose Configuration",
+            text: "Model configuration",
         });
         purposeSubsectionContainer.createEl("p", {
             text: "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
         });
         const purposeLink = purposeSubsectionContainer.createEl("p");
         purposeLink.createEl("a", {
-            text: "→ Learn more about model purpose configuration",
+            text: "→ Learn more about model configuration",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
         });
 
@@ -253,24 +257,28 @@ export class SettingsTab extends PluginSettingTab {
             const parsingProvider = this.plugin.settings.parsingProvider;
             const availableModels =
                 this.getAvailableModelsForProvider(parsingProvider);
+            const defaultModel =
+                this.plugin.settings.providerConfigs[parsingProvider].model;
 
             if (availableModels.length === 0) {
-                dropdown.addOption("", "Loading models...");
+                // No models cached - show default model
+                dropdown.addOption(defaultModel, `${defaultModel} (default)`);
             } else {
                 availableModels.forEach((model: string) => {
                     dropdown.addOption(model, model);
                 });
             }
 
-            dropdown
-                .setValue(this.plugin.settings.parsingModel || "")
-                .onChange(async (value) => {
-                    this.plugin.settings.parsingModel = value;
-                    await this.plugin.saveSettings();
+            // Use configured parsing model or fall back to provider's default
+            const currentModel =
+                this.plugin.settings.parsingModel || defaultModel;
+            dropdown.setValue(currentModel).onChange(async (value) => {
+                this.plugin.settings.parsingModel = value;
+                await this.plugin.saveSettings();
 
-                    // Validate model selection
-                    this.validateModel(parsingProvider, value, "parsing");
-                });
+                // Validate model selection
+                this.validateModel(parsingProvider, value, "parsing");
+            });
         });
 
         // Add refresh button for parsing models
@@ -354,24 +362,28 @@ export class SettingsTab extends PluginSettingTab {
             const analysisProvider = this.plugin.settings.analysisProvider;
             const availableModels =
                 this.getAvailableModelsForProvider(analysisProvider);
+            const defaultModel =
+                this.plugin.settings.providerConfigs[analysisProvider].model;
 
             if (availableModels.length === 0) {
-                dropdown.addOption("", "Loading models...");
+                // No models cached - show default model
+                dropdown.addOption(defaultModel, `${defaultModel} (default)`);
             } else {
                 availableModels.forEach((model: string) => {
                     dropdown.addOption(model, model);
                 });
             }
 
-            dropdown
-                .setValue(this.plugin.settings.analysisModel || "")
-                .onChange(async (value) => {
-                    this.plugin.settings.analysisModel = value;
-                    await this.plugin.saveSettings();
+            // Use configured analysis model or fall back to provider's default
+            const currentModel =
+                this.plugin.settings.analysisModel || defaultModel;
+            dropdown.setValue(currentModel).onChange(async (value) => {
+                this.plugin.settings.analysisModel = value;
+                await this.plugin.saveSettings();
 
-                    // Validate model selection
-                    this.validateModel(analysisProvider, value, "analysis");
-                });
+                // Validate model selection
+                this.validateModel(analysisProvider, value, "analysis");
+            });
         });
 
         // Add refresh button for analysis models
@@ -3011,10 +3023,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // No models cached yet - show info notice
         if (availableModels.length === 0) {
-            new Notice(
-                `⚠️ Model list not loaded for ${provider}. Click 'Refresh' to fetch available models.`,
-                5000,
-            );
+            new Notice(generateModelListNotLoadedInfo(provider), 5000);
             Logger.debug(`Model validation: No cached models for ${provider}`);
             return;
         }
@@ -3022,7 +3031,7 @@ export class SettingsTab extends PluginSettingTab {
         // Check if model is in available list
         if (!availableModels.includes(model)) {
             new Notice(
-                `⚠️ Model '${model}' not found in ${provider}'s available models list. It may still work if it's a valid model name. Click 'Refresh' to update the model list.`,
+                generateModelValidationWarning(model, provider, purpose),
                 8000,
             );
             Logger.warn(

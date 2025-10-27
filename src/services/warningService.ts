@@ -216,3 +216,21 @@ export function generateAIFormatWarning(
         `---\n\n`
     );
 }
+
+/**
+ * Generate model validation warning when model not found in available models list
+ */
+export function generateModelValidationWarning(
+    model: string,
+    provider: string,
+    purpose: "parsing" | "analysis",
+): string {
+    return `⚠️ Model '${model}' not found in ${provider}'s available models list. It may still work if it's a valid model name. Click 'Refresh' to update the model list.`;
+}
+
+/**
+ * Generate model list not loaded info message
+ */
+export function generateModelListNotLoadedInfo(provider: string): string {
+    return `⚠️ Model list not loaded for ${provider}. Click 'Refresh' to fetch available models.`;
+}
