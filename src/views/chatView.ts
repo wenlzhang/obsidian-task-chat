@@ -205,10 +205,30 @@ export class ChatView extends ItemView {
         // Note: Hotkey for sending messages is now handled by the command system
         // Users can customize the hotkey in Settings → Hotkeys → "Send chat message"
 
-        // Control bar (send button only - model config moved below)
+        // Control bar (model config button + send button on same line)
         const toolbarEl = inputContainerEl.createDiv("task-chat-input-toolbar");
 
-        // Send button
+        // Model configuration button (left side)
+        const modelConfigBtn = toolbarEl.createEl("button", {
+            cls: "task-chat-model-config-button",
+        });
+        modelConfigBtn.createSpan({
+            text: "⚙️",
+            cls: "task-chat-model-config-icon",
+        });
+        modelConfigBtn.createSpan({
+            text: "Configure models",
+            cls: "task-chat-model-config-text",
+        });
+        modelConfigBtn.addEventListener("click", () => {
+            // @ts-ignore
+            this.app.setting.open();
+            // @ts-ignore
+            this.app.setting.openTabById("task-chat");
+            new Notice("Opening Settings → Model configuration");
+        });
+
+        // Send button (right side)
         this.sendButtonEl = toolbarEl.createEl("button", {
             text: "Send",
             cls: "task-chat-send-button",
@@ -221,9 +241,6 @@ export class ChatView extends ItemView {
                 this.sendMessage();
             }
         });
-
-        // Model configuration display (below input area)
-        this.renderModelPurposeConfig();
 
         // Initial welcome message
         const messages = this.plugin.sessionManager.getCurrentMessages();
@@ -425,113 +442,6 @@ export class ChatView extends ItemView {
         infoText.appendText(
             "4️⃣ Verify tasks exist in your vault with proper syntax (e.g., - [ ] Task)",
         );
-    }
-
-    /**
-     * Render Model Configuration display
-     * Shows current parsing and analysis models with clickable buttons
-     */
-    private renderModelPurposeConfig(): void {
-        const configEl = this.contentEl.createDiv(
-            "task-chat-model-purpose-config",
-        );
-
-        // Header text
-        configEl.createSpan({
-            text: "Model configuration",
-            cls: "task-chat-model-config-header-text",
-        });
-
-        // Buttons container
-        const buttonsRow = configEl.createDiv("task-chat-model-config-buttons");
-
-        // Parsing model button
-        const parsingProvider = this.plugin.settings.parsingProvider;
-        const parsingModel =
-            this.plugin.settings.parsingModel ||
-            this.plugin.settings.providerConfigs[parsingProvider].model;
-
-        const parsingBtn = buttonsRow.createEl("button", {
-            cls: "task-chat-model-config-btn",
-        });
-        parsingBtn.createSpan({
-            text: "🔍",
-            cls: "task-chat-model-btn-icon",
-        });
-        const parsingLabel = parsingBtn.createDiv(
-            "task-chat-model-btn-content",
-        );
-        parsingLabel.createSpan({
-            text: "Parser",
-            cls: "task-chat-model-btn-label",
-        });
-        parsingLabel.createSpan({
-            text: `${this.formatProviderName(parsingProvider)}: ${this.truncateModel(parsingModel)}`,
-            cls: "task-chat-model-btn-model",
-        });
-
-        parsingBtn.addEventListener("click", () => {
-            // @ts-ignore - app.setting exists but not in types
-            this.app.setting.open();
-            // @ts-ignore
-            this.app.setting.openTabById("task-chat");
-            new Notice("Opening Settings → Query parsing model");
-        });
-
-        // Analysis model button
-        const analysisProvider = this.plugin.settings.analysisProvider;
-        const analysisModel =
-            this.plugin.settings.analysisModel ||
-            this.plugin.settings.providerConfigs[analysisProvider].model;
-
-        const analysisBtn = buttonsRow.createEl("button", {
-            cls: "task-chat-model-config-btn",
-        });
-        analysisBtn.createSpan({
-            text: "💬",
-            cls: "task-chat-model-btn-icon",
-        });
-        const analysisLabel = analysisBtn.createDiv(
-            "task-chat-model-btn-content",
-        );
-        analysisLabel.createSpan({
-            text: "Analysis",
-            cls: "task-chat-model-btn-label",
-        });
-        analysisLabel.createSpan({
-            text: `${this.formatProviderName(analysisProvider)}: ${this.truncateModel(analysisModel)}`,
-            cls: "task-chat-model-btn-model",
-        });
-
-        analysisBtn.addEventListener("click", () => {
-            // @ts-ignore - app.setting exists but not in types
-            this.app.setting.open();
-            // @ts-ignore
-            this.app.setting.openTabById("task-chat");
-            new Notice("Opening Settings → Task analysis model");
-        });
-    }
-
-    /**
-     * Format provider name for display
-     */
-    private formatProviderName(
-        provider: "openai" | "anthropic" | "openrouter" | "ollama",
-    ): string {
-        const names = {
-            openai: "OpenAI",
-            anthropic: "Anthropic",
-            openrouter: "OpenRouter",
-            ollama: "Ollama",
-        };
-        return names[provider] || provider;
-    }
-
-    /**
-     * Truncate model name if too long
-     */
-    private truncateModel(model: string): string {
-        return model.length > 20 ? model.substring(0, 17) + "..." : model;
     }
 
     /**
@@ -826,8 +736,7 @@ export class ChatView extends ItemView {
         } else if (message.role === "chat") {
             roleName = "Task Chat";
         } else {
-            // Fallback for legacy messages
-            roleName = message.role === "assistant" ? "Task Chat" : "System";
+            roleName = "System";
         }
         headerEl.createEl("strong", { text: roleName });
         headerEl.createEl("span", {
@@ -1099,11 +1008,6 @@ export class ChatView extends ItemView {
                 parts.push("Mode: Smart Search");
             } else if (message.role === "chat") {
                 parts.push("Mode: Task Chat");
-            } else {
-                // Legacy message handling
-                parts.push(
-                    `Mode: ${message.role === "assistant" ? "Task Chat" : "System"}`,
-                );
             }
 
             // If error occurred without tokenUsage, show error model info
@@ -1158,7 +1062,6 @@ export class ChatView extends ItemView {
                 // Show model info based on mode and configuration
                 if (!isTaskChatMode || !hasParsingModel || modelsSame) {
                     // Simple/Smart Search OR Task Chat with same model for both
-                    // For Simple/Smart: use parsing model, For Task Chat with same: use either
                     const displayModel = hasParsingModel
                         ? message.tokenUsage.parsingModel
                         : message.tokenUsage.model;
@@ -1166,29 +1069,33 @@ export class ChatView extends ItemView {
                         ? message.tokenUsage.parsingProvider!
                         : message.tokenUsage.provider;
 
-                    if (displayProvider === "ollama") {
-                        parts.push(`Ollama: ${displayModel}`);
-                    } else {
-                        const providerName = formatProvider(displayProvider);
-                        parts.push(`${providerName}: ${displayModel}`);
-                    }
+                    const providerName = formatProvider(displayProvider);
+                    parts.push(`${providerName}: ${displayModel}`);
                 } else {
                     // Task Chat with different models for parsing and analysis
-                    // Show both models separately with concise format
-                    if (hasParsingModel) {
-                        const parsingProviderName = formatProvider(
+                    // Check if same provider
+                    const sameProvider =
+                        message.tokenUsage.parsingProvider ===
+                        message.tokenUsage.analysisProvider;
+
+                    if (sameProvider) {
+                        // Same provider, different models - group under provider
+                        const providerName = formatProvider(
                             message.tokenUsage.parsingProvider!,
                         );
                         parts.push(
-                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser)`,
+                            `${providerName}: ${message.tokenUsage.parsingModel} (parser), ${message.tokenUsage.analysisModel} (analysis)`,
                         );
-                    }
-                    if (hasAnalysisModel) {
+                    } else {
+                        // Different providers - show separately
+                        const parsingProviderName = formatProvider(
+                            message.tokenUsage.parsingProvider!,
+                        );
                         const analysisProviderName = formatProvider(
                             message.tokenUsage.analysisProvider!,
                         );
                         parts.push(
-                            `${analysisProviderName}: ${message.tokenUsage.analysisModel} (analysis)`,
+                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser), ${analysisProviderName}: ${message.tokenUsage.analysisModel} (analysis)`,
                         );
                     }
                 }
@@ -1891,25 +1798,25 @@ export class ChatView extends ItemView {
 
     /**
      * Update token counter based on current input
-     * Shows: "X / Y tokens" where X is estimated input tokens, Y is max tokens limit
+     * Shows: "X tokens" where X is estimated input tokens
      */
     private updateTokenCounter(): void {
         if (!this.tokenEstimateEl) return;
 
         const text = this.inputEl.value;
-        const providerConfig = getCurrentProviderConfig(this.plugin.settings);
 
-        // Rough token estimation: ~4 characters per token (conservative estimate)
-        // This is approximate - actual tokenization varies by model
-        const estimatedTokens = Math.ceil(text.length / 4);
-        const maxTokens = providerConfig.maxTokens;
+        // Estimate tokens (roughly 4 characters per token for English, less for CJK)
+        // This is a rough estimate - actual tokenization is more complex
+        const estimatedTokens = Math.ceil(text.length / 3.5);
 
-        // Update display with current/max format
+        // Update display - show only input token count
         this.tokenEstimateEl.setText(
-            `${estimatedTokens} / ${maxTokens} tokens`,
+            `${estimatedTokens} token${estimatedTokens === 1 ? "" : "s"}`,
         );
 
         // Add warning class if approaching limit (80% of max)
+        const providerConfig = getCurrentProviderConfig(this.plugin.settings);
+        const maxTokens = providerConfig.maxTokens;
         if (estimatedTokens > maxTokens * 0.8) {
             this.tokenEstimateEl.addClass("task-chat-token-warning");
         } else {
