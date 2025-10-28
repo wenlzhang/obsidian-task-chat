@@ -146,7 +146,7 @@ export class SettingsTab extends PluginSettingTab {
             );
         tokenSetting.descEl.createEl("br");
         tokenSetting.descEl.createEl("a", {
-            text: "📖 Learn more about max tokens and performance tuning",
+            text: "→ Learn more about max tokens and performance tuning",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-max-response-tokens",
         });
 
@@ -165,7 +165,7 @@ export class SettingsTab extends PluginSettingTab {
             );
         contextSetting.descEl.createEl("br");
         contextSetting.descEl.createEl("a", {
-            text: "📖 Learn more about context window and troubleshooting",
+            text: "→ Learn more about context window and troubleshooting",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
@@ -483,7 +483,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
         chatContextInfo.createEl("p", {
-            text: "⚠️ Token Usage: More history = higher token cost.",
+            text: "More history = higher token cost.",
         });
         const chatContextLink = chatContextInfo.createEl("p");
         chatContextLink.createEl("a", {
@@ -546,7 +546,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description",
         });
         const p4 = modeComparisonInfo.createEl("p");
-        p4.createEl("strong", { text: "ℹ️ Chat mode comparison:" });
+        p4.createEl("strong", { text: "Chat mode comparison:" });
         p4.appendText(
             " Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).",
         );
@@ -1330,7 +1330,7 @@ export class SettingsTab extends PluginSettingTab {
             const statusPart =
                 maxStatusScore * this.plugin.settings.statusCoefficient;
 
-            maxScoreValue.textContent = `📈 Max score: ${maxScore.toFixed(1)} points (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})`;
+            maxScoreValue.textContent = `Max score: ${maxScore.toFixed(1)} points (R: ${relevPart.toFixed(1)} + D: ${datePart.toFixed(1)} + P: ${priorPart.toFixed(1)} + S: ${statusPart.toFixed(1)})`;
         };
 
         // Initial display
@@ -2673,7 +2673,7 @@ export class SettingsTab extends PluginSettingTab {
         const p13 = sortingInfo.createEl("p");
         p13.appendText("Select sorting criteria for tiebreaking. ");
         p13.createEl("a", {
-            text: "→ Learn more",
+            text: "→ Learn more about task sorting",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md",
         });
 
