@@ -728,22 +728,6 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Smart search & Task chat")
             .setHeading();
 
-        const aiEnhancementInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        const p7 = aiEnhancementInfo.createEl("p");
-        p7.createEl("strong", {
-            text: "🤖 AI features (automatic in Smart Search & Task Chat):",
-        });
-        p7.appendText(
-            " Keyword expansion, property recognition, typo correction.",
-        );
-        const p8 = aiEnhancementInfo.createEl("p");
-        p8.createEl("a", {
-            text: "→ Learn more about semantic expansion",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
-        });
-
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
             .setDesc(
@@ -864,10 +848,19 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Dataview task properties")
-            .setDesc(
-                'Configure task property field names.\n\n<a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration">→ Learn more about Dataview integration and field configuration</a>',
-            )
             .setClass("setting-subsection-heading");
+
+        const dataviewInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        dataviewInfo.createEl("p", {
+            text: "Configure task property field namess.",
+        });
+        const dataviewLink = dataviewInfo.createEl("p");
+        dataviewLink.createEl("a", {
+            text: "→ Learn more about Dataview integration",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
+        });
 
         new Setting(containerEl)
             .setName("Due date field")
@@ -1234,10 +1227,19 @@ export class SettingsTab extends PluginSettingTab {
         // Main weights
         new Setting(containerEl)
             .setName("Main weights")
-            .setDesc(
-                'Control how much each factor (relevance, due date, priority, status) affects task scores. <a href="https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md">→ Learn more</a>',
-            )
             .setClass("setting-subsection-heading");
+
+        const mainWeightsInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        mainWeightsInfo.createEl("p", {
+            text: "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
+        });
+        const mainWeightsLink = mainWeightsInfo.createEl("p");
+        mainWeightsLink.createEl("a", {
+            text: "→ Learn more about scoring weights",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
+        });
 
         new Setting(containerEl)
             .setName("Relevance weight")
