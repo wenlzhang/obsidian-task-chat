@@ -131,18 +131,32 @@ export class ErrorMessageService {
         });
         fallbackEl.createEl("strong", { text: "✓ Fallback: " });
 
-        // Split fallback message by period for multi-line display
-        const fallbackMessages = fallbackUsed
-            .split(". ")
-            .filter((s: string) => s.trim())
-            .map((s: string) => s.trim() + (s.endsWith(".") ? "" : "."));
+        // Check if message contains newlines (numbered list format)
+        if (fallbackUsed.includes("\n")) {
+            // Split by newlines for numbered list format
+            const fallbackMessages = fallbackUsed
+                .split("\n")
+                .filter((s: string) => s.trim())
+                .map((s: string) => s.trim().replace(/^\d+\.\s*/, "")); // Remove leading numbers
 
-        if (fallbackMessages.length > 1) {
+            const listEl = fallbackEl.createEl("ol");
             fallbackMessages.forEach((msg: string) => {
-                fallbackEl.createEl("div", { text: msg });
+                listEl.createEl("li", { text: msg });
             });
         } else {
-            fallbackEl.createSpan({ text: fallbackUsed });
+            // Fallback to old format (split by period)
+            const fallbackMessages = fallbackUsed
+                .split(". ")
+                .filter((s: string) => s.trim())
+                .map((s: string) => s.trim() + (s.endsWith(".") ? "" : "."));
+
+            if (fallbackMessages.length > 1) {
+                fallbackMessages.forEach((msg: string) => {
+                    fallbackEl.createEl("div", { text: msg });
+                });
+            } else {
+                fallbackEl.createSpan({ text: fallbackUsed });
+            }
         }
     }
 

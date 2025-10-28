@@ -527,13 +527,7 @@ export class ChatView extends ItemView {
         const ai = message.parsedQuery.aiUnderstanding;
         const parts: string[] = [];
 
-        if (
-            ai?.detectedLanguage &&
-            ai.detectedLanguage !== "en" &&
-            ai.detectedLanguage !== "English"
-        ) {
-            parts.push(`Lang: ${ai.detectedLanguage}`);
-        }
+        // Language is shown in main metadata bar, don't duplicate here
 
         // Typo corrections (if any)
         if (ai?.correctedTypos && ai.correctedTypos.length > 0) {

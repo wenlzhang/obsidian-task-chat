@@ -4,7 +4,6 @@ import { ErrorHandler, AIError } from "../utils/errorHandler";
 import {
     PluginSettings,
     SortCriterion,
-    StatusMapping,
     getCurrentProviderConfig,
     getProviderForPurpose,
     getProviderConfigForPurpose,
@@ -1059,7 +1058,7 @@ export class AIService {
                 // Use stored structured error from AIError if available
                 if ((parsedQuery as any)._structuredError) {
                     parserError = (parsedQuery as any)._structuredError;
-                    parserError.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found, continuing to AI analysis).`;
+                    parserError.fallbackUsed = `1. AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found)\n2. Continued to AI analysis`;
                 } else {
                     // Create structured error from basic info
                     const { provider: parsingProvider, model: parsingModel } =
@@ -1079,7 +1078,7 @@ export class AIService {
                         modelInfo,
                         "simple",
                     );
-                    parserError.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found, continuing to AI analysis).`;
+                    parserError.fallbackUsed = `1. AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found)\n2. Continued to AI analysis`;
                 }
             }
 
@@ -1325,10 +1324,10 @@ export class AIService {
                         `Returning ${sortedTasksForDisplay.length} tasks from ${searchType} as fallback`,
                     );
 
-                    // Add fallback info to error
+                    // Add fallback info to error - use numbered list format for consistency
                     structured.fallbackUsed = usingAIParsing
-                        ? `Semantic search succeeded (${sortedTasksForDisplay.length} tasks filtered and sorted). Showing Smart Search results without AI summary.`
-                        : `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found). Analysis also failed, showing results without AI summary.`;
+                        ? `1. AI parser succeeded (${sortedTasksForDisplay.length} tasks found)\n2. AI analysis failed, showing Smart Search results without AI summary`
+                        : `1. AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found)\n2. AI analysis also failed, showing Simple Search results without AI summary`;
 
                     // Calculate token usage - show parsing tokens even if analysis failed
                     let tokenUsageForError;
@@ -1360,19 +1359,19 @@ export class AIService {
                             // Note: No analysis fields since analysis failed
                         };
                     } else {
-                        // Parsing failed - use fallback estimates with PARSING model
+                        // Parsing failed AND analysis failed - show 0 tokens and $0 cost
                         const {
                             provider: parsingProvider,
                             model: parsingModel,
                         } = getProviderForPurpose(settings, "parsing");
                         tokenUsageForError = {
-                            promptTokens: 200,
-                            completionTokens: 50,
-                            totalTokens: 250,
-                            estimatedCost: 0.0001,
+                            promptTokens: 0,
+                            completionTokens: 0,
+                            totalTokens: 0,
+                            estimatedCost: 0,
                             model: parsingModel,
                             provider: parsingProvider,
-                            isEstimated: true,
+                            isEstimated: false,
                             // Add parsing-specific fields for metadata
                             parsingModel: parsingModel,
                             parsingProvider: parsingProvider,

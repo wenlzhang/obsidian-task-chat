@@ -191,7 +191,6 @@ export class MetadataService {
             const model = message.tokenUsage!.parsingModel!;
 
             return `${this.formatProvider(provider)}: ${model} (parser + analysis)`;
-
         }
 
         if (!hasAnalysisModel && message.error && message.error.model) {
