@@ -116,11 +116,25 @@ export class MetadataService {
             const promptTokens = message.tokenUsage.promptTokens || 0;
             const completionTokens = message.tokenUsage.completionTokens || 0;
 
-            if (message.tokenUsage.provider === "ollama") {
+            // Determine if using ONLY local models (both parser and analysis)
+            // If ANY cloud model is involved, show actual cost
+            const parsingProvider =
+                message.tokenUsage.parsingProvider ||
+                message.tokenUsage.provider;
+            const analysisProvider =
+                message.tokenUsage.analysisProvider ||
+                message.tokenUsage.provider;
+
+            const bothLocal =
+                parsingProvider === "ollama" && analysisProvider === "ollama";
+
+            if (bothLocal) {
+                // Both parser and analysis use local models → Free
                 parts.push(
                     `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), Free (local)`,
                 );
             } else {
+                // At least one cloud model is used → Show actual cost
                 const cost = message.tokenUsage.estimatedCost || 0;
                 let costStr: string;
                 if (cost === 0) {
