@@ -145,6 +145,47 @@ Show me overdue high-priority tasks
 Analyze my tasks for this week
 ```
 
+## 🔒 Privacy & Network Use
+
+This plugin connects to external AI services for Smart Search and Task Chat modes. Network usage details:
+
+### Network Services Used
+
+**Required for Smart Search & Task Chat modes:**
+- **OpenAI API** (gpt-4o, gpt-4o-mini, etc.) - Task analysis and natural language processing
+- **Anthropic API** (Claude models) - Alternative AI provider
+- **OpenRouter** - Multi-model AI gateway
+- **Ollama** (Optional) - Local AI models (no network required)
+
+### Data Transmitted
+
+**What is sent to AI services:**
+- Task titles and metadata (priority, status, due date)
+- Your search queries
+- Previous chat messages (for context, configurable)
+
+**What is NOT sent:**
+- Note content outside of tasks
+- Vault names or file paths
+- Obsidian settings
+- Personal identifiers
+
+### Privacy Options
+
+- **Simple Search mode** - 100% local, no network calls, completely free
+- **Ollama** - 100% local AI, no data leaves your device
+- **Chat history context** - Configurable (1-100 messages, default: 5)
+- **API keys** - Stored locally in Obsidian, never sent to our servers
+
+### Data Security
+
+- All API communications use HTTPS encryption
+- Your API keys are stored securely in Obsidian's local settings
+- No telemetry or analytics collected by this plugin
+- You control which tasks are processed via filters
+
+> **Note**: When using cloud AI providers (OpenAI, Anthropic, OpenRouter), data is sent to their servers. Review their privacy policies for details. For complete privacy, use Simple Search mode or Ollama.
+
 ## ⚙️ Configuration
 
 ### Quick Setup

@@ -1789,17 +1789,22 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable debug logging")
             .setDesc(
-                "Enable detailed console logging for debugging purposes. Disable in production to minimize console output.",
+                "Show detailed logs in developer console for troubleshooting. " +
+                    "When enabled, logs include search operations, AI requests, task scoring, and filtering details. " +
+                    "Note: This may impact performance and should only be enabled when debugging issues. " +
+                    "To view logs, open developer console (Ctrl+Shift+I / Cmd+Option+I).",
             )
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.enableDebugLogging)
                     .onChange(async (value) => {
                         this.plugin.settings.enableDebugLogging = value;
+                        // Immediately reinitialize logger with new setting
+                        Logger.initialize(this.plugin.settings);
                         await this.plugin.saveSettings();
                         new Notice(
                             value
-                                ? "Debug logging enabled"
+                                ? "Debug logging enabled. Check developer console for logs."
                                 : "Debug logging disabled",
                         );
                     }),
@@ -2675,9 +2680,7 @@ export class SettingsTab extends PluginSettingTab {
         // Unified sort settings (tag-based UI)
         const sortSetting = new Setting(this.sortByContainerEl)
             .setName("Task sort order")
-            .setDesc(
-                "Relevance is always first.",
-            );
+            .setDesc("Relevance is always first.");
 
         // Create container for tag badges
         const tagsContainer = sortSetting.controlEl.createDiv({
