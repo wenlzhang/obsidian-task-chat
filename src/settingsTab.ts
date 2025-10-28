@@ -146,7 +146,7 @@ export class SettingsTab extends PluginSettingTab {
         const tokenSetting = new Setting(containerEl)
             .setName("Max response tokens")
             .setDesc(
-                "Maximum tokens for AI response generation. Affects BOTH Smart Search query parsing AND Task Chat responses. Higher = more comprehensive responses but slower and more expensive. Lower = faster and cheaper but may truncate output. ⚠️ RECOMMENDED: 8000 (default, supports 60 keywords expansion + comprehensive task analysis). Parameter names: OpenAI/Anthropic/OpenRouter use 'max_tokens', Ollama uses 'num_predict'.",
+                "Maximum tokens for AI response generation. Affects BOTH Smart Search query parsing AND Task Chat responses.",
             )
             .addSlider((slider) =>
                 slider
@@ -167,7 +167,7 @@ export class SettingsTab extends PluginSettingTab {
         const contextSetting = new Setting(containerEl)
             .setName("Context window")
             .setDesc(
-                "🔧 OLLAMA ONLY: Sets the 'num_ctx' parameter controlling how much context Ollama can process. Increase if you get 'context length exceeded' errors. ℹ️ OpenAI/Anthropic/OpenRouter: This value is INFORMATIONAL ONLY - these providers use their model's built-in context window (cannot be changed). Model limits: gpt-4o-mini=128K, claude-3-5-sonnet=200K. ⚠️ For context errors with cloud providers, reduce 'Max response tokens' instead (see troubleshooting guide).",
+                "Increase if you get 'context length exceeded' errors.",
             )
             .addSlider((slider) =>
                 slider
@@ -309,7 +309,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query parsing temperature")
             .setDesc(
-                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: 0.1 for reliable JSON output.",
+                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: low values, e.g., 0.1 for reliable JSON output.",
             )
             .addSlider((slider) =>
                 slider
@@ -326,7 +326,7 @@ export class SettingsTab extends PluginSettingTab {
         const analysisProviderSetting = new Setting(containerEl)
             .setName("Task analysis provider")
             .setDesc(
-                "Provider for AI task analysis (Task Chat mode only). Smart Search does not use this.",
+                "Provider for AI task analysis (Task Chat mode only).",
             );
 
         analysisProviderSetting.addDropdown((dropdown) => {
@@ -431,7 +431,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Task analysis temperature")
             .setDesc(
-                "Temperature for task analysis (0.0-2.0). Lower = consistent, higher = creative. Recommended: 0.1 for structured responses, 1.0 for creative.",
+                "Temperature for task analysis (0.0-2.0). Lower = consistent, higher = creative.",
             )
             .addSlider((slider) =>
                 slider
@@ -539,7 +539,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Default chat mode")
             .setDesc(
-                "Sets the default mode for new chat sessions. You can always override this per-query using the dropdown in the chat interface. Simple Search is free and fast. Smart Search uses AI to expand keywords (very low cost). Task Chat provides full AI analysis and recommendations (higher cost).",
+                "Sets the default mode for new chat sessions. You can always override this in the chat interface.",
             )
             .addDropdown((dropdown) =>
                 dropdown
@@ -592,7 +592,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable semantic expansion")
             .setDesc(
-                "Expand keywords with semantic equivalents across configured languages. Example: 'develop' → 'build', 'create'. Improves recall but increases token usage.",
+                "Expand keywords with semantic equivalents across configured languages. Improves recall but increases token usage.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -648,7 +648,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Priority terms")
             .setDesc(
-                "Custom priority terms (e.g., 'priority, urgent'). Combines with built-in terms.",
+                "Custom priority terms. Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -674,7 +674,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Due date terms")
             .setDesc(
-                "Custom due date terms (e.g., 'due, deadline'). Combines with built-in terms.",
+                "Custom due date terms. Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -700,7 +700,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Status terms")
             .setDesc(
-                "Custom status terms (e.g., 'done, completed, in progress'). Combines with built-in terms.",
+                "Custom status terms. Combines with built-in terms.",
             )
             .addTextArea((text) =>
                 text
@@ -747,7 +747,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
             .setDesc(
-                "Maximum tasks to send to AI in Task Chat mode. Default: 100. Higher values provide better context but increase token usage.",
+                "Maximum tasks to send to AI in Task Chat mode. Default: 100. Higher values increase token usage.",
             )
             .addSlider((slider) =>
                 slider
@@ -816,7 +816,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Show AI understanding")
             .setDesc(
-                "Display query interpretation in Task Chat mode (detected language, typo corrections, property recognition).",
+                "Display query interpretation in Task Chat mode (detected language,property recognition).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -845,7 +845,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable streaming responses")
             .setDesc(
-                "Show AI responses as they're generated (like ChatGPT). ✅ NOW AVAILABLE: Streaming is fully implemented using native Fetch API. Works with all providers: OpenAI, Anthropic, Ollama, and OpenRouter. Responses appear in real-time as the AI generates them, providing immediate feedback and better user experience.",
+                "Show AI responses as they're generated (like ChatGPT).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -1066,7 +1066,7 @@ export class SettingsTab extends PluginSettingTab {
         const organizeSetting = new Setting(containerEl)
             .setName("Auto-organize display order")
             .setDesc(
-                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...). This makes it easy to insert new categories between existing ones. Note: Display order is only used when multiple tasks have the same status score - it determines visual order, not task importance.`,
+                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...). Note: Display order determines visual order, not task importance.`,
             )
             .addButton((button) => {
                 button
@@ -1166,7 +1166,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Relevance score")
             .setDesc(
-                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches regardless of task properties.`,
+                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches.`,
             )
             .addSlider((slider) => {
                 // Dynamic maximum based on actual max relevance score
@@ -1188,7 +1188,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Quality filter")
             .setDesc(
-                `Filter strictness (0-100%). 0% = adaptive (recommended), higher = fewer but higher-quality results.`,
+                `Filter strictness (0-100%). 0% = adaptive, higher = fewer but higher-quality results.`,
             )
             .addSlider((slider) =>
                 slider
@@ -1368,7 +1368,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Core keyword match bonus")
             .setDesc(
-                "Bonus for exact keyword matches (0.0-1.0). Default: 0.2. Set to 0 for pure semantic search. Affects max relevance score: (value + 1.0).",
+                "Bonus for exact keyword matches (0.0-1.0). Default: 0.2. Set to 0 for pure semantic search.",
             )
             .addSlider((slider) =>
                 slider
@@ -1554,7 +1554,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description task-chat-info-box",
         });
         statusScoreNote.createEl("p", {
-            text: 'Each status category (open, completed, in progress, etc.) has its own score that you can customize. Scroll up to the "Status category" section to manage categories and their coefficients.',
+            text: 'Each status category has its own coefficient. Scroll up to the "Status category" section to manage coefficients.',
         });
 
         // Reset Buttons Section
@@ -1751,7 +1751,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max direct results")
             .setDesc(
-                "Maximum tasks to show in Simple Search chat mode (no token cost). Default: 20.",
+                "Maximum tasks to show in Simple Search mode.",
             )
             .addSlider((slider) =>
                 slider
@@ -2047,11 +2047,11 @@ export class SettingsTab extends PluginSettingTab {
             );
             if (categoryKey === "open") {
                 symbolsInput.title =
-                    "Default Markdown open task (space character), cannot be changed";
+                    "Default Markdown open task, cannot be changed";
                 symbolsInput.placeholder = "(space)";
             } else if (categoryKey === "other") {
                 symbolsInput.title =
-                    "Catches all unassigned symbols automatically, no manual symbols needed";
+                    "Catches all unassigned symbols automatically";
                 symbolsInput.placeholder = "(auto)";
             }
         } else {
@@ -2174,14 +2174,14 @@ export class SettingsTab extends PluginSettingTab {
         );
         const orderDesc =
             order !== undefined
-                ? `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Score determines task importance when sorting by status. Display order only matters when multiple tasks have the SAME score - it breaks ties for visual order. Currently: ${effectiveOrder}. This is a relative value - gaps between numbers don't matter, only their order.`
-                : `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Currently using smart default: ${effectiveOrder}. Built-in defaults: open=1, inProgress=2, completed=6, cancelled=7, custom=8. Leave empty to use smart defaults.`;
+                ? `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Display order only matters when multiple tasks have the SAME score. Currently: ${effectiveOrder}. This is a relative value - gaps between numbers don't matter, only their order.`
+                : `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Currently using smart default: ${effectiveOrder}.`;
 
         const orderSetting = new Setting(advancedFields)
             .setName("Display order")
             .setDesc(orderDesc)
             .setTooltip(
-                "📊 This is a relative number - only the ORDER matters, not the actual values. Gaps don't matter (1,2,3 = 10,20,30 = 5,50,100). Used only when multiple tasks have identical scores.",
+                "📊 This is a relative number - only the ORDER matters, not the actual values.",
             );
 
         // Add slider for easier adjustment
@@ -2240,7 +2240,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(advancedFields)
             .setName("Semantic terms")
             .setDesc(
-                `Comma-separated terms for recognition in Smart Search and Task Chat (e.g., "urgent, critical"). Add terms in multiple languages for multilingual support!`,
+                `Comma-separated terms for recognition in Smart Search and Task Chat (e.g., "urgent, critical").`,
             )
             .addTextArea((textarea) => {
                 textarea
@@ -2327,24 +2327,6 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Get default models for a provider
-     */
-    private getDefaultModelsForProvider(provider: string): string[] {
-        switch (provider) {
-            case "openai":
-                return ModelProviderService.getDefaultOpenAIModels();
-            case "anthropic":
-                return ModelProviderService.getDefaultAnthropicModels();
-            case "openrouter":
-                return ModelProviderService.getDefaultOpenRouterModels();
-            case "ollama":
-                return ModelProviderService.getDefaultOllamaModels();
-            default:
-                return [];
-        }
-    }
-
-    /**
      * Get API key description based on provider
      */
     private getApiKeyDescription(): string {
@@ -2377,24 +2359,6 @@ export class SettingsTab extends PluginSettingTab {
     }
 
     /**
-     * Get model description based on provider
-     */
-    private getModelDescription(): string {
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                return "OpenAI model to use. GPT-4o-mini is cost-effective and fast.";
-            case "anthropic":
-                return "Claude model to use. Claude 3.5 Sonnet offers excellent performance.";
-            case "openrouter":
-                return "Any model available on OpenRouter. Check openrouter.ai/models for the full list.";
-            case "ollama":
-                return "Local model name. Must be pulled first with 'ollama pull <model>'.";
-            default:
-                return "AI model to use";
-        }
-    }
-
-    /**
      * Get parsing model description based on parsing provider
      */
     private getParsingModelDescription(): string {
@@ -2404,9 +2368,9 @@ export class SettingsTab extends PluginSettingTab {
             case "anthropic":
                 return "Model for AI query parsing. Claude Sonnet 4 is recommended for quality parsing.";
             case "openrouter":
-                return "Model for AI query parsing. Use any OpenAI or Anthropic model via OpenRouter. GPT-4o-mini recommended.";
+                return "Model for AI query parsing. Use any OpenAI or Anthropic model via OpenRouter.";
             case "ollama":
-                return "Local model for query parsing. Qwen3:14b is recommended for good speed and accuracy.";
+                return "Local model for query parsing.";
             default:
                 return "Model for AI query parsing.";
         }
@@ -2418,13 +2382,13 @@ export class SettingsTab extends PluginSettingTab {
     private getAnalysisModelDescription(): string {
         switch (this.plugin.settings.analysisProvider) {
             case "openai":
-                return "Model for task analysis in Task Chat. GPT-4o-mini is recommended for high-quality insights. Smart Search does not use this.";
+                return "Model for task analysis in Task Chat. GPT-4o-mini is recommended for high-quality insights.";
             case "anthropic":
-                return "Model for task analysis in Task Chat. Claude Sonnet 4 is recommended for comprehensive analysis. Smart Search does not use this.";
+                return "Model for task analysis in Task Chat. Claude Sonnet 4 is recommended for comprehensive analysis.";
             case "openrouter":
-                return "Model for task analysis in Task Chat. Use any model via OpenRouter. GPT-4o-mini or Claude Sonnet 4 recommended. Smart Search does not use this.";
+                return "Model for task analysis in Task Chat. Use any model via OpenRouter.";
             case "ollama":
-                return "Local model for task analysis. Qwen3:14b is recommended for good speed and accuracy. Smart Search does not use this.";
+                return "Local model for task analysis.";
             default:
                 return "Model for task analysis in Task Chat.";
         }
@@ -2514,66 +2478,6 @@ export class SettingsTab extends PluginSettingTab {
                 return ModelProviderService.getDefaultOllamaModels();
             default:
                 return [];
-        }
-    }
-
-    /**
-     * Refresh models from provider API
-     */
-    private async refreshModels(): Promise<void> {
-        const provider = this.plugin.settings.aiProvider;
-        const apiKey = this.getCurrentApiKey();
-
-        try {
-            let models: string[] = [];
-
-            switch (provider) {
-                case "openai":
-                    if (!apiKey) {
-                        new Notice("Please set OpenAI API key first");
-                        return;
-                    }
-                    new Notice("Fetching OpenAI models...");
-                    models =
-                        await ModelProviderService.fetchOpenAIModels(apiKey);
-                    break;
-
-                case "anthropic":
-                    new Notice("Loading Anthropic models...");
-                    models =
-                        await ModelProviderService.fetchAnthropicModels(apiKey);
-                    break;
-
-                case "openrouter":
-                    if (!apiKey) {
-                        new Notice("Please set OpenRouter API key first");
-                        return;
-                    }
-                    new Notice("Fetching OpenRouter models...");
-                    models =
-                        await ModelProviderService.fetchOpenRouterModels(
-                            apiKey,
-                        );
-                    break;
-
-                case "ollama":
-                    new Notice("Fetching local Ollama models...");
-                    models = await ModelProviderService.fetchOllamaModels(
-                        this.getCurrentProviderConfig().apiEndpoint,
-                    );
-                    break;
-            }
-
-            if (models.length > 0) {
-                this.getCurrentProviderConfig().availableModels = models;
-                await this.plugin.saveSettings();
-                new Notice(`Loaded ${models.length} models`);
-            } else {
-                new Notice("No models found. Using defaults.");
-            }
-        } catch (error) {
-            Logger.error("Error refreshing models:", error);
-            new Notice("Failed to fetch models. Using defaults.");
         }
     }
 
@@ -2668,57 +2572,6 @@ export class SettingsTab extends PluginSettingTab {
             new Notice(
                 `Failed to fetch models for ${provider}. Using defaults.`,
             );
-        }
-    }
-
-    /**
-     * Render model info text directly to DOM
-     */
-    private renderModelInfo(containerEl: HTMLElement): void {
-        containerEl.empty();
-        const models = this.getAvailableModels();
-        const count = models.length;
-
-        switch (this.plugin.settings.aiProvider) {
-            case "openai":
-                containerEl.createEl("strong", {
-                    text: `${count} OpenAI models available`,
-                });
-                containerEl.appendText(
-                    ' - Click "Refresh" to fetch latest from API',
-                );
-                break;
-            case "anthropic":
-                containerEl.createEl("strong", {
-                    text: `${count} Claude models available`,
-                });
-                containerEl.appendText(" - Latest models from Anthropic");
-                break;
-            case "openrouter":
-                containerEl.createEl("strong", {
-                    text: `${count} models available`,
-                });
-                containerEl.appendText(
-                    ' - Click "Refresh" to fetch from OpenRouter. Visit ',
-                );
-                containerEl.createEl("a", {
-                    text: "openrouter.ai/models",
-                    href: "https://openrouter.ai/models",
-                });
-                containerEl.appendText(" for details.");
-                break;
-            case "ollama":
-                containerEl.createEl("strong", {
-                    text: `${count} models found`,
-                });
-                containerEl.appendText(
-                    ' - Click "Refresh" to detect installed local models. Install more at ',
-                );
-                containerEl.createEl("a", {
-                    text: "ollama.com/library",
-                    href: "https://ollama.com/library",
-                });
-                break;
         }
     }
 
