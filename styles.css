@@ -254,7 +254,7 @@
     color: var(--interactive-accent);
     font-size: 2em;
     font-weight: bold;
-    animation: dots-flash 2.0s ease-in-out infinite;
+    animation: dots-flash 1.5s ease-in-out infinite;
 }
 
 /* Flashing dots animation */

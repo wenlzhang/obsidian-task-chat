@@ -527,10 +527,6 @@ export class ChatView extends ItemView {
         const ai = message.parsedQuery.aiUnderstanding;
         const parts: string[] = [];
 
-        // Don't show mode here - it's already shown in token usage section
-
-        // Language (only if not English)
-        // AI now returns full language name directly (e.g., "Chinese", "Swedish")
         if (
             ai?.detectedLanguage &&
             ai.detectedLanguage !== "en" &&
@@ -741,6 +737,12 @@ export class ChatView extends ItemView {
             cls: "task-chat-message-time",
         });
 
+        // Display structured error if present (API/parser/analysis failures)
+        // Show FIRST, before all content, for immediate visibility
+        if (message.error) {
+            ErrorMessageService.renderError(messageEl, message.error);
+        }
+
         // Message content
         const contentEl = messageEl.createDiv("task-chat-message-content");
 
@@ -794,12 +796,6 @@ export class ChatView extends ItemView {
                 this.handleLinkClick(target as HTMLAnchorElement, contextPath);
             }
         });
-
-        // Display structured error if present (API/parser/analysis failures)
-        // Show BEFORE recommended tasks so users see the error first
-        if (message.error) {
-            ErrorMessageService.renderError(messageEl, message.error);
-        }
 
         // Recommended tasks
         if (message.recommendedTasks && message.recommendedTasks.length > 0) {

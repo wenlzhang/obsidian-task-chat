@@ -25,8 +25,10 @@ export class MetadataService {
             parts.push("Mode: Task Chat");
         }
 
-        // For API errors with status codes, ONLY show mode (simplified)
-        if (message.error?.statusCode) {
+        // For API errors with status codes AND no token usage, ONLY show mode (simplified)
+        // This means BOTH operations failed (parsing + analysis in Task Chat)
+        // If tokenUsage exists, at least one operation succeeded and incurred costs → show full metadata
+        if (message.error?.statusCode && !message.tokenUsage) {
             return "📊 " + parts.join(" • ");
         }
 
@@ -37,7 +39,7 @@ export class MetadataService {
             }
             const detectedLang =
                 message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-            parts.push(`Language: ${detectedLang || "Unknown"}`);
+            parts.push(`Lang: ${detectedLang || "Undetected"}`);
             return "📊 " + parts.join(" • ");
         }
 
@@ -57,18 +59,16 @@ export class MetadataService {
                 const isTaskChat = message.role === "chat";
 
                 if (isTaskChat && message.error.type === "api") {
-                    // Task Chat: Show parser failed + analysis not executed
                     const { provider: analysisProvider, model: analysisModel } =
                         getProviderForPurpose(settings, "analysis");
                     const analysisProviderName =
                         this.formatProvider(analysisProvider);
 
                     parts.push(
-                        `${providerName}: ${modelInfo} (parser failed), ${analysisProviderName}: ${analysisModel} (not executed - 0 tasks)`,
+                        `${providerName}: ${modelInfo} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`,
                     );
                 } else if (isSmartSearch && message.error.type === "api") {
-                    // Smart Search: Show parser failed only
-                    parts.push(`${providerName}: ${modelInfo} (parser failed)`);
+                    parts.push(`${providerName}: ${modelInfo} (parser)`);
                 } else {
                     parts.push(`${providerName}: ${modelInfo}`);
                 }
@@ -89,11 +89,7 @@ export class MetadataService {
                 // Show language info (or Undetected for failed parsing)
                 const detectedLang =
                     message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                if (detectedLang) {
-                    parts.push(`Language: ${detectedLang}`);
-                } else {
-                    parts.push("Language: Undetected");
-                }
+                parts.push(`Lang: ${detectedLang || "Undetected"}`);
             }
             return "📊 " + parts.join(" • ");
         }
@@ -144,11 +140,7 @@ export class MetadataService {
             if (!isSimpleSearch) {
                 const detectedLang =
                     message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                if (detectedLang) {
-                    parts.push(`Language: ${detectedLang}`);
-                } else if (message.error) {
-                    parts.push("Language: Undetected");
-                }
+                parts.push(`Lang: ${detectedLang || "Undetected"}`);
             }
         } else if (isSimpleSearch) {
             // Simple Search: No AI used
@@ -181,19 +173,7 @@ export class MetadataService {
                 ? message.tokenUsage!.parsingProvider!
                 : message.tokenUsage!.provider;
 
-            // Add status indicator for Smart Search
-            const isSmartSearch = message.role === "smart";
-            let suffix = "";
-            if (isSmartSearch && hasParsingModel) {
-                // Check if parser failed (error exists and is parser-related)
-                const parserFailed =
-                    message.error &&
-                    (message.error.type === "parser" ||
-                        message.error.type === "api");
-                suffix = parserFailed ? " (parser failed)" : " (parser)";
-            }
-
-            return `${this.formatProvider(provider)}: ${model}${suffix}`;
+            return `${this.formatProvider(provider)}: ${model} (parser)`;
         }
 
         // Task Chat - show parsing and/or analysis models
@@ -210,13 +190,8 @@ export class MetadataService {
             const provider = message.tokenUsage!.parsingProvider!;
             const model = message.tokenUsage!.parsingModel!;
 
-            if (message.error && message.error.type === "api") {
-                // Parser failed, analysis not executed
-                return `${this.formatProvider(provider)}: ${model} (parser failed, analysis not executed - 0 tasks)`;
-            } else {
-                // Both succeeded
-                return `${this.formatProvider(provider)}: ${model} (parser + analysis)`;
-            }
+            return `${this.formatProvider(provider)}: ${model} (parser + analysis)`;
+
         }
 
         if (!hasAnalysisModel && message.error && message.error.model) {
@@ -231,10 +206,10 @@ export class MetadataService {
 
             if (parsingProviderName === analysisProviderName) {
                 // Same provider, show combined
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser failed), ${analysisModel} (analysis not executed - 0 tasks)`;
+                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser), ${analysisModel} (analysis)`;
             } else {
                 // Different providers
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser failed), ${analysisProviderName}: ${analysisModel} (analysis not executed - 0 tasks)`;
+                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`;
             }
         }
 
