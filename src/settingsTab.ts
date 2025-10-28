@@ -2160,7 +2160,7 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Display order")
             .setDesc(orderDesc)
             .setTooltip(
-                "📊 This is a relative number - only the ORDER matters, not the actual values.",
+                "This is a relative number - only the ORDER matters, not the actual values.",
             );
 
         // Add slider for easier adjustment

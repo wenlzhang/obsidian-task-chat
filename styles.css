@@ -7,18 +7,6 @@
     gap: 10px;
 }
 
-/* Header */
-.task-chat-header {
-    padding: 10px 0;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.task-chat-header h4 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
 /* Filter Status */
 .task-chat-filter-status {
     padding: 8px;

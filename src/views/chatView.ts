@@ -82,10 +82,6 @@ export class ChatView extends ItemView {
     private renderView(): void {
         this.contentEl.empty();
 
-        // Header
-        const headerEl = this.contentEl.createDiv("task-chat-header");
-        headerEl.createEl("h4", { text: "Task Chat" });
-
         // Status bar
         const statusEl = this.contentEl.createDiv("task-chat-status");
         this.filterStatusEl = statusEl.createSpan({
@@ -504,15 +500,6 @@ export class ChatView extends ItemView {
         // Typo corrections (if any)
         if (ai?.correctedTypos && ai.correctedTypos.length > 0) {
             parts.push(`✏️ ${ai.correctedTypos.length} typo(s)`);
-        }
-
-        // Confidence (only if low/medium)
-        if (ai?.confidence !== undefined) {
-            const percent = Math.round(ai.confidence * 100);
-            if (percent < 70) {
-                const emoji = percent < 50 ? "⚠️" : "📊";
-                parts.push(`${emoji} ${percent}%`);
-            }
         }
 
         return parts.length > 0 ? parts.join(" • ") : null;
