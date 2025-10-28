@@ -2,7 +2,7 @@ import { App } from "obsidian";
 import { DataviewService } from "./dataviewService";
 
 /**
- * Warning types for DataView state
+ * Warning types for Dataview state
  */
 export interface DataViewWarning {
     type: "not-enabled" | "no-tasks" | "indexing" | "ready";
@@ -12,15 +12,15 @@ export interface DataViewWarning {
 }
 
 /**
- * Service for handling DataView warnings and status checks
- * Centralizes DataView state detection and warning message generation
+ * Service for handling Dataview warnings and status checks
+ * Centralizes Dataview state detection and warning message generation
  *
  * Similar to ErrorMessageService, this provides dedicated warning handling
- * for DataView-specific issues that users need to be aware of.
+ * for Dataview-specific issues that users need to be aware of.
  */
 export class DataViewWarningService {
     /**
-     * Check DataView status and return appropriate warning (if any)
+     * Check Dataview status and return appropriate warning (if any)
      *
      * @param app - Obsidian app instance
      * @param taskCount - Current number of tasks loaded
@@ -34,23 +34,23 @@ export class DataViewWarningService {
     ): DataViewWarning | null {
         const isDataviewEnabled = DataviewService.isDataviewEnabled(app);
 
-        // Case 1: DataView not enabled
+        // Case 1: Dataview not enabled
         if (!isDataviewEnabled) {
             return {
                 type: "not-enabled",
-                message: "DataView plugin required",
+                message: "Dataview plugin required",
                 details:
-                    "This plugin requires the DataView plugin to function. Please install and enable it from Community Plugins.",
+                    "This plugin requires the Dataview plugin to function. Please install and enable it from Community Plugins.",
                 suggestions: [
                     "Go to Settings → Community Plugins",
                     "Search for 'Dataview' and install it",
                     "Enable the plugin",
-                    "Click the Refresh button above to load tasks",
+                    "Click the Refresh button to load tasks",
                 ],
             };
         }
 
-        // Case 2: DataView enabled but no tasks found
+        // Case 2: Dataview enabled but no tasks found
         if (taskCount === 0) {
             // Check if this is likely due to indexing
             const api = DataviewService.getAPI(app);
@@ -66,16 +66,16 @@ export class DataViewWarningService {
                         return {
                             type: "indexing",
                             message: isSearchQuery
-                                ? "DataView is still indexing your vault"
-                                : "No tasks found - DataView may still be indexing",
+                                ? "Dataview is still indexing your vault"
+                                : "No tasks found - Dataview may still be indexing",
                             details: isSearchQuery
-                                ? "Your search returned 0 results because DataView hasn't finished indexing your vault yet. This is common in large vaults or right after startup."
-                                : "DataView is enabled but no tasks are currently available. This usually means indexing is in progress.",
+                                ? "Your search returned 0 results because Dataview hasn't finished indexing your vault yet. This is common in large vaults or right after startup."
+                                : "Dataview is enabled but no tasks are currently available. This usually means indexing is in progress.",
                             suggestions: [
-                                "Wait 10-30 seconds for DataView to finish indexing",
-                                "Check DataView settings → Reduce 'Index delay' (default: 2000ms, try: 500ms)",
-                                "Click the Refresh button above to reload tasks",
-                                "Check console (Ctrl+Shift+I) for any DataView errors",
+                                "Wait a moment for Dataview to finish indexing",
+                                "Check Dataview settings → Reduce 'Index delay'",
+                                "Click the Refresh button to reload tasks",
+                                "Check console (Ctrl+Shift+I) for any Dataview errors",
                             ],
                         };
                     }
@@ -83,38 +83,38 @@ export class DataViewWarningService {
                     // API call failed - treat as indexing issue
                     return {
                         type: "indexing",
-                        message: "DataView may still be initializing",
+                        message: "Dataview may still be initializing",
                         details:
-                            "Unable to check DataView status. The plugin may still be starting up or indexing your vault.",
+                            "Unable to check Dataview status. The plugin may still be starting up or indexing your vault.",
                         suggestions: [
                             "Wait a moment and try again",
-                            "Click the Refresh button above",
-                            "Check if DataView plugin is properly enabled",
+                            "Click the Refresh button",
+                            "Check if Dataview plugin is properly enabled",
                         ],
                     };
                 }
             }
 
-            // DataView is enabled and has pages, but no tasks found
+            // Dataview is enabled and has pages, but no tasks found
             return {
                 type: "no-tasks",
                 message: isSearchQuery
                     ? "Your search returned 0 results"
                     : "No tasks found in your vault",
                 details: isSearchQuery
-                    ? "DataView is working but no tasks matched your search criteria. The tasks may exist but don't match your filters, or DataView's index delay is too long."
-                    : "DataView is working but found no tasks in your vault. You may need to create tasks using proper markdown syntax (e.g., - [ ] Task).",
+                    ? "Dataview is working but no tasks matched your search criteria. The tasks may exist but don't match your filters, or Dataview's index delay is too long."
+                    : "Dataview is working but found no tasks in your vault. You may need to create tasks using proper markdown syntax (e.g., - [ ] Task).",
                 suggestions: isSearchQuery
                     ? [
                           "Try broader search terms",
                           "Check if your tasks match the search criteria",
-                          "Reduce DataView 'Index delay' in settings for faster updates",
+                          "Reduce Dataview 'Index delay' in settings for faster updates",
                           "Click Refresh if you just created tasks",
                       ]
                     : [
                           "Create tasks using markdown syntax: - [ ] Task name",
                           "Verify tasks exist in your vault",
-                          "Check DataView settings → Ensure 'Index delay' is reasonable (500-2000ms)",
+                          "Check Dataview settings → Ensure 'Index delay' is reasonable",
                           "Click Refresh button to reload",
                       ],
             };
@@ -229,7 +229,7 @@ export class DataViewWarningService {
         const warning = this.checkDataViewStatus(app, taskCount, false);
 
         if (!warning) {
-            return `DataView ready: ${taskCount} task(s) loaded`;
+            return `Dataview ready: ${taskCount} task(s) loaded`;
         }
 
         return warning.message;

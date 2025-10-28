@@ -94,11 +94,11 @@ export class ChatView extends ItemView {
         });
         this.updateFilterStatus();
 
-        // DataView warning element (initially null, created when needed)
+        // Dataview warning element (initially null, created when needed)
         // WARNING: Never hide this - it provides critical information about why searches return 0 results
         this.dataviewWarningEl = null;
 
-        // Check and render DataView status immediately
+        // Check and render Dataview status immediately
         this.renderDataviewWarning();
 
         // Button controls - grouped logically
@@ -356,13 +356,13 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render DataView status banner with helpful information
+     * Render Dataview status banner with helpful information
      * Uses centralized DataViewWarningService for consistent messaging
      *
      * CRITICAL: This warning should ALWAYS be shown when there are issues.
      * Never hide it - users need to know why they're getting 0 results.
      *
-     * Shows different messages based on DataView state:
+     * Shows different messages based on Dataview state:
      * - Not installed/enabled: Installation instructions
      * - Enabled but indexing: Wait for indexing to complete
      * - Enabled but 0 tasks: Troubleshooting tips
@@ -370,7 +370,7 @@ export class ChatView extends ItemView {
     private renderDataviewWarning(): void {
         const taskCount = this.currentTasks.length;
 
-        // Check DataView status using centralized service
+        // Check Dataview status using centralized service
         const warning = DataViewWarningService.checkDataViewStatus(
             this.app,
             taskCount,
@@ -408,7 +408,7 @@ export class ChatView extends ItemView {
         // Render warning using centralized service
         DataViewWarningService.renderWarning(this.dataviewWarningEl, warning);
 
-        Logger.debug(`[DataView Warning] ${warning.type}: ${warning.message}`);
+        Logger.debug(`[Dataview Warning] ${warning.type}: ${warning.message}`);
     }
 
     /**
@@ -1244,23 +1244,23 @@ export class ChatView extends ItemView {
                 // Build informative message, especially for 0 results
                 let content = `Found ${result.directResults.length} matching task(s):`;
 
-                // For 0 results, check DataView status and add warning if needed
+                // For 0 results, check Dataview status and add warning if needed
                 if (result.directResults.length === 0) {
-                    // IMPORTANT: Check if DataView might be the issue
-                    // We use currentTasks.length (total tasks from DataView) NOT directResults.length
-                    // If currentTasks.length > 0, DataView has tasks → 0 results is a SEARCH/FILTER issue, not DataView
-                    // If currentTasks.length === 0, DataView has no tasks → check if it's indexing or not enabled
-                    // This ensures DataView warnings ONLY show when it's truly a DataView issue
+                    // IMPORTANT: Check if Dataview might be the issue
+                    // We use currentTasks.length (total tasks from Dataview) NOT directResults.length
+                    // If currentTasks.length > 0, Dataview has tasks → 0 results is a SEARCH/FILTER issue, not Dataview
+                    // If currentTasks.length === 0, Dataview has no tasks → check if it's indexing or not enabled
+                    // This ensures Dataview warnings ONLY show when it's truly a Dataview issue
                     const dataViewWarning =
                         DataViewWarningService.checkDataViewStatus(
                             this.app,
-                            this.currentTasks.length, // Total tasks from DataView
+                            this.currentTasks.length, // Total tasks from Dataview
                             true, // During search query
                         );
 
-                    // Only show warning if it's a critical DataView issue (not-enabled or indexing)
+                    // Only show warning if it's a critical Dataview issue (not-enabled or indexing)
                     // "no-tasks" warnings are filtered out by shouldShowInSearchResults()
-                    // This prevents showing DataView warnings for search/filter issues
+                    // This prevents showing Dataview warnings for search/filter issues
                     if (
                         dataViewWarning &&
                         DataViewWarningService.shouldShowInSearchResults(
@@ -1348,7 +1348,7 @@ export class ChatView extends ItemView {
                                 content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
                             }
 
-                            // Suggest troubleshooting (only if not already shown in DataView warning)
+                            // Suggest troubleshooting (only if not already shown in Dataview warning)
                             if (
                                 !dataViewWarning ||
                                 !DataViewWarningService.shouldShowInSearchResults(
