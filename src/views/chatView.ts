@@ -9,6 +9,7 @@ import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../utils/errorHandler";
 import { cleanWarningsFromContent } from "../services/warningService";
+import { ErrorMessageService } from "../services/errorMessageService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -796,92 +797,7 @@ export class ChatView extends ItemView {
         // Display structured error if present (API/parser/analysis failures)
         // Show BEFORE recommended tasks so users see the error first
         if (message.error) {
-            const errorEl = messageEl.createDiv({
-                cls: "task-chat-api-error",
-            });
-
-            // Make error message more specific based on error type
-            let errorTitle = message.error.message;
-            if (errorTitle.includes("analysis")) {
-                errorTitle = "AI analysis failed";
-            } else if (errorTitle.includes("parsing")) {
-                errorTitle = "AI parser failed";
-            }
-
-            errorEl.createEl("div", {
-                cls: "task-chat-api-error-header",
-                text: `⚠️ ${errorTitle}`,
-            });
-
-            const detailsEl = errorEl.createDiv({
-                cls: "task-chat-api-error-details",
-            });
-
-            if (message.error.model) {
-                detailsEl.createEl("div", {
-                    text: `Model: ${message.error.model}`,
-                });
-            }
-
-            detailsEl.createEl("div", {
-                text: `Error: ${message.error.details}`,
-            });
-
-            if (message.error.solution) {
-                const solutionEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-solution",
-                });
-                solutionEl.createEl("strong", { text: "💡 Solutions: " });
-
-                // Split solution by newlines and create list
-                const solutions = message.error.solution
-                    .split("\n")
-                    .filter((s: string) => s.trim());
-                if (solutions.length > 1) {
-                    const listEl = solutionEl.createEl("ol");
-                    solutions.forEach((solution: string) => {
-                        listEl.createEl("li", {
-                            text: solution.replace(/^\d+\.\s*/, ""),
-                        });
-                    });
-                } else {
-                    solutionEl.createSpan({ text: message.error.solution });
-                }
-            }
-
-            if (message.error.fallbackUsed) {
-                const fallbackEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-fallback",
-                });
-                fallbackEl.createEl("strong", { text: "✓ Fallback" });
-
-                // Split fallback message by period for multi-line display
-                const fallbackMessages = message.error.fallbackUsed
-                    .split(". ")
-                    .filter((s: string) => s.trim())
-                    .map(
-                        (s: string) => s.trim() + (s.endsWith(".") ? "" : "."),
-                    );
-
-                if (fallbackMessages.length > 1) {
-                    fallbackMessages.forEach((msg: string) => {
-                        fallbackEl.createEl("div", { text: msg });
-                    });
-                } else {
-                    fallbackEl.createSpan({ text: message.error.fallbackUsed });
-                }
-            }
-
-            if (message.error.docsLink) {
-                const docsEl = detailsEl.createEl("div", {
-                    cls: "task-chat-api-error-docs",
-                });
-                docsEl.createEl("strong", { text: "📖 Documentation: " });
-                docsEl.createEl("a", {
-                    text: "Troubleshooting Guide",
-                    href: message.error.docsLink,
-                });
-            }
+            ErrorMessageService.renderError(messageEl, message.error);
         }
 
         // Recommended tasks

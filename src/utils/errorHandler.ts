@@ -10,7 +10,8 @@ export interface StructuredError {
     details: string; // Detailed error information
     solution: string; // Suggested solution
     docsLink?: string; // Link to documentation
-    model?: string; // AI model that failed (provider/model)
+    model?: string; // AI model that failed (e.g., "OpenAI: gpt-4o-mini")
+    statusCode?: number; // HTTP status code (e.g., 400, 401, 500)
     fallbackUsed?: string; // Description of fallback mechanism used
 }
 
@@ -44,11 +45,15 @@ export class ErrorHandler {
         const errorMsg = error?.message || String(error);
         const errorBody = error?.json || error?.response?.json || {};
 
+        // Extract HTTP status code if available
+        const statusCode = this.extractStatusCode(error, errorMsg);
+
         Logger.debug("Parsing API error:", {
             message: errorMsg,
             body: errorBody,
             model: model,
             operation: operation,
+            statusCode: statusCode,
         });
 
         // Check for context length errors
@@ -58,7 +63,7 @@ export class ErrorHandler {
             errorMsg.includes("token") ||
             errorBody?.error?.code === "context_length_exceeded"
         ) {
-            return this.createContextLengthError(errorMsg, errorBody, model);
+            return this.createContextLengthError(errorMsg, errorBody, model, statusCode);
         }
 
         // Check for model not found errors
@@ -68,7 +73,7 @@ export class ErrorHandler {
                 errorMsg.includes("does not exist") ||
                 errorMsg.includes("not available"))
         ) {
-            return this.createModelNotFoundError(errorMsg, model);
+            return this.createModelNotFoundError(errorMsg, model, statusCode);
         }
 
         // Check for 400 Bad Request errors (invalid request/model/parameters)
@@ -78,7 +83,7 @@ export class ErrorHandler {
             errorMsg.includes("invalid request") ||
             errorBody?.error?.code === "invalid_request_error"
         ) {
-            return this.createBadRequestError(errorMsg, errorBody, model);
+            return this.createBadRequestError(errorMsg, errorBody, model, statusCode || 400);
         }
 
         // Check for API key errors
@@ -88,7 +93,7 @@ export class ErrorHandler {
             errorMsg.includes("unauthorized") ||
             errorBody?.error?.code === "invalid_api_key"
         ) {
-            return this.createAPIKeyError(errorMsg, model);
+            return this.createAPIKeyError(errorMsg, model, statusCode || 401);
         }
 
         // Check for rate limit errors
@@ -97,7 +102,7 @@ export class ErrorHandler {
             errorMsg.includes("too many requests") ||
             errorBody?.error?.code === "rate_limit_exceeded"
         ) {
-            return this.createRateLimitError(errorMsg, model);
+            return this.createRateLimitError(errorMsg, model, statusCode || 429);
         }
 
         // Check for server errors
@@ -107,7 +112,7 @@ export class ErrorHandler {
             errorMsg.includes("server error") ||
             errorMsg.includes("overloaded")
         ) {
-            return this.createServerError(errorMsg, model);
+            return this.createServerError(errorMsg, model, statusCode || 500);
         }
 
         // Check for connection errors (Ollama, network issues)
@@ -117,11 +122,35 @@ export class ErrorHandler {
             errorMsg.includes("network") ||
             errorMsg.includes("connect")
         ) {
-            return this.createConnectionError(errorMsg, model);
+            return this.createConnectionError(errorMsg, model, statusCode);
         }
 
         // Generic error fallback
-        return this.createGenericError(errorMsg, model, operation);
+        return this.createGenericError(errorMsg, model, operation, statusCode);
+    }
+
+    /**
+     * Extract HTTP status code from error
+     */
+    private static extractStatusCode(error: any, errorMsg: string): number | undefined {
+        // Try to extract from error object
+        if (error?.status) {
+            return error.status;
+        }
+        if (error?.response?.status) {
+            return error.response.status;
+        }
+        if (error?.statusCode) {
+            return error.statusCode;
+        }
+
+        // Try to extract from error message
+        const statusMatch = errorMsg.match(/\b(400|401|403|404|429|500|502|503)\b/);
+        if (statusMatch) {
+            return parseInt(statusMatch[1], 10);
+        }
+
+        return undefined;
     }
 
     /**
@@ -131,6 +160,7 @@ export class ErrorHandler {
         errorMsg: string,
         errorBody: any,
         model: string,
+        statusCode?: number,
     ): StructuredError {
         // Try to extract token limits from error message
         const maxMatch =
@@ -152,6 +182,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#1-context-length-exceeded",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -161,6 +192,7 @@ export class ErrorHandler {
     private static createModelNotFoundError(
         errorMsg: string,
         model: string,
+        statusCode?: number,
     ): StructuredError {
         // Detect provider from model string
         const isOllama = model.includes("ollama");
@@ -197,6 +229,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#2-model-not-found",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -207,6 +240,7 @@ export class ErrorHandler {
         errorMsg: string,
         errorBody: any,
         model: string,
+        statusCode: number,
     ): StructuredError {
         // Try to extract specific error from response body
         let details = errorMsg;
@@ -232,6 +266,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -241,6 +276,7 @@ export class ErrorHandler {
     private static createAPIKeyError(
         errorMsg: string,
         model: string,
+        statusCode: number,
     ): StructuredError {
         return {
             type: "api",
@@ -251,6 +287,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#3-invalid-api-key",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -260,6 +297,7 @@ export class ErrorHandler {
     private static createRateLimitError(
         errorMsg: string,
         model: string,
+        statusCode: number,
     ): StructuredError {
         return {
             type: "api",
@@ -270,6 +308,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#4-rate-limit-exceeded",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -279,6 +318,7 @@ export class ErrorHandler {
     private static createServerError(
         errorMsg: string,
         model: string,
+        statusCode: number,
     ): StructuredError {
         return {
             type: "api",
@@ -289,6 +329,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#5-server-error-500503",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -298,6 +339,7 @@ export class ErrorHandler {
     private static createConnectionError(
         errorMsg: string,
         model: string,
+        statusCode?: number,
     ): StructuredError {
         const isOllama = model.includes("ollama");
 
@@ -313,6 +355,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md#6-ollama-connection-failed",
             model: model,
+            statusCode: statusCode,
         };
     }
 
@@ -323,6 +366,7 @@ export class ErrorHandler {
         errorMsg: string,
         model: string,
         operation: "parser" | "analysis",
+        statusCode?: number,
     ): StructuredError {
         return {
             type: operation === "parser" ? "parser" : "analysis",
@@ -333,6 +377,7 @@ export class ErrorHandler {
             docsLink:
                 "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md",
             model: model,
+            statusCode: statusCode,
         };
     }
 
