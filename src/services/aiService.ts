@@ -1242,11 +1242,27 @@ export class AIService {
                     );
                 }
 
+                // Create parsedQuery with core keywords from Simple Search fallback if parser failed
+                let finalParsedQuery = usingAIParsing ? parsedQuery : undefined;
+                if (!usingAIParsing && intent.keywords.length > 0) {
+                    finalParsedQuery = {
+                        coreKeywords: intent.keywords,
+                        keywords: intent.keywords,
+                        expansionMetadata: {
+                            enabled: false,
+                            expansionsPerLanguagePerKeyword: 0,
+                            languagesUsed: [],
+                            totalKeywords: intent.keywords.length,
+                            coreKeywordsCount: intent.keywords.length,
+                        },
+                    };
+                }
+
                 return {
                     response: processedResponse,
                     recommendedTasks,
                     tokenUsage: combinedTokenUsage,
-                    parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                    parsedQuery: finalParsedQuery,
                     error: parserError, // Include parser error if parser failed (even though analysis succeeded)
                 };
             } catch (error) {
@@ -1379,6 +1395,24 @@ export class AIService {
                         };
                     }
 
+                    // Create parsedQuery with core keywords from Simple Search fallback if parser failed
+                    let finalParsedQueryForError = usingAIParsing
+                        ? parsedQuery
+                        : undefined;
+                    if (!usingAIParsing && intent.keywords.length > 0) {
+                        finalParsedQueryForError = {
+                            coreKeywords: intent.keywords,
+                            keywords: intent.keywords,
+                            expansionMetadata: {
+                                enabled: false,
+                                expansionsPerLanguagePerKeyword: 0,
+                                languagesUsed: [],
+                                totalKeywords: intent.keywords.length,
+                                coreKeywordsCount: intent.keywords.length,
+                            },
+                        };
+                    }
+
                     // Return filtered tasks with error info (will be displayed in UI)
                     return {
                         response: `Found ${sortedTasksForDisplay.length} matching task(s)`,
@@ -1386,8 +1420,8 @@ export class AIService {
                             0,
                             settings.maxRecommendations,
                         ),
-                        tokenUsage: tokenUsageForError, // Show parsing tokens even if analysis failed
-                        parsedQuery: usingAIParsing ? parsedQuery : undefined,
+                        tokenUsage: tokenUsageForError, // Show tokens and cost
+                        parsedQuery: finalParsedQueryForError,
                         error: structured, // Attach error for UI display
                     };
                 } else {

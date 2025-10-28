@@ -73,18 +73,15 @@ export class MetadataService {
                     parts.push(`${providerName}: ${modelInfo}`);
                 }
 
-                // Show token counts (even if zero for failed requests)
+                // Show token counts and cost together (even if zero for failed requests)
                 const totalTokens = message.tokenUsage.totalTokens || 0;
                 const promptTokens = message.tokenUsage.promptTokens || 0;
                 const completionTokens =
                     message.tokenUsage.completionTokens || 0;
-                parts.push(
-                    `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
-                );
-
-                // Show cost (always $0.00 for failed requests)
                 const cost = message.tokenUsage.estimatedCost || 0;
-                parts.push(`$${cost.toFixed(2)}`);
+                parts.push(
+                    `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), $${cost.toFixed(2)}`,
+                );
 
                 // Show language info (or Undetected for failed parsing)
                 const detectedLang =
@@ -113,27 +110,29 @@ export class MetadataService {
                 parts.push(modelInfo);
             }
 
-            // Token count
+            // Token count and cost together (grouped with comma)
             const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
             const totalTokens = message.tokenUsage.totalTokens || 0;
             const promptTokens = message.tokenUsage.promptTokens || 0;
             const completionTokens = message.tokenUsage.completionTokens || 0;
-            parts.push(
-                `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
-            );
 
-            // Cost
             if (message.tokenUsage.provider === "ollama") {
-                parts.push("Free (local)");
+                parts.push(
+                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), Free (local)`,
+                );
             } else {
                 const cost = message.tokenUsage.estimatedCost || 0;
+                let costStr: string;
                 if (cost === 0) {
-                    parts.push("$0.00");
+                    costStr = "$0.00";
                 } else if (cost < 0.01) {
-                    parts.push(`~$${cost.toFixed(4)}`);
+                    costStr = `~$${cost.toFixed(4)}`;
                 } else {
-                    parts.push(`~$${cost.toFixed(2)}`);
+                    costStr = `~$${cost.toFixed(2)}`;
                 }
+                parts.push(
+                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), ${costStr}`,
+                );
             }
 
             // Language (for Smart Search and Task Chat)
