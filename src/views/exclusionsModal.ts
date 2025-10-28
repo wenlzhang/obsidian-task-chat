@@ -1,5 +1,10 @@
-import { App, Modal, Setting, Menu, Notice, TFile, TFolder } from "obsidian";
+import { App, Modal, Menu, Notice } from "obsidian";
 import TaskChatPlugin from "../main";
+import {
+    FolderSuggestModal,
+    TagSuggestModal,
+    NoteSuggestModal,
+} from "../utils/suggestModals";
 
 /**
  * Allows users to exclude tags, folders, and notes from task searches
@@ -168,7 +173,7 @@ export class ExclusionsModal extends Modal {
             item.setTitle("🏷️ Tag")
                 .setIcon("tag")
                 .onClick(() => {
-                    this.showTagInput(listContainer);
+                    this.showTagSuggest(listContainer);
                 });
         });
 
@@ -176,7 +181,7 @@ export class ExclusionsModal extends Modal {
             item.setTitle("📁 Folder")
                 .setIcon("folder")
                 .onClick(() => {
-                    this.showFolderInput(listContainer);
+                    this.showFolderSuggest(listContainer);
                 });
         });
 
@@ -184,151 +189,57 @@ export class ExclusionsModal extends Modal {
             item.setTitle("📄 Note")
                 .setIcon("file")
                 .onClick(() => {
-                    this.showNoteInput(listContainer);
+                    this.showNoteSuggest(listContainer);
                 });
         });
 
         menu.showAtMouseEvent(e);
     }
 
-    private showTagInput(listContainer: HTMLElement) {
-        const modal = new Modal(this.app);
-        modal.titleEl.setText("Add tag to exclude");
-
-        // Get all tags from vault
-        const allTags = Object.keys(
-            (this.app.metadataCache as any).getTags(),
-        ).sort();
-
-        new Setting(modal.contentEl)
-            .setName("Tag")
-            .setDesc("Enter a tag to exclude (with or without #)")
-            .addText((text) => {
-                text.setPlaceholder("#example")
-                    .setValue("")
-                    .onChange((value) => {
-                        // Show suggestions
-                        const suggestions = allTags.filter((tag) =>
-                            tag.toLowerCase().includes(value.toLowerCase()),
-                        );
-                        // TODO: Add dropdown suggestions
-                    });
-
-                // Add button
-                const addBtn = modal.contentEl.createEl("button", {
-                    text: "Add",
-                    cls: "mod-cta",
-                });
-
-                addBtn.addEventListener("click", async () => {
-                    let tag = text.getValue().trim();
-                    if (!tag) return;
-
-                    // Ensure tag starts with #
-                    if (!tag.startsWith("#")) {
-                        tag = "#" + tag;
-                    }
-
-                    if (!this.plugin.settings.exclusions.tags.includes(tag)) {
-                        this.plugin.settings.exclusions.tags.push(tag);
-                        await this.plugin.saveSettings();
-                        this.renderExclusionsList(listContainer);
-                        new Notice(`Excluded tag: ${tag}`);
-                        modal.close();
-                    } else {
-                        new Notice(`Tag ${tag} is already excluded`);
-                    }
-                });
-            });
+    private showTagSuggest(listContainer: HTMLElement) {
+        const modal = new TagSuggestModal(this.app, async (tag) => {
+            if (!this.plugin.settings.exclusions.tags.includes(tag)) {
+                this.plugin.settings.exclusions.tags.push(tag);
+                await this.plugin.saveSettings();
+                this.renderExclusionsList(listContainer);
+                new Notice(`Excluded tag: ${tag}`);
+            } else {
+                new Notice(`Tag ${tag} is already excluded`);
+            }
+        });
 
         modal.open();
     }
 
-    private showFolderInput(listContainer: HTMLElement) {
-        const modal = new Modal(this.app);
-        modal.titleEl.setText("Add folder to exclude");
-
-        // Get all folders
-        const folders = this.app.vault
-            .getAllLoadedFiles()
-            .filter((file): file is TFolder => file instanceof TFolder)
-            .map((folder) => folder.path)
-            .sort();
-
-        new Setting(modal.contentEl)
-            .setName("Folder")
-            .setDesc("Select a folder to exclude")
-            .addDropdown((dropdown) => {
-                folders.forEach((folder) => {
-                    dropdown.addOption(folder, folder || "(Root)");
-                });
-
-                const addBtn = modal.contentEl.createEl("button", {
-                    text: "Add",
-                    cls: "mod-cta",
-                });
-
-                addBtn.addEventListener("click", async () => {
-                    const folder = dropdown.getValue();
-                    if (!folder) return;
-
-                    if (
-                        !this.plugin.settings.exclusions.folders.includes(
-                            folder,
-                        )
-                    ) {
-                        this.plugin.settings.exclusions.folders.push(folder);
-                        await this.plugin.saveSettings();
-                        this.renderExclusionsList(listContainer);
-                        new Notice(`Excluded folder: ${folder}`);
-                        modal.close();
-                    } else {
-                        new Notice(`Folder ${folder} is already excluded`);
-                    }
-                });
-            });
+    private showFolderSuggest(listContainer: HTMLElement) {
+        const modal = new FolderSuggestModal(this.app, async (folder) => {
+            if (!this.plugin.settings.exclusions.folders.includes(folder)) {
+                this.plugin.settings.exclusions.folders.push(folder);
+                await this.plugin.saveSettings();
+                this.renderExclusionsList(listContainer);
+                new Notice(
+                    `Excluded folder: ${folder === "/" ? "(root)" : folder}`,
+                );
+            } else {
+                new Notice(`Folder ${folder} is already excluded`);
+            }
+        });
 
         modal.open();
     }
 
-    private showNoteInput(listContainer: HTMLElement) {
-        const modal = new Modal(this.app);
-        modal.titleEl.setText("Add note to exclude");
-
-        // Get all markdown files
-        const notes = this.app.vault
-            .getMarkdownFiles()
-            .map((file) => file.path)
-            .sort();
-
-        new Setting(modal.contentEl)
-            .setName("Note")
-            .setDesc("Select a note to exclude")
-            .addDropdown((dropdown) => {
-                notes.forEach((note) => {
-                    dropdown.addOption(note, note);
-                });
-
-                const addBtn = modal.contentEl.createEl("button", {
-                    text: "Add",
-                    cls: "mod-cta",
-                });
-
-                addBtn.addEventListener("click", async () => {
-                    const note = dropdown.getValue();
-                    if (!note) return;
-
-                    if (!this.plugin.settings.exclusions.notes.includes(note)) {
-                        this.plugin.settings.exclusions.notes.push(note);
-                        await this.plugin.saveSettings();
-                        this.renderExclusionsList(listContainer);
-                        new Notice(`Excluded note: ${note}`);
-                        modal.close();
-                    } else {
-                        new Notice(`Note ${note} is already excluded`);
-                    }
-                });
-            });
+    private showNoteSuggest(listContainer: HTMLElement) {
+        const modal = new NoteSuggestModal(this.app, async (file) => {
+            const notePath = file.path;
+            if (!this.plugin.settings.exclusions.notes.includes(notePath)) {
+                this.plugin.settings.exclusions.notes.push(notePath);
+                await this.plugin.saveSettings();
+                this.renderExclusionsList(listContainer);
+                new Notice(`Excluded note: ${notePath}`);
+            } else {
+                new Notice(`Note ${notePath} is already excluded`);
+            }
+        });
 
         modal.open();
     }
