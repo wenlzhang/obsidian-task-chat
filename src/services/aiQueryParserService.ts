@@ -10,7 +10,6 @@ import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { StopWords } from "./stopWords";
 import { DataviewService } from "./dataviewService";
-import { TaskSearchService } from "./taskSearchService";
 import { PricingService } from "./pricingService";
 import { Logger } from "../utils/logger";
 import { ErrorHandler, AIError } from "../utils/errorHandler";

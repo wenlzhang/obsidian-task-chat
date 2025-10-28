@@ -2,7 +2,6 @@ import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
-import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
 import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";

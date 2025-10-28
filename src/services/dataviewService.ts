@@ -390,19 +390,6 @@ export class DataviewService {
     }
 
     /**
-     * Parse relative date ranges
-     * Delegates to TaskPropertyService for consistent behavior
-     *
-     * @deprecated This method now delegates to TaskPropertyService
-     */
-    private static parseRelativeDateRange(
-        dateFilter: string,
-        today: moment.Moment,
-    ): { start?: string; end?: string } | null {
-        return TaskPropertyService.parseRelativeDateRange(dateFilter, today);
-    }
-
-    /**
      * Parse date strings (DATE-ONLY)
      * Delegates to TaskPropertyService
      *

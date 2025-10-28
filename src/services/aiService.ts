@@ -19,7 +19,6 @@ import { StreamingService, StreamChunk } from "./streamingService";
 import {
     generateZeroResultsDiagnostic,
     generateAIFormatWarning,
-    cleanWarningsFromContent,
 } from "./warningService";
 
 /**

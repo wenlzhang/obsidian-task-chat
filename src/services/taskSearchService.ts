@@ -1,5 +1,4 @@
 import { Task, QueryIntent } from "../models/task";
-import { TaskFilterService } from "./taskFilterService";
 import { TextSplitter } from "./textSplitter";
 import { StopWords } from "./stopWords";
 import { PropertyDetectionService } from "./propertyDetectionService";
