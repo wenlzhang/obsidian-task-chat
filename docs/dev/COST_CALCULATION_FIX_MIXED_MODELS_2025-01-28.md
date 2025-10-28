@@ -147,9 +147,95 @@ Analysis: Anthropic (claude-3-5-sonnet), cost = $0.1234
 - Users can accurately track API costs in all configurations
 - Consistent cost display regardless of which component uses cloud models
 
+## Additional Bugs Found During Code Review
+
+After the initial fix, a comprehensive codebase review revealed additional issues:
+
+### Bug #2: Anthropic API Calls Using Wrong Provider
+
+**Location:** `src/services/aiService.ts` (lines 2476, 2480, 2545, 2549)
+
+Both streaming and non-streaming Anthropic calls were using `settings.aiProvider` instead of the local `provider` variable:
+
+```typescript
+// BEFORE (WRONG)
+estimatedCost: this.calculateCost(
+    promptTokens,
+    completionTokens,
+    providerConfig.model,
+    settings.aiProvider,  // ❌ Wrong! Uses global default
+    settings.pricingCache.data,
+),
+provider: settings.aiProvider,  // ❌ Wrong!
+```
+
+**Fix:** Use the local `provider` variable from `getProviderForPurpose(settings, "analysis")`:
+
+```typescript
+// AFTER (CORRECT)
+estimatedCost: this.calculateCost(
+    promptTokens,
+    completionTokens,
+    providerConfig.model,
+    provider,  // ✅ Correct! Uses analysis provider
+    settings.pricingCache.data,
+),
+provider: provider,  // ✅ Correct!
+```
+
+Also added missing analysis model tracking fields to match other providers.
+
+### Bug #3: Missing Analysis Model Tracking in Ollama
+
+**Location:** `src/services/aiService.ts` (lines 2675-2688, 2772-2785)
+
+Ollama calls (both streaming and non-streaming) were missing the analysis model tracking fields that other providers had:
+
+```typescript
+// BEFORE (INCOMPLETE)
+const tokenUsage: TokenUsage = {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+    estimatedCost: 0,
+    model: providerConfig.model,
+    provider: "ollama",
+    isEstimated: !tokenUsageInfo,
+    // Missing: analysisModel, analysisProvider, analysisTokens, analysisCost
+};
+```
+
+**Fix:** Added missing tracking fields for consistency:
+
+```typescript
+// AFTER (COMPLETE)
+const tokenUsage: TokenUsage = {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+    estimatedCost: 0,
+    model: providerConfig.model,
+    provider: "ollama",
+    isEstimated: !tokenUsageInfo,
+    // Track analysis model separately
+    analysisModel: model,
+    analysisProvider: "ollama",
+    analysisTokens: promptTokens + completionTokens,
+    analysisCost: 0,
+};
+```
+
+### Verification: Query Parser Service Already Correct
+
+**Location:** `src/services/aiQueryParserService.ts`
+
+All query parser API calls (OpenAI, Anthropic, Ollama) were already correctly using the local `provider` variable from `getProviderForPurpose(settings, "parsing")`. No changes needed! ✅
+
 ## Files Modified
 
 - `src/services/metadataService.ts` (lines 119-147): Fixed cost display logic
+- `src/services/aiService.ts` (lines 2468-2493, 2548-2573): Fixed Anthropic API calls to use correct provider
+- `src/services/aiService.ts` (lines 2675-2688, 2772-2785): Added missing analysis tracking to Ollama calls
 
 ## User Benefits
 

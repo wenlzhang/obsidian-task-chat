@@ -2473,12 +2473,23 @@ ${taskContext}`;
                         promptTokens,
                         completionTokens,
                         providerConfig.model,
-                        settings.aiProvider,
+                        provider,
                         settings.pricingCache.data,
                     ),
                     model: providerConfig.model,
-                    provider: "anthropic",
+                    provider: provider,
                     isEstimated,
+                    // Track analysis model separately
+                    analysisModel: model,
+                    analysisProvider: provider,
+                    analysisTokens: promptTokens + completionTokens,
+                    analysisCost: this.calculateCost(
+                        promptTokens,
+                        completionTokens,
+                        model,
+                        provider,
+                        settings.pricingCache.data,
+                    ),
                 };
 
                 Logger.debug("Anthropic streaming completed successfully");
@@ -2542,12 +2553,23 @@ ${taskContext}`;
                 promptTokens,
                 completionTokens,
                 providerConfig.model,
-                settings.aiProvider,
+                provider,
                 settings.pricingCache.data,
             ),
             model: providerConfig.model,
-            provider: settings.aiProvider,
+            provider: provider,
             isEstimated: false, // Real token counts from API
+            // Track analysis model separately
+            analysisModel: model,
+            analysisProvider: provider,
+            analysisTokens: totalTokens,
+            analysisCost: this.calculateCost(
+                promptTokens,
+                completionTokens,
+                model,
+                provider,
+                settings.pricingCache.data,
+            ),
         };
 
         return {
@@ -2658,6 +2680,11 @@ ${taskContext}`;
                     model: providerConfig.model,
                     provider: "ollama",
                     isEstimated: !tokenUsageInfo,
+                    // Track analysis model separately
+                    analysisModel: model,
+                    analysisProvider: "ollama",
+                    analysisTokens: promptTokens + completionTokens,
+                    analysisCost: 0, // Ollama is local, no cost
                 };
 
                 Logger.debug("Ollama streaming completed successfully");
@@ -2750,6 +2777,11 @@ ${taskContext}`;
                 model: providerConfig.model,
                 provider: "ollama",
                 isEstimated: !data.eval_count, // Estimated unless model provides counts
+                // Track analysis model separately
+                analysisModel: model,
+                analysisProvider: "ollama",
+                analysisTokens: promptTokens + completionTokens,
+                analysisCost: 0, // Ollama is local, no cost
             };
 
             Logger.debug(
