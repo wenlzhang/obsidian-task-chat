@@ -9,10 +9,7 @@ export class ErrorMessageService {
      * Render structured error message in chat UI
      * Creates DOM elements with simplified metadata
      */
-    static renderError(
-        containerEl: HTMLElement,
-        error: StructuredError,
-    ): void {
+    static renderError(containerEl: HTMLElement, error: StructuredError): void {
         const errorEl = containerEl.createDiv({
             cls: "task-chat-api-error",
         });

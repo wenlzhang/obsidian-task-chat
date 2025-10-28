@@ -4,12 +4,13 @@ import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
 import { DataviewService } from "../services/dataviewService";
 import { SessionModal } from "./sessionModal";
-import { getCurrentProviderConfig, getProviderForPurpose } from "../settings";
+import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../utils/errorHandler";
 import { cleanWarningsFromContent } from "../services/warningService";
 import { ErrorMessageService } from "../services/errorMessageService";
+import { MetadataService } from "../services/metadataService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -913,305 +914,28 @@ export class ChatView extends ItemView {
         ) {
             const usageEl = this.messagesEl.createDiv("task-chat-token-usage");
 
-            const parts: string[] = [];
+            // Use MetadataService to format metadata (centralized logic)
+            const metadataText = MetadataService.formatMetadata(
+                message,
+                this.plugin.settings,
+            );
 
-            // Show mode name first
-            if (message.role === "simple") {
-                parts.push("Mode: Simple Search");
-            } else if (message.role === "smart") {
-                parts.push("Mode: Smart Search");
-            } else if (message.role === "chat") {
-                parts.push("Mode: Task Chat");
-            }
+            if (metadataText) {
+                // Add AI understanding summary to metadata line (compact format)
+                const aiSummary = this.getAIUnderstandingSummary(message);
+                const finalText = aiSummary
+                    ? metadataText.replace("📊 ", "📊 ") + " • " + aiSummary
+                    : metadataText;
 
-            // If error occurred, check if we still have parsing token usage
-            // (parsing may have succeeded even if analysis failed)
-            if (message.error && !message.tokenUsage) {
-                // Neither parsing nor analysis succeeded - show minimal error info
-                if (message.error.model) {
-                    parts.push(message.error.model);
+                usageEl.createEl("small", { text: finalText });
+
+                // Add copy button to token usage line for assistant/system messages
+                if (message.role !== "user") {
+                    this.addCopyButton(usageEl, message);
                 }
-                // Try to get language from parsedQuery if available
-                const detectedLang =
-                    message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                parts.push(`Language: ${detectedLang || "Unknown"}`);
-                usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
-                return; // Skip rest of processing since no tokenUsage
-            }
-
-            // If error exists but showTokenUsage is false, show enhanced minimal metadata
-            // This ensures users see complete error context even with token display disabled
-            if (message.error && !this.plugin.settings.showTokenUsage) {
-                // Show mode, model, failure indicator, and token info
-                if (message.tokenUsage && message.tokenUsage.model !== "none") {
-                    const modelInfo =
-                        message.tokenUsage.parsingModel ||
-                        message.tokenUsage.model;
-                    const providerInfo =
-                        message.tokenUsage.parsingProvider ||
-                        message.tokenUsage.provider;
-                    const providerName =
-                        providerInfo === "openai"
-                            ? "OpenAI"
-                            : providerInfo === "anthropic"
-                              ? "Anthropic"
-                              : providerInfo === "openrouter"
-                                ? "OpenRouter"
-                                : "Ollama";
-
-                    // Add failure indicator for parser/analysis errors
-                    const isSmartSearch = message.role === "smart";
-                    const isTaskChat = message.role === "chat";
-
-                    if (isTaskChat && message.error.type === "api") {
-                        // Task Chat: Show parser failed + analysis not executed
-                        // Get analysis model from settings
-                        const {
-                            provider: analysisProvider,
-                            model: analysisModel,
-                        } = getProviderForPurpose(
-                            this.plugin.settings,
-                            "analysis",
-                        );
-                        const analysisProviderName =
-                            analysisProvider === "openai"
-                                ? "OpenAI"
-                                : analysisProvider === "anthropic"
-                                  ? "Anthropic"
-                                  : analysisProvider === "openrouter"
-                                    ? "OpenRouter"
-                                    : "Ollama";
-
-                        parts.push(
-                            `${providerName}: ${modelInfo} (parser failed), ${analysisProviderName}: ${analysisModel} (not executed - 0 tasks)`,
-                        );
-                    } else if (isSmartSearch && message.error.type === "api") {
-                        // Smart Search: Show parser failed only
-                        parts.push(
-                            `${providerName}: ${modelInfo} (parser failed)`,
-                        );
-                    } else {
-                        parts.push(`${providerName}: ${modelInfo}`);
-                    }
-
-                    // Show token counts (even if zero for failed requests)
-                    const totalTokens = message.tokenUsage.totalTokens || 0;
-                    const promptTokens = message.tokenUsage.promptTokens || 0;
-                    const completionTokens =
-                        message.tokenUsage.completionTokens || 0;
-                    parts.push(
-                        `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
-                    );
-
-                    // Show cost (always $0.00 for failed requests)
-                    const cost = message.tokenUsage.estimatedCost || 0;
-                    parts.push(`$${cost.toFixed(2)}`);
-
-                    // Show language info (or Undetected for failed parsing)
-                    const detectedLang =
-                        message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                    if (detectedLang) {
-                        parts.push(`Language: ${detectedLang}`);
-                    } else {
-                        parts.push("Language: Undetected");
-                    }
-                }
-                usageEl.createEl("small", { text: "📊 " + parts.join(" • ") });
-                return; // Skip additional details when showTokenUsage is false
-            }
-
-            // From here, either no error OR showTokenUsage is enabled
-            if (!message.tokenUsage) {
-                return; // Safety check
-            }
-
-            // Determine if AI was used
-            const isSimpleSearch = message.tokenUsage.model === "none";
-            // Show model info if we have a model (even if token count is 0 due to streaming issues)
-            const hasModelInfo =
-                message.tokenUsage.model && message.tokenUsage.model !== "none";
-
-            // Show model and token details when AI was used (parsing or analysis)
-            if (hasModelInfo) {
-                // Smart model display logic
-                // Simple/Smart Search: Show parsing model only
-                // Task Chat: Show parsing and analysis separately if different, or once if same
-                const isTaskChatMode = message.role === "chat";
-                const hasParsingModel =
-                    message.tokenUsage.parsingModel &&
-                    message.tokenUsage.parsingProvider;
-                const hasAnalysisModel =
-                    message.tokenUsage.analysisModel &&
-                    message.tokenUsage.analysisProvider;
-                const modelsSame =
-                    hasParsingModel &&
-                    hasAnalysisModel &&
-                    message.tokenUsage.parsingModel ===
-                        message.tokenUsage.analysisModel &&
-                    message.tokenUsage.parsingProvider ===
-                        message.tokenUsage.analysisProvider;
-
-                // Helper to format provider name
-                const formatProvider = (
-                    provider: "openai" | "anthropic" | "openrouter" | "ollama",
-                ): string => {
-                    if (provider === "ollama") return "Ollama";
-                    if (provider === "openai") return "OpenAI";
-                    if (provider === "anthropic") return "Anthropic";
-                    return "OpenRouter";
-                };
-
-                // Show model info based on mode and configuration
-                if (!isTaskChatMode || !hasParsingModel) {
-                    // Simple/Smart Search
-                    const displayModel = hasParsingModel
-                        ? message.tokenUsage.parsingModel
-                        : message.tokenUsage.model;
-                    const displayProvider = hasParsingModel
-                        ? message.tokenUsage.parsingProvider!
-                        : message.tokenUsage.provider;
-
-                    const providerName = formatProvider(displayProvider);
-
-                    // Add status indicator for Smart Search
-                    const isSmartSearch = message.role === "smart";
-                    let suffix = "";
-                    if (isSmartSearch && hasParsingModel) {
-                        // Check if parser failed (error exists and is parser-related)
-                        const parserFailed =
-                            message.error &&
-                            (message.error.type === "parser" ||
-                                message.error.type === "api");
-                        suffix = parserFailed
-                            ? " (parser failed)"
-                            : " (parser)";
-                    }
-                    parts.push(`${providerName}: ${displayModel}${suffix}`);
-                } else if (modelsSame) {
-                    // Task Chat with same model for both
-                    const displayProvider = message.tokenUsage.parsingProvider!;
-                    const displayModel = message.tokenUsage.parsingModel!;
-                    const providerName = formatProvider(displayProvider);
-
-                    if (message.error && message.error.type === "api") {
-                        // Parser failed, analysis not executed
-                        parts.push(
-                            `${providerName}: ${displayModel} (parser failed, analysis not executed - 0 tasks)`,
-                        );
-                    } else {
-                        // Both succeeded
-                        parts.push(
-                            `${providerName}: ${displayModel} (parser + analysis)`,
-                        );
-                    }
-                } else if (
-                    !hasAnalysisModel &&
-                    message.error &&
-                    message.error.model
-                ) {
-                    // Task Chat: Parsing failed, analysis not executed
-                    // Get analysis model from settings since it was never run
-                    const { provider: analysisProvider, model: analysisModel } =
-                        getProviderForPurpose(this.plugin.settings, "analysis");
-                    const parsingProviderName = formatProvider(
-                        message.tokenUsage.parsingProvider!,
-                    );
-                    const analysisProviderName =
-                        formatProvider(analysisProvider);
-
-                    if (parsingProviderName === analysisProviderName) {
-                        // Same provider, show combined
-                        parts.push(
-                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser failed), ${analysisModel} (analysis not executed - 0 tasks)`,
-                        );
-                    } else {
-                        // Different providers
-                        parts.push(
-                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser failed), ${analysisProviderName}: ${analysisModel} (analysis not executed - 0 tasks)`,
-                        );
-                    }
-                } else {
-                    // Task Chat with different models for parsing and analysis
-                    // Check if same provider
-                    const sameProvider =
-                        message.tokenUsage.parsingProvider ===
-                        message.tokenUsage.analysisProvider;
-
-                    if (sameProvider) {
-                        // Same provider, different models - group under provider
-                        const providerName = formatProvider(
-                            message.tokenUsage.parsingProvider!,
-                        );
-                        parts.push(
-                            `${providerName}: ${message.tokenUsage.parsingModel} (parser), ${message.tokenUsage.analysisModel} (analysis)`,
-                        );
-                    } else {
-                        // Different providers - show separately
-                        const parsingProviderName = formatProvider(
-                            message.tokenUsage.parsingProvider!,
-                        );
-                        const analysisProviderName = formatProvider(
-                            message.tokenUsage.analysisProvider!,
-                        );
-                        parts.push(
-                            `${parsingProviderName}: ${message.tokenUsage.parsingModel} (parser), ${analysisProviderName}: ${message.tokenUsage.analysisModel} (analysis)`,
-                        );
-                    }
-                }
-
-                // Token count with details (always show, even if 0)
-                const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
-                const totalTokens = message.tokenUsage.totalTokens || 0;
-                const promptTokens = message.tokenUsage.promptTokens || 0;
-                const completionTokens =
-                    message.tokenUsage.completionTokens || 0;
-                parts.push(
-                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out)`,
-                );
-
-                // Cost information (always show)
-                if (message.tokenUsage.provider === "ollama") {
-                    parts.push("Free (local)");
-                } else {
-                    // For online models, always show cost (even if $0)
-                    const cost = message.tokenUsage.estimatedCost || 0;
-                    if (cost === 0) {
-                        parts.push("$0.00");
-                    } else if (cost < 0.01) {
-                        parts.push(`~$${cost.toFixed(4)}`);
-                    } else {
-                        parts.push(`~$${cost.toFixed(2)}`);
-                    }
-                }
-
-                // Language information (for Smart Search and Task Chat)
-                if (!isSimpleSearch) {
-                    const detectedLang =
-                        message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                    if (detectedLang) {
-                        parts.push(`Language: ${detectedLang}`);
-                    } else if (message.error) {
-                        parts.push("Language: Undetected");
-                    }
-                }
-            } else if (isSimpleSearch) {
-                // Simple Search: No AI used
-                parts.push("$0.00");
-            }
-
-            // Add AI understanding summary to metadata line (compact format)
-            const aiSummary = this.getAIUnderstandingSummary(message);
-            if (aiSummary) {
-                parts.push(aiSummary);
-            }
-
-            usageEl.createEl("small", {
-                text: "📊 " + parts.join(" • "),
-            });
-
-            // Add copy button to token usage line for assistant/system messages
-            if (message.role !== "user") {
-                this.addCopyButton(usageEl, message);
+            } else {
+                // If no metadata to show, remove the empty div
+                usageEl.remove();
             }
         }
 
@@ -1380,12 +1104,25 @@ export class ChatView extends ItemView {
      * Clean warnings from chat history messages before sending to AI
      * NOTE: This creates a cleaned COPY for AI context only.
      * Original messages in chat history remain unchanged (warnings stay visible in UI).
+     *
+     * Filters out:
+     * - Error messages with status codes (API errors)
+     * - Cleans warning blocks from content of remaining messages
      */
     private cleanWarningsFromHistory(messages: ChatMessage[]): ChatMessage[] {
-        return messages.map((msg) => ({
-            ...msg,
-            content: this.removeWarningsFromContent(msg.content),
-        }));
+        return messages
+            .filter((msg) => {
+                // Exclude error messages with status codes (API errors like 400, 401, 429, 500)
+                // These are technical errors not relevant to AI conversation context
+                if (msg.error?.statusCode) {
+                    return false;
+                }
+                return true;
+            })
+            .map((msg) => ({
+                ...msg,
+                content: this.removeWarningsFromContent(msg.content),
+            }));
     }
 
     /**

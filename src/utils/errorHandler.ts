@@ -63,7 +63,12 @@ export class ErrorHandler {
             errorMsg.includes("token") ||
             errorBody?.error?.code === "context_length_exceeded"
         ) {
-            return this.createContextLengthError(errorMsg, errorBody, model, statusCode);
+            return this.createContextLengthError(
+                errorMsg,
+                errorBody,
+                model,
+                statusCode,
+            );
         }
 
         // Check for model not found errors
@@ -83,7 +88,12 @@ export class ErrorHandler {
             errorMsg.includes("invalid request") ||
             errorBody?.error?.code === "invalid_request_error"
         ) {
-            return this.createBadRequestError(errorMsg, errorBody, model, statusCode || 400);
+            return this.createBadRequestError(
+                errorMsg,
+                errorBody,
+                model,
+                statusCode || 400,
+            );
         }
 
         // Check for API key errors
@@ -102,7 +112,11 @@ export class ErrorHandler {
             errorMsg.includes("too many requests") ||
             errorBody?.error?.code === "rate_limit_exceeded"
         ) {
-            return this.createRateLimitError(errorMsg, model, statusCode || 429);
+            return this.createRateLimitError(
+                errorMsg,
+                model,
+                statusCode || 429,
+            );
         }
 
         // Check for server errors
@@ -132,7 +146,10 @@ export class ErrorHandler {
     /**
      * Extract HTTP status code from error
      */
-    private static extractStatusCode(error: any, errorMsg: string): number | undefined {
+    private static extractStatusCode(
+        error: any,
+        errorMsg: string,
+    ): number | undefined {
         // Try to extract from error object
         if (error?.status) {
             return error.status;
@@ -145,7 +162,9 @@ export class ErrorHandler {
         }
 
         // Try to extract from error message
-        const statusMatch = errorMsg.match(/\b(400|401|403|404|429|500|502|503)\b/);
+        const statusMatch = errorMsg.match(
+            /\b(400|401|403|404|429|500|502|503)\b/,
+        );
         if (statusMatch) {
             return parseInt(statusMatch[1], 10);
         }
