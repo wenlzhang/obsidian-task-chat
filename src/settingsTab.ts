@@ -248,9 +248,8 @@ export class SettingsTab extends PluginSettingTab {
                         | "openrouter"
                         | "ollama";
                     this.plugin.settings.parsingProvider = newProvider;
-                    // Reset parsing model to new provider's default when switching providers
-                    this.plugin.settings.parsingModel =
-                        this.plugin.settings.providerConfigs[newProvider].model;
+                    // Keep the current parsingModel - it persists across provider switches
+                    // If user hasn't selected a model (empty string), getProviderForPurpose() will use provider's default
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to update model dropdown
                 });
@@ -277,11 +276,21 @@ export class SettingsTab extends PluginSettingTab {
                 });
             }
 
-            // Use configured parsing model or fall back to provider's default
+            // Use per-provider model storage (new approach) or fall back to provider's default
             const currentModel =
-                this.plugin.settings.parsingModel || defaultModel;
+                this.plugin.settings.parsingModels?.[parsingProvider] ||
+                defaultModel;
             dropdown.setValue(currentModel).onChange(async (value) => {
-                this.plugin.settings.parsingModel = value;
+                // Store model selection per provider
+                if (!this.plugin.settings.parsingModels) {
+                    this.plugin.settings.parsingModels = {
+                        openai: "",
+                        anthropic: "",
+                        openrouter: "",
+                        ollama: "",
+                    };
+                }
+                this.plugin.settings.parsingModels[parsingProvider] = value;
                 await this.plugin.saveSettings();
 
                 // Validate model selection
@@ -361,9 +370,8 @@ export class SettingsTab extends PluginSettingTab {
                         | "openrouter"
                         | "ollama";
                     this.plugin.settings.analysisProvider = newProvider;
-                    // Reset analysis model to new provider's default when switching providers
-                    this.plugin.settings.analysisModel =
-                        this.plugin.settings.providerConfigs[newProvider].model;
+                    // Keep the current analysisModel - it persists across provider switches
+                    // If user hasn't selected a model (empty string), getProviderForPurpose() will use provider's default
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to update model dropdown
                 });
@@ -390,11 +398,21 @@ export class SettingsTab extends PluginSettingTab {
                 });
             }
 
-            // Use configured analysis model or fall back to provider's default
+            // Use per-provider model storage (new approach) or fall back to provider's default
             const currentModel =
-                this.plugin.settings.analysisModel || defaultModel;
+                this.plugin.settings.analysisModels?.[analysisProvider] ||
+                defaultModel;
             dropdown.setValue(currentModel).onChange(async (value) => {
-                this.plugin.settings.analysisModel = value;
+                // Store model selection per provider
+                if (!this.plugin.settings.analysisModels) {
+                    this.plugin.settings.analysisModels = {
+                        openai: "",
+                        anthropic: "",
+                        openrouter: "",
+                        ollama: "",
+                    };
+                }
+                this.plugin.settings.analysisModels[analysisProvider] = value;
                 await this.plugin.saveSettings();
 
                 // Validate model selection

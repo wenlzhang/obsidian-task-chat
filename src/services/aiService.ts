@@ -761,8 +761,12 @@ export class AIService {
                                     errorForEarlyReturn.details.includes(
                                         "403",
                                     ) ||
-                                    errorForEarlyReturn.details.includes("404") ||
-                                    errorForEarlyReturn.message.includes("Bad Request"))
+                                    errorForEarlyReturn.details.includes(
+                                        "404",
+                                    ) ||
+                                    errorForEarlyReturn.message.includes(
+                                        "Bad Request",
+                                    ))
                             ) {
                                 // Pre-request errors (400/401/403/404) - no tokens consumed
                                 const {
@@ -1058,10 +1062,8 @@ export class AIService {
                     parserError.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found, continuing to AI analysis).`;
                 } else {
                     // Create structured error from basic info
-                    const {
-                        provider: parsingProvider,
-                        model: parsingModel,
-                    } = getProviderForPurpose(settings, "parsing");
+                    const { provider: parsingProvider, model: parsingModel } =
+                        getProviderForPurpose(settings, "parsing");
                     const providerName =
                         parsingProvider === "openai"
                             ? "OpenAI"
@@ -1223,10 +1225,8 @@ export class AIService {
                     );
                 } else if (parserError) {
                     // Parser failed - add parsing model info for UI display (0 tokens for parser)
-                    const {
-                        provider: parsingProvider,
-                        model: parsingModel,
-                    } = getProviderForPurpose(settings, "parsing");
+                    const { provider: parsingProvider, model: parsingModel } =
+                        getProviderForPurpose(settings, "parsing");
                     combinedTokenUsage = {
                         ...tokenUsage,
                         parsingModel: parsingModel,

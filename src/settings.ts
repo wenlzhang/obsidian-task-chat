@@ -93,14 +93,19 @@ export function getProviderForPurpose(
         purpose === "parsing"
             ? settings.parsingProvider
             : settings.analysisProvider;
-    const purposeModel =
-        purpose === "parsing" ? settings.parsingModel : settings.analysisModel;
     const temperature =
         purpose === "parsing"
             ? settings.parsingTemperature
             : settings.analysisTemperature;
 
-    // Resolve empty model to provider's configured model
+    // Get model from per-provider storage
+    const purposeModels =
+        purpose === "parsing"
+            ? settings.parsingModels
+            : settings.analysisModels;
+    const purposeModel = purposeModels?.[provider];
+
+    // Use per-provider model if set, otherwise fall back to provider's default model
     const model =
         purposeModel && purposeModel.trim() !== ""
             ? purposeModel
@@ -138,11 +143,24 @@ export interface PluginSettings {
     // Use different models for query parsing vs task analysis
     // Benefits: Cost optimization, performance tuning
     parsingProvider: "openai" | "anthropic" | "openrouter" | "ollama";
-    parsingModel: string; // Empty = use provider's configured model
     parsingTemperature: number; // Temperature for query parsing
     analysisProvider: "openai" | "anthropic" | "openrouter" | "ollama";
-    analysisModel: string; // Empty = use provider's configured model
     analysisTemperature: number; // Temperature for task analysis
+
+    // Per-provider model selections (stores user's last selected model for each provider)
+    // When empty string, falls back to providerConfigs[provider].model
+    parsingModels: {
+        openai: string;
+        anthropic: string;
+        openrouter: string;
+        ollama: string;
+    };
+    analysisModels: {
+        openai: string;
+        anthropic: string;
+        openrouter: string;
+        ollama: string;
+    };
 
     // Cached pricing data (fetched from APIs)
     pricingCache: {
@@ -325,11 +343,23 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Model Purpose Configuration
     parsingProvider: "openai",
-    parsingModel: "gpt-4o-mini",
     parsingTemperature: 0.1,
     analysisProvider: "openai",
-    analysisModel: "gpt-4o-mini",
     analysisTemperature: 0.1,
+
+    // Per-provider model selections (empty string = use provider's default model)
+    parsingModels: {
+        openai: "gpt-4o-mini",
+        anthropic: "claude-sonnet-4",
+        openrouter: "openai/gpt-4o-mini",
+        ollama: "qwen3:14b",
+    },
+    analysisModels: {
+        openai: "gpt-4o-mini",
+        anthropic: "claude-sonnet-4",
+        openrouter: "openai/gpt-4o-mini",
+        ollama: "qwen3:14b",
+    },
 
     pricingCache: {
         data: {},

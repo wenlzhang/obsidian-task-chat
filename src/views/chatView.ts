@@ -1176,7 +1176,7 @@ export class ChatView extends ItemView {
                     const displayProvider = message.tokenUsage.parsingProvider!;
                     const displayModel = message.tokenUsage.parsingModel!;
                     const providerName = formatProvider(displayProvider);
-                    
+
                     if (message.error && message.error.type === "api") {
                         // Parser failed, analysis not executed
                         parts.push(
@@ -1200,8 +1200,9 @@ export class ChatView extends ItemView {
                     const parsingProviderName = formatProvider(
                         message.tokenUsage.parsingProvider!,
                     );
-                    const analysisProviderName = formatProvider(analysisProvider);
-                    
+                    const analysisProviderName =
+                        formatProvider(analysisProvider);
+
                     if (parsingProviderName === analysisProviderName) {
                         // Same provider, show combined
                         parts.push(
