@@ -27,7 +27,9 @@ export class ExclusionsModal extends Modal {
         const descEl = contentEl.createEl("p", {
             cls: "task-chat-exclusions-description",
         });
-        descEl.createSpan({ text: "Exclude tasks from searches by tags, folders, or notes." });
+        descEl.createSpan({
+            text: "Exclude tasks from searches by tags, folders, or notes.",
+        });
         descEl.createEl("br");
         descEl.createEl("br");
         descEl.createEl("strong", { text: "Tags in notes" });
