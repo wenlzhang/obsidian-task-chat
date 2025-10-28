@@ -185,44 +185,17 @@ export class SettingsTab extends PluginSettingTab {
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
-        // Add provider-specific setup links
-        if (this.plugin.settings.aiProvider === "ollama") {
-            const ollamaInfo = containerEl.createDiv({
-                cls: "ollama-setup-info",
-            });
-            ollamaInfo.createEl("strong", { text: "Ollama Setup Required" });
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText(
-                "For installation, CORS configuration, model selection, and troubleshooting, see: ",
-            );
-            ollamaInfo.createEl("br");
-            const link = ollamaInfo.createEl("a", {
-                text: "📖 Complete Ollama Setup Guide",
-                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/OLLAMA_SETUP.md",
-            });
-            link.style.fontWeight = "bold";
-            link.style.fontSize = "1.1em";
-            ollamaInfo.createEl("br");
-            ollamaInfo.createEl("br");
-            ollamaInfo.appendText("Quick start: ");
-            ollamaInfo.createEl("code", { text: "ollama pull qwen2.5:14b" });
-            ollamaInfo.appendText(" (recommended model)");
-        }
+        // Model configuration subsection
+        new Setting(containerEl).setName("Model configuration").setHeading();
 
-        // Model Configuration - Subsection (not a separate main heading)
-        containerEl.createEl("br"); // Add spacing before subsection
-
-        const purposeSubsectionContainer = containerEl.createDiv({
+        const modelConfigDesc = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        purposeSubsectionContainer.createEl("strong", {
-            text: "Model configuration",
-        });
-        purposeSubsectionContainer.createEl("p", {
+        modelConfigDesc.createEl("p", {
             text: "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
         });
-        const purposeLink = purposeSubsectionContainer.createEl("p");
-        purposeLink.createEl("a", {
+        const modelConfigLink = modelConfigDesc.createEl("p");
+        modelConfigLink.createEl("a", {
             text: "→ Learn more about model configuration",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
         });
