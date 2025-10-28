@@ -7,8 +7,6 @@ import { Logger } from "../utils/logger";
  * - OpenAI / OpenRouter (OpenAI-compatible)
  * - Anthropic Claude
  * - Ollama
- *
- * Based on investigation of Obsidian Copilot's implementation
  */
 
 export interface StreamChunk {

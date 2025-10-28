@@ -254,6 +254,13 @@ export interface PluginSettings {
     qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
     minimumRelevanceScore: number; // Minimum relevance score required (0.0-2.0, shown as 0-200%). 0 = disabled (default). Max = relevanceCoreWeight + 1.0.
 
+    // Task Filtering Settings - Exclusions
+    exclusions: {
+        tags: string[]; // Tags to exclude (e.g., "#archive", "#template")
+        folders: string[]; // Folders to exclude (e.g., "Templates", "Archive")
+        notes: string[]; // Specific notes to exclude (e.g., "Daily Note Template.md")
+    };
+
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
     dueDateCoefficient: number; // Weight for due date urgency (default: 4)
@@ -491,6 +498,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxRecommendations: 20, // Keep final list manageable for user
     qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
     minimumRelevanceScore: 0.0, // Minimum relevance score (0.0-1.0). 0 = disabled (default), ensures keyword match quality.
+
+    // Task Filtering Settings - Exclusions
+    exclusions: {
+        tags: [], // No tags excluded by default
+        folders: [], // No folders excluded by default
+        notes: [], // No notes excluded by default
+    },
 
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)

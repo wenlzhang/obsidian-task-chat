@@ -203,6 +203,97 @@ export class DataviewService {
     }
 
     /**
+     * Check if a task should be excluded based on settings
+     * Checks tags, folders, and notes
+     * @param taskPath Full path to the task file
+     * @param tags Task tags (if available)
+     * @param exclusions Exclusion settings (tags, folders, notes)
+     * @returns true if task should be excluded, false otherwise
+     */
+    private static isTaskExcluded(
+        taskPath: string,
+        tags: string[] = [],
+        exclusions: { tags: string[]; folders: string[]; notes: string[] },
+    ): boolean {
+        if (!exclusions) {
+            return false;
+        }
+
+        // Check if note itself is excluded
+        if (exclusions.notes && exclusions.notes.length > 0) {
+            const normalizedPath = taskPath.toLowerCase();
+            if (
+                exclusions.notes.some(
+                    (note) => normalizedPath === note.toLowerCase(),
+                )
+            ) {
+                return true; // Task is in an excluded note
+            }
+        }
+
+        // Check if folder is excluded
+        if (exclusions.folders && exclusions.folders.length > 0) {
+            // Extract folder from path
+            const folder = taskPath.includes("/")
+                ? taskPath.substring(0, taskPath.lastIndexOf("/"))
+                : "";
+
+            // Check if task's folder matches any excluded folder (exact match or subfolder)
+            const isInExcludedFolder = exclusions.folders.some(
+                (excludedFolder) => {
+                    // Normalize paths: remove leading/trailing slashes
+                    const normalizedExcluded = excludedFolder
+                        .replace(/^\/+|\/+$/g, "")
+                        .toLowerCase();
+                    const normalizedTaskFolder = folder
+                        .replace(/^\/+|\/+$/g, "")
+                        .toLowerCase();
+
+                    // Exact match
+                    if (normalizedTaskFolder === normalizedExcluded) {
+                        return true;
+                    }
+
+                    // Subfolder match (task is in a subfolder of excluded folder)
+                    if (
+                        normalizedTaskFolder.startsWith(
+                            normalizedExcluded + "/",
+                        )
+                    ) {
+                        return true;
+                    }
+
+                    return false;
+                },
+            );
+
+            if (isInExcludedFolder) {
+                return true;
+            }
+        }
+
+        // Check if any tag is excluded
+        if (exclusions.tags && exclusions.tags.length > 0 && tags.length > 0) {
+            const normalizedExcludedTags = exclusions.tags.map((tag) =>
+                tag.toLowerCase().replace(/^#+/, ""),
+            );
+            const normalizedTaskTags = tags.map((tag) =>
+                tag.toLowerCase().replace(/^#+/, ""),
+            );
+
+            const hasExcludedTag = normalizedTaskTags.some((tag) =>
+                normalizedExcludedTags.includes(tag),
+            );
+
+            if (hasExcludedTag) {
+                return true; // Task has an excluded tag
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Process a single Dataview task
      */
     static processDataviewTask(
@@ -215,11 +306,17 @@ export class DataviewService {
             return null;
         }
 
+        // Check if task should be excluded (tags, folders, notes)
+        const path = filePath || dvTask.path || "";
+        const taskTags = dvTask.tags || [];
+        if (this.isTaskExcluded(path, taskTags, settings.exclusions)) {
+            return null; // Skip excluded tasks
+        }
+
         // Use 'visual' field if available (task text without children)
         // Fall back to 'text' if visual not available
         const text = dvTask.visual || dvTask.text || dvTask.content || "";
         const status = dvTask.status || dvTask.symbol || "";
-        const path = filePath || dvTask.path || "";
         const line = dvTask.line || 0;
         const statusCategory = this.mapStatusToCategory(status, settings);
 
@@ -875,8 +972,34 @@ export class DataviewService {
             return [];
         }
 
+        // Log exclusions if any
+        const totalExclusions =
+            (settings.exclusions?.tags?.length || 0) +
+            (settings.exclusions?.folders?.length || 0) +
+            (settings.exclusions?.notes?.length || 0);
+        if (totalExclusions > 0) {
+            const exclusionParts = [];
+            if (settings.exclusions.tags?.length > 0) {
+                exclusionParts.push(
+                    `${settings.exclusions.tags.length} tag(s)`,
+                );
+            }
+            if (settings.exclusions.folders?.length > 0) {
+                exclusionParts.push(
+                    `${settings.exclusions.folders.length} folder(s)`,
+                );
+            }
+            if (settings.exclusions.notes?.length > 0) {
+                exclusionParts.push(
+                    `${settings.exclusions.notes.length} note(s)`,
+                );
+            }
+            Logger.debug(`Excluding: ${exclusionParts.join(", ")}`);
+        }
+
         const tasks: Task[] = [];
         let foundTasks = false;
+        let excludedByFolderCount = 0; // Track tasks excluded by folder filter
 
         // Build task-level filter from property filters
         // CRITICAL: This filters TASKS, not PAGES, so child tasks are evaluated independently
@@ -1001,6 +1124,19 @@ export class DataviewService {
             Logger.debug(
                 `Task-level filtering complete: ${tasks.length} tasks matched`,
             );
+        }
+
+        // Log summary including exclusions
+        const totalExclusionsForLog =
+            (settings.exclusions?.tags?.length || 0) +
+            (settings.exclusions?.folders?.length || 0) +
+            (settings.exclusions?.notes?.length || 0);
+        if (totalExclusionsForLog > 0) {
+            Logger.debug(
+                `Total tasks after exclusions: ${tasks.length} tasks (${totalExclusionsForLog} exclusion(s) active)`,
+            );
+        } else {
+            Logger.debug(`Total tasks found: ${tasks.length}`);
         }
 
         return tasks;

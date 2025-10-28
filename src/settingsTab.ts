@@ -15,6 +15,7 @@ import {
     generateModelValidationWarning,
     generateModelListNotLoadedInfo,
 } from "./services/warningService";
+import { ExclusionsModal } from "./views/exclusionsModal";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -1194,6 +1195,21 @@ export class SettingsTab extends PluginSettingTab {
                         text.inputEl.cols = 50;
                     }),
             );
+
+        // Exclusions (Tags, Folders, Notes)
+        new Setting(containerEl)
+            .setName("Manage exclusions")
+            .setDesc(
+                "Exclude tags, folders, or notes from task searches. Tasks in excluded items will not appear in results. After changing, send a new query to see updated counts.",
+            )
+            .addButton((button) => {
+                button
+                    .setButtonText("Manage...")
+                    .setCta()
+                    .onClick(() => {
+                        new ExclusionsModal(this.app, this.plugin).open();
+                    });
+            });
 
         // Task scoring
         new Setting(containerEl).setName("Task scoring").setHeading();

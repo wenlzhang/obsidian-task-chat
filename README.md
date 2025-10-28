@@ -441,6 +441,7 @@ See [LICENSE](LICENSE) for details.
 - Compatible with [Dataview](https://github.com/blacksmithgu/obsidian-dataview)
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
+- Exclusions UI pattern inspired by [Obsidian Copilot](https://github.com/logancyang/obsidian-copilot) by Logan Yang
 
 ## 📚 Additional Resources
 
