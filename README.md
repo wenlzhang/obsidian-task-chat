@@ -7,6 +7,7 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 - **🤖 Three Chat Modes** - Free simple search, smart semantic matching, or full AI analysis
 - **🌐 Multilingual Support** - Search in English, 中文, and other languages
 - **🎯 Smart Filtering** - Priority, due date, status, tags, folders
+- **🚫 Task Exclusions** - Exclude tasks by tags, folders, or notes
 - **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
 - **💬 Natural Language** - Ask questions in plain language
 - **🔄 Dataview Integration** - Works seamlessly with Dataview syntax
@@ -251,6 +252,13 @@ Privacy-First:
 - Default: 5 messages, increase for longer conversations
 - Warnings and task references automatically cleaned
 
+**Seeing unwanted tasks?**
+- Use exclusions to hide tasks by tags, folders, or notes (Settings → Task Filtering → Manage exclusions)
+- Exclude archived content with tags like `#archive` or `#completed`
+- Hide template folders or specific template files
+- Click "Refresh" in chat after adding exclusions
+
+→ [Task exclusions guide](docs/EXCLUSIONS.md)  
 → [Chat history context guide](docs/CHAT_HISTORY_CONTEXT.md)  
 → [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
 
@@ -278,6 +286,11 @@ Privacy-First:
 
 ### Advanced Features
 
+- **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
+  - Exclude by tags (task-level or note-level)
+  - Exclude by folders (including subfolders)
+  - Exclude by specific notes
+  - Fuzzy search for easy selection
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
   - Main coefficients (Relevance, Due Date, Priority, Status)
   - Sub-coefficients for fine-tuning

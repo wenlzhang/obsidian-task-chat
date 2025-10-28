@@ -203,95 +203,9 @@ export class DataviewService {
     }
 
     /**
-     * Check if a task should be excluded based on settings
-     * Checks tags, folders, and notes
-     * @param taskPath Full path to the task file
-     * @param tags Task tags (if available)
-     * @param exclusions Exclusion settings (tags, folders, notes)
-     * @returns true if task should be excluded, false otherwise
+     * Exclusions are now handled directly by DataView query filtering.
+     * This method has been removed - see WHERE clause in parseTasksFromDataview()
      */
-    private static isTaskExcluded(
-        taskPath: string,
-        tags: string[] = [],
-        exclusions: { tags: string[]; folders: string[]; notes: string[] },
-    ): boolean {
-        if (!exclusions) {
-            return false;
-        }
-
-        // Check if note itself is excluded
-        if (exclusions.notes && exclusions.notes.length > 0) {
-            const normalizedPath = taskPath.toLowerCase();
-            if (
-                exclusions.notes.some(
-                    (note) => normalizedPath === note.toLowerCase(),
-                )
-            ) {
-                return true; // Task is in an excluded note
-            }
-        }
-
-        // Check if folder is excluded
-        if (exclusions.folders && exclusions.folders.length > 0) {
-            // Extract folder from path
-            const folder = taskPath.includes("/")
-                ? taskPath.substring(0, taskPath.lastIndexOf("/"))
-                : "";
-
-            // Check if task's folder matches any excluded folder (exact match or subfolder)
-            const isInExcludedFolder = exclusions.folders.some(
-                (excludedFolder) => {
-                    // Normalize paths: remove leading/trailing slashes
-                    const normalizedExcluded = excludedFolder
-                        .replace(/^\/+|\/+$/g, "")
-                        .toLowerCase();
-                    const normalizedTaskFolder = folder
-                        .replace(/^\/+|\/+$/g, "")
-                        .toLowerCase();
-
-                    // Exact match
-                    if (normalizedTaskFolder === normalizedExcluded) {
-                        return true;
-                    }
-
-                    // Subfolder match (task is in a subfolder of excluded folder)
-                    if (
-                        normalizedTaskFolder.startsWith(
-                            normalizedExcluded + "/",
-                        )
-                    ) {
-                        return true;
-                    }
-
-                    return false;
-                },
-            );
-
-            if (isInExcludedFolder) {
-                return true;
-            }
-        }
-
-        // Check if any tag is excluded
-        if (exclusions.tags && exclusions.tags.length > 0 && tags.length > 0) {
-            const normalizedExcludedTags = exclusions.tags.map((tag) =>
-                tag.toLowerCase().replace(/^#+/, ""),
-            );
-            const normalizedTaskTags = tags.map((tag) =>
-                tag.toLowerCase().replace(/^#+/, ""),
-            );
-
-            const hasExcludedTag = normalizedTaskTags.some((tag) =>
-                normalizedExcludedTags.includes(tag),
-            );
-
-            if (hasExcludedTag) {
-                return true; // Task has an excluded tag
-            }
-        }
-
-        return false;
-    }
 
     /**
      * Process a single Dataview task
@@ -306,12 +220,11 @@ export class DataviewService {
             return null;
         }
 
-        // Check if task should be excluded (tags, folders, notes)
+        // Exclusions are handled by DataView query filtering (WHERE clause)
+        // No need for post-processing exclusion checks
+
+        // Extract path
         const path = filePath || dvTask.path || "";
-        const taskTags = dvTask.tags || [];
-        if (this.isTaskExcluded(path, taskTags, settings.exclusions)) {
-            return null; // Skip excluded tasks
-        }
 
         // Use 'visual' field if available (task text without children)
         // Fall back to 'text' if visual not available
@@ -412,7 +325,7 @@ export class DataviewService {
     }
 
     /**
-     * Process task recursively including ALL children
+     * Process task recursively, including all children
      *
      * CRITICAL BEHAVIOR:
      * - Processes ALL child tasks regardless of parent match
@@ -994,12 +907,13 @@ export class DataviewService {
                     `${settings.exclusions.notes.length} note(s)`,
                 );
             }
-            Logger.debug(`Excluding: ${exclusionParts.join(", ")}`);
+            Logger.debug(
+                `DataView JavaScript API exclusions (using .where() method): ${exclusionParts.join(", ")}`,
+            );
         }
 
         const tasks: Task[] = [];
         let foundTasks = false;
-        let excludedByFolderCount = 0; // Track tasks excluded by folder filter
 
         // Build task-level filter from property filters
         // CRITICAL: This filters TASKS, not PAGES, so child tasks are evaluated independently
@@ -1021,28 +935,95 @@ export class DataviewService {
             );
         }
 
-        // Fetch ALL pages and use Dataview's expand() to flatten ALL tasks
-        // CRITICAL: expand("children") recursively flattens the entire task hierarchy
-        // This automatically handles:
-        // - Parent tasks, child tasks, grandchildren, etc. at any depth
-        // - List items with task children
-        // - Mixed hierarchies (list → task → list → task)
+        // Fetch ALL pages using DataView JavaScript API
+        // Then filter using .where() method (JavaScript API, not DQL WHERE clause)
         if (
             !foundTasks &&
             dataviewApi.pages &&
             typeof dataviewApi.pages === "function"
         ) {
             try {
-                const pages = dataviewApi.pages();
+                // Get ALL pages first (no source filter)
+                let pages = dataviewApi.pages("");
+
+                // Apply exclusion filters using JavaScript API (.where method)
+                if (settings.exclusions) {
+                    // Exclude specific notes
+                    if (
+                        settings.exclusions.notes &&
+                        settings.exclusions.notes.length > 0
+                    ) {
+                        pages = pages.where((page: any) => {
+                            return !settings.exclusions.notes.includes(
+                                page.file.path,
+                            );
+                        });
+                    }
+
+                    // Exclude folders (and subfolders)
+                    if (
+                        settings.exclusions.folders &&
+                        settings.exclusions.folders.length > 0
+                    ) {
+                        pages = pages.where((page: any) => {
+                            const pagePath = page.file.path || "";
+                            return !settings.exclusions.folders.some(
+                                (folder: string) => {
+                                    const normalizedFolder = folder.replace(
+                                        /^\/+|\/+$/g,
+                                        "",
+                                    );
+                                    if (
+                                        !normalizedFolder ||
+                                        normalizedFolder === "/"
+                                    )
+                                        return false;
+                                    // Check if page is in this folder or subfolder
+                                    return pagePath.startsWith(
+                                        normalizedFolder + "/",
+                                    );
+                                },
+                            );
+                        });
+                    }
+
+                    // Exclude tags (note-level - file.tags includes both frontmatter and inline)
+                    if (
+                        settings.exclusions.tags &&
+                        settings.exclusions.tags.length > 0
+                    ) {
+                        pages = pages.where((page: any) => {
+                            // Get all tags from the page
+                            const pageTags = page.file.tags || [];
+
+                            // Check if page has any excluded tag (case-insensitive)
+                            return !settings.exclusions.tags.some(
+                                (excludedTag: string) => {
+                                    // Normalize for comparison (remove # prefix)
+                                    const normalizedExcluded =
+                                        excludedTag.replace(/^#+/, "");
+
+                                    return pageTags.some((pageTag: string) => {
+                                        const normalizedPageTag =
+                                            pageTag.replace(/^#+/, "");
+                                        // Case-insensitive comparison
+                                        return (
+                                            normalizedPageTag.toLowerCase() ===
+                                            normalizedExcluded.toLowerCase()
+                                        );
+                                    });
+                                },
+                            );
+                        });
+                    }
+                }
 
                 if (pages && pages.length > 0) {
                     // Get ALL tasks from ALL pages using Dataview's API
-                    // file.tasks returns task objects (may be hierarchical)
                     const allPageTasks = pages.file.tasks;
 
                     if (allPageTasks && allPageTasks.length > 0) {
                         // Use Dataview's expand() to flatten ALL subtasks recursively
-                        // This handles unlimited nesting depth automatically
                         const flattenedTasks = allPageTasks.expand
                             ? allPageTasks.expand("children")
                             : allPageTasks;
@@ -1077,7 +1058,7 @@ export class DataviewService {
                 // Fallback to recursive processing if expand() fails
                 Logger.debug("Falling back to recursive processing");
                 try {
-                    const pages = dataviewApi.pages();
+                    const pages = dataviewApi.pages("");
                     let taskIndex = 0;
 
                     if (pages && pages.length > 0) {
@@ -1133,10 +1114,10 @@ export class DataviewService {
             (settings.exclusions?.notes?.length || 0);
         if (totalExclusionsForLog > 0) {
             Logger.debug(
-                `Total tasks after exclusions: ${tasks.length} tasks (${totalExclusionsForLog} exclusion(s) active)`,
+                `Total tasks from DataView (filtered with .where(), ${totalExclusionsForLog} exclusion(s)): ${tasks.length} tasks`,
             );
         } else {
-            Logger.debug(`Total tasks found: ${tasks.length}`);
+            Logger.debug(`Total tasks from DataView: ${tasks.length}`);
         }
 
         return tasks;

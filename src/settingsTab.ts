@@ -1197,10 +1197,31 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Exclusions (Tags, Folders, Notes)
+        const exclusionsInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        exclusionsInfo.createEl("p", {
+            text: "Exclude tasks from searches by tags, folders, or notes. Exclusions are applied when tasks are loaded from your vault.",
+        });
+        exclusionsInfo.createEl("p", {
+            text: "• Tags: Exclude tasks with specific tags (task-level or note-level)",
+        });
+        exclusionsInfo.createEl("p", {
+            text: "• Folders: Exclude all tasks in specific folders (including subfolders)",
+        });
+        exclusionsInfo.createEl("p", {
+            text: "• Notes: Exclude all tasks in specific notes",
+        });
+        const exclusionsLink = exclusionsInfo.createEl("p");
+        exclusionsLink.createEl("a", {
+            text: "→ Learn more about task exclusions",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
+        });
+
         new Setting(containerEl)
             .setName("Manage exclusions")
             .setDesc(
-                "Exclude tags, folders, or notes from task searches. Tasks in excluded items will not appear in results. After changing, send a new query to see updated counts.",
+                "Click to open the exclusions manager. After adding exclusions, click 'Refresh' in the chat to update task counts.",
             )
             .addButton((button) => {
                 button
