@@ -256,7 +256,8 @@ export interface PluginSettings {
 
     // Task Filtering Settings - Exclusions
     exclusions: {
-        tags: string[]; // Tags to exclude (e.g., "#archive", "#template")
+        noteTags: string[]; // Note-level tags: exclude ALL tasks in notes with these tags (e.g., "#archive", "#template")
+        taskTags: string[]; // Task-level tags: exclude ONLY specific tasks with these tags (e.g., "#skip", "#ignore")
         folders: string[]; // Folders to exclude (e.g., "Templates", "Archive")
         notes: string[]; // Specific notes to exclude (e.g., "Daily Note Template.md")
     };
@@ -501,7 +502,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Task Filtering Settings - Exclusions
     exclusions: {
-        tags: [], // No tags excluded by default
+        noteTags: [], // No note-level tags excluded by default
+        taskTags: [], // No task-level tags excluded by default
         folders: [], // No folders excluded by default
         notes: [], // No notes excluded by default
     },

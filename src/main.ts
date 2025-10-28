@@ -153,6 +153,30 @@ export default class TaskChatPlugin extends Plugin {
             }
         }
 
+        // Ensure exclusions structure exists with all required fields
+        if (!this.settings.exclusions) {
+            this.settings.exclusions = {
+                noteTags: [],
+                taskTags: [],
+                folders: [],
+                notes: [],
+            };
+        } else {
+            // Ensure new fields exist (for existing settings)
+            if (!this.settings.exclusions.noteTags) {
+                this.settings.exclusions.noteTags = [];
+            }
+            if (!this.settings.exclusions.taskTags) {
+                this.settings.exclusions.taskTags = [];
+            }
+            if (!this.settings.exclusions.folders) {
+                this.settings.exclusions.folders = [];
+            }
+            if (!this.settings.exclusions.notes) {
+                this.settings.exclusions.notes = [];
+            }
+        }
+
         // Initialize user stop words (combines with internal stop words)
         StopWords.setUserStopWords(this.settings.userStopWords || []);
 

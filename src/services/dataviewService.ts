@@ -203,9 +203,41 @@ export class DataviewService {
     }
 
     /**
-     * Exclusions are now handled directly by DataView query filtering.
-     * This method has been removed - see WHERE clause in parseTasksFromDataview()
+     * Check if a task should be excluded based on task-level tags
+     * This checks tags that are ON the task line itself (e.g., "- [ ] Task #skip")
+     * @param dvTask DataView task object
+     * @param excludedTags Array of tags to exclude
+     * @returns true if task should be excluded, false otherwise
      */
+    private static isTaskExcludedByTag(
+        dvTask: any,
+        excludedTags: string[],
+    ): boolean {
+        if (!excludedTags || excludedTags.length === 0) {
+            return false;
+        }
+
+        // Get task-level tags from DataView task object
+        const taskTags = dvTask.tags || [];
+
+        if (taskTags.length === 0) {
+            return false;
+        }
+
+        // Check if task has any excluded tag (case-insensitive comparison)
+        return excludedTags.some((excludedTag: string) => {
+            const normalizedExcluded = excludedTag.replace(/^#+/, "");
+
+            return taskTags.some((taskTag: string) => {
+                const normalizedTaskTag = taskTag.replace(/^#+/, "");
+                // Case-insensitive comparison
+                return (
+                    normalizedTaskTag.toLowerCase() ===
+                    normalizedExcluded.toLowerCase()
+                );
+            });
+        });
+    }
 
     /**
      * Process a single Dataview task
@@ -881,20 +913,26 @@ export class DataviewService {
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
-            Logger.error("Dataview API not available");
             return [];
         }
 
-        // Log exclusions if any
-        const totalExclusions =
-            (settings.exclusions?.tags?.length || 0) +
-            (settings.exclusions?.folders?.length || 0) +
-            (settings.exclusions?.notes?.length || 0);
-        if (totalExclusions > 0) {
-            const exclusionParts = [];
-            if (settings.exclusions.tags?.length > 0) {
+        // Log exclusion information
+        if (
+            settings.exclusions &&
+            (settings.exclusions.noteTags?.length > 0 ||
+                settings.exclusions.taskTags?.length > 0 ||
+                settings.exclusions.folders?.length > 0 ||
+                settings.exclusions.notes?.length > 0)
+        ) {
+            const exclusionParts: string[] = [];
+            if (settings.exclusions.noteTags?.length > 0) {
                 exclusionParts.push(
-                    `${settings.exclusions.tags.length} tag(s)`,
+                    `${settings.exclusions.noteTags.length} note tag(s)`,
+                );
+            }
+            if (settings.exclusions.taskTags?.length > 0) {
+                exclusionParts.push(
+                    `${settings.exclusions.taskTags.length} task tag(s)`,
                 );
             }
             if (settings.exclusions.folders?.length > 0) {
@@ -987,17 +1025,18 @@ export class DataviewService {
                         });
                     }
 
-                    // Exclude tags (note-level - file.tags includes both frontmatter and inline)
+                    // Exclude note-level tags (file.tags includes both frontmatter and inline)
+                    // This excludes ALL tasks in notes that have these tags
                     if (
-                        settings.exclusions.tags &&
-                        settings.exclusions.tags.length > 0
+                        settings.exclusions.noteTags &&
+                        settings.exclusions.noteTags.length > 0
                     ) {
                         pages = pages.where((page: any) => {
                             // Get all tags from the page
                             const pageTags = page.file.tags || [];
 
-                            // Check if page has any excluded tag (case-insensitive)
-                            return !settings.exclusions.tags.some(
+                            // Check if page has any excluded note tag (case-insensitive)
+                            return !settings.exclusions.noteTags.some(
                                 (excludedTag: string) => {
                                     // Normalize for comparison (remove # prefix)
                                     const normalizedExcluded =
@@ -1020,7 +1059,13 @@ export class DataviewService {
 
                 if (pages && pages.length > 0) {
                     // Get ALL tasks from ALL pages using Dataview's API
-                    const allPageTasks = pages.file.tasks;
+                    // Use flatMap to collect tasks from all pages
+                    const allPageTasks = pages.flatMap((page: any) => {
+                        if (page.file.tasks && Array.isArray(page.file.tasks)) {
+                            return page.file.tasks;
+                        }
+                        return [];
+                    });
 
                     if (allPageTasks && allPageTasks.length > 0) {
                         // Use Dataview's expand() to flatten ALL subtasks recursively
@@ -1043,7 +1088,15 @@ export class DataviewService {
                             if (task) {
                                 const shouldInclude =
                                     !taskFilter || taskFilter(dvTask);
-                                if (shouldInclude) {
+
+                                // Also check task-level tag exclusions
+                                const isTaskTagExcluded =
+                                    this.isTaskExcludedByTag(
+                                        dvTask,
+                                        settings.exclusions.taskTags || [],
+                                    );
+
+                                if (shouldInclude && !isTaskTagExcluded) {
                                     tasks.push(task);
                                 }
                             }
@@ -1109,7 +1162,8 @@ export class DataviewService {
 
         // Log summary including exclusions
         const totalExclusionsForLog =
-            (settings.exclusions?.tags?.length || 0) +
+            (settings.exclusions?.noteTags?.length || 0) +
+            (settings.exclusions?.taskTags?.length || 0) +
             (settings.exclusions?.folders?.length || 0) +
             (settings.exclusions?.notes?.length || 0);
         if (totalExclusionsForLog > 0) {

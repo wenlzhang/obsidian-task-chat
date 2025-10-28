@@ -1,4 +1,4 @@
-import { App, Modal, Menu, Notice } from "obsidian";
+import { App, Modal, Menu } from "obsidian";
 import TaskChatPlugin from "../main";
 import {
     FolderSuggestModal,
@@ -24,9 +24,20 @@ export class ExclusionsModal extends Modal {
 
         // Header
         contentEl.createEl("h2", { text: "Manage exclusions" });
-        contentEl.createEl("p", {
-            text: "Exclude tags, folders, or notes from task searches. Tasks in excluded items will not appear in results.",
+        const descEl = contentEl.createEl("p", {
             cls: "task-chat-exclusions-description",
+        });
+        descEl.createSpan({ text: "Exclude items from task searches." });
+        descEl.createEl("br");
+        descEl.createEl("br");
+        descEl.createEl("strong", { text: "Tags in notes" });
+        descEl.createSpan({
+            text: ": Excludes ALL tasks in notes with these tags",
+        });
+        descEl.createEl("br");
+        descEl.createEl("strong", { text: "Tags in tasks" });
+        descEl.createSpan({
+            text: ": Excludes ONLY specific tasks with these tags",
         });
 
         // Exclusions list container
@@ -55,7 +66,8 @@ export class ExclusionsModal extends Modal {
         container.empty();
 
         const hasAnyExclusions =
-            (this.plugin.settings.exclusions.tags?.length || 0) +
+            (this.plugin.settings.exclusions.noteTags?.length || 0) +
+                (this.plugin.settings.exclusions.taskTags?.length || 0) +
                 (this.plugin.settings.exclusions.folders?.length || 0) +
                 (this.plugin.settings.exclusions.notes?.length || 0) >
             0;
@@ -68,12 +80,20 @@ export class ExclusionsModal extends Modal {
             return;
         }
 
-        // Render Tags section
+        // Render Note Tags section
         this.renderExclusionSection(
             container,
-            "Tags",
-            this.plugin.settings.exclusions.tags || [],
-            "Tag",
+            "Tags in notes",
+            this.plugin.settings.exclusions.noteTags || [],
+            "NoteTag",
+        );
+
+        // Render Task Tags section
+        this.renderExclusionSection(
+            container,
+            "Tags in tasks",
+            this.plugin.settings.exclusions.taskTags || [],
+            "TaskTag",
         );
 
         // Render Folders section
@@ -137,17 +157,22 @@ export class ExclusionsModal extends Modal {
             removeBtn.addEventListener("click", async () => {
                 await this.removeExclusion(type, value);
                 this.renderExclusionsList(container);
-                new Notice(`Removed ${type}: ${value}`);
             });
         });
     }
 
     private async removeExclusion(type: string, value: string) {
         switch (type) {
-            case "Tag":
-                this.plugin.settings.exclusions.tags =
-                    this.plugin.settings.exclusions.tags.filter(
-                        (t) => t !== value,
+            case "NoteTag":
+                this.plugin.settings.exclusions.noteTags =
+                    this.plugin.settings.exclusions.noteTags.filter(
+                        (t: string) => t !== value,
+                    );
+                break;
+            case "TaskTag":
+                this.plugin.settings.exclusions.taskTags =
+                    this.plugin.settings.exclusions.taskTags.filter(
+                        (t: string) => t !== value,
                     );
                 break;
             case "Folder":
@@ -170,10 +195,18 @@ export class ExclusionsModal extends Modal {
         const menu = new Menu();
 
         menu.addItem((item) => {
-            item.setTitle("🏷️ Tag")
+            item.setTitle("🏷️ Tag in notes (exclude all tasks in note)")
                 .setIcon("tag")
                 .onClick(() => {
-                    this.showTagSuggest(listContainer);
+                    this.showNoteTagSuggest(listContainer);
+                });
+        });
+
+        menu.addItem((item) => {
+            item.setTitle("🏷️ Tag in tasks (exclude specific tasks)")
+                .setIcon("tag")
+                .onClick(() => {
+                    this.showTaskTagSuggest(listContainer);
                 });
         });
 
@@ -196,15 +229,32 @@ export class ExclusionsModal extends Modal {
         menu.showAtMouseEvent(e);
     }
 
-    private showTagSuggest(listContainer: HTMLElement) {
+    private showNoteTagSuggest(listContainer: HTMLElement) {
         const modal = new TagSuggestModal(this.app, async (tag) => {
-            if (!this.plugin.settings.exclusions.tags.includes(tag)) {
-                this.plugin.settings.exclusions.tags.push(tag);
+            // Ensure noteTags array exists
+            if (!this.plugin.settings.exclusions.noteTags) {
+                this.plugin.settings.exclusions.noteTags = [];
+            }
+            if (!this.plugin.settings.exclusions.noteTags.includes(tag)) {
+                this.plugin.settings.exclusions.noteTags.push(tag);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
-                new Notice(`Excluded tag: ${tag}`);
-            } else {
-                new Notice(`Tag ${tag} is already excluded`);
+            }
+        });
+
+        modal.open();
+    }
+
+    private showTaskTagSuggest(listContainer: HTMLElement) {
+        const modal = new TagSuggestModal(this.app, async (tag) => {
+            // Ensure taskTags array exists
+            if (!this.plugin.settings.exclusions.taskTags) {
+                this.plugin.settings.exclusions.taskTags = [];
+            }
+            if (!this.plugin.settings.exclusions.taskTags.includes(tag)) {
+                this.plugin.settings.exclusions.taskTags.push(tag);
+                await this.plugin.saveSettings();
+                this.renderExclusionsList(listContainer);
             }
         });
 
@@ -213,15 +263,14 @@ export class ExclusionsModal extends Modal {
 
     private showFolderSuggest(listContainer: HTMLElement) {
         const modal = new FolderSuggestModal(this.app, async (folder) => {
+            // Ensure folders array exists
+            if (!this.plugin.settings.exclusions.folders) {
+                this.plugin.settings.exclusions.folders = [];
+            }
             if (!this.plugin.settings.exclusions.folders.includes(folder)) {
                 this.plugin.settings.exclusions.folders.push(folder);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
-                new Notice(
-                    `Excluded folder: ${folder === "/" ? "(root)" : folder}`,
-                );
-            } else {
-                new Notice(`Folder ${folder} is already excluded`);
             }
         });
 
@@ -231,13 +280,14 @@ export class ExclusionsModal extends Modal {
     private showNoteSuggest(listContainer: HTMLElement) {
         const modal = new NoteSuggestModal(this.app, async (file) => {
             const notePath = file.path;
+            // Ensure notes array exists
+            if (!this.plugin.settings.exclusions.notes) {
+                this.plugin.settings.exclusions.notes = [];
+            }
             if (!this.plugin.settings.exclusions.notes.includes(notePath)) {
                 this.plugin.settings.exclusions.notes.push(notePath);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
-                new Notice(`Excluded note: ${notePath}`);
-            } else {
-                new Notice(`Note ${notePath} is already excluded`);
             }
         });
 
