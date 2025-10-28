@@ -451,20 +451,20 @@ See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - Built for [Obsidian](https://obsidian.md/)
-- Compatible with [Dataview](https://github.com/blacksmithgu/obsidian-dataview)
+- Powered by [Dataview](https://github.com/blacksmithgu/obsidian-dataview) for vault-wide task indexing
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
 - Exclusions UI pattern inspired by [Obsidian Copilot](https://github.com/logancyang/obsidian-copilot) by Logan Yang
 
 ## 📚 Additional Resources
 
-- **[Complete Settings Guide](docs/SETTINGS_GUIDE.md)** - Every setting explained
 - **[Chat Modes](docs/CHAT_MODES.md)** - Detailed mode comparison
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual search
 - **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria ordering
+- **[Complete Settings Guide](docs/SETTINGS_GUIDE.md)** - Every setting explained
 
 ## 🆘 Support
 
