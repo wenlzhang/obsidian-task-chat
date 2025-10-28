@@ -11,6 +11,7 @@ import { AIError } from "../utils/errorHandler";
 import { cleanWarningsFromContent } from "../services/warningService";
 import { ErrorMessageService } from "../services/errorMessageService";
 import { MetadataService } from "../services/metadataService";
+import { DataViewWarningService } from "../services/dataviewWarningService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -93,11 +94,12 @@ export class ChatView extends ItemView {
         });
         this.updateFilterStatus();
 
-        // DataView warning element (created but hidden by default)
-        this.dataviewWarningEl = this.contentEl.createDiv(
-            "task-chat-dataview-warning",
-        );
-        this.dataviewWarningEl.hide();
+        // DataView warning element (initially null, created when needed)
+        // WARNING: Never hide this - it provides critical information about why searches return 0 results
+        this.dataviewWarningEl = null;
+
+        // Check and render DataView status immediately
+        this.renderDataviewWarning();
 
         // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
@@ -354,17 +356,29 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Render Dataview status banner with helpful information
-     * Shows different messages based on Dataview state:
+     * Render DataView status banner with helpful information
+     * Uses centralized DataViewWarningService for consistent messaging
+     *
+     * CRITICAL: This warning should ALWAYS be shown when there are issues.
+     * Never hide it - users need to know why they're getting 0 results.
+     *
+     * Shows different messages based on DataView state:
      * - Not installed/enabled: Installation instructions
-     * - Enabled but 0 tasks: Indexing status and troubleshooting tips
+     * - Enabled but indexing: Wait for indexing to complete
+     * - Enabled but 0 tasks: Troubleshooting tips
      */
     private renderDataviewWarning(): void {
-        const isDataviewEnabled = DataviewService.isDataviewEnabled(this.app);
         const taskCount = this.currentTasks.length;
 
-        // Case 1: Dataview is enabled and has tasks - no warning needed
-        if (isDataviewEnabled && taskCount > 0) {
+        // Check DataView status using centralized service
+        const warning = DataViewWarningService.checkDataViewStatus(
+            this.app,
+            taskCount,
+            false, // Not during search query
+        );
+
+        // Remove existing warning if everything is ready
+        if (!warning) {
             if (this.dataviewWarningEl) {
                 this.dataviewWarningEl.remove();
                 this.dataviewWarningEl = null;
@@ -372,73 +386,29 @@ export class ChatView extends ItemView {
             return;
         }
 
-        // Create or update warning banner
+        // Create warning banner if it doesn't exist
         if (!this.dataviewWarningEl) {
+            // Insert at the top of content, after header and status bar
+            const headerEl = this.contentEl.querySelector(".task-chat-header");
+            const statusEl = this.contentEl.querySelector(".task-chat-status");
+
             this.dataviewWarningEl = this.contentEl.createDiv(
                 "task-chat-dataview-warning",
             );
-        } else {
-            this.dataviewWarningEl.empty();
+
+            // Move warning to top (after header and status)
+            if (statusEl && statusEl.nextSibling) {
+                this.contentEl.insertBefore(
+                    this.dataviewWarningEl,
+                    statusEl.nextSibling,
+                );
+            }
         }
 
-        // Case 2: Dataview is not enabled
-        if (!isDataviewEnabled) {
-            const warningIcon = this.dataviewWarningEl.createSpan({
-                cls: "task-chat-warning-icon",
-                text: "⚠️ ",
-            });
+        // Render warning using centralized service
+        DataViewWarningService.renderWarning(this.dataviewWarningEl, warning);
 
-            const warningText = this.dataviewWarningEl.createSpan({
-                cls: "task-chat-warning-text",
-            });
-
-            warningText.createEl("strong", {
-                text: "Dataview plugin required: ",
-            });
-
-            warningText.appendText(
-                "This plugin requires the Dataview plugin to function. Please install and enable it from the Community Plugins settings, then click Refresh tasks.",
-            );
-            return;
-        }
-
-        // Case 3: Dataview is enabled but 0 tasks found
-        // This could mean indexing is in progress or delay is too long
-        const infoIcon = this.dataviewWarningEl.createSpan({
-            cls: "task-chat-info-icon",
-            text: "ℹ️ ",
-        });
-
-        const infoText = this.dataviewWarningEl.createSpan({
-            cls: "task-chat-info-text",
-        });
-
-        infoText.createEl("strong", {
-            text: "Dataview is enabled but no tasks found: ",
-        });
-
-        infoText.appendText(
-            "If you have tasks in your vault, this usually means Dataview is still indexing your files or the index delay is too long. ",
-        );
-
-        infoText.createEl("br");
-        infoText.createEl("br");
-
-        infoText.appendText("📋 Troubleshooting steps:");
-        infoText.createEl("br");
-        infoText.appendText(
-            "1️⃣ Wait 10-30 seconds for Dataview to finish indexing",
-        );
-        infoText.createEl("br");
-        infoText.appendText(
-            "2️⃣ Check Dataview settings → Reduce 'Index delay' (default: 2000ms, try: 500ms)",
-        );
-        infoText.createEl("br");
-        infoText.appendText("3️⃣ Click the Refresh tasks button above");
-        infoText.createEl("br");
-        infoText.appendText(
-            "4️⃣ Verify tasks exist in your vault with proper syntax (e.g., - [ ] Task)",
-        );
+        Logger.debug(`[DataView Warning] ${warning.type}: ${warning.message}`);
     }
 
     /**
@@ -1274,67 +1244,120 @@ export class ChatView extends ItemView {
                 // Build informative message, especially for 0 results
                 let content = `Found ${result.directResults.length} matching task(s):`;
 
-                // For 0 results, add helpful context about what was searched
-                if (result.directResults.length === 0 && result.parsedQuery) {
-                    const query = result.parsedQuery;
-                    const searchDetails: string[] = [];
-
-                    // Show what was searched for
-                    if (query.coreKeywords && query.coreKeywords.length > 0) {
-                        searchDetails.push(
-                            `Keywords: ${query.coreKeywords.join(", ")}`,
+                // For 0 results, check DataView status and add warning if needed
+                if (result.directResults.length === 0) {
+                    // IMPORTANT: Check if DataView might be the issue
+                    // We use currentTasks.length (total tasks from DataView) NOT directResults.length
+                    // If currentTasks.length > 0, DataView has tasks → 0 results is a SEARCH/FILTER issue, not DataView
+                    // If currentTasks.length === 0, DataView has no tasks → check if it's indexing or not enabled
+                    // This ensures DataView warnings ONLY show when it's truly a DataView issue
+                    const dataViewWarning =
+                        DataViewWarningService.checkDataViewStatus(
+                            this.app,
+                            this.currentTasks.length, // Total tasks from DataView
+                            true, // During search query
                         );
-                    }
-                    if (query.priority) {
-                        searchDetails.push(`Priority: ${query.priority}`);
-                    }
-                    if (query.dueDate) {
-                        searchDetails.push(`Due: ${query.dueDate}`);
-                    }
-                    if (query.status) {
-                        searchDetails.push(`Status: ${query.status}`);
-                    }
-                    if (query.tags && query.tags.length > 0) {
-                        searchDetails.push(`Tags: ${query.tags.join(", ")}`);
-                    }
-                    if (query.folder) {
-                        searchDetails.push(`Folder: ${query.folder}`);
-                    }
 
-                    if (searchDetails.length > 0) {
-                        content += `\n\n**Searched for:**\n${searchDetails.join(" | ")}`;
+                    // Only show warning if it's a critical DataView issue (not-enabled or indexing)
+                    // "no-tasks" warnings are filtered out by shouldShowInSearchResults()
+                    // This prevents showing DataView warnings for search/filter issues
+                    if (
+                        dataViewWarning &&
+                        DataViewWarningService.shouldShowInSearchResults(
+                            dataViewWarning,
+                        )
+                    ) {
+                        content = `⚠️ **${dataViewWarning.message}**\n\n${dataViewWarning.details || ""}\n\n`;
 
-                        // Add expansion info if available
                         if (
-                            query.expansionMetadata?.enabled &&
-                            query.expansionMetadata.totalKeywords > 0
+                            dataViewWarning.suggestions &&
+                            dataViewWarning.suggestions.length > 0
                         ) {
-                            // Calculate ACTUAL per-core-per-lang from expanded (semantic) keywords
-                            const meta = query.expansionMetadata;
-                            const expandedOnly =
-                                meta.totalKeywords - meta.coreKeywordsCount;
-                            const numLanguages =
-                                meta.languagesUsed?.length || 1;
-                            const numCore = meta.coreKeywordsCount || 0;
-                            const denominator =
-                                numCore > 0 ? numCore * numLanguages : 0;
-                            const actualPerCoreLangValue =
-                                denominator > 0
-                                    ? expandedOnly / denominator
-                                    : 0;
-                            const actualPerCoreLang =
-                                actualPerCoreLangValue.toFixed(1);
-
-                            const languages =
-                                meta.languagesUsed &&
-                                meta.languagesUsed.length > 0
-                                    ? meta.languagesUsed.join(", ")
-                                    : "English";
-                            content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
+                            content += "**Troubleshooting steps:**\n";
+                            dataViewWarning.suggestions.forEach(
+                                (suggestion, index) => {
+                                    content += `${index + 1}. ${suggestion}\n`;
+                                },
+                            );
                         }
 
-                        // Suggest troubleshooting
-                        content += `\n\n**Tip:** Check the expansion details below to see what was searched. You may want to:\n- Verify the keywords are relevant to your tasks\n- Check if you have tasks in your vault matching these terms\n- Try simpler or different search terms`;
+                        content += `\n---\n\nFound ${result.directResults.length} matching task(s):`;
+                    }
+
+                    // Add search details if query was parsed
+                    if (result.parsedQuery) {
+                        const query = result.parsedQuery;
+                        const searchDetails: string[] = [];
+
+                        // Show what was searched for
+                        if (
+                            query.coreKeywords &&
+                            query.coreKeywords.length > 0
+                        ) {
+                            searchDetails.push(
+                                `Keywords: ${query.coreKeywords.join(", ")}`,
+                            );
+                        }
+                        if (query.priority) {
+                            searchDetails.push(`Priority: ${query.priority}`);
+                        }
+                        if (query.dueDate) {
+                            searchDetails.push(`Due: ${query.dueDate}`);
+                        }
+                        if (query.status) {
+                            searchDetails.push(`Status: ${query.status}`);
+                        }
+                        if (query.tags && query.tags.length > 0) {
+                            searchDetails.push(
+                                `Tags: ${query.tags.join(", ")}`,
+                            );
+                        }
+                        if (query.folder) {
+                            searchDetails.push(`Folder: ${query.folder}`);
+                        }
+
+                        if (searchDetails.length > 0) {
+                            content += `\n\n**Searched for:**\n${searchDetails.join(" | ")}`;
+
+                            // Add expansion info if available
+                            if (
+                                query.expansionMetadata?.enabled &&
+                                query.expansionMetadata.totalKeywords > 0
+                            ) {
+                                // Calculate ACTUAL per-core-per-lang from expanded (semantic) keywords
+                                const meta = query.expansionMetadata;
+                                const expandedOnly =
+                                    meta.totalKeywords - meta.coreKeywordsCount;
+                                const numLanguages =
+                                    meta.languagesUsed?.length || 1;
+                                const numCore = meta.coreKeywordsCount || 0;
+                                const denominator =
+                                    numCore > 0 ? numCore * numLanguages : 0;
+                                const actualPerCoreLangValue =
+                                    denominator > 0
+                                        ? expandedOnly / denominator
+                                        : 0;
+                                const actualPerCoreLang =
+                                    actualPerCoreLangValue.toFixed(1);
+
+                                const languages =
+                                    meta.languagesUsed &&
+                                    meta.languagesUsed.length > 0
+                                        ? meta.languagesUsed.join(", ")
+                                        : "English";
+                                content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
+                            }
+
+                            // Suggest troubleshooting (only if not already shown in DataView warning)
+                            if (
+                                !dataViewWarning ||
+                                !DataViewWarningService.shouldShowInSearchResults(
+                                    dataViewWarning,
+                                )
+                            ) {
+                                content += `\n\n**Tip:** Check the expansion details below to see what was searched. You may want to:\n- Verify the keywords are relevant to your tasks\n- Check if you have tasks in your vault matching these terms\n- Try simpler or different search terms`;
+                            }
+                        }
                     }
                 }
 
