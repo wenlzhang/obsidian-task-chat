@@ -34,21 +34,7 @@ export class SettingsTab extends PluginSettingTab {
         // ========================================
         // UNDERSTANDING SETTINGS OVERVIEW
         // ========================================
-        const overviewBox = containerEl.createDiv({
-            cls: "task-chat-info-box",
-        });
-        const p1 = overviewBox.createEl("p");
-        p1.createEl("strong", { text: "👉 Start with defaults:" });
-        p1.appendText(
-            " Most settings are pre-configured with recommended values",
-        );
-        const p2 = overviewBox.createEl("p");
-        p2.createEl("a", {
-            text: "→ Complete settings guide with examples and best practices",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md",
-        });
-
-        // AI Provider Settings
+        // AI Provider
         new Setting(containerEl).setName("AI provider").setHeading();
 
         const aiProviderInfo = containerEl.createDiv({
@@ -166,9 +152,7 @@ export class SettingsTab extends PluginSettingTab {
 
         const contextSetting = new Setting(containerEl)
             .setName("Context window")
-            .setDesc(
-                "Increase if you get 'context length exceeded' errors.",
-            )
+            .setDesc("Increase if you get 'context length exceeded' errors.")
             .addSlider((slider) =>
                 slider
                     .setLimits(64000, 2000000, 1000)
@@ -325,9 +309,7 @@ export class SettingsTab extends PluginSettingTab {
         // Analysis Model Configuration
         const analysisProviderSetting = new Setting(containerEl)
             .setName("Task analysis provider")
-            .setDesc(
-                "Provider for AI task analysis (Task Chat mode only).",
-            );
+            .setDesc("Provider for AI task analysis (Task Chat mode only).");
 
         analysisProviderSetting.addDropdown((dropdown) => {
             dropdown
@@ -647,9 +629,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Priority terms")
-            .setDesc(
-                "Custom priority terms. Combines with built-in terms.",
-            )
+            .setDesc("Custom priority terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
                     .setPlaceholder("priority, urgent")
@@ -673,9 +653,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Due date terms")
-            .setDesc(
-                "Custom due date terms. Combines with built-in terms.",
-            )
+            .setDesc("Custom due date terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
                     .setPlaceholder("due, deadline")
@@ -699,9 +677,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Status terms")
-            .setDesc(
-                "Custom status terms. Combines with built-in terms.",
-            )
+            .setDesc("Custom status terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
                     .setPlaceholder("done, completed, in progress")
@@ -828,9 +804,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Enable streaming responses")
-            .setDesc(
-                "Show AI responses as they're generated (like ChatGPT).",
-            )
+            .setDesc("Show AI responses as they're generated (like ChatGPT).")
             .addToggle((toggle) =>
                 toggle
                     .setValue(
@@ -1752,9 +1726,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Max direct results")
-            .setDesc(
-                "Maximum tasks to show in Simple Search mode.",
-            )
+            .setDesc("Maximum tasks to show in Simple Search mode.")
             .addSlider((slider) =>
                 slider
                     .setLimits(5, 100, 5)
@@ -2176,8 +2148,8 @@ export class SettingsTab extends PluginSettingTab {
         );
         const orderDesc =
             order !== undefined
-                ? `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Display order only matters when multiple tasks have the SAME score. Currently: ${effectiveOrder}. This is a relative value - gaps between numbers don't matter, only their order.`
-                : `Display order for visual ordering (lower number = appears first). IMPORTANT: This is NOT the same as 'Score'. Currently using smart default: ${effectiveOrder}.`;
+                ? `Display order for visual ordering (lower number = appears first). Currently: ${effectiveOrder}.`
+                : `Display order for visual ordering (lower number = appears first). Currently: ${effectiveOrder}.`;
 
         const orderSetting = new Setting(advancedFields)
             .setName("Display order")
@@ -2220,7 +2192,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(advancedFields)
             .setName("Description")
             .setDesc(
-                `Category description for AI prompts. Helps AI understand this category's meaning in Smart Search and Task Chat. Leave empty for smart defaults.`,
+                `Helps AI understand category meaning in Smart Search and Task Chat. Leave empty for smart defaults.`,
             )
             .addTextArea((textarea) => {
                 textarea
@@ -2704,7 +2676,7 @@ export class SettingsTab extends PluginSettingTab {
         const sortSetting = new Setting(this.sortByContainerEl)
             .setName("Task sort order")
             .setDesc(
-                "Relevance is always first. Click ✕ to remove other criteria.",
+                "Relevance is always first.",
             );
 
         // Create container for tag badges
@@ -2800,12 +2772,6 @@ export class SettingsTab extends PluginSettingTab {
         };
 
         renderTags();
-
-        // Add helpful note
-        sortSetting.descEl.createEl("div", {
-            text: "💡 Default: Relevance, Due date, Priority, Status",
-            cls: "setting-item-description",
-        });
     }
 
     /**
