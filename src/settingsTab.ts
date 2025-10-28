@@ -1198,10 +1198,10 @@ export class SettingsTab extends PluginSettingTab {
 
         // Exclusions (Tags, Folders, Notes)
         new Setting(containerEl)
-            .setName("Task exclusions")
+            .setName("Task exclusion")
             .addButton((button) => {
                 button
-                    .setButtonText("Manage...")
+                    .setButtonText("Manage exclusions")
                     .setCta()
                     .onClick(() => {
                         new ExclusionsModal(this.app, this.plugin).open();
@@ -1215,7 +1215,7 @@ export class SettingsTab extends PluginSettingTab {
         });
         const exclusionsLink = exclusionsInfo.createEl("p");
         exclusionsLink.createEl("a", {
-            text: "→ Learn more about task exclusions",
+            text: "→ Learn more about task exclusion",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
         });
 

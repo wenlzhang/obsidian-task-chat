@@ -27,7 +27,7 @@ export class ExclusionsModal extends Modal {
         const descEl = contentEl.createEl("p", {
             cls: "task-chat-exclusions-description",
         });
-        descEl.createSpan({ text: "Exclude items from task searches." });
+        descEl.createSpan({ text: "Exclude tasks from searches by tags, folders, or notes." });
         descEl.createEl("br");
         descEl.createEl("br");
         descEl.createEl("strong", { text: "Tags in notes" });
@@ -195,7 +195,7 @@ export class ExclusionsModal extends Modal {
         const menu = new Menu();
 
         menu.addItem((item) => {
-            item.setTitle("🏷️ Tag in notes (exclude all tasks in note)")
+            item.setTitle("🏷️ Tag in notes")
                 .setIcon("tag")
                 .onClick(() => {
                     this.showNoteTagSuggest(listContainer);
@@ -203,7 +203,7 @@ export class ExclusionsModal extends Modal {
         });
 
         menu.addItem((item) => {
-            item.setTitle("🏷️ Tag in tasks (exclude specific tasks)")
+            item.setTitle("🏷️ Tag in tasks")
                 .setIcon("tag")
                 .onClick(() => {
                     this.showTaskTagSuggest(listContainer);
