@@ -155,15 +155,18 @@ export class ChatView extends ItemView {
             Logger.debug(`Chat mode changed to: ${value}`);
         });
 
-        // Group 3: Task management
-        const taskGroup = controlsEl.createDiv("task-chat-button-group");
+        // Group 3: Filter controls
+        const filterGroup = controlsEl.createDiv("task-chat-button-group");
 
-        const filterBtn = taskGroup.createEl("button", {
+        const filterBtn = filterGroup.createEl("button", {
             text: "Filter",
         });
         filterBtn.addEventListener("click", () => this.openFilterModal());
 
-        const refreshBtn = taskGroup.createEl("button", {
+        // Group 4: Task refresh
+        const refreshGroup = controlsEl.createDiv("task-chat-button-group");
+
+        const refreshBtn = refreshGroup.createEl("button", {
             text: "Refresh",
         });
         refreshBtn.addEventListener("click", () => this.refreshTasks());
@@ -216,7 +219,7 @@ export class ChatView extends ItemView {
             cls: "task-chat-model-config-icon",
         });
         modelConfigBtn.createSpan({
-            text: "Configure models",
+            text: "Models",
             cls: "task-chat-model-config-text",
         });
         modelConfigBtn.addEventListener("click", () => {

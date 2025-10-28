@@ -97,7 +97,7 @@
 
 /* Model Configuration Button (on toolbar with Send button) */
 .task-chat-model-config-button {
-    padding: 8px 14px;
+    padding: 6px 10px;
     font-size: 13px;
     background: var(--background-secondary);
     color: var(--text-normal);
@@ -107,7 +107,7 @@
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .task-chat-model-config-button:hover {
