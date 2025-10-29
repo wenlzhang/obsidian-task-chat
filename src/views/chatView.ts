@@ -497,6 +497,12 @@ export class ChatView extends ItemView {
 
         // Language is shown in main metadata bar, don't duplicate here
 
+        // Natural language usage
+        if (ai?.naturalLanguageUsed !== undefined) {
+            const nlLabel = ai.naturalLanguageUsed ? "🗣️ Natural" : "⌨️ Syntax";
+            parts.push(nlLabel);
+        }
+
         // Typo corrections (if any)
         if (ai?.correctedTypos && ai.correctedTypos.length > 0) {
             parts.push(`✏️ ${ai.correctedTypos.length} typo(s)`);
@@ -643,7 +649,19 @@ export class ChatView extends ItemView {
                 groups.push(`Lang=${ai.detectedLanguage}`);
             }
 
-            // Group 4: Confidence
+            // Group 4: Natural Language Usage
+            if (ai.naturalLanguageUsed !== undefined) {
+                const nlUsage = ai.naturalLanguageUsed ? "Yes" : "No";
+                groups.push(`Natural Language=${nlUsage}`);
+            }
+
+            // Group 5: Typo Corrections
+            if (ai.correctedTypos && ai.correctedTypos.length > 0) {
+                const typoStr = ai.correctedTypos.join(", ");
+                groups.push(`Typos Corrected: ${typoStr}`);
+            }
+
+            // Group 6: Confidence
             if (ai.confidence !== undefined) {
                 const conf = Math.round(ai.confidence * 100);
                 let level = "High";

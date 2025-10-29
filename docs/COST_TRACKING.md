@@ -2,6 +2,37 @@
 
 This guide explains how Task Chat tracks token usage and costs across different AI providers, and how to interpret the tracking metadata displayed in your chat interface.
 
+## ⚠️ Important Notice
+
+**The cost tracking figures displayed in Task Chat are estimates and approximations.** While we strive for accuracy using multiple data sources (provider APIs, OpenRouter pricing, embedded fallbacks), the displayed costs may not exactly match your actual API usage and billing.
+
+**Always verify actual usage and costs with your API provider:**
+
+- **OpenAI**: Check [OpenAI Usage Dashboard](https://platform.openai.com/usage)
+- **Anthropic**: Check [Anthropic Console](https://console.anthropic.com/)
+- **OpenRouter**: Check [OpenRouter Dashboard](https://openrouter.ai/usage)
+- **Ollama**: Local and free (no API costs)
+
+**Why estimates may differ:**
+
+1. **Token Estimation**: When provider APIs don't return token counts, we estimate using text length (1 token ≈ 4 characters). This is a rough approximation that can be off by 20-30%, especially for non-English text.
+2. **Pricing Changes**: Model pricing may change. While we update pricing data every 24 hours from OpenRouter API, there may be temporary discrepancies.
+3. **Provider-Specific Costs**: Some providers may have additional costs (minimum charges, network fees, etc.) not reflected in per-token pricing.
+4. **Caching & Optimizations**: Some providers offer prompt caching or other optimizations that reduce actual costs but may not be reflected in our calculations.
+
+**Use this tracking feature for:**
+- ✅ Comparing relative costs between different models and providers
+- ✅ Monitoring usage trends over time
+- ✅ Understanding which operations are more expensive
+- ✅ Making informed decisions about model selection
+
+**Do NOT rely on this for:**
+- ❌ Exact billing reconciliation
+- ❌ Financial reporting or accounting
+- ❌ Disputing charges with providers
+
+**Always refer to your official API provider dashboard for authoritative usage and billing information.**
+
 ## Overview
 
 Task Chat provides **transparent, multi-layer cost tracking** for all AI operations:

@@ -647,9 +647,11 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl)
+        const tokenUsageSetting = new Setting(containerEl)
             .setName("Show token usage")
-            .setDesc("Display API usage and cost information in chat")
+            .setDesc(
+                "Display API usage and cost information in chat. Note: Figures are estimates - verify with your API provider for actual billing.",
+            )
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.showTokenUsage)
@@ -658,6 +660,15 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
+
+        // Add cost tracking link
+        const tokenUsageDesc = tokenUsageSetting.descEl;
+        tokenUsageDesc.createSpan({ text: " " });
+        tokenUsageDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more →",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
+        });
 
         new Setting(containerEl)
             .setName("Enable streaming responses")
@@ -1779,7 +1790,7 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings.totalTokensUsed.toLocaleString();
         const totalCost = this.plugin.settings.totalCost.toFixed(4);
 
-        new Setting(containerEl)
+        const usageStatsSetting = new Setting(containerEl)
             .setName("Usage statistics")
             .setDesc(`Total: ${totalTokens} tokens, $${totalCost}`)
             .addButton((button) =>
@@ -1790,10 +1801,17 @@ export class SettingsTab extends PluginSettingTab {
                     this.display(); // Refresh to show updated stats
                 }),
             );
-        modelConfigDesc.createSpan({ text: " | " });
-        modelConfigDesc.createEl("a", {
+
+        // Add warning and cost tracking link
+        const usageStatsDesc = usageStatsSetting.descEl;
+        usageStatsDesc.createEl("br");
+        usageStatsDesc.createEl("span", {
+            text: "⚠️ These are estimates. Always verify with your API provider dashboard for actual usage and billing. ",
+            cls: "setting-item-description",
+        });
+        usageStatsDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Cost tracking.",
+            text: "Learn about cost tracking →",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
         });
 
