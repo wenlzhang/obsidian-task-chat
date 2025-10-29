@@ -1168,17 +1168,21 @@ export class DataviewService {
                     );
 
                     if (allPageTasks && allPageTasks.length > 0) {
-                        // Use Dataview's expand() to flatten ALL subtasks recursively
-                        const flattenedTasks = allPageTasks.expand
-                            ? allPageTasks.expand("children")
-                            : allPageTasks;
-
+                        // allPageTasks is already a JavaScript array from flatMap
+                        // We don't need to call .array() on it
                         let taskIndex = 0;
 
                         // Process each flattened task
-                        for (const item of flattenedTasks.array()) {
+                        let processedCount = 0;
+                        let nullTaskCount = 0;
+                        let propertyFilterRejects = 0;
+                        let taskTagExclusions = 0;
+                        let taskTagInclusionRejects = 0;
+
+                        for (const item of allPageTasks) {
                             const dvTask = item.task;
                             const pageTags = item.pageTags;
+                            processedCount++;
 
                             const task = this.processDataviewTask(
                                 dvTask,
@@ -1228,6 +1232,12 @@ export class DataviewService {
                                     );
                                 }
 
+                                // CRITICAL DEBUG: Track why tasks are rejected
+                                if (!shouldInclude) propertyFilterRejects++;
+                                if (isTaskTagExcluded) taskTagExclusions++;
+                                if (!matchesTaskTagInclusion)
+                                    taskTagInclusionRejects++;
+
                                 if (
                                     shouldInclude &&
                                     !isTaskTagExcluded &&
@@ -1235,8 +1245,15 @@ export class DataviewService {
                                 ) {
                                     tasks.push(task);
                                 }
+                            } else {
+                                nullTaskCount++;
                             }
                         }
+
+                        // CRITICAL DEBUG: Log task-level filtering results
+                        Logger.debug(
+                            `[DEBUG] Task-level filtering: processed=${processedCount}, null=${nullTaskCount}, propertyFilter=${propertyFilterRejects}, taskTagExcluded=${taskTagExclusions}, taskTagInclusionFailed=${taskTagInclusionRejects}, ACCEPTED=${tasks.length}`,
+                        );
 
                         foundTasks = true;
                     }
