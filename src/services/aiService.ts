@@ -2270,14 +2270,14 @@ ${taskContext}`;
             // Use actual token counts if available, otherwise estimate
             let promptTokens: number;
             let completionTokens: number;
-            let isEstimated: boolean;
+            let tokenSource: "actual" | "estimated";
             let actualCostFromAPI: number | undefined; // Actual cost from OpenRouter API
 
             if (tokenUsageInfo) {
                 // API provided token counts - use them
                 promptTokens = tokenUsageInfo.promptTokens || 0;
                 completionTokens = tokenUsageInfo.completionTokens || 0;
-                isEstimated = false;
+                tokenSource = tokenUsageInfo.tokenSource || "actual"; // Use tokenSource from streamingService
                 Logger.debug(
                     `[Token Usage] ✓ API provided actual counts: ${promptTokens} prompt + ${completionTokens} completion`,
                 );
@@ -2298,7 +2298,7 @@ ${taskContext}`;
                 }
                 promptTokens = this.estimateTokenCount(inputText);
                 completionTokens = this.estimateTokenCount(cleanedResponse);
-                isEstimated = true;
+                tokenSource = "estimated";
 
                 Logger.warn(
                     `[Token Usage] ⚠️ API did not provide token counts for ${provider}/${model} - using estimation`,
@@ -2317,12 +2317,14 @@ ${taskContext}`;
                             await PricingService.fetchOpenRouterUsage(
                                 generationId,
                                 apiKey,
+                                0,
+                                true, // Use native fetch for streaming context
                             );
                         if (usageData) {
                             promptTokens = usageData.promptTokens;
                             completionTokens = usageData.completionTokens;
                             actualCostFromAPI = usageData.actualCost;
-                            isEstimated = false;
+                            tokenSource = "actual";
                             Logger.debug(
                                 `[OpenRouter] ✓ Got actual usage: ${promptTokens} prompt + ${completionTokens} completion`,
                             );
@@ -2340,50 +2342,45 @@ ${taskContext}`;
                 }
             }
 
-            // Calculate cost: Use actual cost from API if available, otherwise calculate
-            const calculatedCost = PricingService.calculateCost(
+            // Use enhanced cost calculation with tracking
+            const costTracking = PricingService.calculateCostWithTracking(
                 promptTokens,
                 completionTokens,
                 model,
                 provider,
                 settings.pricingCache.data,
+                tokenSource,
+                actualCostFromAPI,
             );
 
-            const finalCost =
-                actualCostFromAPI !== undefined
-                    ? actualCostFromAPI
-                    : calculatedCost;
+            Logger.debug(
+                `[Cost Tracking] Final: $${costTracking.cost.toFixed(6)}, ` +
+                    `Method: ${costTracking.costMethod}, ` +
+                    `Pricing: ${costTracking.pricingSource}, ` +
+                    `Tokens: ${costTracking.tokenSource}`,
+            );
 
-            // Log cost source for transparency
-            if (actualCostFromAPI !== undefined) {
-                Logger.debug(
-                    `[Cost] Using actual cost from ${provider} API: $${actualCostFromAPI.toFixed(6)}`,
-                );
-                if (Math.abs(actualCostFromAPI - calculatedCost) > 0.000001) {
-                    Logger.warn(
-                        `[Cost] Actual cost ($${actualCostFromAPI.toFixed(6)}) differs from calculated ($${calculatedCost.toFixed(6)}) - using actual`,
-                    );
-                }
-            } else {
-                Logger.debug(
-                    `[Cost] Calculated cost for ${provider}/${model}: $${calculatedCost.toFixed(6)} (${provider} API doesn't provide actual cost)`,
-                );
-            }
-
-            // Create token usage object
+            // Create token usage object with enhanced tracking
             const tokenUsage: TokenUsage = {
                 promptTokens,
                 completionTokens,
                 totalTokens: promptTokens + completionTokens,
-                estimatedCost: finalCost, // Use actual cost from API if available
+                estimatedCost: costTracking.cost,
                 model: model,
                 provider: provider,
-                isEstimated,
+                isEstimated: tokenSource === "estimated", // Backward compatibility
+                // Enhanced tracking fields
+                tokenSource,
+                costMethod: costTracking.costMethod,
+                pricingSource: costTracking.pricingSource,
                 // Track analysis model separately
                 analysisModel: model,
                 analysisProvider: provider,
                 analysisTokens: promptTokens + completionTokens,
-                analysisCost: finalCost, // Use actual cost from API if available
+                analysisCost: costTracking.cost,
+                analysisTokenSource: tokenSource,
+                analysisCostMethod: costTracking.costMethod,
+                analysisPricingSource: costTracking.pricingSource,
             };
 
             Logger.debug("Streaming completed successfully");
@@ -2495,13 +2492,13 @@ ${taskContext}`;
                 // Use actual token counts if available, otherwise estimate
                 let promptTokens: number;
                 let completionTokens: number;
-                let isEstimated: boolean;
+                let tokenSource: "actual" | "estimated";
 
                 if (tokenUsageInfo) {
                     // API provided token counts - use them
                     promptTokens = tokenUsageInfo.promptTokens || 0;
                     completionTokens = tokenUsageInfo.completionTokens || 0;
-                    isEstimated = false;
+                    tokenSource = tokenUsageInfo.tokenSource || "actual";
                 } else {
                     // API didn't provide token counts - estimate them
                     // For Anthropic, estimate from system message + conversation messages
@@ -2519,34 +2516,39 @@ ${taskContext}`;
                     }
                     promptTokens = this.estimateTokenCount(inputText);
                     completionTokens = this.estimateTokenCount(cleanedResponse);
-                    isEstimated = true;
+                    tokenSource = "estimated";
                 }
+
+                // Use enhanced cost calculation with tracking
+                const costTracking = PricingService.calculateCostWithTracking(
+                    promptTokens,
+                    completionTokens,
+                    model,
+                    provider,
+                    settings.pricingCache.data,
+                    tokenSource,
+                );
 
                 const tokenUsage: TokenUsage = {
                     promptTokens,
                     completionTokens,
                     totalTokens: promptTokens + completionTokens,
-                    estimatedCost: PricingService.calculateCost(
-                        promptTokens,
-                        completionTokens,
-                        providerConfig.model,
-                        provider,
-                        settings.pricingCache.data,
-                    ),
+                    estimatedCost: costTracking.cost,
                     model: providerConfig.model,
                     provider: provider,
-                    isEstimated,
+                    isEstimated: tokenSource === "estimated",
+                    // Enhanced tracking fields
+                    tokenSource,
+                    costMethod: costTracking.costMethod,
+                    pricingSource: costTracking.pricingSource,
                     // Track analysis model separately
                     analysisModel: model,
                     analysisProvider: provider,
                     analysisTokens: promptTokens + completionTokens,
-                    analysisCost: PricingService.calculateCost(
-                        promptTokens,
-                        completionTokens,
-                        model,
-                        provider,
-                        settings.pricingCache.data,
-                    ),
+                    analysisCost: costTracking.cost,
+                    analysisTokenSource: tokenSource,
+                    analysisCostMethod: costTracking.costMethod,
+                    analysisPricingSource: costTracking.pricingSource,
                 };
 
                 Logger.debug("Anthropic streaming completed successfully");
@@ -2601,32 +2603,38 @@ ${taskContext}`;
         const promptTokens = usage.input_tokens || 0;
         const completionTokens = usage.output_tokens || 0;
         const totalTokens = promptTokens + completionTokens;
+        const tokenSource: "actual" | "estimated" = "actual"; // Anthropic API provides actual tokens
+
+        // Use enhanced cost calculation with tracking
+        const costTracking = PricingService.calculateCostWithTracking(
+            promptTokens,
+            completionTokens,
+            model,
+            provider,
+            settings.pricingCache.data,
+            tokenSource,
+        );
 
         const tokenUsage: TokenUsage = {
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: PricingService.calculateCost(
-                promptTokens,
-                completionTokens,
-                providerConfig.model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            estimatedCost: costTracking.cost,
             model: providerConfig.model,
             provider: provider,
             isEstimated: false, // Real token counts from API
+            // Enhanced tracking fields
+            tokenSource,
+            costMethod: costTracking.costMethod,
+            pricingSource: costTracking.pricingSource,
             // Track analysis model separately
             analysisModel: model,
             analysisProvider: provider,
             analysisTokens: totalTokens,
-            analysisCost: PricingService.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            analysisCost: costTracking.cost,
+            analysisTokenSource: tokenSource,
+            analysisCostMethod: costTracking.costMethod,
+            analysisPricingSource: costTracking.pricingSource,
         };
 
         return {
@@ -2728,6 +2736,19 @@ ${taskContext}`;
                 const completionTokens =
                     tokenUsageInfo?.completionTokens ||
                     Math.round(cleanedResponse.length / 4);
+                const tokenSource: "actual" | "estimated" =
+                    tokenUsageInfo?.tokenSource ||
+                    (tokenUsageInfo ? "actual" : "estimated");
+
+                // Use enhanced cost calculation with tracking (Ollama is free)
+                const costTracking = PricingService.calculateCostWithTracking(
+                    promptTokens,
+                    completionTokens,
+                    model,
+                    "ollama",
+                    settings.pricingCache.data,
+                    tokenSource,
+                );
 
                 const tokenUsage: TokenUsage = {
                     promptTokens,
@@ -2736,12 +2757,19 @@ ${taskContext}`;
                     estimatedCost: 0, // Ollama is local, no cost
                     model: providerConfig.model,
                     provider: "ollama",
-                    isEstimated: !tokenUsageInfo,
+                    isEstimated: tokenSource === "estimated",
+                    // Enhanced tracking fields
+                    tokenSource,
+                    costMethod: "actual", // Ollama is free, cost is actually $0
+                    pricingSource: "embedded",
                     // Track analysis model separately
                     analysisModel: model,
                     analysisProvider: "ollama",
                     analysisTokens: promptTokens + completionTokens,
                     analysisCost: 0, // Ollama is local, no cost
+                    analysisTokenSource: tokenSource,
+                    analysisCostMethod: "actual",
+                    analysisPricingSource: "embedded",
                 };
 
                 Logger.debug("Ollama streaming completed successfully");
@@ -2825,6 +2853,9 @@ ${taskContext}`;
                 Math.round(JSON.stringify(messages).length / 4);
             const completionTokens =
                 data.eval_count || Math.round(content.length / 4);
+            const tokenSource: "actual" | "estimated" = data.eval_count
+                ? "actual"
+                : "estimated";
 
             const tokenUsage: TokenUsage = {
                 promptTokens,
@@ -2834,11 +2865,18 @@ ${taskContext}`;
                 model: providerConfig.model,
                 provider: "ollama",
                 isEstimated: !data.eval_count, // Estimated unless model provides counts
+                // Enhanced tracking fields
+                tokenSource,
+                costMethod: "actual", // Ollama is free, cost is actually $0
+                pricingSource: "embedded",
                 // Track analysis model separately
                 analysisModel: model,
                 analysisProvider: "ollama",
                 analysisTokens: promptTokens + completionTokens,
                 analysisCost: 0, // Ollama is local, no cost
+                analysisTokenSource: tokenSource,
+                analysisCostMethod: "actual",
+                analysisPricingSource: "embedded",
             };
 
             Logger.debug(

@@ -141,33 +141,47 @@ export class MetadataService {
             const bothLocal =
                 parsingProvider === "ollama" && analysisProvider === "ollama";
 
+            // Get token source (actual vs estimated)
+            const tokenSource = message.tokenUsage.tokenSource || "actual";
+            const sourceLabel = tokenSource === "actual" ? "actual" : "est";
+
+            // Format token display with source indicator
+            const tokenDisplay = `${promptTokens.toLocaleString()} in (${sourceLabel}), ${completionTokens.toLocaleString()} out (${sourceLabel})`;
+
             if (bothLocal) {
                 // Both parser and analysis use local models → Free
-                parts.push(
-                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), Free (local)`,
-                );
+                parts.push(`${tokenStr}${tokenDisplay} • Free (local)`);
             } else {
                 // At least one cloud model is used → Show actual cost
                 const cost = message.tokenUsage.estimatedCost || 0;
+                const costMethod =
+                    message.tokenUsage.costMethod || "calculated";
+
+                // Format cost with precision
                 let costStr: string;
                 if (cost === 0) {
                     costStr = "$0.00";
                 } else if (cost < 0.0001) {
-                    // Very small costs: show 6 decimal places
-                    costStr = `~$${cost.toFixed(6)}`;
+                    costStr = cost.toFixed(6);
                 } else if (cost < 0.01) {
-                    // Small costs: show 4 decimal places
-                    costStr = `~$${cost.toFixed(4)}`;
+                    costStr = cost.toFixed(4);
                 } else if (cost < 1.0) {
-                    // Medium costs: show 4 decimal places for clarity
-                    costStr = `~$${cost.toFixed(4)}`;
+                    costStr = cost.toFixed(4);
                 } else {
-                    // Large costs: show 2 decimal places
-                    costStr = `~$${cost.toFixed(2)}`;
+                    costStr = cost.toFixed(2);
                 }
-                parts.push(
-                    `${tokenStr}${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), ${costStr}`,
-                );
+
+                // Add cost method indicator
+                const costMethodLabel =
+                    costMethod === "actual"
+                        ? "actual"
+                        : costMethod === "calculated"
+                          ? "calc"
+                          : "est";
+
+                const costDisplay = `$${costStr} (${costMethodLabel})`;
+
+                parts.push(`${tokenStr}${tokenDisplay} • ${costDisplay}`);
             }
 
             // Language (for Smart Search and Task Chat)

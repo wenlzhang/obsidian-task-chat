@@ -600,4 +600,176 @@ export class PricingService {
             rateSource,
         };
     }
+
+    /**
+     * Enhanced cost calculation with full tracking metadata
+     * Returns cost along with information about how it was calculated
+     *
+     * @param promptTokens - Input tokens
+     * @param completionTokens - Output tokens
+     * @param model - Model name
+     * @param provider - Provider (openai, anthropic, openrouter, ollama)
+     * @param cachedPricing - Cached pricing data from OpenRouter API
+     * @param tokenSource - Whether tokens are "actual" or "estimated"
+     * @param actualCost - Actual cost from provider API (if available)
+     * @returns Cost amount and tracking metadata
+     */
+    static calculateCostWithTracking(
+        promptTokens: number,
+        completionTokens: number,
+        model: string,
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+        cachedPricing: Record<string, { input: number; output: number }>,
+        tokenSource: "actual" | "estimated",
+        actualCost?: number,
+    ): {
+        cost: number;
+        costMethod: "actual" | "calculated" | "estimated";
+        pricingSource: "openrouter" | "embedded";
+        tokenSource: "actual" | "estimated";
+    } {
+        // Ollama is free (local)
+        if (provider === "ollama") {
+            Logger.debug(
+                `[Cost Tracking] Ollama model ${model}: $0.00 (local)`,
+            );
+            return {
+                cost: 0,
+                costMethod: "actual",
+                pricingSource: "embedded",
+                tokenSource: "actual",
+            };
+        }
+
+        // Layer 1: Use actual cost from provider API if available
+        if (actualCost !== undefined && actualCost !== null) {
+            Logger.debug(
+                `[Cost Tracking] Using actual cost from provider API: $${actualCost.toFixed(6)}`,
+            );
+            return {
+                cost: actualCost,
+                costMethod: "actual",
+                pricingSource: "openrouter", // Currently only OpenRouter provides actual costs
+                tokenSource,
+            };
+        }
+
+        // Layer 2 & 3: Calculate cost from tokens + pricing data
+        const breakdown = this.getCostBreakdown(
+            promptTokens,
+            completionTokens,
+            model,
+            provider,
+            cachedPricing,
+        );
+
+        // Determine pricing source (OpenRouter API vs embedded)
+        const pricingSource: "openrouter" | "embedded" =
+            breakdown.rateSource === "cached" ? "openrouter" : "embedded";
+
+        // Determine cost method based on token source
+        const costMethod: "calculated" | "estimated" =
+            tokenSource === "actual" ? "calculated" : "estimated";
+
+        Logger.debug(
+            `[Cost Tracking] ${model}: Cost = $${breakdown.totalCost.toFixed(6)}, ` +
+                `Method = ${costMethod}, Pricing = ${pricingSource}, Tokens = ${tokenSource}`,
+        );
+
+        return {
+            cost: breakdown.totalCost,
+            costMethod,
+            pricingSource,
+            tokenSource,
+        };
+    }
+
+    /**
+     * Determine if pricing data came from OpenRouter API or embedded fallback
+     *
+     * @param model - Model name
+     * @param provider - Provider (openai, anthropic, openrouter, ollama)
+     * @param cachedPricing - Cached pricing from OpenRouter API
+     * @returns "openrouter" if from API, "embedded" if from fallback
+     */
+    static determinePricingSource(
+        model: string,
+        provider: "openai" | "anthropic" | "openrouter" | "ollama",
+        cachedPricing: Record<string, { input: number; output: number }>,
+    ): "openrouter" | "embedded" {
+        if (provider === "ollama") {
+            return "embedded";
+        }
+
+        const openRouterFormat = this.constructOpenRouterModelId(
+            provider,
+            model,
+        );
+
+        // Check if pricing exists in cache (from OpenRouter API)
+        if (cachedPricing[openRouterFormat] || cachedPricing[model]) {
+            return "openrouter";
+        }
+
+        // Check if it exists in embedded pricing
+        const embeddedPricing = this.getEmbeddedPricing();
+        if (embeddedPricing[openRouterFormat] || embeddedPricing[model]) {
+            return "embedded";
+        }
+
+        // Fallback - considered embedded
+        return "embedded";
+    }
+
+    /**
+     * Format cost display with calculation method indicator
+     *
+     * @param cost - Cost amount
+     * @param costMethod - How cost was calculated
+     * @returns Formatted string like "$0.0114 (actual)" or "$0.0114 (estimated)"
+     */
+    static formatCostWithMethod(
+        cost: number,
+        costMethod: "actual" | "calculated" | "estimated",
+    ): string {
+        let costStr: string;
+
+        if (cost === 0) {
+            return "$0.00 (free)";
+        } else if (cost < 0.0001) {
+            costStr = cost.toFixed(6);
+        } else if (cost < 0.01) {
+            costStr = cost.toFixed(4);
+        } else if (cost < 1.0) {
+            costStr = cost.toFixed(4);
+        } else {
+            costStr = cost.toFixed(2);
+        }
+
+        // Add method indicator
+        const methodLabel =
+            costMethod === "actual"
+                ? "actual"
+                : costMethod === "calculated"
+                  ? "calc"
+                  : "est";
+
+        return `$${costStr} (${methodLabel})`;
+    }
+
+    /**
+     * Format token count with source indicator
+     *
+     * @param tokenCount - Number of tokens
+     * @param tokenSource - Whether tokens are "actual" or "estimated"
+     * @returns Formatted string like "26,149 (actual)" or "26,149 (est)"
+     */
+    static formatTokensWithSource(
+        tokenCount: number,
+        tokenSource: "actual" | "estimated",
+    ): string {
+        const formatted = tokenCount.toLocaleString();
+        const sourceLabel = tokenSource === "actual" ? "actual" : "est";
+        return `${formatted} (${sourceLabel})`;
+    }
 }

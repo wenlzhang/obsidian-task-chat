@@ -16,6 +16,7 @@ export interface StreamChunk {
         promptTokens?: number;
         completionTokens?: number;
         totalTokens?: number;
+        tokenSource?: "actual" | "estimated"; // Whether tokens came from API or were estimated
     };
     generationId?: string; // For OpenRouter
 }
@@ -135,6 +136,7 @@ export class StreamingService {
                       promptTokens: json.usage.prompt_tokens,
                       completionTokens: json.usage.completion_tokens,
                       totalTokens: json.usage.total_tokens,
+                      tokenSource: "actual" as const, // Tokens from API are actual, not estimated
                   }
                 : undefined;
 
@@ -247,6 +249,7 @@ export class StreamingService {
                                 totalTokens:
                                     usage.input_tokens +
                                     (usage.output_tokens || 0),
+                                tokenSource: "actual" as const, // Tokens from API are actual
                             },
                         };
                     }
@@ -263,6 +266,7 @@ export class StreamingService {
                                 promptTokens: 0, // Already sent in message_start
                                 completionTokens: usage.output_tokens || 0,
                                 totalTokens: usage.output_tokens || 0,
+                                tokenSource: "actual" as const, // Tokens from API are actual
                             },
                         };
                     }
@@ -305,6 +309,7 @@ export class StreamingService {
                           promptTokens: json.prompt_eval_count,
                           completionTokens: json.eval_count,
                           totalTokens: json.prompt_eval_count + json.eval_count,
+                          tokenSource: "actual" as const, // Tokens from Ollama API are actual
                       }
                     : undefined;
 

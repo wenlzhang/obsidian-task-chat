@@ -59,6 +59,25 @@ export interface TokenUsage {
     analysisTokens?: number; // Tokens used for analysis only
     parsingCost?: number; // Cost for parsing only
     analysisCost?: number; // Cost for analysis only
+
+    // Enhanced tracking for multi-layer calculation methods
+    // Token source tracking
+    tokenSource?: "actual" | "estimated"; // Whether tokens came from API or were estimated
+    parsingTokenSource?: "actual" | "estimated"; // Token source for parsing phase
+    analysisTokenSource?: "actual" | "estimated"; // Token source for analysis phase
+
+    // Cost calculation method tracking
+    costMethod?:
+        | "actual" // Cost from provider API (e.g., OpenRouter Generation API)
+        | "calculated" // Calculated from API tokens + pricing data
+        | "estimated"; // Calculated from estimated tokens + pricing data
+    parsingCostMethod?: "actual" | "calculated" | "estimated";
+    analysisCostMethod?: "actual" | "calculated" | "estimated";
+
+    // Pricing source tracking
+    pricingSource?: "openrouter" | "embedded"; // Whether pricing came from OpenRouter API or internal fallback
+    parsingPricingSource?: "openrouter" | "embedded";
+    analysisPricingSource?: "openrouter" | "embedded";
 }
 
 export interface ChatContext {

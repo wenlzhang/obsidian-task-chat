@@ -2342,49 +2342,49 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             }
         }
 
-        // Recalculate cost if we got new token counts but no actual cost
-        if (actualCost === undefined) {
-            calculatedCost = PricingService.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            );
-        }
+        // Determine token source
+        const tokenSource: "actual" | "estimated" = isEstimated
+            ? "estimated"
+            : "actual";
 
-        const finalCost =
-            actualCost !== undefined ? actualCost : calculatedCost;
+        // Use enhanced cost calculation with tracking
+        const costTracking = PricingService.calculateCostWithTracking(
+            promptTokens,
+            completionTokens,
+            model,
+            provider,
+            settings.pricingCache.data,
+            tokenSource,
+            actualCost,
+        );
 
-        // Log cost source for transparency
-        if (actualCost !== undefined) {
-            Logger.debug(
-                `[Cost Parser] Using actual cost from ${provider} API: $${actualCost.toFixed(6)}`,
-            );
-            if (Math.abs(actualCost - calculatedCost) > 0.000001) {
-                Logger.warn(
-                    `[Cost Parser] Actual cost ($${actualCost.toFixed(6)}) differs from calculated ($${calculatedCost.toFixed(6)}) - using actual`,
-                );
-            }
-        } else {
-            Logger.debug(
-                `[Cost Parser] Calculated cost for ${provider}/${model}: $${calculatedCost.toFixed(6)}`,
-            );
-        }
+        Logger.debug(
+            `[Cost Tracking Parser] Final: $${costTracking.cost.toFixed(6)}, ` +
+                `Method: ${costTracking.costMethod}, ` +
+                `Pricing: ${costTracking.pricingSource}, ` +
+                `Tokens: ${costTracking.tokenSource}`,
+        );
 
         const tokenUsage = {
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: finalCost, // Use actual cost if available
+            estimatedCost: costTracking.cost,
             model: model,
             provider: provider,
             isEstimated,
+            // Enhanced tracking fields
+            tokenSource,
+            costMethod: costTracking.costMethod,
+            pricingSource: costTracking.pricingSource,
             // Track parsing model separately
             parsingModel: model,
             parsingProvider: provider,
             parsingTokens: totalTokens,
-            parsingCost: finalCost, // Use actual cost if available
+            parsingCost: costTracking.cost,
+            parsingTokenSource: tokenSource,
+            parsingCostMethod: costTracking.costMethod,
+            parsingPricingSource: costTracking.pricingSource,
         };
 
         return { response: content, tokenUsage };
@@ -2466,32 +2466,38 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         const promptTokens = usage.input_tokens || 0;
         const completionTokens = usage.output_tokens || 0;
         const totalTokens = promptTokens + completionTokens;
+        const tokenSource: "actual" | "estimated" = "actual"; // Anthropic provides actual tokens
+
+        // Use enhanced cost calculation with tracking
+        const costTracking = PricingService.calculateCostWithTracking(
+            promptTokens,
+            completionTokens,
+            model,
+            provider,
+            settings.pricingCache.data,
+            tokenSource,
+        );
 
         const tokenUsage = {
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: PricingService.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            estimatedCost: costTracking.cost,
             model: model,
             provider: provider,
             isEstimated: false,
+            // Enhanced tracking fields
+            tokenSource,
+            costMethod: costTracking.costMethod,
+            pricingSource: costTracking.pricingSource,
             // Track parsing model separately
             parsingModel: model,
             parsingProvider: provider,
             parsingTokens: totalTokens,
-            parsingCost: PricingService.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            parsingCost: costTracking.cost,
+            parsingTokenSource: tokenSource,
+            parsingCostMethod: costTracking.costMethod,
+            parsingPricingSource: costTracking.pricingSource,
         };
 
         return { response: content, tokenUsage };
@@ -2607,6 +2613,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             const promptTokens = Math.ceil(promptText.length / 4);
             const completionTokens = Math.ceil(responseContent.length / 4);
             const totalTokens = promptTokens + completionTokens;
+            const tokenSource: "actual" | "estimated" = "estimated"; // Ollama requires estimation
 
             const tokenUsage = {
                 promptTokens,
@@ -2616,11 +2623,18 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 model: model,
                 provider: provider,
                 isEstimated: true,
+                // Enhanced tracking fields
+                tokenSource,
+                costMethod: "actual" as const, // Ollama is free, cost is actually $0
+                pricingSource: "embedded" as const,
                 // Track parsing model separately
                 parsingModel: model,
                 parsingProvider: provider,
                 parsingTokens: totalTokens,
                 parsingCost: 0,
+                parsingTokenSource: tokenSource,
+                parsingCostMethod: "actual" as const,
+                parsingPricingSource: "embedded" as const,
             };
 
             return { response: responseContent, tokenUsage };
