@@ -1112,6 +1112,23 @@ export class SettingsTab extends PluginSettingTab {
 
         organizeSetting.settingEl.style.marginBottom = "20px";
 
+        // Reset status category
+        new Setting(containerEl)
+            .setName("Reset status category")
+            .setDesc("Reset all status categories to defaults.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset status category")
+                    .onClick(async () => {
+                        this.plugin.settings.taskStatusMapping = JSON.parse(
+                            JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
+                        );
+                        await this.plugin.saveSettings();
+                        new Notice("Status categories reset to defaults");
+                        this.display();
+                    }),
+            );
+
         // Task filtering
         new Setting(containerEl)
             .setName("Task filtering")
@@ -1356,6 +1373,35 @@ export class SettingsTab extends PluginSettingTab {
         // Initial display
         this.updateMaxScoreDisplay();
 
+        // Reset main coefficients
+        new Setting(containerEl)
+            .setName("Reset all main weights")
+            .setDesc(
+                "Reset all main weights to defaults (R:20, D:4, P:1, S:1).",
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset all main weights")
+                    .setWarning()
+                    .onClick(async () => {
+                        this.plugin.settings.relevanceCoefficient =
+                            DEFAULT_SETTINGS.relevanceCoefficient;
+                        this.plugin.settings.dueDateCoefficient =
+                            DEFAULT_SETTINGS.dueDateCoefficient;
+                        this.plugin.settings.priorityCoefficient =
+                            DEFAULT_SETTINGS.priorityCoefficient;
+                        this.plugin.settings.statusCoefficient =
+                            DEFAULT_SETTINGS.statusCoefficient;
+                        await this.plugin.saveSettings();
+                        new Notice("All main weights reset to defaults");
+                        // Update max score display
+                        if (this.updateMaxScoreDisplay) {
+                            this.updateMaxScoreDisplay();
+                        }
+                        this.display(); // Refresh UI
+                    }),
+            );
+
         // Relevance Sub-Coefficients
         new Setting(containerEl)
             .setName("Relevance sub-coefficients")
@@ -1375,6 +1421,26 @@ export class SettingsTab extends PluginSettingTab {
                         this.plugin.settings.relevanceCoreWeight = value;
                         await this.plugin.saveSettings();
                         // Refresh settings tab to update minimum relevance slider max value
+                        this.display();
+                    }),
+            );
+
+        // Reset relevance sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset relevance core keyword match bonus")
+            .setDesc(
+                "Reset relevance core keyword match bonus to default (0.2).",
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset relevance core keyword match bonus")
+                    .onClick(async () => {
+                        this.plugin.settings.relevanceCoreWeight =
+                            DEFAULT_SETTINGS.relevanceCoreWeight;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "Relevance core keyword match bonus reset to default (0.2)",
+                        );
                         this.display();
                     }),
             );
@@ -1464,6 +1530,32 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Reset due date sub-coefficients
+        new Setting(containerEl)
+            .setName("Reset due date sub-coefficients")
+            .setDesc("Reset due date sub-coefficients to defaults.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset due date sub-coefficients")
+                    .onClick(async () => {
+                        this.plugin.settings.dueDateOverdueScore =
+                            DEFAULT_SETTINGS.dueDateOverdueScore;
+                        this.plugin.settings.dueDateWithin7DaysScore =
+                            DEFAULT_SETTINGS.dueDateWithin7DaysScore;
+                        this.plugin.settings.dueDateWithin1MonthScore =
+                            DEFAULT_SETTINGS.dueDateWithin1MonthScore;
+                        this.plugin.settings.dueDateLaterScore =
+                            DEFAULT_SETTINGS.dueDateLaterScore;
+                        this.plugin.settings.dueDateNoneScore =
+                            DEFAULT_SETTINGS.dueDateNoneScore;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            "Due date sub-coefficients reset to defaults",
+                        );
+                        this.display();
+                    }),
+            );
+
         // Priority Sub-Coefficients
         new Setting(containerEl)
             .setName("Priority sub-coefficients")
@@ -1541,144 +1633,6 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Status Sub-Coefficients
-        new Setting(containerEl)
-            .setName("Status sub-coefficients")
-            .setClass("setting-subsection-heading");
-
-        const statusScoreNote = containerEl.createDiv({
-            cls: "setting-item-description task-chat-info-box",
-        });
-        statusScoreNote.createEl("p", {
-            text: 'Each status category has its own coefficient. Scroll up to the "Status category" section to manage coefficients.',
-        });
-
-        // Reset Buttons Section
-        new Setting(containerEl)
-            .setName("Reset coefficients to defaults")
-            .setClass("setting-subsection-heading");
-
-        // Reset main coefficients
-        new Setting(containerEl)
-            .setName("Reset all main weights")
-            .setDesc(
-                "Reset all main weights to defaults (R:20, D:4, P:1, S:1).",
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset all main weights")
-                    .setWarning()
-                    .onClick(async () => {
-                        this.plugin.settings.relevanceCoefficient =
-                            DEFAULT_SETTINGS.relevanceCoefficient;
-                        this.plugin.settings.dueDateCoefficient =
-                            DEFAULT_SETTINGS.dueDateCoefficient;
-                        this.plugin.settings.priorityCoefficient =
-                            DEFAULT_SETTINGS.priorityCoefficient;
-                        this.plugin.settings.statusCoefficient =
-                            DEFAULT_SETTINGS.statusCoefficient;
-                        await this.plugin.saveSettings();
-                        new Notice("All main weights reset to defaults");
-                        // Update max score display
-                        if (this.updateMaxScoreDisplay) {
-                            this.updateMaxScoreDisplay();
-                        }
-                        this.display(); // Refresh UI
-                    }),
-            );
-
-        // Reset all advanced coefficients
-        new Setting(containerEl)
-            .setName("Reset all sub-coefficients")
-            .setDesc(
-                "Reset all sub-coefficients (relevance, due date, priority, status) to defaults.",
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset all sub-coefficients")
-                    .setWarning()
-                    .onClick(async () => {
-                        // Relevance
-                        this.plugin.settings.relevanceCoreWeight =
-                            DEFAULT_SETTINGS.relevanceCoreWeight;
-                        // Due date
-                        this.plugin.settings.dueDateOverdueScore =
-                            DEFAULT_SETTINGS.dueDateOverdueScore;
-                        this.plugin.settings.dueDateWithin7DaysScore =
-                            DEFAULT_SETTINGS.dueDateWithin7DaysScore;
-                        this.plugin.settings.dueDateWithin1MonthScore =
-                            DEFAULT_SETTINGS.dueDateWithin1MonthScore;
-                        this.plugin.settings.dueDateLaterScore =
-                            DEFAULT_SETTINGS.dueDateLaterScore;
-                        this.plugin.settings.dueDateNoneScore =
-                            DEFAULT_SETTINGS.dueDateNoneScore;
-                        // Priority
-                        this.plugin.settings.priorityP1Score =
-                            DEFAULT_SETTINGS.priorityP1Score;
-                        this.plugin.settings.priorityP2Score =
-                            DEFAULT_SETTINGS.priorityP2Score;
-                        this.plugin.settings.priorityP3Score =
-                            DEFAULT_SETTINGS.priorityP3Score;
-                        this.plugin.settings.priorityP4Score =
-                            DEFAULT_SETTINGS.priorityP4Score;
-                        this.plugin.settings.priorityNoneScore =
-                            DEFAULT_SETTINGS.priorityNoneScore;
-                        // Status - reset entire taskStatusMapping
-                        this.plugin.settings.taskStatusMapping = JSON.parse(
-                            JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
-                        );
-                        await this.plugin.saveSettings();
-                        new Notice("All sub-coefficients reset to defaults");
-                        this.display(); // Refresh UI
-                    }),
-            );
-
-        // Reset relevance sub-coefficients
-        new Setting(containerEl)
-            .setName("Reset relevance core keyword match bonus")
-            .setDesc(
-                "Reset relevance core keyword match bonus to default (0.2).",
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset relevance core keyword match bonus")
-                    .onClick(async () => {
-                        this.plugin.settings.relevanceCoreWeight =
-                            DEFAULT_SETTINGS.relevanceCoreWeight;
-                        await this.plugin.saveSettings();
-                        new Notice(
-                            "Relevance core keyword match bonus reset to default (0.2)",
-                        );
-                        this.display();
-                    }),
-            );
-
-        // Reset due date sub-coefficients
-        new Setting(containerEl)
-            .setName("Reset due date sub-coefficients")
-            .setDesc("Reset due date sub-coefficients to defaults.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset due date sub-coefficients")
-                    .onClick(async () => {
-                        this.plugin.settings.dueDateOverdueScore =
-                            DEFAULT_SETTINGS.dueDateOverdueScore;
-                        this.plugin.settings.dueDateWithin7DaysScore =
-                            DEFAULT_SETTINGS.dueDateWithin7DaysScore;
-                        this.plugin.settings.dueDateWithin1MonthScore =
-                            DEFAULT_SETTINGS.dueDateWithin1MonthScore;
-                        this.plugin.settings.dueDateLaterScore =
-                            DEFAULT_SETTINGS.dueDateLaterScore;
-                        this.plugin.settings.dueDateNoneScore =
-                            DEFAULT_SETTINGS.dueDateNoneScore;
-                        await this.plugin.saveSettings();
-                        new Notice(
-                            "Due date sub-coefficients reset to defaults",
-                        );
-                        this.display();
-                    }),
-            );
-
         // Reset priority sub-coefficients
         new Setting(containerEl)
             .setName("Reset priority sub-coefficients")
@@ -1705,22 +1659,17 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Reset status category
+        // Status Sub-Coefficients
         new Setting(containerEl)
-            .setName("Reset status category")
-            .setDesc("Reset all status categories to defaults.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset status category")
-                    .onClick(async () => {
-                        this.plugin.settings.taskStatusMapping = JSON.parse(
-                            JSON.stringify(DEFAULT_SETTINGS.taskStatusMapping),
-                        );
-                        await this.plugin.saveSettings();
-                        new Notice("Status categories reset to defaults");
-                        this.display();
-                    }),
-            );
+            .setName("Status sub-coefficients")
+            .setClass("setting-subsection-heading");
+
+        const statusScoreNote = containerEl.createDiv({
+            cls: "setting-item-description task-chat-info-box",
+        });
+        statusScoreNote.createEl("p", {
+            text: 'Each status category has its own coefficient. Scroll up to the "Status category" section to manage coefficients.',
+        });
 
         // Task Sorting
         const taskSortingSetting = new Setting(containerEl)
