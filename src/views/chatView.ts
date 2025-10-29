@@ -574,12 +574,12 @@ export class ChatView extends ItemView {
                 const actualPerCoreLang = actualPerCoreLangValue.toFixed(1);
 
                 // Build expansion line
-                // Show "X core → Y expansion" (not "total") since this line is about expansion
+                // Format: "X core → Y semantic, Z.Z/core/lang | Language1, Language2"
                 let expansionLine = `${meta.coreKeywordsCount} core → ${expandedOnly} semantic, ${actualPerCoreLang}/core/lang`;
 
-                // Add languages if available
+                // Add languages if available (comma-separated between multiple languages)
                 if (meta.languagesUsed && meta.languagesUsed.length > 0) {
-                    expansionLine += `, ${meta.languagesUsed.join(" | ")}`;
+                    expansionLine += ` | ${meta.languagesUsed.join(", ")}`;
                 }
 
                 parts.push(`📈 Expansion: ${expansionLine}`);
