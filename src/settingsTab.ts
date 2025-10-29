@@ -279,22 +279,17 @@ export class SettingsTab extends PluginSettingTab {
                 }),
         );
 
-        // Add model count info for parsing
-        const parsingModelInfo = containerEl.createDiv({
-            cls: "setting-item-description model-info-display",
-        });
+        // Add model count info inline for parsing
+        const parsingDescEl = parsingModelSetting.descEl;
         const parsingModelsCount = this.getAvailableModelsForProvider(
             this.plugin.settings.parsingProvider,
         ).length;
-        if (parsingModelsCount > 0) {
-            parsingModelInfo.setText(
-                `${parsingModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.parsingProvider}`,
-            );
-        } else {
-            parsingModelInfo.setText(
-                "Click 'Refresh' to fetch available models",
-            );
-        }
+        const parsingInfoText =
+            parsingModelsCount > 0
+                ? `${parsingModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.parsingProvider}`
+                : "Click 'Refresh' to fetch available models";
+        parsingDescEl.createSpan({ text: " " });
+        parsingDescEl.createSpan({ text: parsingInfoText });
 
         // Parsing Temperature
         new Setting(containerEl)
@@ -399,22 +394,17 @@ export class SettingsTab extends PluginSettingTab {
                 }),
         );
 
-        // Add model count info for analysis
-        const analysisModelInfo = containerEl.createDiv({
-            cls: "setting-item-description model-info-display",
-        });
+        // Add model count info inline for analysis
+        const analysisDescEl = analysisModelSetting.descEl;
         const analysisModelsCount = this.getAvailableModelsForProvider(
             this.plugin.settings.analysisProvider,
         ).length;
-        if (analysisModelsCount > 0) {
-            analysisModelInfo.setText(
-                `${analysisModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.analysisProvider}`,
-            );
-        } else {
-            analysisModelInfo.setText(
-                "Click 'Refresh' to fetch available models",
-            );
-        }
+        const analysisInfoText =
+            analysisModelsCount > 0
+                ? `${analysisModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.analysisProvider}`
+                : "Click 'Refresh' to fetch available models";
+        analysisDescEl.createSpan({ text: " " });
+        analysisDescEl.createSpan({ text: analysisInfoText });
 
         // Analysis Temperature
         new Setting(containerEl)
@@ -822,25 +812,20 @@ export class SettingsTab extends PluginSettingTab {
 
         // Dataview Settings
         new Setting(containerEl).setName("Dataview integration").setHeading();
+        const dataviewInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        dataviewInfo.appendText("Configure task property field names. ");
+        dataviewInfo.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about Dataview integration",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
+        });
 
         new Setting(containerEl)
-            .setName("Dataview task properties")
+            .setName("Task properties")
             .setClass("setting-subsection-heading")
             .setDesc("Configure task property field names.");
-        const dataviewDesc = containerEl.lastElementChild as HTMLElement;
-        if (dataviewDesc?.classList.contains("setting-item")) {
-            const descEl = dataviewDesc.querySelector(
-                ".setting-item-description",
-            );
-            if (descEl) {
-                descEl.createSpan({ text: " " });
-                descEl.createEl("a", {
-                    cls: "setting-inline-link",
-                    text: "Learn more about Dataview integration.",
-                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
-                });
-            }
-        }
 
         new Setting(containerEl)
             .setName("Due date field")
@@ -1850,7 +1835,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Pricing Information
-        new Setting(containerEl)
+        const pricingSetting = new Setting(containerEl)
             .setName("Pricing data")
             .setClass("setting-subsection-heading");
 
@@ -1860,11 +1845,8 @@ export class SettingsTab extends PluginSettingTab {
         const modelCount = Object.keys(
             this.plugin.settings.pricingCache.data,
         ).length;
-
-        const pricingInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        pricingInfo.createEl("p", {
+        const pricingDesc = pricingSetting.descEl;
+        pricingDesc.createSpan({
             text: `${modelCount} models cached, updated ${lastUpdate}`,
         });
 
@@ -1901,18 +1883,15 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Usage Statistics
-        new Setting(containerEl)
+        const usageSetting = new Setting(containerEl)
             .setName("Usage statistics")
             .setClass("setting-subsection-heading");
 
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
         const totalCost = this.plugin.settings.totalCost.toFixed(4);
-
-        const statsContainer = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        statsContainer.createEl("p", {
+        const usageDesc = usageSetting.descEl;
+        usageDesc.createSpan({
             text: `Total: ${totalTokens} tokens, $${totalCost}`,
         });
 
@@ -2701,25 +2680,17 @@ export class SettingsTab extends PluginSettingTab {
     private renderSortBySetting(): void {
         if (!this.sortByContainerEl) return;
 
-        // Header with explanation
-        new Setting(this.sortByContainerEl)
-            .setName("Multi-criteria sorting")
-            .setClass("setting-subsection-heading");
-
-        const sortingInfo = this.sortByContainerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        const p13 = sortingInfo.createEl("p");
-        p13.appendText("Select sorting criteria for tiebreaking. ");
-        p13.createEl("a", {
-            text: "→ Learn more about task sorting",
+        // Task sorting (tag-based UI)
+        const sortSetting = new Setting(this.sortByContainerEl)
+            .setName("Task sorting")
+            .setDesc(
+                "Relevance is always first. Select sorting criteria for tiebreaking.",
+            );
+        sortSetting.descEl.createSpan({ text: " " });
+        sortSetting.descEl.createEl("a", {
+            text: "Learn more about task sorting",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md",
         });
-
-        // Unified sort settings (tag-based UI)
-        const sortSetting = new Setting(this.sortByContainerEl)
-            .setName("Task sort order")
-            .setDesc("Relevance is always first.");
 
         // Create container for tag badges
         const tagsContainer = sortSetting.controlEl.createDiv({
