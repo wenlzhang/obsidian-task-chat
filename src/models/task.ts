@@ -15,12 +15,22 @@ export interface Task {
 }
 
 export interface TaskFilter {
+    // Section 1: Search text
     text?: string;
-    folders?: string[];
-    priorities?: string[];
-    dueDateRange?: DateRange;
+
+    // Section 2: Task inclusion (folders, tags, notes)
+    folders?: string[]; // Folders to include (if empty, include all)
+    noteTags?: string[]; // Note-level tags to include (e.g., "#project")
+    taskTags?: string[]; // Task-level tags to include (e.g., "#urgent")
+    notes?: string[]; // Specific notes to include (file paths)
+
+    // Section 3: Task properties
+    priorities?: string[]; // Priorities to include (e.g., ["1", "2"])
+    dueDateRange?: DateRange; // Due date range filter
+    taskStatuses?: string[]; // Status categories to include (e.g., ["open", "inProgress"])
+
+    // Legacy field (deprecated, use taskStatuses instead)
     completionStatus?: "completed" | "incomplete" | "all";
-    taskStatuses?: string[];
 }
 
 export interface DateRange {

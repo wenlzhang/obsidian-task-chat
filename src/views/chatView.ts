@@ -262,8 +262,15 @@ export class ChatView extends ItemView {
             this.currentFilter.text ||
             (this.currentFilter.folders &&
                 this.currentFilter.folders.length > 0) ||
+            (this.currentFilter.noteTags &&
+                this.currentFilter.noteTags.length > 0) ||
+            (this.currentFilter.taskTags &&
+                this.currentFilter.taskTags.length > 0) ||
+            (this.currentFilter.notes && this.currentFilter.notes.length > 0) ||
             (this.currentFilter.priorities &&
                 this.currentFilter.priorities.length > 0) ||
+            (this.currentFilter.taskStatuses &&
+                this.currentFilter.taskStatuses.length > 0) ||
             this.currentFilter.dueDateRange ||
             (this.currentFilter.completionStatus &&
                 this.currentFilter.completionStatus !== "all");
@@ -289,11 +296,49 @@ export class ChatView extends ItemView {
             }
 
             if (
+                this.currentFilter.noteTags &&
+                this.currentFilter.noteTags.length > 0
+            ) {
+                filterParts.push(
+                    `Note Tags: ${this.currentFilter.noteTags.join(", ")}`,
+                );
+            }
+
+            if (
+                this.currentFilter.taskTags &&
+                this.currentFilter.taskTags.length > 0
+            ) {
+                filterParts.push(
+                    `Task Tags: ${this.currentFilter.taskTags.join(", ")}`,
+                );
+            }
+
+            if (
+                this.currentFilter.notes &&
+                this.currentFilter.notes.length > 0
+            ) {
+                const noteNames = this.currentFilter.notes.map((path) => {
+                    const parts = path.split("/");
+                    return parts[parts.length - 1].replace(".md", "");
+                });
+                filterParts.push(`Notes: ${noteNames.join(", ")}`);
+            }
+
+            if (
                 this.currentFilter.priorities &&
                 this.currentFilter.priorities.length > 0
             ) {
                 filterParts.push(
                     `Priorities: ${this.currentFilter.priorities.join(", ")}`,
+                );
+            }
+
+            if (
+                this.currentFilter.taskStatuses &&
+                this.currentFilter.taskStatuses.length > 0
+            ) {
+                filterParts.push(
+                    `Statuses: ${this.currentFilter.taskStatuses.join(", ")}`,
                 );
             }
 
@@ -1526,9 +1571,13 @@ export class ChatView extends ItemView {
      * Open filter modal
      */
     private openFilterModal(): void {
-        this.plugin.openFilterModal((filter) => {
-            this.setFilter(filter);
-        });
+        this.plugin.openFilterModal(
+            this.currentTasks,
+            this.currentFilter,
+            (filter) => {
+                this.setFilter(filter);
+            },
+        );
     }
 
     /**

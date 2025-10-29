@@ -1463,3 +1463,361 @@
 .task-chat-info-box h3 {
     margin-top: 0;
 }
+
+/* ============================================
+   Enhanced Filter Modal Styles
+   ============================================ */
+
+.task-chat-filter-modal {
+    padding: 0 !important;
+}
+
+.task-chat-filter-modal .modal-content {
+    padding: 20px;
+    max-width: 700px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .task-chat-filter-modal .modal-content {
+        max-width: 100%;
+        padding: 16px;
+    }
+}
+
+/* Section Styling */
+.task-chat-filter-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-chat-filter-section:last-of-type {
+    border-bottom: none;
+}
+
+.task-chat-filter-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-normal);
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+.task-chat-filter-section-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+/* Subsection Styling */
+.task-chat-filter-subsection {
+    margin-top: 16px;
+}
+
+.task-chat-filter-subsection h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-normal);
+    margin-bottom: 8px;
+    margin-top: 0;
+}
+
+/* Inclusion Row (Label + Items + Add Button) */
+.task-chat-filter-inclusion-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+    .task-chat-filter-inclusion-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+.task-chat-filter-inclusion-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-normal);
+    min-width: 120px;
+    padding-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .task-chat-filter-inclusion-label {
+        min-width: unset;
+    }
+}
+
+.task-chat-filter-inclusion-items {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    min-height: 32px;
+}
+
+.task-chat-filter-inclusion-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Inclusion Badges */
+.task-chat-filter-inclusion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-normal);
+    transition: all 0.2s;
+}
+
+.task-chat-filter-inclusion-badge:hover {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-chat-filter-inclusion-badge-text {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-chat-filter-inclusion-badge-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s;
+}
+
+.task-chat-filter-inclusion-badge-remove:hover {
+    background: var(--background-modifier-error);
+    color: var(--text-error);
+}
+
+/* Add Button */
+.task-chat-filter-add-button {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+}
+
+.task-chat-filter-add-button:hover {
+    opacity: 0.8;
+}
+
+/* Toggle Rows (for priorities and status categories) */
+.task-chat-filter-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.task-chat-filter-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.task-chat-filter-toggle-row:hover {
+    background: var(--background-modifier-hover);
+}
+
+.task-chat-filter-checkbox {
+    cursor: pointer;
+    accent-color: var(--interactive-accent);
+}
+
+.task-chat-filter-toggle-label {
+    font-size: 13px;
+    color: var(--text-normal);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Quick Date Filters */
+.task-chat-filter-quick-dates {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.task-chat-filter-quick-dates-label {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.task-chat-filter-quick-date-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-chat-filter-quick-date-btn:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+/* Action Buttons */
+.task-chat-filter-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+@media (max-width: 768px) {
+    .task-chat-filter-buttons {
+        flex-direction: column-reverse;
+    }
+    
+    .task-chat-filter-buttons button {
+        width: 100%;
+    }
+}
+
+.task-chat-filter-button-clear {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: auto;
+}
+
+.task-chat-filter-button-clear:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.task-chat-filter-button-cancel {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: transparent;
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-chat-filter-button-cancel:hover {
+    background: var(--background-modifier-hover);
+}
+
+.task-chat-filter-button-apply {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.task-chat-filter-button-apply:hover {
+    opacity: 0.8;
+}
+
+/* Date Input Styling */
+.task-chat-filter-modal input[type="date"] {
+    padding: 6px 8px;
+    font-size: 13px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.task-chat-filter-modal input[type="date"]:hover {
+    border-color: var(--interactive-accent);
+}
+
+.task-chat-filter-modal input[type="date"]:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Settings Section Styling */
+.task-chat-filter-modal .setting-item {
+    border-top: none;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.task-chat-filter-modal .setting-item-description {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Scrollbar Styling */
+.task-chat-filter-modal .modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.task-chat-filter-modal .modal-content::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+}
+
+.task-chat-filter-modal .modal-content::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.task-chat-filter-modal .modal-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

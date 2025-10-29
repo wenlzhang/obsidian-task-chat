@@ -1,20 +1,41 @@
-import { App, Modal, Setting, moment } from "obsidian";
+import { App, Modal, Setting, Menu, moment } from "obsidian";
 import { TaskFilter } from "../models/task";
 import { TaskFilterService } from "../services/taskFilterService";
 import { Task } from "../models/task";
+import {
+    FolderSuggestModal,
+    TagSuggestModal,
+    NoteSuggestModal,
+} from "../utils/suggestModals";
+import TaskChatPlugin from "../main";
 
+/**
+ * Enhanced Filter Modal with three sections:
+ * 1. Search text
+ * 2. Task inclusion (folders, tags, notes)
+ * 3. Task properties (due date, priority, status categories)
+ */
 export class FilterModal extends Modal {
     private filter: TaskFilter;
     private onSubmit: (filter: TaskFilter) => void;
     private allTasks: Task[];
+    private plugin: TaskChatPlugin;
+    private listContainers: {
+        folders?: HTMLElement;
+        noteTags?: HTMLElement;
+        taskTags?: HTMLElement;
+        notes?: HTMLElement;
+    } = {};
 
     constructor(
         app: App,
+        plugin: TaskChatPlugin,
         allTasks: Task[],
         currentFilter: TaskFilter,
         onSubmit: (filter: TaskFilter) => void,
     ) {
         super(app);
+        this.plugin = plugin;
         this.allTasks = allTasks;
         this.filter = { ...currentFilter };
         this.onSubmit = onSubmit;
@@ -23,13 +44,37 @@ export class FilterModal extends Modal {
     onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
+        contentEl.addClass("task-chat-filter-modal");
 
+        // Header
         contentEl.createEl("h2", { text: "Filter tasks" });
 
-        // Text filter
-        new Setting(contentEl)
-            .setName("Search text")
-            .setDesc("Filter tasks by text content")
+        // SECTION 1: Search Text
+        this.renderSearchTextSection(contentEl);
+
+        // SECTION 2: Task Inclusion (Folders, Tags, Notes)
+        this.renderTaskInclusionSection(contentEl);
+
+        // SECTION 3: Task Properties (Due Date, Priority, Status)
+        this.renderTaskPropertiesSection(contentEl);
+
+        // Action Buttons
+        this.renderActionButtons(contentEl);
+    }
+
+    /**
+     * Section 1: Search text filter
+     */
+    private renderSearchTextSection(container: HTMLElement): void {
+        const section = container.createDiv("task-chat-filter-section");
+        section.createEl("h3", {
+            text: "Search text",
+            cls: "task-chat-filter-section-title",
+        });
+
+        new Setting(section)
+            .setName("Filter tasks by text content")
+            .setDesc("Enter keywords to search within task text")
             .addText((text) =>
                 text
                     .setPlaceholder("Enter search text")
@@ -38,179 +83,381 @@ export class FilterModal extends Modal {
                         this.filter.text = value;
                     }),
             );
+    }
 
-        // Folder filter
-        const folders = TaskFilterService.getUniqueFolders(this.allTasks);
-        if (folders.length > 0) {
-            const folderSetting = new Setting(contentEl)
-                .setName("Folders")
-                .setDesc("Filter by folders (comma-separated)");
+    /**
+     * Section 2: Task inclusion (folders, tags, notes)
+     */
+    private renderTaskInclusionSection(container: HTMLElement): void {
+        const section = container.createDiv("task-chat-filter-section");
+        section.createEl("h3", {
+            text: "Folders, tags, and notes",
+            cls: "task-chat-filter-section-title",
+        });
 
-            folderSetting.addText((text) => {
-                text.setPlaceholder("folder1, folder2")
-                    .setValue(
-                        this.filter.folders
-                            ? this.filter.folders.join(", ")
-                            : "",
-                    )
-                    .onChange((value) => {
-                        this.filter.folders = value
-                            .split(",")
-                            .map((f) => f.trim())
-                            .filter((f) => f.length > 0);
-                    });
-            });
+        const desc = section.createDiv({
+            cls: "task-chat-filter-section-desc",
+        });
+        desc.createSpan({
+            text: "Include tasks from specific folders, tags, or notes. Leave empty to include all.",
+        });
+        desc.createEl("br");
+        desc.createEl("br");
+        desc.createEl("strong", { text: "Tags in notes" });
+        desc.createSpan({
+            text: ": Include ALL tasks in notes with these tags",
+        });
+        desc.createEl("br");
+        desc.createEl("strong", { text: "Tags in tasks" });
+        desc.createSpan({
+            text: ": Include ONLY specific tasks with these tags",
+        });
 
-            folderSetting.descEl.createDiv({
-                text: `Available: ${folders.join(", ")}`,
-                cls: "setting-item-description",
-            });
-        }
-
-        // Priority filter
-        const priorities = TaskFilterService.getUniquePriorities(this.allTasks);
-        if (priorities.length > 0) {
-            const prioritySetting = new Setting(contentEl)
-                .setName("Priorities")
-                .setDesc("Filter by priorities");
-
-            priorities.forEach((priority) => {
-                prioritySetting.addToggle((toggle) =>
-                    toggle
-                        .setValue(
-                            this.filter.priorities?.includes(priority) || false,
-                        )
-                        .onChange((value) => {
-                            if (!this.filter.priorities) {
-                                this.filter.priorities = [];
-                            }
-
-                            if (value) {
-                                if (
-                                    !this.filter.priorities.includes(priority)
-                                ) {
-                                    this.filter.priorities.push(priority);
-                                }
-                            } else {
-                                this.filter.priorities =
-                                    this.filter.priorities.filter(
-                                        (p) => p !== priority,
-                                    );
-                            }
-                        })
-                        .then((toggle) => {
-                            toggle.toggleEl.insertAdjacentText(
-                                "beforebegin",
-                                `${priority} `,
-                            );
-                        }),
-                );
-            });
-        }
-
-        // Completion status filter
-        new Setting(contentEl)
-            .setName("Completion status")
-            .setDesc("Filter by completion status")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("all", "All")
-                    .addOption("completed", "Completed")
-                    .addOption("incomplete", "Incomplete")
-                    .setValue(this.filter.completionStatus || "all")
-                    .onChange((value) => {
-                        this.filter.completionStatus = value as
-                            | "completed"
-                            | "incomplete"
-                            | "all";
-                    }),
-            );
-
-        // Task status filter
-        const statuses = TaskFilterService.getUniqueStatusCategories(
-            this.allTasks,
+        // Folders
+        this.renderInclusionRow(
+            section,
+            "Folders",
+            "folder",
+            this.filter.folders || [],
         );
-        if (statuses.length > 0) {
-            const statusSetting = new Setting(contentEl)
-                .setName("Task statuses")
-                .setDesc("Filter by task status categories");
 
-            statuses.forEach((status) => {
-                statusSetting.addToggle((toggle) =>
-                    toggle
-                        .setValue(
-                            this.filter.taskStatuses?.includes(status) || false,
-                        )
-                        .onChange((value) => {
-                            if (!this.filter.taskStatuses) {
-                                this.filter.taskStatuses = [];
-                            }
+        // Tags in notes
+        this.renderInclusionRow(
+            section,
+            "Tags in notes",
+            "noteTag",
+            this.filter.noteTags || [],
+        );
 
-                            if (value) {
-                                if (
-                                    !this.filter.taskStatuses.includes(status)
-                                ) {
-                                    this.filter.taskStatuses.push(status);
-                                }
-                            } else {
-                                this.filter.taskStatuses =
-                                    this.filter.taskStatuses.filter(
-                                        (s) => s !== status,
-                                    );
-                            }
-                        })
-                        .then((toggle) => {
-                            toggle.toggleEl.insertAdjacentText(
-                                "beforebegin",
-                                `${status} `,
-                            );
-                        }),
-                );
+        // Tags in tasks
+        this.renderInclusionRow(
+            section,
+            "Tags in tasks",
+            "taskTag",
+            this.filter.taskTags || [],
+        );
+
+        // Notes
+        this.renderInclusionRow(
+            section,
+            "Notes",
+            "note",
+            this.filter.notes || [],
+        );
+    }
+
+    /**
+     * Render a single inclusion row with label, items, and add button
+     */
+    private renderInclusionRow(
+        container: HTMLElement,
+        label: string,
+        type: "folder" | "noteTag" | "taskTag" | "note",
+        items: string[],
+    ): void {
+        const row = container.createDiv("task-chat-filter-inclusion-row");
+
+        // Label (left side)
+        const labelEl = row.createDiv({
+            cls: "task-chat-filter-inclusion-label",
+            text: label,
+        });
+
+        // Items container (middle)
+        const itemsContainer = row.createDiv({
+            cls: "task-chat-filter-inclusion-items",
+        });
+
+        // Store reference for later updates
+        const containerKey =
+            type === "folder"
+                ? "folders"
+                : type === "noteTag"
+                  ? "noteTags"
+                  : type === "taskTag"
+                    ? "taskTags"
+                    : "notes";
+        this.listContainers[containerKey] = itemsContainer;
+
+        // Render items
+        this.renderInclusionItems(itemsContainer, type, items);
+
+        // Add button (right side)
+        const addBtn = row.createEl("button", {
+            text: "Add...",
+            cls: "task-chat-filter-add-button",
+        });
+
+        addBtn.addEventListener("click", () => {
+            this.showInclusionSuggest(type, itemsContainer);
+        });
+    }
+
+    /**
+     * Render inclusion items as badges
+     */
+    private renderInclusionItems(
+        container: HTMLElement,
+        type: "folder" | "noteTag" | "taskTag" | "note",
+        items: string[],
+    ): void {
+        container.empty();
+
+        if (items.length === 0) {
+            container.createDiv({
+                text: "All",
+                cls: "task-chat-filter-inclusion-empty",
             });
+            return;
         }
 
-        // Due date range filter
-        contentEl.createEl("h3", { text: "Due date range" });
+        items.forEach((value) => {
+            const badge = container.createDiv({
+                cls: "task-chat-filter-inclusion-badge",
+            });
 
-        new Setting(contentEl)
+            // Display name (for notes, show basename only)
+            let displayText = value;
+            if (type === "note" && value.includes("/")) {
+                displayText = value.split("/").pop() || value;
+            }
+
+            badge.createSpan({
+                cls: "task-chat-filter-inclusion-badge-text",
+                text: displayText,
+                attr: { title: value }, // Show full path on hover
+            });
+
+            const removeBtn = badge.createEl("button", {
+                cls: "task-chat-filter-inclusion-badge-remove",
+                text: "×",
+            });
+
+            removeBtn.addEventListener("click", () => {
+                this.removeInclusion(type, value);
+            });
+        });
+    }
+
+    /**
+     * Remove an inclusion item
+     */
+    private removeInclusion(
+        type: "folder" | "noteTag" | "taskTag" | "note",
+        value: string,
+    ): void {
+        switch (type) {
+            case "folder":
+                this.filter.folders = (this.filter.folders || []).filter(
+                    (f) => f !== value,
+                );
+                this.renderInclusionItems(
+                    this.listContainers.folders!,
+                    type,
+                    this.filter.folders,
+                );
+                break;
+            case "noteTag":
+                this.filter.noteTags = (this.filter.noteTags || []).filter(
+                    (t) => t !== value,
+                );
+                this.renderInclusionItems(
+                    this.listContainers.noteTags!,
+                    type,
+                    this.filter.noteTags,
+                );
+                break;
+            case "taskTag":
+                this.filter.taskTags = (this.filter.taskTags || []).filter(
+                    (t) => t !== value,
+                );
+                this.renderInclusionItems(
+                    this.listContainers.taskTags!,
+                    type,
+                    this.filter.taskTags,
+                );
+                break;
+            case "note":
+                this.filter.notes = (this.filter.notes || []).filter(
+                    (n) => n !== value,
+                );
+                this.renderInclusionItems(
+                    this.listContainers.notes!,
+                    type,
+                    this.filter.notes,
+                );
+                break;
+        }
+    }
+
+    /**
+     * Show suggestion modal for adding inclusion items
+     */
+    private showInclusionSuggest(
+        type: "folder" | "noteTag" | "taskTag" | "note",
+        listContainer: HTMLElement,
+    ): void {
+        switch (type) {
+            case "folder":
+                {
+                    const modal = new FolderSuggestModal(
+                        this.app,
+                        async (folder) => {
+                            if (!this.filter.folders) {
+                                this.filter.folders = [];
+                            }
+                            if (!this.filter.folders.includes(folder)) {
+                                this.filter.folders.push(folder);
+                                this.renderInclusionItems(
+                                    listContainer,
+                                    type,
+                                    this.filter.folders,
+                                );
+                            }
+                        },
+                    );
+                    modal.open();
+                }
+                break;
+
+            case "noteTag":
+                {
+                    const modal = new TagSuggestModal(this.app, async (tag) => {
+                        if (!this.filter.noteTags) {
+                            this.filter.noteTags = [];
+                        }
+                        if (!this.filter.noteTags.includes(tag)) {
+                            this.filter.noteTags.push(tag);
+                            this.renderInclusionItems(
+                                listContainer,
+                                type,
+                                this.filter.noteTags,
+                            );
+                        }
+                    });
+                    modal.open();
+                }
+                break;
+
+            case "taskTag":
+                {
+                    const modal = new TagSuggestModal(this.app, async (tag) => {
+                        if (!this.filter.taskTags) {
+                            this.filter.taskTags = [];
+                        }
+                        if (!this.filter.taskTags.includes(tag)) {
+                            this.filter.taskTags.push(tag);
+                            this.renderInclusionItems(
+                                listContainer,
+                                type,
+                                this.filter.taskTags,
+                            );
+                        }
+                    });
+                    modal.open();
+                }
+                break;
+
+            case "note":
+                {
+                    const modal = new NoteSuggestModal(
+                        this.app,
+                        async (file) => {
+                            const notePath = file.path;
+                            if (!this.filter.notes) {
+                                this.filter.notes = [];
+                            }
+                            if (!this.filter.notes.includes(notePath)) {
+                                this.filter.notes.push(notePath);
+                                this.renderInclusionItems(
+                                    listContainer,
+                                    type,
+                                    this.filter.notes,
+                                );
+                            }
+                        },
+                    );
+                    modal.open();
+                }
+                break;
+        }
+    }
+
+    /**
+     * Section 3: Task properties (due date, priority, status)
+     */
+    private renderTaskPropertiesSection(container: HTMLElement): void {
+        const section = container.createDiv("task-chat-filter-section");
+        section.createEl("h3", {
+            text: "Task properties",
+            cls: "task-chat-filter-section-title",
+        });
+
+        // Due Date Range
+        this.renderDueDateRange(section);
+
+        // Priority
+        this.renderPriority(section);
+
+        // Status Categories
+        this.renderStatusCategories(section);
+    }
+
+    /**
+     * Render due date range filter with HTML5 date inputs
+     */
+    private renderDueDateRange(container: HTMLElement): void {
+        const dueDateSection = container.createDiv(
+            "task-chat-filter-subsection",
+        );
+        dueDateSection.createEl("h4", { text: "Due date range" });
+
+        // Start date
+        new Setting(dueDateSection)
             .setName("Start date")
-            .setDesc("Filter tasks due on or after this date (YYYY-MM-DD)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("YYYY-MM-DD")
-                    .setValue(this.filter.dueDateRange?.start || "")
-                    .onChange((value) => {
+            .setDesc("Filter tasks due on or after this date")
+            .addText((text) => {
+                text.inputEl.type = "date";
+                text.setValue(this.filter.dueDateRange?.start || "").onChange(
+                    (value) => {
                         if (!this.filter.dueDateRange) {
                             this.filter.dueDateRange = {};
                         }
                         this.filter.dueDateRange.start = value || undefined;
-                    }),
-            );
+                    },
+                );
+            });
 
-        new Setting(contentEl)
+        // End date
+        new Setting(dueDateSection)
             .setName("End date")
-            .setDesc("Filter tasks due on or before this date (YYYY-MM-DD)")
-            .addText((text) =>
-                text
-                    .setPlaceholder("YYYY-MM-DD")
-                    .setValue(this.filter.dueDateRange?.end || "")
-                    .onChange((value) => {
+            .setDesc("Filter tasks due on or before this date")
+            .addText((text) => {
+                text.inputEl.type = "date";
+                text.setValue(this.filter.dueDateRange?.end || "").onChange(
+                    (value) => {
                         if (!this.filter.dueDateRange) {
                             this.filter.dueDateRange = {};
                         }
                         this.filter.dueDateRange.end = value || undefined;
-                    }),
-            );
+                    },
+                );
+            });
 
         // Quick date filters
-        const quickDateContainer = contentEl.createDiv("quick-date-filters");
-        quickDateContainer.createEl("h4", { text: "Quick filters" });
-
-        const buttonContainer =
-            quickDateContainer.createDiv("button-container");
+        const quickFiltersContainer = dueDateSection.createDiv(
+            "task-chat-filter-quick-dates",
+        );
+        quickFiltersContainer.createEl("span", {
+            text: "Quick filters: ",
+            cls: "task-chat-filter-quick-dates-label",
+        });
 
         const addQuickFilter = (label: string, days: number) => {
-            const btn = buttonContainer.createEl("button", { text: label });
+            const btn = quickFiltersContainer.createEl("button", {
+                text: label,
+                cls: "task-chat-filter-quick-date-btn",
+            });
             btn.addEventListener("click", () => {
                 const today = moment().startOf("day");
                 const endDate = moment().add(days, "days").endOf("day");
@@ -229,24 +476,142 @@ export class FilterModal extends Modal {
         addQuickFilter("Today", 0);
         addQuickFilter("This week", 7);
         addQuickFilter("This month", 30);
+    }
 
-        // Buttons
-        const buttonEl = contentEl.createDiv("modal-button-container");
+    /**
+     * Render priority filter with toggles
+     */
+    private renderPriority(container: HTMLElement): void {
+        const priorities = TaskFilterService.getUniquePriorities(this.allTasks);
+        if (priorities.length === 0) {
+            return; // No priorities in tasks
+        }
 
-        const clearBtn = buttonEl.createEl("button", { text: "Clear filters" });
+        const prioritySection = container.createDiv(
+            "task-chat-filter-subsection",
+        );
+        prioritySection.createEl("h4", { text: "Priorities" });
+
+        const priorityContainer = prioritySection.createDiv(
+            "task-chat-filter-toggles",
+        );
+
+        priorities.forEach((priority) => {
+            const toggleRow = priorityContainer.createDiv(
+                "task-chat-filter-toggle-row",
+            );
+
+            const checkbox = toggleRow.createEl("input", {
+                type: "checkbox",
+                cls: "task-chat-filter-checkbox",
+            });
+            checkbox.checked =
+                this.filter.priorities?.includes(priority) || false;
+
+            checkbox.addEventListener("change", () => {
+                if (!this.filter.priorities) {
+                    this.filter.priorities = [];
+                }
+
+                if (checkbox.checked) {
+                    if (!this.filter.priorities.includes(priority)) {
+                        this.filter.priorities.push(priority);
+                    }
+                } else {
+                    this.filter.priorities = this.filter.priorities.filter(
+                        (p) => p !== priority,
+                    );
+                }
+            });
+
+            toggleRow.createSpan({
+                text: priority,
+                cls: "task-chat-filter-toggle-label",
+            });
+        });
+    }
+
+    /**
+     * Render status categories filter with toggles
+     */
+    private renderStatusCategories(container: HTMLElement): void {
+        const statuses = TaskFilterService.getUniqueStatusCategories(
+            this.allTasks,
+        );
+        if (statuses.length === 0) {
+            return; // No statuses in tasks
+        }
+
+        const statusSection = container.createDiv(
+            "task-chat-filter-subsection",
+        );
+        statusSection.createEl("h4", { text: "Status categories" });
+
+        const statusContainer = statusSection.createDiv(
+            "task-chat-filter-toggles",
+        );
+
+        statuses.forEach((status) => {
+            const toggleRow = statusContainer.createDiv(
+                "task-chat-filter-toggle-row",
+            );
+
+            const checkbox = toggleRow.createEl("input", {
+                type: "checkbox",
+                cls: "task-chat-filter-checkbox",
+            });
+            checkbox.checked =
+                this.filter.taskStatuses?.includes(status) || false;
+
+            checkbox.addEventListener("change", () => {
+                if (!this.filter.taskStatuses) {
+                    this.filter.taskStatuses = [];
+                }
+
+                if (checkbox.checked) {
+                    if (!this.filter.taskStatuses.includes(status)) {
+                        this.filter.taskStatuses.push(status);
+                    }
+                } else {
+                    this.filter.taskStatuses = this.filter.taskStatuses.filter(
+                        (s) => s !== status,
+                    );
+                }
+            });
+
+            toggleRow.createSpan({
+                text: status,
+                cls: "task-chat-filter-toggle-label",
+            });
+        });
+    }
+
+    /**
+     * Render action buttons (Clear, Cancel, Apply)
+     */
+    private renderActionButtons(container: HTMLElement): void {
+        const buttonContainer = container.createDiv("task-chat-filter-buttons");
+
+        const clearBtn = buttonContainer.createEl("button", {
+            text: "Clear filters",
+            cls: "task-chat-filter-button-clear",
+        });
         clearBtn.addEventListener("click", () => {
             this.filter = {};
             this.onOpen(); // Refresh the modal
         });
 
-        const cancelBtn = buttonEl.createEl("button", { text: "Cancel" });
+        const cancelBtn = buttonContainer.createEl("button", {
+            text: "Cancel",
+            cls: "task-chat-filter-button-cancel",
+        });
         cancelBtn.addEventListener("click", () => {
             this.close();
         });
 
-        const applyBtn = buttonEl.createEl("button", {
+        const applyBtn = buttonContainer.createEl("button", {
             text: "Apply",
-            cls: "mod-cta",
+            cls: "task-chat-filter-button-apply mod-cta",
         });
         applyBtn.addEventListener("click", () => {
             this.onSubmit(this.filter);

@@ -30,6 +30,35 @@ export class TaskFilterService {
             });
         }
 
+        // Filter by note-level tags
+        // Note: Currently uses task.tags which includes all tags from DataView
+        // TODO: Distinguish between note-level and task-level tags
+        if (filter.noteTags && filter.noteTags.length > 0) {
+            filtered = filtered.filter((task) => {
+                if (!task.tags || task.tags.length === 0) return false;
+                return filter.noteTags!.some((filterTag) =>
+                    task.tags.includes(filterTag),
+                );
+            });
+        }
+
+        // Filter by task-level tags
+        if (filter.taskTags && filter.taskTags.length > 0) {
+            filtered = filtered.filter((task) => {
+                if (!task.tags || task.tags.length === 0) return false;
+                return filter.taskTags!.some((filterTag) =>
+                    task.tags.includes(filterTag),
+                );
+            });
+        }
+
+        // Filter by notes (specific file paths)
+        if (filter.notes && filter.notes.length > 0) {
+            filtered = filtered.filter((task) =>
+                filter.notes!.includes(task.sourcePath),
+            );
+        }
+
         // Filter by priorities
         if (filter.priorities && filter.priorities.length > 0) {
             filtered = filtered.filter((task) => {

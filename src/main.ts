@@ -417,14 +417,15 @@ export default class TaskChatPlugin extends Plugin {
     /**
      * Open filter modal
      */
-    openFilterModal(onSubmit: (filter: TaskFilter) => void): void {
-        const currentFilter = this.chatView
-            ? this.chatView["currentFilter"] || {}
-            : {};
-
+    openFilterModal(
+        allTasks: Task[],
+        currentFilter: TaskFilter,
+        onSubmit: (filter: TaskFilter) => void,
+    ): void {
         new FilterModal(
             this.app,
-            this.allTasks,
+            this,
+            allTasks,
             currentFilter,
             onSubmit,
         ).open();
