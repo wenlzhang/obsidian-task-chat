@@ -104,7 +104,7 @@ export class FilterModal extends Modal {
         // Folders
         this.renderInclusionRow(
             section,
-            "Folders",
+            "📁 Folders",
             "folder",
             this.filter.folders || [],
         );
@@ -112,7 +112,7 @@ export class FilterModal extends Modal {
         // Tags in notes
         this.renderInclusionRow(
             section,
-            "Tags in notes",
+            "🏷 Tags in notes",
             "noteTag",
             this.filter.noteTags || [],
         );
@@ -120,7 +120,7 @@ export class FilterModal extends Modal {
         // Tags in tasks
         this.renderInclusionRow(
             section,
-            "Tags in tasks",
+            "☑️ Tags in tasks",
             "taskTag",
             this.filter.taskTags || [],
         );
@@ -128,7 +128,7 @@ export class FilterModal extends Modal {
         // Notes
         this.renderInclusionRow(
             section,
-            "Notes",
+            "📄 Notes",
             "note",
             this.filter.notes || [],
         );
@@ -398,37 +398,33 @@ export class FilterModal extends Modal {
         const dueDateSection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        dueDateSection.createEl("h4", { text: "Due date range" });
+        dueDateSection.createEl("h4", { text: "📅 Due date range" });
 
         // Start date
-        new Setting(dueDateSection)
-            .setName("Start date")
-            .addText((text) => {
-                text.inputEl.type = "date";
-                text.setValue(this.filter.dueDateRange?.start || "").onChange(
-                    (value) => {
-                        if (!this.filter.dueDateRange) {
-                            this.filter.dueDateRange = {};
-                        }
-                        this.filter.dueDateRange.start = value || undefined;
-                    },
-                );
-            });
+        new Setting(dueDateSection).setName("Start").addText((text) => {
+            text.inputEl.type = "date";
+            text.setValue(this.filter.dueDateRange?.start || "").onChange(
+                (value) => {
+                    if (!this.filter.dueDateRange) {
+                        this.filter.dueDateRange = {};
+                    }
+                    this.filter.dueDateRange.start = value || undefined;
+                },
+            );
+        });
 
         // End date
-        new Setting(dueDateSection)
-            .setName("End date")
-            .addText((text) => {
-                text.inputEl.type = "date";
-                text.setValue(this.filter.dueDateRange?.end || "").onChange(
-                    (value) => {
-                        if (!this.filter.dueDateRange) {
-                            this.filter.dueDateRange = {};
-                        }
-                        this.filter.dueDateRange.end = value || undefined;
-                    },
-                );
-            });
+        new Setting(dueDateSection).setName("End").addText((text) => {
+            text.inputEl.type = "date";
+            text.setValue(this.filter.dueDateRange?.end || "").onChange(
+                (value) => {
+                    if (!this.filter.dueDateRange) {
+                        this.filter.dueDateRange = {};
+                    }
+                    this.filter.dueDateRange.end = value || undefined;
+                },
+            );
+        });
 
         // Quick date filters
         const quickFiltersContainer = dueDateSection.createDiv(
@@ -512,7 +508,7 @@ export class FilterModal extends Modal {
         const prioritySection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        prioritySection.createEl("h4", { text: "Priorities" });
+        prioritySection.createEl("h4", { text: "🎯 Priorities" });
 
         const priorityContainer = prioritySection.createDiv(
             "task-chat-filter-toggles",
@@ -569,7 +565,7 @@ export class FilterModal extends Modal {
         const statusSection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        statusSection.createEl("h4", { text: "Status categories" });
+        statusSection.createEl("h4", { text: "📊 Status categories" });
 
         const statusContainer = statusSection.createDiv(
             "task-chat-filter-toggles",

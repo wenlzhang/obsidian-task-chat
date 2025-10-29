@@ -449,18 +449,18 @@ export class ChatView extends ItemView {
 
         this.chatModeSelect.empty();
 
-        // Create all three mode options with emoji icons
+        // Create all three mode options without icons (icon only on button)
         this.chatModeSelect.createEl("option", {
             value: "simple",
-            text: "💬 Simple Search",
+            text: "Simple Search",
         });
         this.chatModeSelect.createEl("option", {
             value: "smart",
-            text: "💬 Smart Search",
+            text: "Smart Search",
         });
         this.chatModeSelect.createEl("option", {
             value: "chat",
-            text: "💬 Task Chat",
+            text: "Task Chat",
         });
 
         // Set to current setting (or override if one exists)

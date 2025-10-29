@@ -151,66 +151,90 @@ export class AIService {
                 `Pre-extracted properties, cleaned query: "${message}" → "${cleanedQuery}"`,
             );
 
-            try {
-                parsedQuery = await QueryParserService.parseQuery(
-                    cleanedQuery, // Send cleaned query to AI
-                    settings,
+            // OPTIMIZATION: If query is property-only (no keywords), skip AI parsing entirely
+            // This saves tokens and makes property-only queries cost $0
+            if (!cleanedQuery || cleanedQuery.trim().length === 0) {
+                Logger.debug(
+                    "Property-only query detected, skipping AI (zero cost)",
                 );
+                parsedQuery = {
+                    keywords: [],
+                    coreKeywords: [],
+                    priority: preExtractedIntent.extractedPriority || undefined,
+                    dueDate:
+                        preExtractedIntent.extractedDueDateFilter || undefined,
+                    status: preExtractedIntent.extractedStatus || undefined,
+                    folder: preExtractedIntent.extractedFolder || undefined,
+                    tags: preExtractedIntent.extractedTags || undefined,
+                    originalQuery: message,
+                };
+                usingAIParsing = false; // No AI used for property-only query
+            } else {
+                try {
+                    parsedQuery = await QueryParserService.parseQuery(
+                        cleanedQuery, // Send cleaned query to AI
+                        settings,
+                    );
 
-                // Merge pre-extracted properties with AI-parsed properties
-                // Pre-extracted properties take precedence (more reliable)
-                if (preExtractedIntent.extractedPriority) {
-                    parsedQuery.priority = preExtractedIntent.extractedPriority;
-                }
-                if (preExtractedIntent.extractedDueDateFilter) {
-                    parsedQuery.dueDate =
-                        preExtractedIntent.extractedDueDateFilter;
-                }
-                if (preExtractedIntent.extractedStatus) {
-                    parsedQuery.status = preExtractedIntent.extractedStatus;
-                }
-                if (preExtractedIntent.extractedFolder) {
-                    parsedQuery.folder = preExtractedIntent.extractedFolder;
-                }
-                if (
-                    preExtractedIntent.extractedTags &&
-                    preExtractedIntent.extractedTags.length > 0
-                ) {
-                    parsedQuery.tags = preExtractedIntent.extractedTags;
-                }
+                    // Merge pre-extracted properties with AI-parsed properties
+                    // Pre-extracted properties take precedence (more reliable)
+                    if (preExtractedIntent.extractedPriority) {
+                        parsedQuery.priority =
+                            preExtractedIntent.extractedPriority;
+                    }
+                    if (preExtractedIntent.extractedDueDateFilter) {
+                        parsedQuery.dueDate =
+                            preExtractedIntent.extractedDueDateFilter;
+                    }
+                    if (preExtractedIntent.extractedStatus) {
+                        parsedQuery.status = preExtractedIntent.extractedStatus;
+                    }
+                    if (preExtractedIntent.extractedFolder) {
+                        parsedQuery.folder = preExtractedIntent.extractedFolder;
+                    }
+                    if (
+                        preExtractedIntent.extractedTags &&
+                        preExtractedIntent.extractedTags.length > 0
+                    ) {
+                        parsedQuery.tags = preExtractedIntent.extractedTags;
+                    }
 
-                Logger.debug("AI parsed query:", parsedQuery);
-                usingAIParsing = true; // AI parsing succeeded
-            } catch (error) {
-                // AI parsing failed - capture error metadata for UI display
-                Logger.warn(
-                    "⚠️ AI Query Parser Failed - falling back to Simple Search module",
-                );
-                Logger.error("Parser error details:", error);
+                    Logger.debug("AI parsed query:", parsedQuery);
+                    usingAIParsing = true; // AI parsing succeeded
+                } catch (error) {
+                    // AI parsing failed - capture error metadata for UI display
+                    Logger.warn(
+                        "⚠️ AI Query Parser Failed - falling back to Simple Search module",
+                    );
+                    Logger.error("Parser error details:", error);
 
-                // Store error info in parsedQuery for UI display
-                // Check if it's an AIError with structured information
-                let errorMessage: string;
-                if (error instanceof AIError && error.structured) {
-                    // AIError has full structured info - store it for later use
-                    errorMessage = error.structured.details;
-                    parsedQuery = {
-                        _parserError: errorMessage,
-                        _parserModel: error.structured.model || "unknown",
-                        _structuredError: error.structured, // Store full structured error!
-                    } as ParsedQuery;
-                } else {
-                    // Fallback for plain errors
-                    errorMessage =
-                        error instanceof Error ? error.message : String(error);
-                    const parserModel = (error as any).parserModel || "unknown";
-                    parsedQuery = {
-                        _parserError: errorMessage,
-                        _parserModel: parserModel,
-                    } as ParsedQuery;
+                    // Store error info in parsedQuery for UI display
+                    // Check if it's an AIError with structured information
+                    let errorMessage: string;
+                    if (error instanceof AIError && error.structured) {
+                        // AIError has full structured info - store it for later use
+                        errorMessage = error.structured.details;
+                        parsedQuery = {
+                            _parserError: errorMessage,
+                            _parserModel: error.structured.model || "unknown",
+                            _structuredError: error.structured, // Store full structured error!
+                        } as ParsedQuery;
+                    } else {
+                        // Fallback for plain errors
+                        errorMessage =
+                            error instanceof Error
+                                ? error.message
+                                : String(error);
+                        const parserModel =
+                            (error as any).parserModel || "unknown";
+                        parsedQuery = {
+                            _parserError: errorMessage,
+                            _parserModel: parserModel,
+                        } as ParsedQuery;
+                    }
+
+                    usingAIParsing = false;
                 }
-
-                usingAIParsing = false;
             }
 
             // Convert ParsedQuery to intent format for compatibility

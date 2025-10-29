@@ -200,7 +200,7 @@ export class ExclusionsModal extends Modal {
         const menu = new Menu();
 
         menu.addItem((item) => {
-            item.setTitle("🏷️ Tag in notes")
+            item.setTitle("🏷 Tags in notes")
                 .setIcon("tag")
                 .onClick(() => {
                     this.showNoteTagSuggest(listContainer);
@@ -208,7 +208,7 @@ export class ExclusionsModal extends Modal {
         });
 
         menu.addItem((item) => {
-            item.setTitle("🏷️ Tag in tasks")
+            item.setTitle("☑️ Tags in tasks")
                 .setIcon("tag")
                 .onClick(() => {
                     this.showTaskTagSuggest(listContainer);
@@ -216,7 +216,7 @@ export class ExclusionsModal extends Modal {
         });
 
         menu.addItem((item) => {
-            item.setTitle("📁 Folder")
+            item.setTitle("📁 Folders")
                 .setIcon("folder")
                 .onClick(() => {
                     this.showFolderSuggest(listContainer);
@@ -224,7 +224,7 @@ export class ExclusionsModal extends Modal {
         });
 
         menu.addItem((item) => {
-            item.setTitle("📄 Note")
+            item.setTitle("📄 Notes")
                 .setIcon("file")
                 .onClick(() => {
                     this.showNoteSuggest(listContainer);
