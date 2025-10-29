@@ -81,7 +81,9 @@ export class ChatView extends ItemView {
         }
 
         // Apply filter to get current tasks
-        const filteredTasks = this.plugin.getFilteredTasks(this.currentFilter);
+        const filteredTasks = await this.plugin.getFilteredTasks(
+            this.currentFilter,
+        );
         this.currentTasks = filteredTasks;
 
         this.renderView();
@@ -1342,6 +1344,7 @@ export class ChatView extends ItemView {
                 this.currentTasks,
                 cleanedHistory, // Send cleaned history to AI
                 effectiveSettings,
+                this.currentFilter, // Pass current filter to preserve it
                 onStream, // Pass streaming callback
                 this.abortController?.signal, // Pass abort signal
             );
@@ -1639,7 +1642,9 @@ export class ChatView extends ItemView {
     private async refreshTasks(): Promise<void> {
         await this.plugin.refreshTasks();
         // Re-apply current filter after refreshing tasks
-        const filteredTasks = this.plugin.getFilteredTasks(this.currentFilter);
+        const filteredTasks = await this.plugin.getFilteredTasks(
+            this.currentFilter,
+        );
         this.updateTasks(filteredTasks, this.currentFilter);
 
         // Show system message about refresh
@@ -1678,8 +1683,105 @@ export class ChatView extends ItemView {
      * Set filter and update tasks
      */
     async setFilter(filter: TaskFilter): Promise<void> {
+        // Check for conflicts between filter and exclusions
+        const conflicts: string[] = [];
+        const exclusions = this.plugin.settings.exclusions;
+
+        if (exclusions) {
+            // Check folder conflicts
+            if (
+                filter.folders &&
+                filter.folders.length > 0 &&
+                exclusions.folders &&
+                exclusions.folders.length > 0
+            ) {
+                const conflictingFolders = filter.folders.filter((folder) =>
+                    exclusions.folders!.some(
+                        (excluded) =>
+                            folder.startsWith(excluded) ||
+                            excluded.startsWith(folder),
+                    ),
+                );
+                if (conflictingFolders.length > 0) {
+                    conflicts.push(
+                        `Folders: ${conflictingFolders.join(", ")} (already excluded in settings)`,
+                    );
+                }
+            }
+
+            // Check note tag conflicts
+            if (
+                filter.noteTags &&
+                filter.noteTags.length > 0 &&
+                exclusions.noteTags &&
+                exclusions.noteTags.length > 0
+            ) {
+                const conflictingNoteTags = filter.noteTags.filter((tag) => {
+                    const normalizedTag = tag.replace(/^#+/, "").toLowerCase();
+                    return exclusions.noteTags!.some(
+                        (excluded) =>
+                            excluded.replace(/^#+/, "").toLowerCase() ===
+                            normalizedTag,
+                    );
+                });
+                if (conflictingNoteTags.length > 0) {
+                    conflicts.push(
+                        `Note tags: ${conflictingNoteTags.join(", ")} (already excluded in settings)`,
+                    );
+                }
+            }
+
+            // Check task tag conflicts
+            if (
+                filter.taskTags &&
+                filter.taskTags.length > 0 &&
+                exclusions.taskTags &&
+                exclusions.taskTags.length > 0
+            ) {
+                const conflictingTaskTags = filter.taskTags.filter((tag) => {
+                    const normalizedTag = tag.replace(/^#+/, "").toLowerCase();
+                    return exclusions.taskTags!.some(
+                        (excluded) =>
+                            excluded.replace(/^#+/, "").toLowerCase() ===
+                            normalizedTag,
+                    );
+                });
+                if (conflictingTaskTags.length > 0) {
+                    conflicts.push(
+                        `Task tags: ${conflictingTaskTags.join(", ")} (already excluded in settings)`,
+                    );
+                }
+            }
+
+            // Check note conflicts
+            if (
+                filter.notes &&
+                filter.notes.length > 0 &&
+                exclusions.notes &&
+                exclusions.notes.length > 0
+            ) {
+                const conflictingNotes = filter.notes.filter((note) =>
+                    exclusions.notes!.includes(note),
+                );
+                if (conflictingNotes.length > 0) {
+                    conflicts.push(
+                        `Notes: ${conflictingNotes.map((n) => n.split("/").pop()).join(", ")} (already excluded in settings)`,
+                    );
+                }
+            }
+        }
+
+        // Show warning if conflicts detected
+        if (conflicts.length > 0) {
+            const warningMessage = `⚠️ Filter-Exclusion Conflict:\n${conflicts.join("\n")}\n\nThese items are excluded in settings and won't appear in results. To include them, remove them from exclusions in the settings tab.`;
+            new Notice(warningMessage, 8000);
+            await this.addSystemMessage(
+                `Warning: Some filtered items are also excluded in settings. They won't appear in results. Check exclusions in settings tab.`,
+            );
+        }
+
         this.currentFilter = filter;
-        const filteredTasks = this.plugin.getFilteredTasks(filter);
+        const filteredTasks = await this.plugin.getFilteredTasks(filter);
         this.updateTasks(filteredTasks, filter);
 
         // Save filter to settings for persistence

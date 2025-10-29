@@ -102,18 +102,20 @@ export class DataViewWarningService {
                     ? "Your search returned 0 results"
                     : "No tasks found in your vault",
                 details: isSearchQuery
-                    ? "Dataview is working but no tasks matched your search criteria. The tasks may exist but don't match your filters, or Dataview's index delay is too long."
+                    ? "Dataview is working but no tasks matched your search criteria. Possible causes: strict filters/exclusions, Dataview still indexing, or no matching tasks exist."
                     : "Dataview is working but found no tasks in your vault. You may need to create tasks using proper markdown syntax (e.g., - [ ] Task).",
                 suggestions: isSearchQuery
                     ? [
                           "Try broader search terms",
-                          "Check if your tasks match the search criteria",
+                          "Check active filters in the Filter button - clear or adjust them",
+                          "Check exclusions in Settings tab - they may be too strict",
                           "Reduce Dataview 'Index delay' in settings for faster updates",
-                          "Click Refresh if you just created tasks",
+                          "Wait if Dataview is still indexing, then click Refresh",
                       ]
                     : [
                           "Create tasks using markdown syntax: - [ ] Task name",
                           "Verify tasks exist in your vault",
+                          "Check exclusions in Settings tab - they may be too strict",
                           "Check Dataview settings → Ensure 'Index delay' is reasonable",
                           "Click Refresh button to reload",
                       ],

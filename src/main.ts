@@ -406,10 +406,68 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Get filtered tasks
+     * Get filtered tasks using DataView API
+     * Applies chat interface filters (inclusion) on top of exclusions
      */
-    getFilteredTasks(filter: TaskFilter): Task[] {
-        return TaskFilterService.filterTasks(this.allTasks, filter);
+    async getFilteredTasks(filter: TaskFilter): Promise<Task[]> {
+        // Extract property filters from chat filter
+        const propertyFilters: any = {};
+        if (filter.priorities && filter.priorities.length > 0) {
+            // Convert string priorities to numbers
+            propertyFilters.priority = filter.priorities.map((p) =>
+                p === "none" ? "none" : parseInt(p),
+            );
+            if (propertyFilters.priority.length === 1) {
+                propertyFilters.priority = propertyFilters.priority[0];
+            }
+        }
+        if (filter.dueDateRange) {
+            propertyFilters.dueDateRange = filter.dueDateRange;
+        }
+        if (filter.taskStatuses && filter.taskStatuses.length > 0) {
+            propertyFilters.status =
+                filter.taskStatuses.length === 1
+                    ? filter.taskStatuses[0]
+                    : filter.taskStatuses;
+        }
+
+        // Build inclusion filters for DataView
+        const inclusionFilters: any = {};
+        if (filter.folders && filter.folders.length > 0) {
+            inclusionFilters.folders = filter.folders;
+        }
+        if (filter.noteTags && filter.noteTags.length > 0) {
+            inclusionFilters.noteTags = filter.noteTags;
+        }
+        if (filter.taskTags && filter.taskTags.length > 0) {
+            inclusionFilters.taskTags = filter.taskTags;
+        }
+        if (filter.notes && filter.notes.length > 0) {
+            inclusionFilters.notes = filter.notes;
+        }
+
+        // Use DataView API with both property and inclusion filters
+        let tasks = await DataviewService.parseTasksFromDataview(
+            this.app,
+            this.settings,
+            undefined,
+            Object.keys(propertyFilters).length > 0
+                ? propertyFilters
+                : undefined,
+            Object.keys(inclusionFilters).length > 0
+                ? inclusionFilters
+                : undefined,
+        );
+
+        // Apply text filter in JavaScript (DataView doesn't support text search)
+        if (filter.text && filter.text.trim() !== "") {
+            const searchText = filter.text.toLowerCase().trim();
+            tasks = tasks.filter((task) =>
+                task.text.toLowerCase().includes(searchText),
+            );
+        }
+
+        return tasks;
     }
 
     /**

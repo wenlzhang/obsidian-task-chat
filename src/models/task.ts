@@ -7,7 +7,8 @@ export interface Task {
     completedDate?: string;
     dueDate?: string;
     priority?: number; // 1=highest, 2=high, 3=medium, 4=low, 0=none
-    tags: string[];
+    tags: string[]; // Task-level tags (from task line itself, e.g., "- [ ] Task #urgent")
+    noteTags?: string[]; // Note-level tags (from frontmatter/inline in note, e.g., note has "#project")
     sourcePath: string;
     lineNumber: number;
     originalText: string;

@@ -66,6 +66,7 @@ export class AIService {
         tasks: Task[],
         chatHistory: ChatMessage[],
         settings: PluginSettings,
+        currentFilter?: import("../models/task").TaskFilter, // Chat interface filter to preserve
         onStream?: (chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
@@ -322,8 +323,9 @@ export class AIService {
                 );
             }
 
-            // Step 1: Filter by properties at Dataview API level (if any property filters)
-            let tasksAfterPropertyFilter = tasks;
+            // Step 1: Reload from DataView with combined filters
+            // Combine chat interface filters with user query property filters
+            // Use DataView API throughout for consistent filtering
             const hasPropertyFilters = !!(
                 intent.extractedPriority ||
                 intent.extractedDueDateFilter ||
@@ -331,9 +333,12 @@ export class AIService {
                 intent.extractedStatus
             );
 
+            let tasksAfterPropertyFilter = tasks;
+
             if (hasPropertyFilters) {
                 // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
+                // IMPORTANT: Pass chat interface filters to DataView to preserve them!
                 tasksAfterPropertyFilter =
                     await DataviewService.parseTasksFromDataview(
                         app,
@@ -345,6 +350,14 @@ export class AIService {
                             dueDateRange: intent.extractedDueDateRange, // Date range
                             status: intent.extractedStatus, // Can be string or string[]
                         },
+                        currentFilter
+                            ? {
+                                  folders: currentFilter.folders,
+                                  noteTags: currentFilter.noteTags,
+                                  taskTags: currentFilter.taskTags,
+                                  notes: currentFilter.notes,
+                              }
+                            : undefined,
                     );
             }
 

@@ -42,23 +42,26 @@ export class TaskFilterService {
                         task.folder!.startsWith(folder),
                     );
 
-                // Check note-level tag match
+                // Check note-level tag match (uses note tags from page frontmatter/inline)
                 const matchesNoteTag =
                     hasNoteTagFilter &&
-                    task.tags &&
-                    task.tags.length > 0 &&
+                    task.noteTags &&
+                    task.noteTags.length > 0 &&
                     filter.noteTags!.some((filterTag) => {
                         const normalizedFilter = filterTag.replace(/^#+/, "");
-                        return task.tags.some((taskTag) => {
-                            const normalizedTask = taskTag.replace(/^#+/, "");
+                        return task.noteTags!.some((noteTag) => {
+                            const normalizedNoteTag = noteTag.replace(
+                                /^#+/,
+                                "",
+                            );
                             return (
-                                normalizedTask.toLowerCase() ===
+                                normalizedNoteTag.toLowerCase() ===
                                 normalizedFilter.toLowerCase()
                             );
                         });
                     });
 
-                // Check task-level tag match
+                // Check task-level tag match (uses tags from task line itself)
                 const matchesTaskTag =
                     hasTaskTagFilter &&
                     task.tags &&

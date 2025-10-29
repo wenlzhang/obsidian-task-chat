@@ -1956,12 +1956,13 @@
 .task-chat-filter-count {
     font-weight: normal !important; /* Not bold */
     font-size: 13px !important; /* Same as regular text */
-    color: var(--text-normal) !important; /* Regular color */
+    color: var(--text-muted) !important; /* Greyed out for subtlety */
 }
 
-/* Make "Active filters" label bold */
+/* Make "Active filters" label normal weight to match task count */
 .task-chat-filter-status strong {
-    font-weight: 600;
+    font-weight: normal;
+    color: var(--text-muted);
 }
 
 /* Ensure status categories don't have bottom border */

@@ -247,6 +247,7 @@ export class DataviewService {
         settings: PluginSettings,
         index: number,
         filePath: string = "",
+        pageTags: string[] = [],
     ): Task | null {
         if (!this.isValidTask(dvTask)) {
             return null;
@@ -346,7 +347,8 @@ export class DataviewService {
             completedDate: completedDate,
             dueDate: dueDate,
             priority: priority, // undefined = no priority
-            tags: tags,
+            tags: tags, // Task-level tags (from task line itself)
+            noteTags: pageTags, // Note-level tags (from page frontmatter/inline)
             sourcePath: path,
             lineNumber: line,
             originalText: text,
@@ -910,6 +912,12 @@ export class DataviewService {
             status?: string | string[] | null; // Support multi-value
             statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
+        inclusionFilters?: {
+            folders?: string[]; // Include only these folders
+            noteTags?: string[]; // Include only notes with these tags
+            taskTags?: string[]; // Include only tasks with these tags
+            notes?: string[]; // Include only these specific notes
+        },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
@@ -1057,31 +1065,92 @@ export class DataviewService {
                     }
                 }
 
+                // Apply inclusion filters using JavaScript API (.where method)
+                // These are from chat interface filters - include ONLY matching items
+                if (inclusionFilters) {
+                    // Include only specific notes (OR logic with other inclusion filters)
+                    // We'll apply folder/tag/note filters together with OR logic
+                    const hasFolderFilter =
+                        inclusionFilters.folders &&
+                        inclusionFilters.folders.length > 0;
+                    const hasNoteTagFilter =
+                        inclusionFilters.noteTags &&
+                        inclusionFilters.noteTags.length > 0;
+                    const hasNoteFilter =
+                        inclusionFilters.notes &&
+                        inclusionFilters.notes.length > 0;
+
+                    // Apply page-level inclusion filters (folders, note tags, specific notes)
+                    if (hasFolderFilter || hasNoteTagFilter || hasNoteFilter) {
+                        pages = pages.where((page: any) => {
+                            const pagePath = page.file.path || "";
+                            const pageTags = page.file.tags || [];
+
+                            // Check folder match
+                            const matchesFolder =
+                                hasFolderFilter &&
+                                inclusionFilters.folders!.some(
+                                    (folder: string) =>
+                                        pagePath.startsWith(folder + "/") ||
+                                        pagePath === folder,
+                                );
+
+                            // Check note-level tag match
+                            const matchesNoteTag =
+                                hasNoteTagFilter &&
+                                pageTags.some((pageTag: string) => {
+                                    const normalizedPageTag = pageTag
+                                        .replace(/^#+/, "")
+                                        .toLowerCase();
+                                    return inclusionFilters.noteTags!.some(
+                                        (filterTag: string) => {
+                                            const normalizedFilter = filterTag
+                                                .replace(/^#+/, "")
+                                                .toLowerCase();
+                                            return (
+                                                normalizedPageTag ===
+                                                normalizedFilter
+                                            );
+                                        },
+                                    );
+                                });
+
+                            // Check specific note match
+                            const matchesNote =
+                                hasNoteFilter &&
+                                inclusionFilters.notes!.includes(pagePath);
+
+                            // OR logic: page matches if it matches ANY inclusion criteria
+                            return (
+                                matchesFolder || matchesNoteTag || matchesNote
+                            );
+                        });
+                    }
+                }
+
                 if (pages && pages.length > 0) {
-                    // Get ALL tasks from ALL pages using Dataview's API
-                    // Use flatMap to collect tasks from all pages
-                    const allPageTasks = pages.flatMap((page: any) => {
-                        if (page.file.tasks && Array.isArray(page.file.tasks)) {
-                            return page.file.tasks;
-                        }
-                        return [];
-                    });
+                    // Process each page to maintain page-task association for note-level tags
+                    let taskIndex = 0;
 
-                    if (allPageTasks && allPageTasks.length > 0) {
+                    for (const page of pages.array()) {
+                        const pageTags = page.file.tags || [];
+                        const pageTasks = page.file.tasks || [];
+
+                        if (pageTasks.length === 0) continue;
+
                         // Use Dataview's expand() to flatten ALL subtasks recursively
-                        const flattenedTasks = allPageTasks.expand
-                            ? allPageTasks.expand("children")
-                            : allPageTasks;
+                        const flattenedTasks = pageTasks.expand
+                            ? pageTasks.expand("children")
+                            : pageTasks;
 
-                        let taskIndex = 0;
-
-                        // Process each flattened task
+                        // Process each flattened task with page tags
                         for (const dvTask of flattenedTasks.array()) {
                             const task = this.processDataviewTask(
                                 dvTask,
                                 settings,
                                 taskIndex++,
                                 dvTask.path || "",
+                                pageTags, // Pass note-level tags
                             );
 
                             // Apply task-level filter if provided
@@ -1089,14 +1158,46 @@ export class DataviewService {
                                 const shouldInclude =
                                     !taskFilter || taskFilter(dvTask);
 
-                                // Also check task-level tag exclusions
+                                // Check task-level tag exclusions
                                 const isTaskTagExcluded =
                                     this.isTaskExcludedByTag(
                                         dvTask,
                                         settings.exclusions.taskTags || [],
                                     );
 
-                                if (shouldInclude && !isTaskTagExcluded) {
+                                // Check task-level tag inclusions (from chat filters)
+                                let matchesTaskTagInclusion = true; // Default: include all if no filter
+                                if (
+                                    inclusionFilters?.taskTags &&
+                                    inclusionFilters.taskTags.length > 0
+                                ) {
+                                    const taskTags = dvTask.tags || [];
+                                    matchesTaskTagInclusion = taskTags.some(
+                                        (taskTag: string) => {
+                                            const normalizedTaskTag = taskTag
+                                                .replace(/^#+/, "")
+                                                .toLowerCase();
+                                            return inclusionFilters.taskTags!.some(
+                                                (filterTag: string) => {
+                                                    const normalizedFilter =
+                                                        filterTag
+                                                            .replace(/^#+/, "")
+                                                            .toLowerCase();
+                                                    return (
+                                                        normalizedTaskTag ===
+                                                        normalizedFilter
+                                                    );
+                                                },
+                                            );
+                                        },
+                                    );
+                                }
+
+                                if (
+                                    shouldInclude &&
+                                    !isTaskTagExcluded &&
+                                    matchesTaskTagInclusion
+                                ) {
                                     tasks.push(task);
                                 }
                             }
