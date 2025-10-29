@@ -147,12 +147,12 @@ export class MetadataService {
             // Add tilde (~) prefix for estimated tokens (approximate values)
             const tokenPrefix = tokenSource === "estimated" ? "~" : "";
 
-            // Format token display with source indicator
-            const tokenDisplay = `${tokenPrefix}${promptTokens.toLocaleString()} in (${sourceLabel}), ${tokenPrefix}${completionTokens.toLocaleString()} out (${sourceLabel})`;
+            // Format token display with source indicator and label
+            const tokenDisplay = `Token: ${tokenPrefix}${promptTokens.toLocaleString()} in (${sourceLabel}), ${tokenPrefix}${completionTokens.toLocaleString()} out (${sourceLabel})`;
 
             if (bothLocal) {
                 // Both parser and analysis use local models → Free
-                parts.push(`${tokenDisplay} • Free (local)`);
+                parts.push(`${tokenDisplay} • Cost: Free (local)`);
             } else {
                 // At least one cloud model is used → Show actual cost
                 const cost = message.tokenUsage.estimatedCost || 0;
@@ -187,7 +187,7 @@ export class MetadataService {
                           ? "calc"
                           : "est";
 
-                const costDisplay = `${costPrefix}$${costStr} (${costMethodLabel})`;
+                const costDisplay = `Cost: ${costPrefix}$${costStr} (${costMethodLabel})`;
 
                 parts.push(`${tokenDisplay} • ${costDisplay}`);
             }

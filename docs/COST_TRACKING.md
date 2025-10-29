@@ -47,16 +47,16 @@ Task Chat provides **transparent, multi-layer cost tracking** for all AI operati
 The cost tracking information appears in the metadata line below each AI response:
 
 ```
-📊 Mode: Task Chat • OpenRouter: openai/gpt-4o-mini (parser + analysis) • 27,619 in (actual), 478 out (actual) • $0.0044 (actual) • Lang: Chinese
+📊 Mode: Task Chat • OpenRouter: openai/gpt-4o-mini (parser + analysis) • Token: 27,619 in (actual), 478 out (actual) • Cost: $0.0044 (actual) • Lang: English
 ```
 
 ### Components
 
 1. **Mode**: Which chat mode was used (Task Chat, Smart Search, or Simple Search)
 2. **Model Info**: Provider and model for parsing and/or analysis
-3. **Token Usage**: Input and output tokens with source indicator
-4. **Cost**: Total cost with calculation method
-5. **Language**: Detected language (for Smart Search and Task Chat)
+3. **Token**: Input and output tokens with source indicator (actual/est)
+4. **Cost**: Total cost with calculation method (actual/calc/est)
+5. **Lang**: Detected language (for Smart Search and Task Chat)
 
 ## Understanding Symbols and Indicators
 
@@ -64,10 +64,10 @@ The cost tracking information appears in the metadata line below each AI respons
 
 The tilde `~` means **approximate** or **estimated** value:
 
-- `27,619 in (actual)` - Actual tokens from API (no tilde)
-- `~24,863 in (est)` - Estimated tokens (with tilde)
-- `$0.0044 (actual)` - Actual cost from API (no tilde)
-- `~$0.0039 (calc)` - Calculated cost from tokens (with tilde)
+- `Token: 27,619 in (actual)` - Actual tokens from API (no tilde)
+- `Token: ~24,863 in (est)` - Estimated tokens (with tilde)
+- `Cost: $0.0044 (actual)` - Actual cost from API (no tilde)
+- `Cost: ~$0.0039 (calc)` - Calculated cost from tokens (with tilde)
 
 **Rule**: If it's **actual** data from the provider's API, no tilde. Otherwise, tilde indicates approximation.
 
@@ -95,7 +95,7 @@ The tilde `~` means **approximate** or **estimated** value:
 
 **Example:**
 ```
-27,619 in (actual), 478 out (actual) • $0.0044 (actual)
+Token: 27,619 in (actual), 478 out (actual) • Cost: $0.0044 (actual)
 ```
 
 ### OpenAI (Direct)
@@ -106,7 +106,7 @@ The tilde `~` means **approximate** or **estimated** value:
 
 **Example:**
 ```
-~26,149 in (est), ~382 out (est) • ~$0.0042 (calc)
+Token: ~26,149 in (est), ~382 out (est) • Cost: ~$0.0042 (calc)
 ```
 
 ### Anthropic (Direct)
@@ -117,7 +117,7 @@ The tilde `~` means **approximate** or **estimated** value:
 
 **Example:**
 ```
-18,532 in (actual), 294 out (actual) • ~$0.0033 (calc)
+Token: 18,532 in (actual), 294 out (actual) • Cost: ~$0.0033 (calc)
 ```
 
 ### Ollama (Local)
@@ -128,7 +128,7 @@ The tilde `~` means **approximate** or **estimated** value:
 
 **Example:**
 ```
-~15,243 in (est), ~186 out (est) • Free (local)
+Token: ~15,243 in (est), ~186 out (est) • Cost: Free (local)
 ```
 
 ## Mixed Provider Scenarios
@@ -143,7 +143,7 @@ When using different providers for parsing and analysis:
 Both phases use OpenRouter → Both provide actual data.
 
 ```
-27,619 in (actual), 478 out (actual) • $0.0044 (actual)
+Token: 27,619 in (actual), 478 out (actual) • Cost: $0.0044 (actual)
 ```
 
 ### Scenario 2: OpenRouter (parser) + OpenAI (analysis)
@@ -155,7 +155,7 @@ Mixing providers → Tokens become estimated (even though parser was actual).
 Cost is calculated/estimated based on mixed data.
 
 ```
-~24,863 in (est), ~345 out (est) • ~$0.0039 (calc)
+Token: ~24,863 in (est), ~345 out (est) • Cost: ~$0.0039 (calc)
 ```
 
 ### Scenario 3: OpenAI (parser) + OpenRouter (analysis)
@@ -166,7 +166,7 @@ Cost is calculated/estimated based on mixed data.
 Same as Scenario 2 - mixing providers results in estimated tokens.
 
 ```
-~24,863 in (est), ~372 out (est) • ~$0.0027 (calc)
+Tokens: ~24,863 in (est), ~372 out (est) • Cost: ~$0.0027 (calc)
 ```
 
 ### Scenario 4: OpenRouter (parser) + Ollama (analysis)
@@ -181,7 +181,7 @@ But cost is actual because:
 - Combined cost is actual ($X + $0 = $X)
 
 ```
-~18,432 in (est), ~234 out (est) • $0.0027 (actual)
+Token: ~18,432 in (est), ~234 out (est) • Cost: $0.0027 (actual)
 ```
 
 ### Scenario 5: Ollama (parser) + Ollama (analysis)
@@ -192,7 +192,7 @@ But cost is actual because:
 Both local → Tokens estimated, cost is actual (free).
 
 ```
-~15,243 in (est), ~186 out (est) • Free (local)
+Token: ~15,243 in (est), ~186 out (est) • Cost: Free (local)
 ```
 
 ### Scenario 6: OpenAI (parser) + OpenAI (analysis)
@@ -203,7 +203,7 @@ Both local → Tokens estimated, cost is actual (free).
 Both phases estimate tokens → Everything is estimated.
 
 ```
-~26,149 in (est), ~382 out (est) • ~$0.0042 (est)
+Token: ~26,149 in (est), ~382 out (est) • Cost: ~$0.0042 (est)
 ```
 
 ## Combining Rules
