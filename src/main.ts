@@ -88,6 +88,9 @@ export default class TaskChatPlugin extends Plugin {
 
         // Load tasks on startup
         this.app.workspace.onLayoutReady(async () => {
+            // CRITICAL: Wait for DataView to be fully ready before loading tasks
+            await this.waitForDataView();
+
             await this.refreshTasks();
 
             // Auto-open sidebar if enabled
@@ -357,6 +360,42 @@ export default class TaskChatPlugin extends Plugin {
 
             this.chatView.updateChatModeOptions();
         }
+    }
+
+    /**
+     * Wait for DataView plugin to be fully loaded and ready
+     * Polls every 500ms for up to 10 seconds
+     */
+    private async waitForDataView(maxAttempts = 20): Promise<void> {
+        for (let i = 0; i < maxAttempts; i++) {
+            if (DataviewService.isDataviewEnabled(this.app)) {
+                const api = DataviewService.getAPI(this.app);
+                if (api && api.pages) {
+                    Logger.debug(
+                        `DataView API ready (attempt ${i + 1}/${maxAttempts})`,
+                    );
+                    return;
+                }
+            }
+
+            if (i === 0) {
+                Logger.debug("Waiting for DataView plugin to be ready...");
+            } else {
+                Logger.debug(
+                    `Still waiting for DataView... (attempt ${i + 1}/${maxAttempts})`,
+                );
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        Logger.warn(
+            "DataView not available after waiting 10 seconds - tasks may not load correctly",
+        );
+        new Notice(
+            "DataView plugin not detected. Please ensure it is installed and enabled.",
+            5000,
+        );
     }
 
     /**

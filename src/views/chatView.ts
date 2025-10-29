@@ -75,15 +75,23 @@ export class ChatView extends ItemView {
             this.chatModeOverride = null; // Use default
         }
 
-        // CHANGED: Do NOT restore filter on restart - filters are temporary
-        // Always start with empty filter for better UX
-        this.currentFilter = {};
+        // RESTORE: Load persisted filter from settings (if any)
+        // This allows filters to survive Obsidian restarts
+        this.currentFilter = { ...this.plugin.settings.currentFilter };
 
         // Apply filter to get current tasks
         const filteredTasks = await this.plugin.getFilteredTasks(
             this.currentFilter,
         );
         this.currentTasks = filteredTasks;
+
+        // Log restored filter for debugging
+        if (Object.keys(this.currentFilter).length > 0) {
+            Logger.debug(
+                "Restored chat interface filter from settings:",
+                this.currentFilter,
+            );
+        }
 
         this.renderView();
         await this.renderMessages();
@@ -484,10 +492,13 @@ export class ChatView extends ItemView {
         const taskCount = this.currentTasks.length;
 
         // Check Dataview status using centralized service
+        // Pass filter and settings for detailed diagnostic information
         const warning = DataViewWarningService.checkDataViewStatus(
             this.app,
             taskCount,
             false, // Not during search query
+            this.currentFilter, // Pass current filter state
+            this.plugin.settings, // Pass settings for exclusion info
         );
 
         // Remove existing warning if everything is ready
@@ -1777,9 +1788,11 @@ export class ChatView extends ItemView {
         const filteredTasks = await this.plugin.getFilteredTasks(filter);
         this.updateTasks(filteredTasks, filter);
 
-        // NOTE: We do NOT save filter to settings
-        // Filters are temporary and should not persist across Obsidian restarts
-        // This prevents confusion when users restart and see unexpected filtering
+        // PERSIST: Save filter to settings so it survives Obsidian restarts
+        // This provides better UX - users don't lose their filter configuration
+        this.plugin.settings.currentFilter = { ...filter };
+        await this.plugin.saveSettings();
+        Logger.debug("Filter persisted to settings:", filter);
 
         // Determine if filters are being applied or cleared
         const hasFilters =

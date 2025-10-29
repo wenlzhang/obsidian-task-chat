@@ -304,8 +304,8 @@ export interface PluginSettings {
     // Session Data
     sessionData: SessionData;
 
-    // DEPRECATED: Filter state should NOT persist across restarts
-    // Kept for backward compatibility with existing data.json files
+    // Chat interface filter state - persists across Obsidian restarts
+    // Applied via the filter icon in the chat interface
     currentFilter: TaskFilter;
 }
 

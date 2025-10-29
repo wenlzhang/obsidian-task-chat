@@ -1,5 +1,7 @@
 import { App } from "obsidian";
 import { DataviewService } from "./dataviewService";
+import { TaskFilter } from "../models/task";
+import type { PluginSettings } from "../settings";
 
 /**
  * Warning types for Dataview state
@@ -9,6 +11,12 @@ export interface DataViewWarning {
     message: string;
     details?: string;
     suggestions?: string[];
+    filterInfo?: {
+        hasActiveFilters: boolean;
+        hasActiveExclusions: boolean;
+        filterSummary?: string;
+        exclusionSummary?: string;
+    };
 }
 
 /**
@@ -20,17 +28,107 @@ export interface DataViewWarning {
  */
 export class DataViewWarningService {
     /**
+     * Get filter summary for display
+     */
+    private static getFilterSummary(filter: TaskFilter): string {
+        const parts: string[] = [];
+
+        if (filter.folders && filter.folders.length > 0) {
+            parts.push(`${filter.folders.length} folder(s)`);
+        }
+        if (filter.noteTags && filter.noteTags.length > 0) {
+            parts.push(`${filter.noteTags.length} note tag(s)`);
+        }
+        if (filter.taskTags && filter.taskTags.length > 0) {
+            parts.push(`${filter.taskTags.length} task tag(s)`);
+        }
+        if (filter.notes && filter.notes.length > 0) {
+            parts.push(`${filter.notes.length} note(s)`);
+        }
+        if (filter.priorities && filter.priorities.length > 0) {
+            parts.push(`${filter.priorities.length} priority level(s)`);
+        }
+        if (filter.taskStatuses && filter.taskStatuses.length > 0) {
+            parts.push(`${filter.taskStatuses.length} status(es)`);
+        }
+        if (filter.dueDateRange) {
+            parts.push("due date range");
+        }
+        if (filter.completionStatus && filter.completionStatus !== "all") {
+            parts.push(`completion: ${filter.completionStatus}`);
+        }
+
+        return parts.join(", ");
+    }
+
+    /**
+     * Get exclusion summary for display
+     */
+    private static getExclusionSummary(settings: PluginSettings): string {
+        const ex = settings.exclusions;
+        const parts: string[] = [];
+
+        if (ex.noteTags && ex.noteTags.length > 0) {
+            parts.push(`${ex.noteTags.length} note tag(s)`);
+        }
+        if (ex.taskTags && ex.taskTags.length > 0) {
+            parts.push(`${ex.taskTags.length} task tag(s)`);
+        }
+        if (ex.folders && ex.folders.length > 0) {
+            parts.push(`${ex.folders.length} folder(s)`);
+        }
+        if (ex.notes && ex.notes.length > 0) {
+            parts.push(`${ex.notes.length} note(s)`);
+        }
+
+        return parts.join(", ");
+    }
+
+    /**
+     * Check if there are active filters
+     */
+    private static hasActiveFilters(filter: TaskFilter): boolean {
+        return !!(
+            (filter.folders && filter.folders.length > 0) ||
+            (filter.noteTags && filter.noteTags.length > 0) ||
+            (filter.taskTags && filter.taskTags.length > 0) ||
+            (filter.notes && filter.notes.length > 0) ||
+            (filter.priorities && filter.priorities.length > 0) ||
+            (filter.taskStatuses && filter.taskStatuses.length > 0) ||
+            filter.dueDateRange ||
+            (filter.completionStatus && filter.completionStatus !== "all")
+        );
+    }
+
+    /**
+     * Check if there are active exclusions
+     */
+    private static hasActiveExclusions(settings: PluginSettings): boolean {
+        const ex = settings.exclusions;
+        return !!(
+            (ex.noteTags && ex.noteTags.length > 0) ||
+            (ex.taskTags && ex.taskTags.length > 0) ||
+            (ex.folders && ex.folders.length > 0) ||
+            (ex.notes && ex.notes.length > 0)
+        );
+    }
+
+    /**
      * Check Dataview status and return appropriate warning (if any)
      *
      * @param app - Obsidian app instance
      * @param taskCount - Current number of tasks loaded
      * @param isSearchQuery - Whether this check is during a search query (affects messaging)
+     * @param filter - Optional current filter state
+     * @param settings - Optional plugin settings
      * @returns Warning object if there's an issue, null if everything is ready
      */
     static checkDataViewStatus(
         app: App,
         taskCount: number,
         isSearchQuery: boolean = false,
+        filter?: TaskFilter,
+        settings?: PluginSettings,
     ): DataViewWarning | null {
         const isDataviewEnabled = DataviewService.isDataviewEnabled(app);
 
@@ -96,29 +194,82 @@ export class DataViewWarningService {
             }
 
             // Dataview is enabled and has pages, but no tasks found
+            // Check if filters/exclusions might be the cause
+            const hasFilters = filter ? this.hasActiveFilters(filter) : false;
+            const hasExclusions = settings
+                ? this.hasActiveExclusions(settings)
+                : false;
+
+            const filterInfo = {
+                hasActiveFilters: hasFilters,
+                hasActiveExclusions: hasExclusions,
+                filterSummary:
+                    filter && hasFilters
+                        ? this.getFilterSummary(filter)
+                        : undefined,
+                exclusionSummary:
+                    settings && hasExclusions
+                        ? this.getExclusionSummary(settings)
+                        : undefined,
+            };
+
+            // Build suggestions based on active filters/exclusions
+            const suggestions: string[] = [];
+
+            if (hasFilters) {
+                suggestions.push(
+                    `✅ Active Chat Filters: ${filterInfo.filterSummary} - Try resetting or adjusting filters`,
+                );
+            }
+
+            if (hasExclusions) {
+                suggestions.push(
+                    `❌ Active Exclusions: ${filterInfo.exclusionSummary} - Check Settings → Exclusions`,
+                );
+            }
+
+            if (hasFilters && hasExclusions) {
+                suggestions.push(
+                    "⚠️ NOTE: Exclusion rules (settings) always take priority over filters (chat interface)",
+                );
+            }
+
+            if (!hasFilters && !hasExclusions) {
+                if (isSearchQuery) {
+                    suggestions.push("Try broader search terms");
+                    suggestions.push("Click Refresh button to reload tasks");
+                } else {
+                    suggestions.push(
+                        "Create tasks using markdown syntax: - [ ] Task name",
+                    );
+                    suggestions.push("Verify tasks exist in your vault");
+                }
+            }
+
+            suggestions.push(
+                "Check Dataview settings → Ensure 'Index delay' is reasonable",
+            );
+
+            if (isSearchQuery) {
+                suggestions.push(
+                    "Wait if Dataview is still indexing, then click Refresh",
+                );
+            }
+
             return {
                 type: "no-tasks",
                 message: isSearchQuery
                     ? "Your search returned 0 results"
-                    : "No tasks found in your vault",
+                    : "No tasks found",
                 details: isSearchQuery
-                    ? "Dataview is working but no tasks matched your search criteria. Possible causes: strict filters/exclusions, Dataview still indexing, or no matching tasks exist."
-                    : "Dataview is working but found no tasks in your vault. You may need to create tasks using proper markdown syntax (e.g., - [ ] Task).",
-                suggestions: isSearchQuery
-                    ? [
-                          "Try broader search terms",
-                          "Check active filters in the Filter button - clear or adjust them",
-                          "Check exclusions in Settings tab - they may be too strict",
-                          "Reduce Dataview 'Index delay' in settings for faster updates",
-                          "Wait if Dataview is still indexing, then click Refresh",
-                      ]
-                    : [
-                          "Create tasks using markdown syntax: - [ ] Task name",
-                          "Verify tasks exist in your vault",
-                          "Check exclusions in Settings tab - they may be too strict",
-                          "Check Dataview settings → Ensure 'Index delay' is reasonable",
-                          "Click Refresh button to reload",
-                      ],
+                    ? hasFilters || hasExclusions
+                        ? "Your filters or exclusions may be too restrictive, or no matching tasks exist."
+                        : "Dataview is working but no tasks matched your search criteria."
+                    : hasFilters || hasExclusions
+                      ? "You have active filters or exclusions that may be hiding tasks."
+                      : "Dataview is working but found no tasks in your vault. Create tasks using proper markdown syntax (e.g., - [ ] Task).",
+                suggestions,
+                filterInfo,
             };
         }
 
