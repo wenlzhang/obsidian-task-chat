@@ -1821,3 +1821,56 @@
 .task-chat-filter-modal .modal-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* Filter Button Active State */
+.task-chat-filter-btn-active {
+    background: var(--interactive-accent) !important;
+    color: var(--text-on-accent) !important;
+}
+
+/* Filter Status Task Count */
+.task-chat-filter-separator {
+    color: var(--text-muted);
+}
+
+.task-chat-filter-count {
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+/* Filter Modal Title Centered */
+.task-chat-filter-modal h2 {
+    text-align: center;
+    font-size: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Remove duplicate border at end of last section */
+.task-chat-filter-section:last-of-type {
+    border-bottom: none !important;
+    padding-bottom: 0;
+}
+
+/* Sticky Action Buttons */
+.task-chat-filter-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0 !important;
+}
+
+.task-chat-filter-buttons {
+    position: sticky;
+    bottom: 0;
+    background: var(--background-primary);
+    padding: 16px 0 20px 0 !important;
+    margin-top: auto;
+    border-top: 2px solid var(--background-modifier-border) !important;
+    z-index: 10;
+}
+
+/* Make modal scrollable area */
+.task-chat-filter-modal .modal-content > *:not(.task-chat-filter-buttons) {
+    flex-shrink: 0;
+}

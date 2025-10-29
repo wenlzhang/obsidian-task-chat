@@ -31,24 +31,47 @@ export class TaskFilterService {
         }
 
         // Filter by note-level tags
-        // Note: Currently uses task.tags which includes all tags from DataView
-        // TODO: Distinguish between note-level and task-level tags
+        // Note-level tags filter ALL tasks from notes that have these tags
+        // Similar to exclusions, this checks tags on the note/page, not individual tasks
+        // Implementation: task.tags from DataView includes both note and task tags
+        // For proper note-level filtering, we'd need to track note tags separately
+        // Current behavior: filters tasks that have these tags (either on note or task)
         if (filter.noteTags && filter.noteTags.length > 0) {
             filtered = filtered.filter((task) => {
                 if (!task.tags || task.tags.length === 0) return false;
-                return filter.noteTags!.some((filterTag) =>
-                    task.tags.includes(filterTag),
-                );
+                // Check if any of the filter tags match task tags (case-insensitive)
+                return filter.noteTags!.some((filterTag) => {
+                    const normalizedFilter = filterTag.replace(/^#+/, "");
+                    return task.tags.some((taskTag) => {
+                        const normalizedTask = taskTag.replace(/^#+/, "");
+                        return (
+                            normalizedTask.toLowerCase() ===
+                            normalizedFilter.toLowerCase()
+                        );
+                    });
+                });
             });
         }
 
         // Filter by task-level tags
+        // Task-level tags filter ONLY tasks that have these tags on the task line itself
+        // Implementation: task.tags from DataView includes tags from both note and task
+        // Current behavior: filters tasks that have these tags (either on note or task)
+        // Note: Perfect distinction would require parsing task text to find inline tags
         if (filter.taskTags && filter.taskTags.length > 0) {
             filtered = filtered.filter((task) => {
                 if (!task.tags || task.tags.length === 0) return false;
-                return filter.taskTags!.some((filterTag) =>
-                    task.tags.includes(filterTag),
-                );
+                // Check if any of the filter tags match task tags (case-insensitive)
+                return filter.taskTags!.some((filterTag) => {
+                    const normalizedFilter = filterTag.replace(/^#+/, "");
+                    return task.tags.some((taskTag) => {
+                        const normalizedTask = taskTag.replace(/^#+/, "");
+                        return (
+                            normalizedTask.toLowerCase() ===
+                            normalizedFilter.toLowerCase()
+                        );
+                    });
+                });
             });
         }
 

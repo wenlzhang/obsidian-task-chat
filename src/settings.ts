@@ -1,4 +1,4 @@
-import { SessionData } from "./models/task";
+import { SessionData, TaskFilter } from "./models/task";
 
 // Priority mapping type: Fixed numeric keys (1-4), customizable string values
 export type PriorityMapping = Record<1 | 2 | 3 | 4, string[]>;
@@ -303,6 +303,9 @@ export interface PluginSettings {
 
     // Session Data
     sessionData: SessionData;
+
+    // Current Filter State (persisted across restarts)
+    currentFilter: TaskFilter;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -552,4 +555,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         currentSessionId: null,
         lastSessionId: null,
     },
+
+    // Current Filter State (empty by default)
+    currentFilter: {},
 };

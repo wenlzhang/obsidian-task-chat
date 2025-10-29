@@ -22,6 +22,7 @@ export class ChatView extends ItemView {
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
+    private filterButtonEl: HTMLButtonElement | null = null;
     private dataviewWarningEl: HTMLElement | null = null;
     private isProcessing: boolean = false;
     private typingIndicator: HTMLElement | null = null;
@@ -66,6 +67,11 @@ export class ChatView extends ItemView {
             this.chatModeOverride = this.plugin.settings.currentChatMode;
         } else {
             this.chatModeOverride = null; // Use default
+        }
+
+        // Load saved filter from settings
+        if (this.plugin.settings.currentFilter) {
+            this.currentFilter = this.plugin.settings.currentFilter;
         }
 
         this.renderView();
@@ -153,10 +159,16 @@ export class ChatView extends ItemView {
         // Group 3: Filter controls
         const filterGroup = controlsEl.createDiv("task-chat-button-group");
 
-        const filterBtn = filterGroup.createEl("button", {
-            text: "Filter",
+        this.filterButtonEl = filterGroup.createEl("button", {
+            text: "🔍 Filter",
+            cls: "task-chat-filter-btn",
         });
-        filterBtn.addEventListener("click", () => this.openFilterModal());
+        this.filterButtonEl.addEventListener("click", () =>
+            this.openFilterModal(),
+        );
+
+        // Update filter button style based on active state
+        this.updateFilterButtonState();
 
         // Group 4: Task refresh
         const refreshGroup = controlsEl.createDiv("task-chat-button-group");
@@ -277,7 +289,7 @@ export class ChatView extends ItemView {
 
         if (hasFilters) {
             this.filterStatusEl.createEl("strong", {
-                text: "Active filters: ",
+                text: "🔍 Active filters: ",
             });
 
             const filterParts: string[] = [];
@@ -352,10 +364,50 @@ export class ChatView extends ItemView {
             }
 
             this.filterStatusEl.createSpan({ text: filterParts.join(" | ") });
+
+            // Add separator and task count
+            this.filterStatusEl.createSpan({
+                text: " | ",
+                cls: "task-chat-filter-separator",
+            });
+            this.filterStatusEl.createSpan({
+                text: `${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
+                cls: "task-chat-filter-count",
+            });
         } else {
             this.filterStatusEl.createSpan({
-                text: `Showing all tasks (${this.currentTasks.length})`,
+                text: `Found ${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
             });
+        }
+    }
+
+    /**
+     * Update filter button visual state based on whether filters are active
+     */
+    private updateFilterButtonState(): void {
+        if (!this.filterButtonEl) return;
+
+        const hasFilters =
+            this.currentFilter.text ||
+            (this.currentFilter.folders &&
+                this.currentFilter.folders.length > 0) ||
+            (this.currentFilter.noteTags &&
+                this.currentFilter.noteTags.length > 0) ||
+            (this.currentFilter.taskTags &&
+                this.currentFilter.taskTags.length > 0) ||
+            (this.currentFilter.notes && this.currentFilter.notes.length > 0) ||
+            (this.currentFilter.priorities &&
+                this.currentFilter.priorities.length > 0) ||
+            (this.currentFilter.taskStatuses &&
+                this.currentFilter.taskStatuses.length > 0) ||
+            this.currentFilter.dueDateRange ||
+            (this.currentFilter.completionStatus &&
+                this.currentFilter.completionStatus !== "all");
+
+        if (hasFilters) {
+            this.filterButtonEl.addClass("task-chat-filter-btn-active");
+        } else {
+            this.filterButtonEl.removeClass("task-chat-filter-btn-active");
         }
     }
 
@@ -1563,7 +1615,9 @@ export class ChatView extends ItemView {
      */
     private async refreshTasks(): Promise<void> {
         await this.plugin.refreshTasks();
-        this.updateTasks(this.plugin.getAllTasks(), this.currentFilter);
+        // Re-apply current filter after refreshing tasks
+        const filteredTasks = this.plugin.getFilteredTasks(this.currentFilter);
+        this.updateTasks(filteredTasks, this.currentFilter);
         new Notice("Tasks refreshed");
     }
 
@@ -1587,6 +1641,7 @@ export class ChatView extends ItemView {
         this.currentTasks = tasks;
         this.currentFilter = filter;
         this.updateFilterStatus();
+        this.updateFilterButtonState();
         this.renderDataviewWarning(); // Update warning banner status
     }
 
@@ -1598,9 +1653,27 @@ export class ChatView extends ItemView {
         const filteredTasks = this.plugin.getFilteredTasks(filter);
         this.updateTasks(filteredTasks, filter);
 
-        await this.addSystemMessage(
-            `Filter applied. Now showing ${filteredTasks.length} task(s).`,
-        );
+        // Save filter to settings for persistence
+        this.plugin.settings.currentFilter = filter;
+        await this.plugin.saveSettings();
+
+        // Only show system message if there are actual filters applied
+        const hasFilters =
+            filter.text ||
+            (filter.folders && filter.folders.length > 0) ||
+            (filter.noteTags && filter.noteTags.length > 0) ||
+            (filter.taskTags && filter.taskTags.length > 0) ||
+            (filter.notes && filter.notes.length > 0) ||
+            (filter.priorities && filter.priorities.length > 0) ||
+            (filter.taskStatuses && filter.taskStatuses.length > 0) ||
+            filter.dueDateRange ||
+            (filter.completionStatus && filter.completionStatus !== "all");
+
+        if (hasFilters) {
+            await this.addSystemMessage(
+                `Filter applied. Now found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+            );
+        }
     }
 
     /**

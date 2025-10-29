@@ -453,39 +453,74 @@ export class FilterModal extends Modal {
             cls: "task-chat-filter-quick-dates-label",
         });
 
-        const addQuickFilter = (label: string, days: number) => {
+        const addQuickFilter = (
+            label: string,
+            getRange: () => { start: string; end: string },
+        ) => {
             const btn = quickFiltersContainer.createEl("button", {
                 text: label,
                 cls: "task-chat-filter-quick-date-btn",
             });
             btn.addEventListener("click", () => {
-                const today = moment().startOf("day");
-                const endDate = moment().add(days, "days").endOf("day");
+                const range = getRange();
 
                 if (!this.filter.dueDateRange) {
                     this.filter.dueDateRange = {};
                 }
 
-                this.filter.dueDateRange.start = today.format("YYYY-MM-DD");
-                this.filter.dueDateRange.end = endDate.format("YYYY-MM-DD");
+                this.filter.dueDateRange.start = range.start;
+                this.filter.dueDateRange.end = range.end;
 
                 this.onOpen(); // Refresh the modal
             });
         };
 
-        addQuickFilter("Today", 0);
-        addQuickFilter("This week", 7);
-        addQuickFilter("This month", 30);
+        // Today: start and end of today
+        addQuickFilter("Today", () => {
+            const today = moment().startOf("day");
+            return {
+                start: today.format("YYYY-MM-DD"),
+                end: today.format("YYYY-MM-DD"),
+            };
+        });
+
+        // This week: start of week (Monday) to end of week (Sunday)
+        addQuickFilter("This week", () => {
+            const startOfWeek = moment().startOf("week");
+            const endOfWeek = moment().endOf("week");
+            return {
+                start: startOfWeek.format("YYYY-MM-DD"),
+                end: endOfWeek.format("YYYY-MM-DD"),
+            };
+        });
+
+        // This month: start of month to end of month
+        addQuickFilter("This month", () => {
+            const startOfMonth = moment().startOf("month");
+            const endOfMonth = moment().endOf("month");
+            return {
+                start: startOfMonth.format("YYYY-MM-DD"),
+                end: endOfMonth.format("YYYY-MM-DD"),
+            };
+        });
+
+        // This year: start of year to end of year
+        addQuickFilter("This year", () => {
+            const startOfYear = moment().startOf("year");
+            const endOfYear = moment().endOf("year");
+            return {
+                start: startOfYear.format("YYYY-MM-DD"),
+                end: endOfYear.format("YYYY-MM-DD"),
+            };
+        });
     }
 
     /**
      * Render priority filter with toggles
      */
     private renderPriority(container: HTMLElement): void {
-        const priorities = TaskFilterService.getUniquePriorities(this.allTasks);
-        if (priorities.length === 0) {
-            return; // No priorities in tasks
-        }
+        // Show all possible priorities (1, 2, 3, 4, none)
+        const allPriorities = ["1", "2", "3", "4", "0"]; // 0 = none
 
         const prioritySection = container.createDiv(
             "task-chat-filter-subsection",
@@ -496,7 +531,7 @@ export class FilterModal extends Modal {
             "task-chat-filter-toggles",
         );
 
-        priorities.forEach((priority) => {
+        allPriorities.forEach((priority) => {
             const toggleRow = priorityContainer.createDiv(
                 "task-chat-filter-toggle-row",
             );
@@ -524,8 +559,10 @@ export class FilterModal extends Modal {
                 }
             });
 
+            // Display label: show "none" for 0, otherwise show the number
+            const displayLabel = priority === "0" ? "none" : priority;
             toggleRow.createSpan({
-                text: priority,
+                text: displayLabel,
                 cls: "task-chat-filter-toggle-label",
             });
         });
@@ -533,13 +570,15 @@ export class FilterModal extends Modal {
 
     /**
      * Render status categories filter with toggles
+     * Shows all configured status categories with their display names
      */
     private renderStatusCategories(container: HTMLElement): void {
-        const statuses = TaskFilterService.getUniqueStatusCategories(
-            this.allTasks,
-        );
-        if (statuses.length === 0) {
-            return; // No statuses in tasks
+        // Get all configured status categories from settings
+        const statusMapping = this.plugin.settings.taskStatusMapping;
+        const allStatuses = Object.keys(statusMapping);
+
+        if (allStatuses.length === 0) {
+            return; // No status categories configured
         }
 
         const statusSection = container.createDiv(
@@ -551,7 +590,7 @@ export class FilterModal extends Modal {
             "task-chat-filter-toggles",
         );
 
-        statuses.forEach((status) => {
+        allStatuses.forEach((statusKey) => {
             const toggleRow = statusContainer.createDiv(
                 "task-chat-filter-toggle-row",
             );
@@ -561,7 +600,7 @@ export class FilterModal extends Modal {
                 cls: "task-chat-filter-checkbox",
             });
             checkbox.checked =
-                this.filter.taskStatuses?.includes(status) || false;
+                this.filter.taskStatuses?.includes(statusKey) || false;
 
             checkbox.addEventListener("change", () => {
                 if (!this.filter.taskStatuses) {
@@ -569,18 +608,21 @@ export class FilterModal extends Modal {
                 }
 
                 if (checkbox.checked) {
-                    if (!this.filter.taskStatuses.includes(status)) {
-                        this.filter.taskStatuses.push(status);
+                    if (!this.filter.taskStatuses.includes(statusKey)) {
+                        this.filter.taskStatuses.push(statusKey);
                     }
                 } else {
                     this.filter.taskStatuses = this.filter.taskStatuses.filter(
-                        (s) => s !== status,
+                        (s) => s !== statusKey,
                     );
                 }
             });
 
+            // Show display name from settings
+            const displayName =
+                statusMapping[statusKey].displayName || statusKey;
             toggleRow.createSpan({
-                text: status,
+                text: displayName,
                 cls: "task-chat-filter-toggle-label",
             });
         });
