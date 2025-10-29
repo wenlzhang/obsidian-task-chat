@@ -200,6 +200,14 @@ export class ExclusionsModal extends Modal {
         const menu = new Menu();
 
         menu.addItem((item) => {
+            item.setTitle("📁 Folders")
+                .setIcon("folder")
+                .onClick(() => {
+                    this.showFolderSuggest(listContainer);
+                });
+        });
+
+        menu.addItem((item) => {
             item.setTitle("🏷 Tags in notes")
                 .setIcon("tag")
                 .onClick(() => {
@@ -212,14 +220,6 @@ export class ExclusionsModal extends Modal {
                 .setIcon("tag")
                 .onClick(() => {
                     this.showTaskTagSuggest(listContainer);
-                });
-        });
-
-        menu.addItem((item) => {
-            item.setTitle("📁 Folders")
-                .setIcon("folder")
-                .onClick(() => {
-                    this.showFolderSuggest(listContainer);
                 });
         });
 

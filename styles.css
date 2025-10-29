@@ -1687,7 +1687,6 @@
 
 .task-chat-filter-quick-dates-label {
     font-size: 13px;
-    color: var(--text-muted);
 }
 
 .task-chat-filter-quick-date-btn {
@@ -1707,12 +1706,49 @@
 }
 
 /* Date Settings - Bring calendar inputs closer to labels */
-.task-chat-filter-date-setting {
-    grid-template-columns: 60px 1fr !important; /* Reduce label column width */
+.task-chat-filter-date-row {
+    display: grid;
+    grid-template-columns: auto minmax(130px, 1fr) auto minmax(130px, 1fr);
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
 }
 
-.task-chat-filter-date-setting .setting-item-name {
-    min-width: auto !important;
+.task-chat-filter-date-label {
+    font-size: 13px;
+    color: var(--text-normal);
+}
+
+.task-chat-filter-date-input {
+    padding: 6px 8px;
+    font-size: 13px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.task-chat-filter-date-input:hover {
+    border-color: var(--interactive-accent);
+}
+
+@media (max-width: 640px) {
+    .task-chat-filter-date-row {
+        grid-template-columns: auto minmax(130px, 1fr);
+        row-gap: 6px;
+    }
+
+    .task-chat-filter-date-label:nth-of-type(3) {
+        grid-column: 1 / 2;
+        grid-row: 2;
+    }
+
+    .task-chat-filter-date-input:nth-of-type(2) {
+        grid-column: 2 / 3;
+        grid-row: 2;
+    }
 }
 
 /* Action Buttons */

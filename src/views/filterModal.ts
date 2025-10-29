@@ -400,44 +400,60 @@ export class FilterModal extends Modal {
         );
         dueDateSection.createEl("h4", { text: "📅 Due date range" });
 
-        // Start date
-        new Setting(dueDateSection)
-            .setName("Start")
-            .setClass("task-chat-filter-date-setting")
-            .addText((text) => {
-                text.inputEl.type = "date";
-                text.setValue(this.filter.dueDateRange?.start || "").onChange(
-                    (value) => {
-                        if (!this.filter.dueDateRange) {
-                            this.filter.dueDateRange = {};
-                        }
-                        this.filter.dueDateRange.start = value || undefined;
-                    },
-                );
-            });
+        const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const startInputId = `task-chat-filter-date-start-${uniqueSuffix}`;
+        const endInputId = `task-chat-filter-date-end-${uniqueSuffix}`;
 
-        // End date
-        new Setting(dueDateSection)
-            .setName("End")
-            .setClass("task-chat-filter-date-setting")
-            .addText((text) => {
-                text.inputEl.type = "date";
-                text.setValue(this.filter.dueDateRange?.end || "").onChange(
-                    (value) => {
-                        if (!this.filter.dueDateRange) {
-                            this.filter.dueDateRange = {};
-                        }
-                        this.filter.dueDateRange.end = value || undefined;
-                    },
-                );
-            });
+        const dateRow = dueDateSection.createDiv("task-chat-filter-date-row");
+
+        const startLabel = dateRow.createEl("label", {
+            text: "Start",
+            cls: "task-chat-filter-date-label",
+        });
+        startLabel.setAttr("for", startInputId);
+
+        const startInput = dateRow.createEl("input", {
+            cls: "task-chat-filter-date-input",
+            attr: {
+                id: startInputId,
+                type: "date",
+            },
+        }) as HTMLInputElement;
+        startInput.value = this.filter.dueDateRange?.start || "";
+        startInput.addEventListener("change", () => {
+            if (!this.filter.dueDateRange) {
+                this.filter.dueDateRange = {};
+            }
+            this.filter.dueDateRange.start = startInput.value || undefined;
+        });
+
+        const endLabel = dateRow.createEl("label", {
+            text: "End",
+            cls: "task-chat-filter-date-label",
+        });
+        endLabel.setAttr("for", endInputId);
+
+        const endInput = dateRow.createEl("input", {
+            cls: "task-chat-filter-date-input",
+            attr: {
+                id: endInputId,
+                type: "date",
+            },
+        }) as HTMLInputElement;
+        endInput.value = this.filter.dueDateRange?.end || "";
+        endInput.addEventListener("change", () => {
+            if (!this.filter.dueDateRange) {
+                this.filter.dueDateRange = {};
+            }
+            this.filter.dueDateRange.end = endInput.value || undefined;
+        });
 
         // Quick date filters
         const quickFiltersContainer = dueDateSection.createDiv(
             "task-chat-filter-quick-dates",
         );
         quickFiltersContainer.createEl("span", {
-            text: "Quick dates ",
+            text: "Date",
             cls: "task-chat-filter-quick-dates-label",
         });
 
