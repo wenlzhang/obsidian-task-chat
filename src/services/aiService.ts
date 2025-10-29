@@ -1189,45 +1189,93 @@ export class AIService {
                             ? parserUsage.model // Same model - show once
                             : `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`; // Different - show both
 
-                    // Determine combined token source (if either is estimated, mark as estimated)
+                    // Determine combined token source and cost method based on provider mixing
                     const parserTokenSource =
                         parserUsage.tokenSource ?? "actual";
                     const analysisTokenSource =
                         tokenUsage.tokenSource ?? "actual";
-                    const combinedTokenSource: "actual" | "estimated" =
-                        parserTokenSource === "estimated" ||
-                        analysisTokenSource === "estimated"
-                            ? "estimated"
-                            : "actual";
-
-                    // Determine combined cost method (prioritize actual > calculated > estimated)
                     const parserCostMethod =
                         parserUsage.costMethod ?? "calculated";
                     const analysisCostMethod =
                         tokenUsage.costMethod ?? "calculated";
+                    const parserPricingSource =
+                        parserUsage.pricingSource ?? "embedded";
+                    const analysisPricingSource =
+                        tokenUsage.pricingSource ?? "embedded";
+
+                    // Get provider info
+                    const parsingProvider = parserUsage.provider;
+                    const analysisProvider = tokenUsage.provider;
+                    const mixingProviders =
+                        parsingProvider !== analysisProvider;
+
+                    // Token source logic:
+                    // - Both OpenRouter (same provider, both actual) → actual
+                    // - Any provider mixing → estimated
+                    // - Any estimated tokens → estimated
+                    let combinedTokenSource: "actual" | "estimated";
+                    if (
+                        !mixingProviders &&
+                        parsingProvider === "openrouter" &&
+                        parserTokenSource === "actual" &&
+                        analysisTokenSource === "actual"
+                    ) {
+                        combinedTokenSource = "actual";
+                    } else {
+                        combinedTokenSource = "estimated";
+                    }
+
+                    // Cost method logic:
+                    // - Both OpenRouter with actual costs → actual
+                    // - OpenRouter + Ollama (one free, one actual) → actual
+                    // - Both Ollama (both free) → actual
+                    // - Any non-OpenRouter cloud mixing → estimated/calculated
                     let combinedCostMethod:
                         | "actual"
                         | "calculated"
                         | "estimated";
-                    if (
+
+                    const bothOllama =
+                        parsingProvider === "ollama" &&
+                        analysisProvider === "ollama";
+                    const oneOllamaOneOpenRouter =
+                        (parsingProvider === "ollama" &&
+                            analysisProvider === "openrouter") ||
+                        (parsingProvider === "openrouter" &&
+                            analysisProvider === "ollama");
+                    const bothOpenRouter =
+                        parsingProvider === "openrouter" &&
+                        analysisProvider === "openrouter";
+
+                    if (bothOllama) {
+                        // Both local models, free
+                        combinedCostMethod = "actual";
+                    } else if (
+                        bothOpenRouter &&
                         parserCostMethod === "actual" &&
                         analysisCostMethod === "actual"
                     ) {
+                        // Both OpenRouter with actual costs
+                        combinedCostMethod = "actual";
+                    } else if (
+                        oneOllamaOneOpenRouter &&
+                        (parserCostMethod === "actual" ||
+                            analysisCostMethod === "actual")
+                    ) {
+                        // One free (Ollama), one actual (OpenRouter)
                         combinedCostMethod = "actual";
                     } else if (
                         parserCostMethod === "estimated" ||
                         analysisCostMethod === "estimated"
                     ) {
+                        // Any estimated cost
                         combinedCostMethod = "estimated";
                     } else {
+                        // Mixed cloud providers or calculated costs
                         combinedCostMethod = "calculated";
                     }
 
                     // Use OpenRouter pricing if either phase used it
-                    const parserPricingSource =
-                        parserUsage.pricingSource ?? "embedded";
-                    const analysisPricingSource =
-                        tokenUsage.pricingSource ?? "embedded";
                     const combinedPricingSource: "openrouter" | "embedded" =
                         parserPricingSource === "openrouter" ||
                         analysisPricingSource === "openrouter"

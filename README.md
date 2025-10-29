@@ -412,6 +412,7 @@ fix bug → finds "repair error", "solve issue", "correct problem"
 4. Use Ollama for unlimited local processing (free, but slower)
 
 → [More cost details in chat modes](docs/CHAT_MODES.md#cost-considerations)
+→ [Cost tracking and transparency](docs/COST_TRACKING.md)
 
 ## 🔧 Troubleshooting
 
@@ -459,6 +460,7 @@ See [LICENSE](LICENSE) for details.
 ## 📚 Additional Resources
 
 - **[Chat Modes](docs/CHAT_MODES.md)** - Detailed mode comparison
+- **[Cost Tracking](docs/COST_TRACKING.md)** - Token and cost transparency
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual search

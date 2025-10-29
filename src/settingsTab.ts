@@ -1790,6 +1790,12 @@ export class SettingsTab extends PluginSettingTab {
                     this.display(); // Refresh to show updated stats
                 }),
             );
+        modelConfigDesc.createSpan({ text: " | " });
+        modelConfigDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Cost tracking.",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
+        });
 
         // Debug Logging
         new Setting(containerEl)

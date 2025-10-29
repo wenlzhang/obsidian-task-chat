@@ -124,7 +124,6 @@ export class MetadataService {
             }
 
             // Token count and cost together (grouped with comma)
-            const tokenStr = message.tokenUsage.isEstimated ? "~" : "";
             const totalTokens = message.tokenUsage.totalTokens || 0;
             const promptTokens = message.tokenUsage.promptTokens || 0;
             const completionTokens = message.tokenUsage.completionTokens || 0;
@@ -142,20 +141,23 @@ export class MetadataService {
                 parsingProvider === "ollama" && analysisProvider === "ollama";
 
             // Get token source (actual vs estimated)
-            const tokenSource = message.tokenUsage.tokenSource || "actual";
+            const tokenSource = message.tokenUsage.tokenSource ?? "actual";
             const sourceLabel = tokenSource === "actual" ? "actual" : "est";
 
+            // Add tilde (~) prefix for estimated tokens (approximate values)
+            const tokenPrefix = tokenSource === "estimated" ? "~" : "";
+
             // Format token display with source indicator
-            const tokenDisplay = `${promptTokens.toLocaleString()} in (${sourceLabel}), ${completionTokens.toLocaleString()} out (${sourceLabel})`;
+            const tokenDisplay = `${tokenPrefix}${promptTokens.toLocaleString()} in (${sourceLabel}), ${tokenPrefix}${completionTokens.toLocaleString()} out (${sourceLabel})`;
 
             if (bothLocal) {
                 // Both parser and analysis use local models → Free
-                parts.push(`${tokenStr}${tokenDisplay} • Free (local)`);
+                parts.push(`${tokenDisplay} • Free (local)`);
             } else {
                 // At least one cloud model is used → Show actual cost
                 const cost = message.tokenUsage.estimatedCost || 0;
                 const costMethod =
-                    message.tokenUsage.costMethod || "calculated";
+                    message.tokenUsage.costMethod ?? "calculated";
 
                 // Format cost with precision
                 let costStr: string;
@@ -171,6 +173,12 @@ export class MetadataService {
                     costStr = cost.toFixed(2);
                 }
 
+                // Add tilde (~) prefix for calculated/estimated costs (approximate values)
+                const costPrefix =
+                    costMethod === "calculated" || costMethod === "estimated"
+                        ? "~"
+                        : "";
+
                 // Add cost method indicator
                 const costMethodLabel =
                     costMethod === "actual"
@@ -179,9 +187,9 @@ export class MetadataService {
                           ? "calc"
                           : "est";
 
-                const costDisplay = `$${costStr} (${costMethodLabel})`;
+                const costDisplay = `${costPrefix}$${costStr} (${costMethodLabel})`;
 
-                parts.push(`${tokenStr}${tokenDisplay} • ${costDisplay}`);
+                parts.push(`${tokenDisplay} • ${costDisplay}`);
             }
 
             // Language (for Smart Search and Task Chat)
