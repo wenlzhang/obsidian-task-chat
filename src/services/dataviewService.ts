@@ -1149,47 +1149,67 @@ export class DataviewService {
                 );
 
                 if (pages && pages.length > 0) {
-                    // Get ALL tasks from ALL pages using Dataview's API
-                    // Use flatMap to collect tasks from all pages efficiently
-                    const allPageTasks = pages.flatMap((page: any) => {
-                        if (page.file.tasks && Array.isArray(page.file.tasks)) {
-                            // Attach page tags to each task for later processing
-                            return page.file.tasks.map((t: any) => ({
-                                task: t,
-                                pageTags: page.file.tags || [],
-                            }));
-                        }
-                        return [];
-                    });
-
-                    // CRITICAL DEBUG: Log how many tasks were found on pages
+                    // CRITICAL DEBUG: Log page count before task extraction
                     Logger.debug(
-                        `[DEBUG] Found ${allPageTasks?.length || 0} raw tasks from ${pages.length} pages`,
+                        `[DEBUG] Processing ${pages.length} pages for tasks`,
                     );
 
-                    if (allPageTasks && allPageTasks.length > 0) {
-                        // allPageTasks is already a JavaScript array from flatMap
-                        // We don't need to call .array() on it
-                        let taskIndex = 0;
+                    let taskIndex = 0;
+                    let totalRawTasks = 0;
+                    let totalExpandedTasks = 0;
 
-                        // Process each flattened task
+                    // Process each page separately to preserve pageTags while recursively expanding subtasks
+                    // This allows us to use DataView's expand("children") to flatten ALL subtasks at any nesting level
+                    for (const page of pages) {
+                        if (
+                            !page.file ||
+                            !page.file.tasks ||
+                            page.file.tasks.length === 0
+                        ) {
+                            continue;
+                        }
+
+                        const pageTags = page.file.tags || [];
+                        const pagePath = page.file.path || "";
+
+                        // Count raw tasks for this page
+                        totalRawTasks += page.file.tasks.length;
+
+                        // Convert page tasks to DataArray and recursively expand ALL subtasks
+                        // expand("children") will flatten subtasks at ANY nesting level:
+                        // - Task -> Subtask -> Sub-subtask -> ... (all levels)
+                        const pageTasksArray = dataviewApi.array(
+                            page.file.tasks,
+                        );
+                        const flattenedPageTasks = pageTasksArray.expand
+                            ? pageTasksArray.expand("children")
+                            : pageTasksArray;
+
+                        // Count expanded tasks for this page
+                        const expandedCount = flattenedPageTasks.length || 0;
+                        totalExpandedTasks += expandedCount;
+
+                        // Process each flattened task with existing filters
                         let processedCount = 0;
                         let nullTaskCount = 0;
                         let propertyFilterRejects = 0;
                         let taskTagExclusions = 0;
                         let taskTagInclusionRejects = 0;
 
-                        for (const item of allPageTasks) {
-                            const dvTask = item.task;
-                            const pageTags = item.pageTags;
+                        // Convert DataArray to regular array for iteration
+                        const tasksArray = flattenedPageTasks.array
+                            ? flattenedPageTasks.array()
+                            : flattenedPageTasks;
+
+                        for (const dvTask of tasksArray) {
                             processedCount++;
 
                             const task = this.processDataviewTask(
                                 dvTask,
                                 settings,
                                 taskIndex++,
-                                dvTask.path || "",
-                                pageTags, // Pass note-level tags
+                                pagePath,
+                                pageTags, // Pass note-level tags from page
                             );
 
                             // Apply task-level filter if provided
@@ -1250,11 +1270,32 @@ export class DataviewService {
                             }
                         }
 
-                        // CRITICAL DEBUG: Log task-level filtering results
-                        Logger.debug(
-                            `[DEBUG] Task-level filtering: processed=${processedCount}, null=${nullTaskCount}, propertyFilter=${propertyFilterRejects}, taskTagExcluded=${taskTagExclusions}, taskTagInclusionFailed=${taskTagInclusionRejects}, ACCEPTED=${tasks.length}`,
-                        );
+                        // DEBUG: Log per-page filtering results
+                        if (
+                            settings.enableDebugLogging &&
+                            (nullTaskCount > 0 ||
+                                propertyFilterRejects > 0 ||
+                                taskTagExclusions > 0 ||
+                                taskTagInclusionRejects > 0)
+                        ) {
+                            Logger.debug(
+                                `[DEBUG] Page ${pagePath}: processed=${processedCount}, null=${nullTaskCount}, propertyFilter=${propertyFilterRejects}, taskTagExcluded=${taskTagExclusions}, taskTagInclusionFailed=${taskTagInclusionRejects}`,
+                            );
+                        }
+                    }
 
+                    // CRITICAL DEBUG: Log overall task expansion and filtering results
+                    Logger.debug(
+                        `[DEBUG] Found ${totalRawTasks} raw tasks from ${pages.length} pages`,
+                    );
+                    Logger.debug(
+                        `[DEBUG] After expand("children"): ${totalExpandedTasks} tasks (including all nested subtasks)`,
+                    );
+                    Logger.debug(
+                        `[DEBUG] After all filters: ${tasks.length} tasks accepted`,
+                    );
+
+                    if (tasks.length > 0) {
                         foundTasks = true;
                     }
                 }
