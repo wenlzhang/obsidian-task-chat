@@ -1189,6 +1189,51 @@ export class AIService {
                             ? parserUsage.model // Same model - show once
                             : `${parserUsage.model} (parser) + ${tokenUsage.model} (analysis)`; // Different - show both
 
+                    // Determine combined token source (if either is estimated, mark as estimated)
+                    const parserTokenSource =
+                        parserUsage.tokenSource ?? "actual";
+                    const analysisTokenSource =
+                        tokenUsage.tokenSource ?? "actual";
+                    const combinedTokenSource: "actual" | "estimated" =
+                        parserTokenSource === "estimated" ||
+                        analysisTokenSource === "estimated"
+                            ? "estimated"
+                            : "actual";
+
+                    // Determine combined cost method (prioritize actual > calculated > estimated)
+                    const parserCostMethod =
+                        parserUsage.costMethod ?? "calculated";
+                    const analysisCostMethod =
+                        tokenUsage.costMethod ?? "calculated";
+                    let combinedCostMethod:
+                        | "actual"
+                        | "calculated"
+                        | "estimated";
+                    if (
+                        parserCostMethod === "actual" &&
+                        analysisCostMethod === "actual"
+                    ) {
+                        combinedCostMethod = "actual";
+                    } else if (
+                        parserCostMethod === "estimated" ||
+                        analysisCostMethod === "estimated"
+                    ) {
+                        combinedCostMethod = "estimated";
+                    } else {
+                        combinedCostMethod = "calculated";
+                    }
+
+                    // Use OpenRouter pricing if either phase used it
+                    const parserPricingSource =
+                        parserUsage.pricingSource ?? "embedded";
+                    const analysisPricingSource =
+                        tokenUsage.pricingSource ?? "embedded";
+                    const combinedPricingSource: "openrouter" | "embedded" =
+                        parserPricingSource === "openrouter" ||
+                        analysisPricingSource === "openrouter"
+                            ? "openrouter"
+                            : "embedded";
+
                     combinedTokenUsage = {
                         promptTokens:
                             parserUsage.promptTokens + tokenUsage.promptTokens,
@@ -1204,6 +1249,10 @@ export class AIService {
                         provider: tokenUsage.provider, // Use analysis provider (not aiProvider)
                         isEstimated:
                             parserUsage.isEstimated || tokenUsage.isEstimated,
+                        // Enhanced tracking fields for combined usage
+                        tokenSource: combinedTokenSource,
+                        costMethod: combinedCostMethod,
+                        pricingSource: combinedPricingSource,
                         // Add separate tracking for parsing and analysis
                         parsingModel: parserUsage.model,
                         parsingProvider: parserUsage.provider as
@@ -1213,28 +1262,49 @@ export class AIService {
                             | "ollama",
                         parsingTokens: parserUsage.totalTokens,
                         parsingCost: parserUsage.estimatedCost,
+                        parsingTokenSource: parserTokenSource,
+                        parsingCostMethod: parserCostMethod,
+                        parsingPricingSource: parserPricingSource,
                         analysisModel: tokenUsage.model,
                         analysisProvider: tokenUsage.provider,
                         analysisTokens: tokenUsage.totalTokens,
                         analysisCost: tokenUsage.estimatedCost,
+                        analysisTokenSource: analysisTokenSource,
+                        analysisCostMethod: analysisCostMethod,
+                        analysisPricingSource: analysisPricingSource,
                     };
                     Logger.debug(
                         `[Task Chat] Combined token usage: Parser (${parserUsage.provider}/${parserUsage.model}: ${parserUsage.totalTokens}) + Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
+                    );
+                    Logger.debug(
+                        `[Task Chat] Combined tokens breakdown: promptTokens=${combinedTokenUsage.promptTokens}, completionTokens=${combinedTokenUsage.completionTokens}, tokenSource=${combinedTokenUsage.tokenSource}, costMethod=${combinedTokenUsage.costMethod}`,
                     );
                 } else if (parserError) {
                     // Parser failed - add parsing model info for UI display (0 tokens for parser)
                     const { provider: parsingProvider, model: parsingModel } =
                         getProviderForPurpose(settings, "parsing");
+                    const failedAnalysisTokenSource =
+                        tokenUsage.tokenSource ?? "actual";
+                    const failedAnalysisCostMethod =
+                        tokenUsage.costMethod ?? "calculated";
+                    const failedAnalysisPricingSource =
+                        tokenUsage.pricingSource ?? "embedded";
                     combinedTokenUsage = {
                         ...tokenUsage,
                         parsingModel: parsingModel,
                         parsingProvider: parsingProvider,
                         parsingTokens: 0,
                         parsingCost: 0,
+                        parsingTokenSource: "estimated" as const, // Parser failed, no tokens
+                        parsingCostMethod: "estimated" as const,
+                        parsingPricingSource: "embedded" as const,
                         analysisModel: tokenUsage.model,
                         analysisProvider: tokenUsage.provider,
                         analysisTokens: tokenUsage.totalTokens,
                         analysisCost: tokenUsage.estimatedCost,
+                        analysisTokenSource: failedAnalysisTokenSource,
+                        analysisCostMethod: failedAnalysisCostMethod,
+                        analysisPricingSource: failedAnalysisPricingSource,
                     };
                     Logger.debug(
                         `[Task Chat] Parser failed, analysis only: Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
@@ -2333,6 +2403,10 @@ ${taskContext}`;
                                     `[OpenRouter] ✓ Using actual cost from API: $${actualCostFromAPI.toFixed(6)} (not calculated)`,
                                 );
                             }
+                        } else {
+                            Logger.warn(
+                                `[OpenRouter] ⚠️ Generation API returned null usage data, keeping estimated tokens: ${promptTokens} prompt + ${completionTokens} completion`,
+                            );
                         }
                     } catch (error) {
                         Logger.warn(
@@ -2383,6 +2457,9 @@ ${taskContext}`;
                 analysisPricingSource: costTracking.pricingSource,
             };
 
+            Logger.debug(
+                `[Token Usage] Created TokenUsage object: promptTokens=${tokenUsage.promptTokens}, completionTokens=${tokenUsage.completionTokens}, totalTokens=${tokenUsage.totalTokens}`,
+            );
             Logger.debug("Streaming completed successfully");
 
             return {

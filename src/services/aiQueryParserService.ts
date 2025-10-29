@@ -13,6 +13,7 @@ import { DataviewService } from "./dataviewService";
 import { PricingService } from "./pricingService";
 import { Logger } from "../utils/logger";
 import { ErrorHandler, AIError } from "../utils/errorHandler";
+import { TokenUsage } from "../models/task";
 
 /**
  * Structured query result from AI parsing - Three-part system
@@ -79,15 +80,7 @@ export interface ParsedQuery {
     _parserModel?: string; // Model that was attempted (provider/model)
 
     // Token Usage from Query Parsing (AI calls made during parsing)
-    _parserTokenUsage?: {
-        promptTokens: number;
-        completionTokens: number;
-        totalTokens: number;
-        estimatedCost: number;
-        model: string;
-        provider: string;
-        isEstimated: boolean;
-    };
+    _parserTokenUsage?: TokenUsage;
 }
 
 /**

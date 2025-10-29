@@ -404,56 +404,78 @@ export class PricingService {
             `[OpenRouter] Raw generation data: ${JSON.stringify(data.data)}`,
         );
 
-        // OpenRouter returns usage and cost in data.data
-        if (data.data?.usage) {
-            Logger.debug(`[OpenRouter] ✓ Usage data found in response`);
-            Logger.debug(
-                `[OpenRouter] Native tokens - prompt: ${data.data.usage.prompt_tokens}, completion: ${data.data.usage.completion_tokens}`,
+        // Check response structure
+        if (!data || !data.data) {
+            Logger.warn(
+                `[OpenRouter] ⚠️ Invalid response structure: ${JSON.stringify(data)}`,
             );
-
-            // Check if native token counts are available
-            Logger.debug(
-                `[OpenRouter] native_tokens_completion: ${data.data.native_tokens_completion}`,
-            );
-            Logger.debug(
-                `[OpenRouter] total_cost field: ${data.data.total_cost} (type: ${typeof data.data.total_cost})`,
-            );
-
-            // Extract actual cost from OpenRouter
-            let actualCost: number | undefined = undefined;
-
-            if (data.data.total_cost) {
-                actualCost = parseFloat(data.data.total_cost);
-
-                if (data.data.native_tokens_completion) {
-                    Logger.debug(
-                        `[OpenRouter] ✓ Got actual cost from API with native tokens: $${actualCost.toFixed(6)}`,
-                    );
-                } else {
-                    Logger.debug(
-                        `[OpenRouter] ✓ Got cost from API (without native tokens): $${actualCost.toFixed(6)}`,
-                    );
-                    Logger.warn(
-                        `[OpenRouter] ⚠️ native_tokens_completion not found - cost may be less accurate`,
-                    );
-                }
-            } else {
-                Logger.warn(
-                    `[OpenRouter] ⚠️ total_cost field not found in API response`,
-                );
-            }
-
-            const usageData = {
-                promptTokens: data.data.usage.prompt_tokens || 0,
-                completionTokens: data.data.usage.completion_tokens || 0,
-                actualCost: actualCost,
-            };
-
-            return usageData;
+            return null;
         }
 
-        Logger.warn(`[OpenRouter] ⚠️ No usage data in generation API response`);
-        return null;
+        // OpenRouter Generation API returns tokens directly in data.data
+        // Prefer native_tokens (provider-specific) over normalized tokens
+        const promptTokens =
+            data.data.native_tokens_prompt ?? data.data.tokens_prompt ?? 0;
+        const completionTokens =
+            data.data.native_tokens_completion ??
+            data.data.tokens_completion ??
+            0;
+
+        Logger.debug(
+            `[OpenRouter] Extracted tokens - prompt: ${promptTokens}, completion: ${completionTokens}`,
+        );
+
+        // Validate we got actual tokens
+        if (promptTokens === 0 && completionTokens === 0) {
+            Logger.warn(
+                `[OpenRouter] ⚠️ No token data found in generation API response`,
+            );
+            Logger.debug(
+                `[OpenRouter] Response fields: ${JSON.stringify(Object.keys(data.data))}`,
+            );
+            return null;
+        }
+
+        // Extract actual cost from OpenRouter
+        let actualCost: number | undefined = undefined;
+
+        if (
+            data.data.total_cost !== undefined &&
+            data.data.total_cost !== null
+        ) {
+            actualCost =
+                typeof data.data.total_cost === "number"
+                    ? data.data.total_cost
+                    : parseFloat(data.data.total_cost);
+
+            Logger.debug(
+                `[OpenRouter] ✓ Got actual cost from API: $${actualCost.toFixed(6)}`,
+            );
+        } else if (data.data.usage !== undefined && data.data.usage !== null) {
+            // Fallback: some responses might have cost in 'usage' field
+            actualCost =
+                typeof data.data.usage === "number"
+                    ? data.data.usage
+                    : parseFloat(data.data.usage);
+
+            Logger.debug(
+                `[OpenRouter] ✓ Got actual cost from 'usage' field: $${actualCost.toFixed(6)}`,
+            );
+        } else {
+            Logger.warn(`[OpenRouter] ⚠️ No cost field found in API response`);
+        }
+
+        const usageData = {
+            promptTokens,
+            completionTokens,
+            actualCost,
+        };
+
+        Logger.debug(
+            `[OpenRouter] ✓ Returning usage data: ${promptTokens} prompt + ${completionTokens} completion, cost: ${actualCost !== undefined ? `$${actualCost.toFixed(6)}` : "N/A"}`,
+        );
+
+        return usageData;
     }
 
     /**
