@@ -38,23 +38,21 @@ export class SettingsTab extends PluginSettingTab {
         // AI Provider
         const aiProviderSetting = new Setting(containerEl)
             .setName("AI provider")
-            .setDesc(
-                "Choose your AI provider and configure API key, model selection, and connection settings.",
-            )
+            .setDesc("Configure your AI provider.")
             .setHeading();
 
         const aiProviderDesc = aiProviderSetting.descEl;
         aiProviderDesc.createSpan({ text: " " });
         aiProviderDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about AI provider setup.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#1-ai-provider",
         });
 
         new Setting(containerEl)
             .setName("Provider")
             .setDesc(
-                "Select your AI provider. Each provider has different requirements and capabilities.",
+                "Each provider has different requirements and capabilities.",
             )
             .addDropdown((dropdown) =>
                 dropdown
@@ -134,7 +132,7 @@ export class SettingsTab extends PluginSettingTab {
         const tokenSetting = new Setting(containerEl)
             .setName("Max response tokens")
             .setDesc(
-                "Maximum tokens for AI response generation. Affects BOTH Smart Search query parsing AND Task Chat responses.",
+                "Maximum tokens for AI response generation. Affects BOTH Smart Search AND Task Chat.",
             )
             .addSlider((slider) =>
                 slider
@@ -150,7 +148,7 @@ export class SettingsTab extends PluginSettingTab {
         tokenDesc.createSpan({ text: " " });
         tokenDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about max tokens and performance tuning.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-max-response-tokens",
         });
 
@@ -171,23 +169,23 @@ export class SettingsTab extends PluginSettingTab {
         contextDesc.createSpan({ text: " " });
         contextDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about context window and troubleshooting.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
-        // Model configuration subsection
+        // Model configuration
         const modelConfigSetting = new Setting(containerEl)
             .setName("Model configuration")
             .setDesc(
-                "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
+                "Use different AI models for query parsing and task analysis to optimize costs and performance.",
             )
-            .setHeading();
+            .setClass("setting-subsection-heading");
 
         const modelConfigDesc = modelConfigSetting.descEl;
         modelConfigDesc.createSpan({ text: " " });
         modelConfigDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about model configuration.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
         });
 
@@ -295,7 +293,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query parsing temperature")
             .setDesc(
-                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: low values, e.g. 0.1, for reliable JSON output.",
+                "Temperature for query parsing. Lower = consistent, focused. Recommended: 0.1 for reliable JSON output.",
             )
             .addSlider((slider) =>
                 slider
@@ -410,7 +408,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Task analysis temperature")
             .setDesc(
-                "Temperature for task analysis (0.0-2.0). Lower = consistent, higher = creative.",
+                "Temperature for task analysis. Lower = consistent, higher = creative.",
             )
             .addSlider((slider) =>
                 slider
@@ -426,17 +424,42 @@ export class SettingsTab extends PluginSettingTab {
         // Chat Settings
         const taskChatSetting = new Setting(containerEl)
             .setName("Task chat")
-            .setDesc(
-                "Configure chat interface behavior, history length, response tokens, and temperature.",
-            )
             .setHeading();
 
         const taskChatDesc = taskChatSetting.descEl;
         taskChatDesc.createSpan({ text: " " });
         taskChatDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about task chat settings.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#2-task-chat",
+        });
+
+        const chatModeSetting = new Setting(containerEl)
+            .setName("Default chat mode")
+            .setDesc("Set default mode for new chat sessions.")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("simple", "Simple Search - Free")
+                    .addOption("smart", "Smart Search - AI keyword expansion")
+                    .addOption("chat", "Task Chat - Full AI assistant")
+                    .setValue(this.plugin.settings.defaultChatMode)
+                    .onChange(async (value: "simple" | "smart" | "chat") => {
+                        this.plugin.settings.defaultChatMode = value;
+                        await this.plugin.saveSettings();
+
+                        // Update settings tab sort dropdown and description
+                        this.refreshSortBySetting();
+
+                        // Update chat view chat mode dropdown
+                        this.plugin.refreshChatViewChatMode();
+                    }),
+            );
+        const modeDesc = chatModeSetting.descEl;
+        modeDesc.createSpan({ text: " " });
+        modeDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more.",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md",
         });
 
         new Setting(containerEl)
@@ -454,41 +477,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-
-        // Add detailed setting for chat history context length
-        const chatContextSetting = new Setting(containerEl)
-            .setName("Chat history context length")
-            .setDesc(
-                `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${this.plugin.settings.chatHistoryContextLength}`,
-            )
-            .addSlider((slider) =>
-                slider
-                    .setLimits(1, 100, 1)
-                    .setValue(this.plugin.settings.chatHistoryContextLength)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.chatHistoryContextLength = value;
-                        await this.plugin.saveSettings();
-                        // Update description to show current value
-                        chatContextSetting.setDesc(
-                            `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${value}`,
-                        );
-                    }),
-            );
-
-        const updateChatContextDesc = (value: number) => {
-            chatContextSetting.setDesc(
-                `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${value}. More history = higher token cost.`,
-            );
-            const descEl = chatContextSetting.descEl;
-            descEl.createSpan({ text: " " });
-            descEl.createEl("a", {
-                cls: "setting-inline-link",
-                text: "Learn more about chat history context.",
-                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_HISTORY_CONTEXT.md",
-            });
-        };
-        updateChatContextDesc(this.plugin.settings.chatHistoryContextLength);
 
         new Setting(containerEl)
             .setName("Show task count")
@@ -514,188 +502,64 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Chat mode
-        new Setting(containerEl).setName("Chat mode").setHeading();
+        // Simple search
+        new Setting(containerEl)
+            .setName("Simple search")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
-            .setName("Default chat mode")
-            .setDesc(
-                "Sets the default mode for new chat sessions. You can always override this in the chat interface.",
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("simple", "Simple Search - Free")
-                    .addOption("smart", "Smart Search - AI keyword expansion")
-                    .addOption("chat", "Task Chat - Full AI assistant")
-                    .setValue(this.plugin.settings.defaultChatMode)
-                    .onChange(async (value: "simple" | "smart" | "chat") => {
-                        this.plugin.settings.defaultChatMode = value;
-                        await this.plugin.saveSettings();
-
-                        // Update settings tab sort dropdown and description
-                        this.refreshSortBySetting();
-
-                        // Update chat view chat mode dropdown
-                        this.plugin.refreshChatViewChatMode();
-                    }),
-            );
-
-        // Mode comparison - link to documentation
-        const modeComparisonSetting = new Setting(containerEl)
-            .setName("Chat mode comparison")
-            .setDesc(
-                "Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).",
-            );
-        const modeDesc = modeComparisonSetting.descEl;
-        modeDesc.createSpan({ text: " " });
-        modeDesc.createEl("a", {
-            cls: "setting-inline-link",
-            text: "Learn more about chat modes.",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md",
-        });
-
-        // Semantic Expansion
-        const semanticExpansionSetting = new Setting(containerEl)
-            .setName("Semantic expansion")
-            .setDesc("Configure keyword expansion and custom property terms.")
-            .setHeading();
-
-        const semanticDesc = semanticExpansionSetting.descEl;
-        semanticDesc.createSpan({ text: " " });
-        semanticDesc.createEl("a", {
-            cls: "setting-inline-link",
-            text: "Learn more about semantic expansion.",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
-        });
-
-        new Setting(containerEl)
-            .setName("Enable semantic expansion")
-            .setDesc(
-                "Expand keywords with semantic equivalents across configured languages. Improves recall but increases token usage.",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableSemanticExpansion)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableSemanticExpansion = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Query language")
-            .setDesc(
-                "Used by Smart Search and Task Chat modes. Separate with commas. Examples: English, Español.",
-            )
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("English")
-                    .setValue(this.plugin.settings.queryLanguages.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.queryLanguages = value
-                            .split(",")
-                            .map((lang) => lang.trim())
-                            .filter((lang) => lang.length > 0);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 2;
-                        text.inputEl.cols = 50;
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Keyword expansions")
-            .setDesc(
-                "Variations per keyword per language. Default: 5. Higher values improve recall but increase token usage.",
-            )
+            .setName("Max direct results")
+            .setDesc("Maximum tasks to show in Simple Search mode.")
             .addSlider((slider) =>
                 slider
-                    .setLimits(1, 25, 1)
-                    .setValue(this.plugin.settings.expansionsPerLanguage)
+                    .setLimits(5, 100, 5)
+                    .setValue(this.plugin.settings.maxDirectResults)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.expansionsPerLanguage = value;
+                        this.plugin.settings.maxDirectResults = value;
                         await this.plugin.saveSettings();
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Priority terms")
-            .setDesc("Custom priority terms. Combines with built-in terms.")
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("priority, urgent")
-                    .setValue(
-                        this.plugin.settings.userPropertyTerms.priority.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.userPropertyTerms.priority = value
-                            .split(",")
-                            .map((term) => term.trim())
-                            .filter((term) => term.length > 0);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 2;
-                        text.inputEl.cols = 50;
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Due date terms")
-            .setDesc("Custom due date terms. Combines with built-in terms.")
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("due, deadline")
-                    .setValue(
-                        this.plugin.settings.userPropertyTerms.dueDate.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.userPropertyTerms.dueDate = value
-                            .split(",")
-                            .map((term) => term.trim())
-                            .filter((term) => term.length > 0);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 2;
-                        text.inputEl.cols = 50;
-                    }),
-            );
-
-        new Setting(containerEl)
-            .setName("Status terms")
-            .setDesc("Custom status terms. Combines with built-in terms.")
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("done, completed, in progress")
-                    .setValue(
-                        this.plugin.settings.userPropertyTerms.status.join(
-                            ", ",
-                        ),
-                    )
-                    .onChange(async (value) => {
-                        this.plugin.settings.userPropertyTerms.status = value
-                            .split(",")
-                            .map((term) => term.trim())
-                            .filter((term) => term.length > 0);
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 2;
-                        text.inputEl.cols = 50;
                     }),
             );
 
         // Smart search & Task chat
         new Setting(containerEl)
             .setName("Smart search & Task chat")
-            .setHeading();
+            .setClass("setting-subsection-heading");
+
+        // Add detailed setting for chat history context length
+        const chatContextSetting = new Setting(containerEl)
+            .setName("Chat message context length")
+            .setDesc(
+                `Number of recent messages to send to AI as context (1-100). Current: ${this.plugin.settings.chatHistoryContextLength}`,
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 100, 1)
+                    .setValue(this.plugin.settings.chatHistoryContextLength)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.chatHistoryContextLength = value;
+                        await this.plugin.saveSettings();
+                        // Update description to show current value
+                        chatContextSetting.setDesc(
+                            `Number of recent messages to send to AI as context (1-100). Current: ${value}`,
+                        );
+                    }),
+            );
+
+        const updateChatContextDesc = (value: number) => {
+            chatContextSetting.setDesc(
+                `Number of recent messages to send to AI as context (1-100). Current: ${value}. More history = higher token cost.`,
+            );
+            const descEl = chatContextSetting.descEl;
+            descEl.createSpan({ text: " " });
+            descEl.createEl("a", {
+                cls: "setting-inline-link",
+                text: "Learn more.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_HISTORY_CONTEXT.md",
+            });
+        };
+        updateChatContextDesc(this.plugin.settings.chatHistoryContextLength);
 
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
@@ -810,6 +674,147 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Semantic Expansion
+        const semanticExpansionSetting = new Setting(containerEl)
+            .setName("Semantic expansion")
+            .setDesc("Configure keyword expansion and custom property terms.")
+            .setHeading();
+
+        const semanticDesc = semanticExpansionSetting.descEl;
+        semanticDesc.createSpan({ text: " " });
+        semanticDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more.",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
+        });
+
+        new Setting(containerEl)
+            .setName("Enable semantic expansion")
+            .setDesc(
+                "Expand keywords with semantic equivalents across configured languages. Improves recall but increases token usage.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableSemanticExpansion)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableSemanticExpansion = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Query language")
+            .setDesc("Separate with commas. Examples: English, Español.")
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("English")
+                    .setValue(this.plugin.settings.queryLanguages.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.queryLanguages = value
+                            .split(",")
+                            .map((lang) => lang.trim())
+                            .filter((lang) => lang.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Keyword expansions")
+            .setDesc(
+                "Variations per keyword per language. Default: 5. Higher values improve recall but increase token usage.",
+            )
+            .addSlider((slider) =>
+                slider
+                    .setLimits(1, 25, 1)
+                    .setValue(this.plugin.settings.expansionsPerLanguage)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.expansionsPerLanguage = value;
+                        await this.plugin.saveSettings();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Dataview task properties")
+            .setClass("setting-subsection-heading")
+            .setDesc("Configure terms to denote task properties.");
+
+        new Setting(containerEl)
+            .setName("Priority terms")
+            .setDesc("Custom priority terms. Combines with built-in terms.")
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("priority, urgent")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.priority.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.priority = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Due date terms")
+            .setDesc("Custom due date terms. Combines with built-in terms.")
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("due, deadline")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.dueDate.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.dueDate = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Status terms")
+            .setDesc("Custom status terms. Combines with built-in terms.")
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("done, completed, in progress")
+                    .setValue(
+                        this.plugin.settings.userPropertyTerms.status.join(
+                            ", ",
+                        ),
+                    )
+                    .onChange(async (value) => {
+                        this.plugin.settings.userPropertyTerms.status = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 2;
+                        text.inputEl.cols = 50;
+                    }),
+            );
+
         // Dataview Settings
         new Setting(containerEl).setName("Dataview integration").setHeading();
         const dataviewInfo = containerEl.createDiv({
@@ -818,7 +823,7 @@ export class SettingsTab extends PluginSettingTab {
         dataviewInfo.appendText("Configure task property field names. ");
         dataviewInfo.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about Dataview integration",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
         });
 
@@ -984,13 +989,13 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc(
                 "Define custom categories with checkbox symbols, scores, and query aliases.",
             )
-            .setHeading();
+            .setClass("setting-subsection-heading");
 
         const statusDesc = statusCategorySetting.descEl;
         statusDesc.createSpan({ text: " " });
         statusDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about status categories and score vs order.",
+            text: "Learn more about status category, and score vs order.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md",
         });
 
@@ -1020,37 +1025,6 @@ export class SettingsTab extends PluginSettingTab {
                 warningText.style.marginBottom = "4px";
             }
         }
-
-        // Auto-organize button (always visible, but styled differently based on validation)
-        const organizeSetting = new Setting(containerEl)
-            .setName("Auto-organize display order")
-            .setDesc(
-                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...).`,
-            )
-            .addButton((button) => {
-                button
-                    .setButtonText(
-                        validation.valid ? "Organize now" : "Fix duplicates",
-                    )
-                    .onClick(async () => {
-                        this.plugin.settings.taskStatusMapping =
-                            TaskPropertyService.autoFixStatusOrders(
-                                this.plugin.settings.taskStatusMapping,
-                            );
-                        await this.plugin.saveSettings();
-                        new Notice(
-                            `Display order organized! Categories renumbered with gaps of ${dynamicGap}.`,
-                        );
-                        this.display(); // Refresh UI
-                    });
-
-                // Style button based on validation state
-                if (!validation.valid) {
-                    button.setWarning(); // Red/warning style when duplicates exist
-                }
-            });
-
-        organizeSetting.settingEl.style.marginBottom = "20px";
 
         // Add column headers
         const headerDiv = containerEl.createDiv({
@@ -1107,6 +1081,37 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Auto-organize button (always visible, but styled differently based on validation)
+        const organizeSetting = new Setting(containerEl)
+            .setName("Auto-organize display order")
+            .setDesc(
+                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...).`,
+            )
+            .addButton((button) => {
+                button
+                    .setButtonText(
+                        validation.valid ? "Organize now" : "Fix duplicates",
+                    )
+                    .onClick(async () => {
+                        this.plugin.settings.taskStatusMapping =
+                            TaskPropertyService.autoFixStatusOrders(
+                                this.plugin.settings.taskStatusMapping,
+                            );
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            `Display order organized! Categories renumbered with gaps of ${dynamicGap}.`,
+                        );
+                        this.display(); // Refresh UI
+                    });
+
+                // Style button based on validation state
+                if (!validation.valid) {
+                    button.setWarning(); // Red/warning style when duplicates exist
+                }
+            });
+
+        organizeSetting.settingEl.style.marginBottom = "20px";
+
         // Task filtering
         new Setting(containerEl)
             .setName("Task filtering")
@@ -1121,11 +1126,57 @@ export class SettingsTab extends PluginSettingTab {
                 descEl.createSpan({ text: " " });
                 descEl.createEl("a", {
                     cls: "setting-inline-link",
-                    text: "Learn more about filtering options.",
+                    text: "Learn more.",
                     href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering",
                 });
             }
         }
+
+        // Exclusions (Tags, Folders, Notes)
+        new Setting(containerEl)
+            .setName("Task exclusion")
+            .setDesc(
+                "Exclude tasks from searches. Click 'Refresh' in the chat to update task counts. ",
+            )
+            .addButton((button) => {
+                button
+                    .setButtonText("Manage exclusions")
+                    .setCta()
+                    .onClick(() => {
+                        new ExclusionsModal(this.app, this.plugin).open();
+                    });
+            })
+            .descEl.createEl("a", {
+                cls: "setting-inline-link",
+                text: "Learn more.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
+            });
+
+        new Setting(containerEl)
+            .setName("Stop words")
+            .setDesc(
+                `Custom stop words to filter out. Comma-separated. Combines with ${StopWords.getInternalStopWords().length} built-in.`,
+            )
+            .addTextArea((text) =>
+                text
+                    .setPlaceholder("task")
+                    .setValue(this.plugin.settings.userStopWords.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.userStopWords = value
+                            .split(",")
+                            .map((term) => term.trim())
+                            .filter((term) => term.length > 0);
+                        // Update StopWords class immediately
+                        StopWords.setUserStopWords(
+                            this.plugin.settings.userStopWords,
+                        );
+                        await this.plugin.saveSettings();
+                    })
+                    .then((text) => {
+                        text.inputEl.rows = 3;
+                        text.inputEl.cols = 50;
+                    }),
+            );
 
         new Setting(containerEl)
             .setName("Relevance score")
@@ -1166,52 +1217,6 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl)
-            .setName("Custom stop words")
-            .setDesc(
-                `Custom stop words to filter out (combines with ${StopWords.getInternalStopWords().length} built-in). Comma-separated.`,
-            )
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("task")
-                    .setValue(this.plugin.settings.userStopWords.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.userStopWords = value
-                            .split(",")
-                            .map((term) => term.trim())
-                            .filter((term) => term.length > 0);
-                        // Update StopWords class immediately
-                        StopWords.setUserStopWords(
-                            this.plugin.settings.userStopWords,
-                        );
-                        await this.plugin.saveSettings();
-                    })
-                    .then((text) => {
-                        text.inputEl.rows = 3;
-                        text.inputEl.cols = 50;
-                    }),
-            );
-
-        // Exclusions (Tags, Folders, Notes)
-        new Setting(containerEl)
-            .setName("Task exclusion")
-            .setDesc(
-                "Exclude tasks from searches by tags, folders, or notes. Click 'Refresh' in the chat to update task counts.",
-            )
-            .addButton((button) => {
-                button
-                    .setButtonText("Manage exclusions")
-                    .setCta()
-                    .onClick(() => {
-                        new ExclusionsModal(this.app, this.plugin).open();
-                    });
-            })
-            .descEl.createEl("a", {
-                cls: "setting-inline-link",
-                text: "Learn more about task exclusion.",
-                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
-            });
-
         // Task scoring
         new Setting(containerEl)
             .setName("Task scoring")
@@ -1220,15 +1225,15 @@ export class SettingsTab extends PluginSettingTab {
                 "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
             )
             .descEl.createEl("a", {
-                    cls: "setting-inline-link",
-                    text: "Learn more about scoring weights.",
-                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
+                cls: "setting-inline-link",
+                text: "Learn more.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
             });
 
         // Main weights
         new Setting(containerEl)
             .setName("Main weights")
-            .setClass("setting-subsection-heading")
+            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Relevance weight")
@@ -1717,19 +1722,16 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Task Display
-        const taskDisplaySetting = new Setting(containerEl)
-            .setName("Task display")
-            .setDesc(
-                "Configure result limits, sorting order, and display preferences.",
-            )
+        // Task Sorting
+        const taskSortingSetting = new Setting(containerEl)
+            .setName("Task sorting")
             .setHeading();
 
-        const taskDisplayDesc = taskDisplaySetting.descEl;
-        taskDisplayDesc.createSpan({ text: " " });
-        taskDisplayDesc.createEl("a", {
+        const taskSortingDesc = taskSortingSetting.descEl;
+        taskSortingDesc.createSpan({ text: " " });
+        taskSortingDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about task display options.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#9-task-display",
         });
 
@@ -1740,32 +1742,15 @@ export class SettingsTab extends PluginSettingTab {
         );
         this.renderSortBySetting();
 
-        new Setting(containerEl)
-            .setName("Max direct results")
-            .setDesc("Maximum tasks to show in Simple Search mode.")
-            .addSlider((slider) =>
-                slider
-                    .setLimits(5, 100, 5)
-                    .setValue(this.plugin.settings.maxDirectResults)
-                    .setDynamicTooltip()
-                    .onChange(async (value) => {
-                        this.plugin.settings.maxDirectResults = value;
-                        await this.plugin.saveSettings();
-                    }),
-            );
-
         const advancedSetting = new Setting(containerEl)
             .setName("Advanced")
-            .setDesc(
-                "Advanced settings for system prompts and pricing data management.",
-            )
             .setHeading();
 
         const advancedDesc = advancedSetting.descEl;
         advancedDesc.createSpan({ text: " " });
         advancedDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more about advanced settings.",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#10-advanced",
         });
 
@@ -1802,33 +1787,8 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Debug Logging
-        new Setting(containerEl)
-            .setName("Enable debug logging")
-            .setDesc(
-                "Show detailed logs in developer console for troubleshooting. " +
-                    "Note: This may impact performance and should only be enabled when debugging issues. " +
-                    "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
-            )
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableDebugLogging)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableDebugLogging = value;
-                        // Immediately reinitialize logger with new setting
-                        Logger.initialize(this.plugin.settings);
-                        await this.plugin.saveSettings();
-                        new Notice(
-                            value
-                                ? "Debug logging enabled. Check developer console for logs."
-                                : "Debug logging disabled",
-                        );
-                    }),
-            );
-
         // Pricing Information
-        const pricingSetting = new Setting(containerEl)
-            .setName("Pricing data")
+        const pricingSetting = new Setting(containerEl).setName("Pricing data");
 
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
@@ -1874,8 +1834,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Usage Statistics
-        const usageSetting = new Setting(containerEl)
-            .setName("Usage statistics")
+        const usageSetting = new Setting(containerEl).setName(
+            "Usage statistics",
+        );
 
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
@@ -1895,6 +1856,30 @@ export class SettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.display(); // Refresh to show updated stats
                 }),
+            );
+        
+        // Debug Logging
+        new Setting(containerEl)
+            .setName("Enable debug logging")
+            .setDesc(
+                "Show detailed logs in developer console for troubleshooting. " +
+                    "Note: This may impact performance and should only be enabled when debugging issues. " +
+                    "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableDebugLogging)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableDebugLogging = value;
+                        // Immediately reinitialize logger with new setting
+                        Logger.initialize(this.plugin.settings);
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            value
+                                ? "Debug logging enabled. Check developer console for logs."
+                                : "Debug logging disabled",
+                        );
+                    }),
             );
     }
 
@@ -2672,13 +2657,11 @@ export class SettingsTab extends PluginSettingTab {
 
         // Task sorting (tag-based UI)
         const sortSetting = new Setting(this.sortByContainerEl)
-            .setName("Task sorting")
-            .setDesc(
-                "Relevance is always first.",
-            );
+            .setName("Multi-criteria task sorting")
+            .setDesc("Relevance is always first.");
         sortSetting.descEl.createSpan({ text: " " });
         sortSetting.descEl.createEl("a", {
-            text: "Learn more about task sorting",
+            text: "Learn more.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SORTING_SYSTEM.md",
         });
 
