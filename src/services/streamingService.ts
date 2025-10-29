@@ -137,6 +137,13 @@ export class StreamingService {
                   }
                 : undefined;
 
+            // Log raw usage data from API for debugging
+            if (json.usage) {
+                Logger.debug(
+                    `[Streaming] Raw API usage data: ${JSON.stringify(json.usage)}`,
+                );
+            }
+
             // Done when we have finish_reason OR when we receive usage info
             // (usage comes in last chunk after [DONE])
             const isDone =

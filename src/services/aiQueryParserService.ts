@@ -2198,8 +2198,13 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     ): number {
         // Ollama is free (local)
         if (provider === "ollama") {
+            Logger.debug(`[Cost] Ollama model ${model}: $0.00 (local)`);
             return 0;
         }
+
+        Logger.debug(
+            `[Cost] Calculating for: ${model} (${provider}), ${promptTokens} prompt + ${completionTokens} completion tokens`,
+        );
 
         // Get pricing from cache or embedded rates using provider-prefixed lookup
         const rates = PricingService.getPricing(model, provider, cachedPricing);
@@ -2207,7 +2212,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         // Default to gpt-4o-mini pricing if unknown
         if (!rates) {
             Logger.warn(
-                `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
+                `[Cost] Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
             );
             const fallback = PricingService.getPricing(
                 "gpt-4o-mini",
@@ -2215,19 +2220,29 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 {},
             );
             if (!fallback) {
+                Logger.error(`[Cost] Fallback pricing not found! Returning $0`);
                 return 0; // Should never happen
             }
             // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
             const inputCost = (promptTokens / 1000000) * fallback.input;
             const outputCost = (completionTokens / 1000000) * fallback.output;
-            return inputCost + outputCost;
+            const total = inputCost + outputCost;
+            Logger.debug(
+                `[Cost] Fallback: ${promptTokens} × $${fallback.input}/1M + ${completionTokens} × $${fallback.output}/1M = $${total.toFixed(6)}`,
+            );
+            return total;
         }
 
         // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
         const inputCost = (promptTokens / 1000000) * rates.input;
         const outputCost = (completionTokens / 1000000) * rates.output;
+        const total = inputCost + outputCost;
 
-        return inputCost + outputCost;
+        Logger.debug(
+            `[Cost] ${model}: ${promptTokens} × $${rates.input}/1M + ${completionTokens} × $${rates.output}/1M = $${total.toFixed(6)}`,
+        );
+
+        return total;
     }
 
     /**

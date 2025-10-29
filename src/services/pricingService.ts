@@ -106,9 +106,10 @@ export class PricingService {
             "claude-sonnet-4": { input: 3.0, output: 15.0 },
 
             // OpenRouter format (with provider prefix)
-            // OpenAI via OpenRouter
+            // OpenAI via OpenRouter (includes OpenRouter markup)
             "openai/gpt-4o": { input: 2.5, output: 10.0 },
             "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
+            "openai/gpt-5-mini": { input: 0.25, output: 2.0 }, // OpenRouter markup
             "openai/gpt-4-turbo": { input: 10.0, output: 30.0 },
             "openai/gpt-4": { input: 30.0, output: 60.0 },
             "openai/gpt-3.5-turbo": { input: 0.5, output: 1.5 },
@@ -144,6 +145,7 @@ export class PricingService {
     ): { input: number; output: number } | null {
         // Ollama is always free
         if (provider === "ollama") {
+            Logger.debug(`[Pricing] Ollama model ${model}: $0.00 (local)`);
             return { input: 0, output: 0 };
         }
 
@@ -154,28 +156,40 @@ export class PricingService {
             model,
         );
 
+        Logger.debug(
+            `[Pricing] Looking up: model="${model}", provider="${provider}", openRouterFormat="${openRouterFormat}"`,
+        );
+
         // Try OpenRouter format first (most accurate)
         if (cachedPricing[openRouterFormat]) {
-            Logger.debug(`Found exact match in cache: ${openRouterFormat}`);
+            Logger.debug(
+                `[Pricing] ✓ Found exact match in cache: ${openRouterFormat} ($${cachedPricing[openRouterFormat].input}/$${cachedPricing[openRouterFormat].output} per 1M)`,
+            );
             return cachedPricing[openRouterFormat];
         }
 
         // Try exact model name match in cache
         if (cachedPricing[model]) {
-            Logger.debug(`Found model in cache: ${model}`);
+            Logger.debug(
+                `[Pricing] ✓ Found model in cache: ${model} ($${cachedPricing[model].input}/$${cachedPricing[model].output} per 1M)`,
+            );
             return cachedPricing[model];
         }
 
         // Try embedded pricing with OpenRouter format
         const embedded = this.getEmbeddedPricing();
         if (embedded[openRouterFormat]) {
-            Logger.debug(`Using embedded rate for: ${openRouterFormat}`);
+            Logger.debug(
+                `[Pricing] ✓ Using embedded rate for: ${openRouterFormat} ($${embedded[openRouterFormat].input}/$${embedded[openRouterFormat].output} per 1M)`,
+            );
             return embedded[openRouterFormat];
         }
 
         // Try exact model name in embedded pricing
         if (embedded[model]) {
-            Logger.debug(`Using embedded rate for: ${model}`);
+            Logger.debug(
+                `[Pricing] ✓ Using embedded rate for: ${model} ($${embedded[model].input}/$${embedded[model].output} per 1M)`,
+            );
             return embedded[model];
         }
 
@@ -187,7 +201,7 @@ export class PricingService {
                 modelLower.includes(key.toLowerCase())
             ) {
                 Logger.debug(
-                    `Found partial match in cache: ${key} for ${model}`,
+                    `[Pricing] ✓ Found partial match in cache: ${key} for ${model} ($${value.input}/$${value.output} per 1M)`,
                 );
                 return value;
             }
@@ -200,14 +214,14 @@ export class PricingService {
                 modelLower.includes(key.toLowerCase())
             ) {
                 Logger.debug(
-                    `Found partial match in embedded: ${key} for ${model}`,
+                    `[Pricing] ✓ Found partial match in embedded: ${key} for ${model} ($${value.input}/$${value.output} per 1M)`,
                 );
                 return value;
             }
         }
 
         Logger.warn(
-            `No pricing found for: ${model} (provider: ${provider}, tried: ${openRouterFormat})`,
+            `[Pricing] ✗ No pricing found for: ${model} (provider: ${provider}, tried: ${openRouterFormat})`,
         );
         return null;
     }

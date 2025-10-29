@@ -1209,11 +1209,32 @@ export class ChatView extends ItemView {
 
             // Update total usage in settings
             if (result.tokenUsage) {
-                this.plugin.settings.totalTokensUsed +=
-                    result.tokenUsage.totalTokens;
-                this.plugin.settings.totalCost +=
-                    result.tokenUsage.estimatedCost;
+                const tu = result.tokenUsage;
+
+                // Log detailed cost breakdown
+                if (
+                    tu.parsingCost !== undefined &&
+                    tu.analysisCost !== undefined
+                ) {
+                    Logger.debug(
+                        `[Cost Breakdown] Parsing: ${tu.parsingModel} (${tu.parsingProvider}) = $${tu.parsingCost.toFixed(6)} | ` +
+                            `Analysis: ${tu.analysisModel} (${tu.analysisProvider}) = $${tu.analysisCost.toFixed(6)} | ` +
+                            `Total: $${tu.estimatedCost.toFixed(6)}`,
+                    );
+                } else {
+                    Logger.debug(
+                        `[Cost Breakdown] Single model: ${tu.model} (${tu.provider}) = $${tu.estimatedCost.toFixed(6)}`,
+                    );
+                }
+
+                this.plugin.settings.totalTokensUsed += tu.totalTokens;
+                this.plugin.settings.totalCost += tu.estimatedCost;
                 await this.plugin.saveSettings();
+
+                Logger.debug(
+                    `[Cost Accumulation] Added $${tu.estimatedCost.toFixed(6)}, ` +
+                        `New total: $${this.plugin.settings.totalCost.toFixed(6)}`,
+                );
             }
 
             // Clean up streaming element or hide typing indicator
