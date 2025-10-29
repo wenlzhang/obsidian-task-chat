@@ -286,7 +286,7 @@ export class SettingsTab extends PluginSettingTab {
         ).length;
         const parsingInfoText =
             parsingModelsCount > 0
-                ? `${parsingModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.parsingProvider}`
+                ? `${parsingModelsCount} models available.`
                 : "Click 'Refresh' to fetch available models";
         parsingDescEl.createSpan({ text: " " });
         parsingDescEl.createSpan({ text: parsingInfoText });
@@ -295,7 +295,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query parsing temperature")
             .setDesc(
-                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: low values, e.g., 0.1 for reliable JSON output.",
+                "Temperature for query parsing (0.0-2.0). Lower = consistent, focused. Recommended: low values, e.g. 0.1, for reliable JSON output.",
             )
             .addSlider((slider) =>
                 slider
@@ -401,7 +401,7 @@ export class SettingsTab extends PluginSettingTab {
         ).length;
         const analysisInfoText =
             analysisModelsCount > 0
-                ? `${analysisModelsCount} models available - Click 'Refresh' to fetch from ${this.plugin.settings.analysisProvider}`
+                ? `${analysisModelsCount} models available.`
                 : "Click 'Refresh' to fetch available models";
         analysisDescEl.createSpan({ text: " " });
         analysisDescEl.createSpan({ text: analysisInfoText });
@@ -585,7 +585,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Query language")
             .setDesc(
-                "Languages for keyword semantic expansion. Used by Smart Search and Task Chat modes. Examples: English, Español. Separate with commas.",
+                "Used by Smart Search and Task Chat modes. Separate with commas. Examples: English, Español.",
             )
             .addTextArea((text) =>
                 text
@@ -982,7 +982,7 @@ export class SettingsTab extends PluginSettingTab {
         const statusCategorySetting = new Setting(containerEl)
             .setName("Status category")
             .setDesc(
-                "Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.",
+                "Define custom categories with checkbox symbols, scores, and query aliases.",
             )
             .setHeading();
 
@@ -1025,7 +1025,7 @@ export class SettingsTab extends PluginSettingTab {
         const organizeSetting = new Setting(containerEl)
             .setName("Auto-organize display order")
             .setDesc(
-                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...). Note: Display order determines visual order, not task importance.`,
+                `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...).`,
             )
             .addButton((button) => {
                 button
@@ -1196,7 +1196,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Task exclusion")
             .setDesc(
-                "Exclude tasks from searches by tags, folders, or notes. After adding exclusions, click 'Refresh' in the chat to update task counts.",
+                "Exclude tasks from searches by tags, folders, or notes. Click 'Refresh' in the chat to update task counts.",
             )
             .addButton((button) => {
                 button
@@ -1213,29 +1213,22 @@ export class SettingsTab extends PluginSettingTab {
             });
 
         // Task scoring
-        new Setting(containerEl).setName("Task scoring").setHeading();
+        new Setting(containerEl)
+            .setName("Task scoring")
+            .setHeading()
+            .setDesc(
+                "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
+            )
+            .descEl.createEl("a", {
+                    cls: "setting-inline-link",
+                    text: "Learn more about scoring weights.",
+                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
+            });
 
         // Main weights
         new Setting(containerEl)
             .setName("Main weights")
             .setClass("setting-subsection-heading")
-            .setDesc(
-                "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
-            );
-        const weightsDesc = containerEl.lastElementChild as HTMLElement;
-        if (weightsDesc?.classList.contains("setting-item")) {
-            const descEl = weightsDesc.querySelector(
-                ".setting-item-description",
-            );
-            if (descEl) {
-                descEl.createSpan({ text: " " });
-                descEl.createEl("a", {
-                    cls: "setting-inline-link",
-                    text: "Learn more about scoring weights.",
-                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
-                });
-            }
-        }
 
         new Setting(containerEl)
             .setName("Relevance weight")
@@ -1814,9 +1807,8 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Enable debug logging")
             .setDesc(
                 "Show detailed logs in developer console for troubleshooting. " +
-                    "When enabled, logs include search operations, AI requests, task scoring, and filtering details. " +
                     "Note: This may impact performance and should only be enabled when debugging issues. " +
-                    "To view logs, open developer console (Ctrl+Shift+I / Cmd+Option+I).",
+                    "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -1837,7 +1829,6 @@ export class SettingsTab extends PluginSettingTab {
         // Pricing Information
         const pricingSetting = new Setting(containerEl)
             .setName("Pricing data")
-            .setClass("setting-subsection-heading");
 
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
@@ -1885,7 +1876,6 @@ export class SettingsTab extends PluginSettingTab {
         // Usage Statistics
         const usageSetting = new Setting(containerEl)
             .setName("Usage statistics")
-            .setClass("setting-subsection-heading");
 
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
@@ -2684,7 +2674,7 @@ export class SettingsTab extends PluginSettingTab {
         const sortSetting = new Setting(this.sortByContainerEl)
             .setName("Task sorting")
             .setDesc(
-                "Relevance is always first. Select sorting criteria for tiebreaking.",
+                "Relevance is always first.",
             );
         sortSetting.descEl.createSpan({ text: " " });
         sortSetting.descEl.createEl("a", {
