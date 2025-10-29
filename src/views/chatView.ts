@@ -844,27 +844,9 @@ export class ChatView extends ItemView {
         // Enable hover preview for internal links in message content
         this.enableHoverPreview(contentEl, contextPath);
 
-        Logger.debug(`Message content rendered, checking for links...`);
-        const messageLinks = contentEl.querySelectorAll("a");
-        Logger.debug(
-            `- Found ${messageLinks.length} link elements in message content`,
-        );
-        messageLinks.forEach((link, i) => {
-            Logger.debug(
-                `  Message link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
-            );
-        });
-
-        // Add click tracking for message content
+        // Add click handler for message content links
         contentEl.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
-            Logger.debug(`Click in message content:`, {
-                tagName: target.tagName,
-                className: target.className,
-                textContent: target.textContent?.substring(0, 50),
-                href: target.getAttribute("href"),
-                dataHref: target.getAttribute("data-href"),
-            });
 
             // Handle clicks on links
             if (target.tagName === "A") {
@@ -922,25 +904,9 @@ export class ChatView extends ItemView {
                 // Enable hover preview for internal links in task content
                 this.enableHoverPreview(taskContentEl, task.sourcePath);
 
-                Logger.debug(`- Rendering complete, checking for links...`);
-                const links = taskContentEl.querySelectorAll("a");
-                Logger.debug(`- Found ${links.length} link elements`);
-                links.forEach((link, i) => {
-                    Logger.debug(
-                        `  Link ${i + 1}: href="${link.getAttribute("href")}", class="${link.className}", text="${link.textContent}"`,
-                    );
-                });
-
                 // Add click handlers for links in task content
                 taskContentEl.addEventListener("click", (e) => {
                     const target = e.target as HTMLElement;
-                    Logger.debug(`Click detected in task ${taskNumber}:`, {
-                        tagName: target.tagName,
-                        className: target.className,
-                        textContent: target.textContent,
-                        href: target.getAttribute("href"),
-                        dataHref: target.getAttribute("data-href"),
-                    });
 
                     // Handle clicks on links
                     if (target.tagName === "A") {
@@ -1133,20 +1099,12 @@ export class ChatView extends ItemView {
             link.getAttribute("href") || link.getAttribute("data-href");
         const linkClass = link.className;
 
-        Logger.debug(`handleLinkClick called:`, {
-            href,
-            class: linkClass,
-            sourcePath,
-        });
-
         if (!href) {
-            Logger.debug(`No href found, ignoring click`);
             return;
         }
 
         // Handle tags (#tag)
         if (linkClass.contains("tag")) {
-            Logger.debug(`Opening tag search for: ${href}`);
             // Use Obsidian's search for tags
             (this.app as any).internalPlugins
                 .getPluginById("global-search")
@@ -1156,7 +1114,6 @@ export class ChatView extends ItemView {
 
         // Handle internal links ([[Note]])
         if (linkClass.contains("internal-link")) {
-            Logger.debug(`Opening internal link: ${href}`);
             // Use Obsidian's built-in method to open links
             this.app.workspace.openLinkText(href, sourcePath, false);
             return;
@@ -1168,13 +1125,11 @@ export class ChatView extends ItemView {
             href.startsWith("http://") ||
             href.startsWith("https://")
         ) {
-            Logger.debug(`Opening external link: ${href}`);
             window.open(href, "_blank");
             return;
         }
 
         // Fallback: try to open as internal link
-        Logger.debug(`Fallback: attempting to open as internal link: ${href}`);
         this.app.workspace.openLinkText(href, sourcePath, false);
     }
 

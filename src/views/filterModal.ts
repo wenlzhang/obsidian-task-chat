@@ -401,30 +401,36 @@ export class FilterModal extends Modal {
         dueDateSection.createEl("h4", { text: "📅 Due date range" });
 
         // Start date
-        new Setting(dueDateSection).setName("Start").addText((text) => {
-            text.inputEl.type = "date";
-            text.setValue(this.filter.dueDateRange?.start || "").onChange(
-                (value) => {
-                    if (!this.filter.dueDateRange) {
-                        this.filter.dueDateRange = {};
-                    }
-                    this.filter.dueDateRange.start = value || undefined;
-                },
-            );
-        });
+        new Setting(dueDateSection)
+            .setName("Start")
+            .setClass("task-chat-filter-date-setting")
+            .addText((text) => {
+                text.inputEl.type = "date";
+                text.setValue(this.filter.dueDateRange?.start || "").onChange(
+                    (value) => {
+                        if (!this.filter.dueDateRange) {
+                            this.filter.dueDateRange = {};
+                        }
+                        this.filter.dueDateRange.start = value || undefined;
+                    },
+                );
+            });
 
         // End date
-        new Setting(dueDateSection).setName("End").addText((text) => {
-            text.inputEl.type = "date";
-            text.setValue(this.filter.dueDateRange?.end || "").onChange(
-                (value) => {
-                    if (!this.filter.dueDateRange) {
-                        this.filter.dueDateRange = {};
-                    }
-                    this.filter.dueDateRange.end = value || undefined;
-                },
-            );
-        });
+        new Setting(dueDateSection)
+            .setName("End")
+            .setClass("task-chat-filter-date-setting")
+            .addText((text) => {
+                text.inputEl.type = "date";
+                text.setValue(this.filter.dueDateRange?.end || "").onChange(
+                    (value) => {
+                        if (!this.filter.dueDateRange) {
+                            this.filter.dueDateRange = {};
+                        }
+                        this.filter.dueDateRange.end = value || undefined;
+                    },
+                );
+            });
 
         // Quick date filters
         const quickFiltersContainer = dueDateSection.createDiv(

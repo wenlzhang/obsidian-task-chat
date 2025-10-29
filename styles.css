@@ -142,7 +142,7 @@
 }
 
 .task-chat-chat-mode-select {
-    padding: 6px 8px;
+    padding: 6px 24px 6px 8px; /* Add right padding for dropdown arrow */
     font-size: 13px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
@@ -151,10 +151,21 @@
     cursor: pointer;
     transition: background 0.2s;
     min-width: 120px;
+    appearance: none; /* Remove default dropdown arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 8L2 4h8z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
 }
 
 .task-chat-chat-mode-select:hover {
-    background: var(--background-modifier-hover);
+    background-color: var(--background-modifier-hover);
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M6 8L2 4h8z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px;
 }
 
 /* Messages Container */
@@ -1693,6 +1704,15 @@
 .task-chat-filter-quick-date-btn:hover {
     background: var(--background-modifier-hover);
     border-color: var(--interactive-accent);
+}
+
+/* Date Settings - Bring calendar inputs closer to labels */
+.task-chat-filter-date-setting {
+    grid-template-columns: 60px 1fr !important; /* Reduce label column width */
+}
+
+.task-chat-filter-date-setting .setting-item-name {
+    min-width: auto !important;
 }
 
 /* Action Buttons */
