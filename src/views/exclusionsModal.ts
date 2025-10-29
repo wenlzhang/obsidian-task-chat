@@ -191,6 +191,9 @@ export class ExclusionsModal extends Modal {
                 break;
         }
         await this.plugin.saveSettings();
+
+        // AUTO-REFRESH: Trigger task refresh after removing exclusion
+        await this.plugin.refreshTasks();
     }
 
     private showAddMenu(e: MouseEvent, listContainer: HTMLElement) {
@@ -241,6 +244,9 @@ export class ExclusionsModal extends Modal {
                 this.plugin.settings.exclusions.noteTags.push(tag);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
+
+                // AUTO-REFRESH: Trigger task refresh after adding exclusion
+                await this.plugin.refreshTasks();
             }
         });
 
@@ -257,6 +263,9 @@ export class ExclusionsModal extends Modal {
                 this.plugin.settings.exclusions.taskTags.push(tag);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
+
+                // AUTO-REFRESH: Trigger task refresh after adding exclusion
+                await this.plugin.refreshTasks();
             }
         });
 
@@ -273,6 +282,9 @@ export class ExclusionsModal extends Modal {
                 this.plugin.settings.exclusions.folders.push(folder);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
+
+                // AUTO-REFRESH: Trigger task refresh after adding exclusion
+                await this.plugin.refreshTasks();
             }
         });
 
@@ -290,6 +302,9 @@ export class ExclusionsModal extends Modal {
                 this.plugin.settings.exclusions.notes.push(notePath);
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
+
+                // AUTO-REFRESH: Trigger task refresh after adding exclusion
+                await this.plugin.refreshTasks();
             }
         });
 
