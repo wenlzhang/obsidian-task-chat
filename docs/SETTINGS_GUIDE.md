@@ -215,6 +215,8 @@ For each category, configure:
 
 Control which tasks appear in results.
 
+**See also:** [Task Filtering Guide](FILTERING.md) for detailed information on inclusions (filter interface) and exclusions (settings).
+
 ### Stop Words
 
 **What it does:** Generic words filtered out during search

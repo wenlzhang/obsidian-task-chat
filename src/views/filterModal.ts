@@ -50,6 +50,19 @@ export class FilterModal extends Modal {
         // Header
         contentEl.createEl("h2", { text: "Filter tasks" });
 
+        // Description with documentation link
+        const headerDesc = contentEl.createDiv({
+            cls: "task-chat-filter-modal-desc",
+        });
+        headerDesc.createSpan({
+            text: "Focus on specific tasks using filters. ",
+        });
+        headerDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about filtering.",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/FILTERING.md",
+        });
+
         // SECTION 1: Task Inclusion (Folders, Tags, Notes)
         this.renderTaskInclusionSection(contentEl);
 
@@ -390,7 +403,6 @@ export class FilterModal extends Modal {
         // Start date
         new Setting(dueDateSection)
             .setName("Start date")
-            .setDesc("Filter tasks due on or after this date")
             .addText((text) => {
                 text.inputEl.type = "date";
                 text.setValue(this.filter.dueDateRange?.start || "").onChange(
@@ -406,7 +418,6 @@ export class FilterModal extends Modal {
         // End date
         new Setting(dueDateSection)
             .setName("End date")
-            .setDesc("Filter tasks due on or before this date")
             .addText((text) => {
                 text.inputEl.type = "date";
                 text.setValue(this.filter.dueDateRange?.end || "").onChange(
@@ -424,7 +435,7 @@ export class FilterModal extends Modal {
             "task-chat-filter-quick-dates",
         );
         quickFiltersContainer.createEl("span", {
-            text: "Quick filters: ",
+            text: "Quick dates ",
             cls: "task-chat-filter-quick-dates-label",
         });
 

@@ -54,9 +54,6 @@ export class DataViewWarningService {
         if (filter.dueDateRange) {
             parts.push("due date range");
         }
-        if (filter.completionStatus && filter.completionStatus !== "all") {
-            parts.push(`completion: ${filter.completionStatus}`);
-        }
 
         return parts.join(", ");
     }
@@ -95,8 +92,7 @@ export class DataViewWarningService {
             (filter.notes && filter.notes.length > 0) ||
             (filter.priorities && filter.priorities.length > 0) ||
             (filter.taskStatuses && filter.taskStatuses.length > 0) ||
-            filter.dueDateRange ||
-            (filter.completionStatus && filter.completionStatus !== "all")
+            filter.dueDateRange
         );
     }
 

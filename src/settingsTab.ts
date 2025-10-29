@@ -1174,8 +1174,8 @@ export class SettingsTab extends PluginSettingTab {
             })
             .descEl.createEl("a", {
                 cls: "setting-inline-link",
-                text: "Learn more.",
-                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
+                text: "Learn more about filtering.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/FILTERING.md",
             });
 
         new Setting(containerEl)

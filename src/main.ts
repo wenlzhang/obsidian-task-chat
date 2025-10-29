@@ -471,8 +471,7 @@ export default class TaskChatPlugin extends Plugin {
             (filter.notes && filter.notes.length > 0) ||
             (filter.priorities && filter.priorities.length > 0) ||
             filter.dueDateRange ||
-            (filter.taskStatuses && filter.taskStatuses.length > 0) ||
-            (filter.completionStatus && filter.completionStatus !== "all");
+            (filter.taskStatuses && filter.taskStatuses.length > 0);
 
         // If no filters at all, return all tasks directly (already has exclusions applied)
         if (!hasAnyFilter) {

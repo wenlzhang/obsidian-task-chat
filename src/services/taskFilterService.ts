@@ -106,34 +106,6 @@ export class TaskFilterService {
             );
         }
 
-        // Filter by completion status
-        // Use centralized completion status constants from TaskPropertyService
-        if (
-            filter.completionStatus &&
-            filter.completionStatus !==
-                TaskPropertyService.COMPLETION_STATUS.all
-        ) {
-            if (
-                filter.completionStatus ===
-                TaskPropertyService.COMPLETION_STATUS.completed
-            ) {
-                filtered = filtered.filter(
-                    (task) =>
-                        task.statusCategory ===
-                        TaskPropertyService.STATUS_CATEGORY.completed,
-                );
-            } else if (
-                filter.completionStatus ===
-                TaskPropertyService.COMPLETION_STATUS.incomplete
-            ) {
-                filtered = filtered.filter(
-                    (task) =>
-                        task.statusCategory !==
-                        TaskPropertyService.STATUS_CATEGORY.completed,
-                );
-            }
-        }
-
         // Filter by task statuses
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
             filtered = filtered.filter((task) =>

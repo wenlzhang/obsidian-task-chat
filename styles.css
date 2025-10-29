@@ -515,29 +515,6 @@
 
 /* Stop Button - Inherits all styling from .task-chat-send-button */
 
-/* Filter Modal */
-.modal-button-container {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 20px;
-}
-
-.quick-date-filters {
-    margin: 10px 0;
-}
-
-.quick-date-filters .button-container {
-    display: flex;
-    gap: 6px;
-    margin-top: 6px;
-}
-
-.quick-date-filters button {
-    padding: 4px 12px;
-    font-size: 12px;
-}
-
 /* Token Usage - now outside message element so vertical line doesn't extend to it */
 .task-chat-token-usage {
     margin-top: -8px; /* Reduced to bring closer to keywords section above */
@@ -1474,9 +1451,20 @@
 
 .task-chat-filter-modal .modal-content {
     padding: 20px;
+    padding-bottom: 0;
     max-width: 700px;
     max-height: 85vh;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal description with documentation link */
+.task-chat-filter-modal-desc {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 /* Mobile responsiveness */
@@ -1491,11 +1479,15 @@
 .task-chat-filter-section {
     margin-bottom: 24px;
     padding-bottom: 20px;
+}
+
+/* Add border only between sections (not after last one) */
+.task-chat-filter-section:not(:last-of-type) {
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .task-chat-filter-section:last-of-type {
-    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .task-chat-filter-section-title {
@@ -1834,8 +1826,9 @@
 }
 
 .task-chat-filter-count {
-    font-weight: 600;
-    color: var(--text-accent);
+    font-weight: normal; /* Not bold, subtle styling */
+    font-size: 13px; /* Same as regular text */
+    color: var(--text-muted); /* Greyed out for subtlety */
 }
 
 /* Filter Modal Title Centered */
@@ -1854,12 +1847,6 @@
 }
 
 /* Sticky Action Buttons */
-.task-chat-filter-modal .modal-content {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 0 !important;
-}
-
 .task-chat-filter-buttons {
     position: sticky;
     bottom: 0;
@@ -1916,13 +1903,7 @@
 .task-chat-filter-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-}
-
-/* Make filter count more prominent */
-.task-chat-filter-count {
-    font-weight: 700;
-    font-size: 14px;
+    gap: 4px; /* Reduced from 6px for compact display */
 }
 
 /* Text area styling for search input */
@@ -1935,29 +1916,6 @@
    Final CSS Refinements
    ============================================ */
 
-/* Reduce filter button icon-text spacing */
-.task-chat-filter-btn {
-    gap: 4px !important; /* Reduced from 6px */
-}
-
-/* Remove extra border from filter sections */
-.task-chat-filter-section {
-    border-bottom: none !important;
-}
-
-/* Add border only between sections (not after last one) */
-.task-chat-filter-section:not(:last-of-type) {
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-}
-
-/* Standardize task count and filter text styling */
-.task-chat-filter-count {
-    font-weight: normal !important; /* Not bold */
-    font-size: 13px !important; /* Same as regular text */
-    color: var(--text-muted) !important; /* Greyed out for subtlety */
-}
 
 /* Make "Active filters" label normal weight to match task count */
 .task-chat-filter-status strong {

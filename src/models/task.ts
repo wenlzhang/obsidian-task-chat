@@ -26,9 +26,6 @@ export interface TaskFilter {
     priorities?: string[]; // Priorities to include (e.g., ["1", "2"])
     dueDateRange?: DateRange; // Due date range filter
     taskStatuses?: string[]; // Status categories to include (e.g., ["open", "inProgress"])
-
-    // Legacy field (deprecated, use taskStatuses instead)
-    completionStatus?: "completed" | "incomplete" | "all";
 }
 
 export interface DateRange {

@@ -258,8 +258,9 @@ Privacy-First:
 - Hide template folders or specific template files
 - Click "Refresh" in chat after adding exclusions
 
-→ [Task exclusions guide](docs/EXCLUSIONS.md)  
-→ [Chat history context guide](docs/CHAT_HISTORY_CONTEXT.md)  
+→ [Task filtering guide](docs/FILTERING.md) - Inclusions and exclusions
+→ [Task exclusions guide](docs/EXCLUSIONS.md) - Settings-based exclusions
+→ [Chat history context guide](docs/CHAT_HISTORY_CONTEXT.md)
 → [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
 
 ## 📖 Documentation
@@ -286,6 +287,11 @@ Privacy-First:
 
 ### Advanced Features
 
+- **[Task Filtering](docs/FILTERING.md)** - Control which tasks appear
+  - Filter interface (inclusions) - Focus on specific tasks
+  - Settings (exclusions) - Hide tasks permanently
+  - Task tags vs note tags explained
+  - Priority rules and examples
 - **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
   - Exclude by tags (task-level or note-level)
   - Exclude by folders (including subfolders)

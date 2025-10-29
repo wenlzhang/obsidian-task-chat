@@ -310,9 +310,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.priorities.length > 0) ||
             (this.currentFilter.taskStatuses &&
                 this.currentFilter.taskStatuses.length > 0) ||
-            this.currentFilter.dueDateRange ||
-            (this.currentFilter.completionStatus &&
-                this.currentFilter.completionStatus !== "all");
+            this.currentFilter.dueDateRange;
 
         // Always show task count first
         this.filterStatusEl.createSpan({
@@ -395,15 +393,6 @@ export class ChatView extends ItemView {
                 filterParts.push(`Due Date Range`);
             }
 
-            if (
-                this.currentFilter.completionStatus &&
-                this.currentFilter.completionStatus !== "all"
-            ) {
-                filterParts.push(
-                    `Completion: ${this.currentFilter.completionStatus}`,
-                );
-            }
-
             this.filterStatusEl.createSpan({ text: filterParts.join(", ") });
         }
     }
@@ -426,9 +415,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.priorities.length > 0) ||
             (this.currentFilter.taskStatuses &&
                 this.currentFilter.taskStatuses.length > 0) ||
-            this.currentFilter.dueDateRange ||
-            (this.currentFilter.completionStatus &&
-                this.currentFilter.completionStatus !== "all");
+            this.currentFilter.dueDateRange;
 
         if (hasFilters) {
             this.filterButtonEl.addClass("task-chat-filter-btn-active");
@@ -1812,8 +1799,7 @@ export class ChatView extends ItemView {
             (filter.notes && filter.notes.length > 0) ||
             (filter.priorities && filter.priorities.length > 0) ||
             (filter.taskStatuses && filter.taskStatuses.length > 0) ||
-            filter.dueDateRange ||
-            (filter.completionStatus && filter.completionStatus !== "all");
+            filter.dueDateRange;
 
         if (hasFilters) {
             await this.addSystemMessage(
