@@ -304,7 +304,8 @@ export interface PluginSettings {
     // Session Data
     sessionData: SessionData;
 
-    // Current Filter State (persisted across restarts)
+    // DEPRECATED: Filter state should NOT persist across restarts
+    // Kept for backward compatibility with existing data.json files
     currentFilter: TaskFilter;
 }
 

@@ -75,10 +75,9 @@ export class ChatView extends ItemView {
             this.chatModeOverride = null; // Use default
         }
 
-        // Load saved filter from settings and apply it to get filtered tasks
-        if (this.plugin.settings.currentFilter) {
-            this.currentFilter = this.plugin.settings.currentFilter;
-        }
+        // CHANGED: Do NOT restore filter on restart - filters are temporary
+        // Always start with empty filter for better UX
+        this.currentFilter = {};
 
         // Apply filter to get current tasks
         const filteredTasks = await this.plugin.getFilteredTasks(
@@ -292,7 +291,6 @@ export class ChatView extends ItemView {
         this.filterStatusEl.empty();
 
         const hasFilters =
-            this.currentFilter.text ||
             (this.currentFilter.folders &&
                 this.currentFilter.folders.length > 0) ||
             (this.currentFilter.noteTags &&
@@ -1779,9 +1777,9 @@ export class ChatView extends ItemView {
         const filteredTasks = await this.plugin.getFilteredTasks(filter);
         this.updateTasks(filteredTasks, filter);
 
-        // Save filter to settings for persistence
-        this.plugin.settings.currentFilter = filter;
-        await this.plugin.saveSettings();
+        // NOTE: We do NOT save filter to settings
+        // Filters are temporary and should not persist across Obsidian restarts
+        // This prevents confusion when users restart and see unexpected filtering
 
         // Determine if filters are being applied or cleared
         const hasFilters =

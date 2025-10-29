@@ -12,14 +12,6 @@ export class TaskFilterService {
     static filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
         let filtered = [...tasks];
 
-        // Filter by text
-        if (filter.text && filter.text.trim() !== "") {
-            const searchText = filter.text.toLowerCase().trim();
-            filtered = filtered.filter((task) =>
-                task.text.toLowerCase().includes(searchText),
-            );
-        }
-
         // Filter by folders, tags, and notes (Section 2: Task Inclusion)
         // Use OR logic across all inclusion filters - task matches if it's in ANY specified location
         const hasFolderFilter = filter.folders && filter.folders.length > 0;

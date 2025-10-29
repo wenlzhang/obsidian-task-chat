@@ -992,6 +992,11 @@ export class DataviewService {
                 // Get ALL pages first (no source filter)
                 let pages = dataviewApi.pages("");
 
+                // CRITICAL DEBUG: Log page count before any filtering
+                Logger.debug(
+                    `[DEBUG] DataView returned ${pages?.length || 0} pages total`,
+                );
+
                 // Apply exclusion filters using JavaScript API (.where method)
                 if (settings.exclusions) {
                     // Exclude specific notes
@@ -1063,6 +1068,11 @@ export class DataviewService {
                             );
                         });
                     }
+
+                    // CRITICAL DEBUG: Log page count after exclusion filtering
+                    Logger.debug(
+                        `[DEBUG] After exclusion filters: ${pages?.length || 0} pages remaining`,
+                    );
                 }
 
                 // Apply inclusion filters using JavaScript API (.where method)
@@ -1126,7 +1136,17 @@ export class DataviewService {
                             );
                         });
                     }
+
+                    // CRITICAL DEBUG: Log page count after inclusion filtering
+                    Logger.debug(
+                        `[DEBUG] After inclusion filters: ${pages?.length || 0} pages remaining`,
+                    );
                 }
+
+                // CRITICAL DEBUG: Final page count before task extraction
+                Logger.debug(
+                    `[DEBUG] Final: ${pages?.length || 0} pages will be scanned for tasks`,
+                );
 
                 if (pages && pages.length > 0) {
                     // Get ALL tasks from ALL pages using Dataview's API
@@ -1141,6 +1161,11 @@ export class DataviewService {
                         }
                         return [];
                     });
+
+                    // CRITICAL DEBUG: Log how many tasks were found on pages
+                    Logger.debug(
+                        `[DEBUG] Found ${allPageTasks?.length || 0} raw tasks from ${pages.length} pages`,
+                    );
 
                     if (allPageTasks && allPageTasks.length > 0) {
                         // Use Dataview's expand() to flatten ALL subtasks recursively
