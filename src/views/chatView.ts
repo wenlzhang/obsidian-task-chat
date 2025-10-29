@@ -333,10 +333,6 @@ export class ChatView extends ItemView {
 
             const filterParts: string[] = [];
 
-            if (this.currentFilter.text) {
-                filterParts.push(`Text: "${this.currentFilter.text}"`);
-            }
-
             if (
                 this.currentFilter.folders &&
                 this.currentFilter.folders.length > 0
@@ -413,7 +409,6 @@ export class ChatView extends ItemView {
         if (!this.filterButtonEl) return;
 
         const hasFilters =
-            this.currentFilter.text ||
             (this.currentFilter.folders &&
                 this.currentFilter.folders.length > 0) ||
             (this.currentFilter.noteTags &&
@@ -1790,7 +1785,6 @@ export class ChatView extends ItemView {
 
         // Determine if filters are being applied or cleared
         const hasFilters =
-            filter.text ||
             (filter.folders && filter.folders.length > 0) ||
             (filter.noteTags && filter.noteTags.length > 0) ||
             (filter.taskTags && filter.taskTags.length > 0) ||

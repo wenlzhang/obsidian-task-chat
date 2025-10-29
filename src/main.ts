@@ -410,6 +410,22 @@ export default class TaskChatPlugin extends Plugin {
      * Applies chat interface filters (inclusion) on top of exclusions
      */
     async getFilteredTasks(filter: TaskFilter): Promise<Task[]> {
+        // Check if filter is empty (no filters applied at all)
+        const hasAnyFilter =
+            (filter.folders && filter.folders.length > 0) ||
+            (filter.noteTags && filter.noteTags.length > 0) ||
+            (filter.taskTags && filter.taskTags.length > 0) ||
+            (filter.notes && filter.notes.length > 0) ||
+            (filter.priorities && filter.priorities.length > 0) ||
+            filter.dueDateRange ||
+            (filter.taskStatuses && filter.taskStatuses.length > 0) ||
+            (filter.completionStatus && filter.completionStatus !== "all");
+
+        // If no filters at all, return all tasks directly (already has exclusions applied)
+        if (!hasAnyFilter) {
+            return this.allTasks;
+        }
+
         // Extract property filters from chat filter
         const propertyFilters: any = {};
         if (filter.priorities && filter.priorities.length > 0) {
@@ -445,13 +461,8 @@ export default class TaskChatPlugin extends Plugin {
         if (filter.notes && filter.notes.length > 0) {
             inclusionFilters.notes = filter.notes;
         }
-        // Add text search to DataView filters
-        if (filter.text && filter.text.trim() !== "") {
-            inclusionFilters.textSearch = filter.text.trim();
-        }
 
         // Use DataView API with both property and inclusion filters
-        // DataView API handles ALL filtering including text search
         const tasks = await DataviewService.parseTasksFromDataview(
             this.app,
             this.settings,

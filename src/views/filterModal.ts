@@ -10,10 +10,11 @@ import {
 import TaskChatPlugin from "../main";
 
 /**
- * Enhanced Filter Modal with three sections:
- * 1. Search text
- * 2. Task inclusion (folders, tags, notes)
- * 3. Task properties (due date, priority, status categories)
+ * Enhanced Filter Modal with two sections:
+ * 1. Task inclusion (folders, tags, notes)
+ * 2. Task properties (due date, priority, status categories)
+ *
+ * Note: Text search is handled by Simple Search/Smart Search/Task Chat modes
  */
 export class FilterModal extends Modal {
     private filter: TaskFilter;
@@ -49,13 +50,10 @@ export class FilterModal extends Modal {
         // Header
         contentEl.createEl("h2", { text: "Filter tasks" });
 
-        // SECTION 1: Search Text
-        this.renderSearchTextSection(contentEl);
-
-        // SECTION 2: Task Inclusion (Folders, Tags, Notes)
+        // SECTION 1: Task Inclusion (Folders, Tags, Notes)
         this.renderTaskInclusionSection(contentEl);
 
-        // SECTION 3: Task Properties (Due Date, Priority, Status)
+        // SECTION 2: Task Properties (Due Date, Priority, Status)
         this.renderTaskPropertiesSection(contentEl);
 
         // Action Buttons
@@ -63,32 +61,7 @@ export class FilterModal extends Modal {
     }
 
     /**
-     * Section 1: Search text filter
-     */
-    private renderSearchTextSection(container: HTMLElement): void {
-        const section = container.createDiv("task-chat-filter-section");
-        section.createEl("h3", {
-            text: "Search text",
-            cls: "task-chat-filter-section-title",
-        });
-
-        new Setting(section)
-            .setName("Filter tasks by text content")
-            .setDesc("Enter keywords to search within task text")
-            .addTextArea((text) => {
-                text.setPlaceholder("Enter search text")
-                    .setValue(this.filter.text || "")
-                    .onChange((value) => {
-                        this.filter.text = value;
-                    });
-                // Make text area resizable and larger
-                text.inputEl.rows = 3;
-                text.inputEl.style.resize = "vertical";
-            });
-    }
-
-    /**
-     * Section 2: Task inclusion (folders, tags, notes)
+     * Section 1: Task inclusion (folders, tags, notes)
      */
     private renderTaskInclusionSection(container: HTMLElement): void {
         const section = container.createDiv("task-chat-filter-section");

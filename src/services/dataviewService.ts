@@ -917,7 +917,6 @@ export class DataviewService {
             noteTags?: string[]; // Include only notes with these tags
             taskTags?: string[]; // Include only tasks with these tags
             notes?: string[]; // Include only these specific notes
-            textSearch?: string; // Text to search in task content
         },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
@@ -1145,25 +1144,9 @@ export class DataviewService {
 
                     if (allPageTasks && allPageTasks.length > 0) {
                         // Use Dataview's expand() to flatten ALL subtasks recursively
-                        let flattenedTasks = allPageTasks.expand
+                        const flattenedTasks = allPageTasks.expand
                             ? allPageTasks.expand("children")
                             : allPageTasks;
-
-                        // Apply text search filter using DataView .where() API
-                        if (inclusionFilters?.textSearch) {
-                            const searchText = inclusionFilters.textSearch
-                                .toLowerCase()
-                                .trim();
-                            flattenedTasks = flattenedTasks.where(
-                                (item: any) => {
-                                    const dvTask = item.task;
-                                    const taskText = (
-                                        dvTask.text || ""
-                                    ).toLowerCase();
-                                    return taskText.includes(searchText);
-                                },
-                            );
-                        }
 
                         let taskIndex = 0;
 
