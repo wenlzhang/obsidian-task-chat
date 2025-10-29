@@ -571,7 +571,7 @@ export class FilterModal extends Modal {
         const statusSection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        statusSection.createEl("h4", { text: "📊 Status categories" });
+        statusSection.createEl("h4", { text: "✓ Task status" });
 
         const statusContainer = statusSection.createDiv(
             "task-chat-filter-toggles",
