@@ -1077,23 +1077,34 @@ export class DataviewService {
 
                 // Apply inclusion filters using JavaScript API (.where method)
                 // These are from chat interface filters - include ONLY matching items
+                // CRITICAL: Define these variables OUTSIDE the block so they're accessible later
+                let hasFolderFilter = false;
+                let hasNoteTagFilter = false;
+                let hasNoteFilter = false;
+                let hasTaskTagFilter = false;
+                const matchedPagePaths = new Set<string>();
+
                 if (inclusionFilters) {
                     // Include only specific notes (OR logic with other inclusion filters)
                     // We'll apply folder/tag/note filters together with OR logic
-                    const hasFolderFilter =
+                    hasFolderFilter = !!(
                         inclusionFilters.folders &&
-                        inclusionFilters.folders.length > 0;
-                    const hasNoteTagFilter =
+                        inclusionFilters.folders.length > 0
+                    );
+                    hasNoteTagFilter = !!(
                         inclusionFilters.noteTags &&
-                        inclusionFilters.noteTags.length > 0;
-                    const hasNoteFilter =
+                        inclusionFilters.noteTags.length > 0
+                    );
+                    hasNoteFilter = !!(
                         inclusionFilters.notes &&
-                        inclusionFilters.notes.length > 0;
+                        inclusionFilters.notes.length > 0
+                    );
 
                     // CRITICAL DEBUG: Log ALL inclusion filter criteria (page-level AND task-level)
-                    const hasTaskTagFilter =
+                    hasTaskTagFilter = !!(
                         inclusionFilters.taskTags &&
-                        inclusionFilters.taskTags.length > 0;
+                        inclusionFilters.taskTags.length > 0
+                    );
 
                     if (
                         hasFolderFilter ||
@@ -1144,12 +1155,13 @@ export class DataviewService {
                         }
                     }
 
-                    // Apply page-level inclusion filters (folders, note tags, specific notes)
-                    if (hasFolderFilter || hasNoteTagFilter || hasNoteFilter) {
-                        let matchedPages = 0;
-                        let rejectedPages = 0;
+                    // CRITICAL: Build a set of page paths that match page-level filters
+                    // This is used later for OR logic: (page matches filters) OR (task has required tag)
+                    // Note: matchedPagePaths is already defined in outer scope
 
-                        pages = pages.where((page: any) => {
+                    if (hasFolderFilter || hasNoteTagFilter || hasNoteFilter) {
+                        // Check each page against page-level filters and track matches
+                        for (const page of pages) {
                             const pagePath = page.file.path || "";
                             const pageTags = page.file.tags || [];
 
@@ -1182,55 +1194,45 @@ export class DataviewService {
                                     );
                                 });
 
-                            // Check specific note match
-                            // Support both full path and basename matching
+                            // Check specific note match (use DataView's path directly)
                             const matchesNote =
                                 hasNoteFilter &&
                                 inclusionFilters.notes!.some(
-                                    (notePath: string) => {
-                                        // Try exact path match first
-                                        if (pagePath === notePath) return true;
-
-                                        // Try basename match (without .md extension)
-                                        const pageBasename =
-                                            pagePath
-                                                .split("/")
-                                                .pop()
-                                                ?.replace(/\.md$/, "") || "";
-                                        const noteBasename =
-                                            notePath
-                                                .split("/")
-                                                .pop()
-                                                ?.replace(/\.md$/, "") || "";
-
-                                        return pageBasename === noteBasename;
-                                    },
+                                    (notePath: string) => pagePath === notePath,
                                 );
 
                             // OR logic: page matches if it matches ANY inclusion criteria
-                            const matches =
-                                matchesFolder || matchesNoteTag || matchesNote;
-
-                            if (matches) {
-                                matchedPages++;
-                                // CRITICAL DEBUG: Log why page matched
-                                Logger.debug(
-                                    `[DEBUG] Page MATCHED "${pagePath}": folder=${matchesFolder}, noteTag=${matchesNoteTag}, note=${matchesNote}`,
-                                );
-                            } else {
-                                rejectedPages++;
+                            if (
+                                matchesFolder ||
+                                matchesNoteTag ||
+                                matchesNote
+                            ) {
+                                matchedPagePaths.add(pagePath);
                                 if (settings.enableDebugLogging) {
                                     Logger.debug(
-                                        `[DEBUG] Page rejected "${pagePath}": tags=[${pageTags.join(", ")}]`,
+                                        `[DEBUG] Page MATCHED "${pagePath}": folder=${matchesFolder}, noteTag=${matchesNoteTag}, note=${matchesNote}`,
                                     );
                                 }
                             }
-
-                            return matches;
-                        });
+                        }
 
                         Logger.debug(
-                            `[DEBUG] Inclusion filtering result: ${matchedPages} matched, ${rejectedPages} rejected`,
+                            `[DEBUG] Page-level filtering: ${matchedPagePaths.size} pages matched out of ${pages.length}`,
+                        );
+                    }
+
+                    // Log filter strategy
+                    if (hasTaskTagFilter && matchedPagePaths.size > 0) {
+                        Logger.debug(
+                            `[DEBUG] Using OR logic: Including tasks from ${matchedPagePaths.size} matched pages OR tasks with specified tags from ANY page`,
+                        );
+                    } else if (hasTaskTagFilter) {
+                        Logger.debug(
+                            `[DEBUG] Task tag filter active - scanning ALL ${pages.length} pages to find tasks with specified tags`,
+                        );
+                    } else if (matchedPagePaths.size > 0) {
+                        Logger.debug(
+                            `[DEBUG] Page filters active - including all tasks from ${matchedPagePaths.size} matched pages`,
                         );
                     }
 
@@ -1258,6 +1260,7 @@ export class DataviewService {
                     let listItemsSkipped = 0;
 
                     // Process each page's tasks (already includes all subtasks at all levels)
+                    // Note: matchedPagePaths and hasTaskTagFilter are available from outer scope
                     for (const page of pages) {
                         if (
                             !page.file ||
@@ -1317,26 +1320,24 @@ export class DataviewService {
                                         settings.exclusions.taskTags || [],
                                     );
 
-                                // Check task-level tag inclusions (from chat filters)
-                                // Use DataView's native tags property (array of hashtags from task line)
-                                let matchesTaskTagInclusion = true; // Default: include all if no filter
+                                // CRITICAL: Check inclusion filters using OR logic
+                                // Include if: (page matches filters) OR (task has required tag)
+                                let matchesInclusion = false;
+
+                                // Check if page passed page-level filters
+                                const pagePassedFilter =
+                                    matchedPagePaths.size === 0 || // No page filters = all pages pass
+                                    matchedPagePaths.has(pagePath);
+
+                                // Check if task has required tags
+                                let taskHasRequiredTag = false;
                                 if (
                                     inclusionFilters?.taskTags &&
                                     inclusionFilters.taskTags.length > 0
                                 ) {
-                                    // DataView's tags property contains hashtags with # prefix
                                     const taskTags = dvTask.tags || [];
-
-                                    if (taskTags.length === 0) {
-                                        // Task has no tags, doesn't match inclusion filter
-                                        matchesTaskTagInclusion = false;
-                                        if (settings.enableDebugLogging) {
-                                            Logger.debug(
-                                                `[DEBUG] Task has no tags, required: [${inclusionFilters.taskTags.join(", ")}]`,
-                                            );
-                                        }
-                                    } else {
-                                        matchesTaskTagInclusion = taskTags.some(
+                                    if (taskTags.length > 0) {
+                                        taskHasRequiredTag = taskTags.some(
                                             (taskTag: string) => {
                                                 const normalizedTaskTag =
                                                     taskTag
@@ -1359,35 +1360,44 @@ export class DataviewService {
                                                 );
                                             },
                                         );
+                                    }
+                                }
 
-                                        if (
-                                            settings.enableDebugLogging &&
-                                            !matchesTaskTagInclusion
-                                        ) {
-                                            Logger.debug(
-                                                `[DEBUG] Task tags [${taskTags.join(", ")}] don't match required: [${inclusionFilters.taskTags.join(", ")}]`,
-                                            );
-                                        } else if (
-                                            settings.enableDebugLogging &&
-                                            matchesTaskTagInclusion
-                                        ) {
-                                            Logger.debug(
-                                                `[DEBUG] Task tags [${taskTags.join(", ")}] MATCH required: [${inclusionFilters.taskTags.join(", ")}]`,
-                                            );
-                                        }
+                                // OR logic: include if matches ANY criterion
+                                const hasAnyInclusionFilter =
+                                    matchedPagePaths.size > 0 ||
+                                    hasTaskTagFilter;
+                                if (!hasAnyInclusionFilter) {
+                                    // No inclusion filters = include all
+                                    matchesInclusion = true;
+                                } else {
+                                    // Include if: (page matched) OR (task has required tag)
+                                    matchesInclusion =
+                                        pagePassedFilter || taskHasRequiredTag;
+                                }
+
+                                // Debug logging for inclusion logic
+                                if (
+                                    settings.enableDebugLogging &&
+                                    hasAnyInclusionFilter
+                                ) {
+                                    if (!matchesInclusion) {
+                                        Logger.debug(
+                                            `[DEBUG] Task REJECTED: pagePassedFilter=${pagePassedFilter}, taskHasRequiredTag=${taskHasRequiredTag}, taskTags=[${(dvTask.tags || []).join(", ")}]`,
+                                        );
                                     }
                                 }
 
                                 // CRITICAL DEBUG: Track why tasks are rejected
                                 if (!shouldInclude) propertyFilterRejects++;
                                 if (isTaskTagExcluded) taskTagExclusions++;
-                                if (!matchesTaskTagInclusion)
+                                if (!matchesInclusion)
                                     taskTagInclusionRejects++;
 
                                 if (
                                     shouldInclude &&
                                     !isTaskTagExcluded &&
-                                    matchesTaskTagInclusion
+                                    matchesInclusion
                                 ) {
                                     tasks.push(task);
                                 }
