@@ -446,6 +446,14 @@ export class ChatView extends ItemView {
     }
 
     /**
+     * Get current filter state
+     * Used by plugin to re-apply filters after task refresh
+     */
+    public getCurrentFilter(): TaskFilter {
+        return this.currentFilter;
+    }
+
+    /**
      * Update chat mode dropdown options - always shows all three modes
      * Public method so it can be called when settings change
      */
@@ -1644,7 +1652,9 @@ export class ChatView extends ItemView {
      * Refresh tasks
      */
     private async refreshTasks(): Promise<void> {
-        await this.plugin.refreshTasks();
+        // Pass false to prevent double-updating since we update below
+        await this.plugin.refreshTasks(false);
+
         // Re-apply current filter after refreshing tasks
         const filteredTasks = await this.plugin.getFilteredTasks(
             this.currentFilter,

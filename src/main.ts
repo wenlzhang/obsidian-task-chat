@@ -400,8 +400,9 @@ export default class TaskChatPlugin extends Plugin {
 
     /**
      * Refresh all tasks from Dataview
+     * @param updateChatView - If true, update the chat view with refreshed tasks (default: true)
      */
-    async refreshTasks(): Promise<void> {
+    async refreshTasks(updateChatView: boolean = true): Promise<void> {
         try {
             // Check if Dataview is enabled
             if (!DataviewService.isDataviewEnabled(this.app)) {
@@ -414,8 +415,21 @@ export default class TaskChatPlugin extends Plugin {
                 this.settings,
             );
 
-            // Note: Don't update chatView here - let chatView.refreshTasks() handle it
-            // to preserve the current filter state
+            // Update chat view if it exists and updateChatView is true
+            // This ensures the UI reflects the refreshed tasks immediately
+            if (updateChatView && this.chatView) {
+                // Re-apply current filter to get updated task list
+                const currentFilter = this.chatView.getCurrentFilter();
+                const filteredTasks =
+                    await this.getFilteredTasks(currentFilter);
+
+                // Update the chat view's displayed tasks
+                this.chatView.updateTasks(filteredTasks, currentFilter);
+
+                Logger.debug(
+                    `Chat view updated after task refresh: ${filteredTasks.length} tasks`,
+                );
+            }
         } catch (error) {
             Logger.error("Error refreshing tasks:", error);
             new Notice("Failed to refresh tasks");
