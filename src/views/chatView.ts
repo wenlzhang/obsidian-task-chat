@@ -485,6 +485,8 @@ export class ChatView extends ItemView {
      */
     private getAIUnderstandingSummary(message: ChatMessage): string | null {
         // Show for all message types if they have parsedQuery (Smart Search, Task Chat)
+        // Note: Natural language and typo info are now shown in the AI Query line below
+        // This compact summary is intentionally minimal to avoid duplication
         if (
             !message.parsedQuery ||
             !this.plugin.settings.aiEnhancement.showAIUnderstanding
@@ -492,23 +494,9 @@ export class ChatView extends ItemView {
             return null;
         }
 
-        const ai = message.parsedQuery.aiUnderstanding;
-        const parts: string[] = [];
-
-        // Language is shown in main metadata bar, don't duplicate here
-
-        // Natural language usage
-        if (ai?.naturalLanguageUsed !== undefined) {
-            const nlLabel = ai.naturalLanguageUsed ? "🗣️ Natural" : "⌨️ Syntax";
-            parts.push(nlLabel);
-        }
-
-        // Typo corrections (if any)
-        if (ai?.correctedTypos && ai.correctedTypos.length > 0) {
-            parts.push(`✏️ ${ai.correctedTypos.length} typo(s)`);
-        }
-
-        return parts.length > 0 ? parts.join(" • ") : null;
+        // Currently empty - all AI understanding info is shown in detailed AI Query line
+        // Keep this method for future compact metadata if needed
+        return null;
     }
 
     /**
@@ -585,21 +573,16 @@ export class ChatView extends ItemView {
                     denominator > 0 ? expandedOnly / denominator : 0;
                 const actualPerCoreLang = actualPerCoreLangValue.toFixed(1);
 
-                // Build expansion line with vertical bar separators (like AI Query line)
+                // Build expansion line
                 // Show "X core → Y expansion" (not "total") since this line is about expansion
-                const expansionParts: string[] = [
-                    `${meta.coreKeywordsCount} core → ${expandedOnly} semantic`,
-                ];
-
-                // Add per-keyword-per-language count (shortened format) - calculated from EXPANDED only
-                expansionParts.push(`${actualPerCoreLang}/core/lang`);
+                let expansionLine = `${meta.coreKeywordsCount} core → ${expandedOnly} semantic, ${actualPerCoreLang}/core/lang`;
 
                 // Add languages if available
                 if (meta.languagesUsed && meta.languagesUsed.length > 0) {
-                    expansionParts.push(meta.languagesUsed.join(", "));
+                    expansionLine += `, ${meta.languagesUsed.join(" | ")}`;
                 }
 
-                parts.push(`📈 Expansion: ${expansionParts.join(" | ")}`);
+                parts.push(`📈 Expansion: ${expansionLine}`);
             } else if (!hasResults) {
                 // Expansion disabled - mention this for 0 results
                 parts.push("📈 Expansion: disabled");
@@ -607,7 +590,7 @@ export class ChatView extends ItemView {
         }
 
         // AI Query Understanding (compact single-line format with grouped sections)
-        // Format: Due, Priority, Status | Lang | other mappings | Confidence
+        // Order: Task Properties → Typos → Natural Language → Language → Confidence
         // Only show if enabled and AI understanding data exists
         if (
             this.plugin.settings.aiEnhancement.showAIUnderstanding &&
@@ -616,7 +599,7 @@ export class ChatView extends ItemView {
             const ai = query.aiUnderstanding;
             const groups: string[] = [];
 
-            // Group 1: Core properties (Due, Priority, Status)
+            // Group 1: Core task properties (Due, Priority, Status)
             const coreProps: string[] = [];
             if (ai.semanticMappings?.dueDate) {
                 coreProps.push(`Due=${ai.semanticMappings.dueDate}`);
@@ -644,24 +627,25 @@ export class ChatView extends ItemView {
                 }
             }
 
-            // Group 3: Language
-            if (ai.detectedLanguage) {
-                groups.push(`Lang=${ai.detectedLanguage}`);
-            }
-
-            // Group 4: Natural Language Usage
-            if (ai.naturalLanguageUsed !== undefined) {
-                const nlUsage = ai.naturalLanguageUsed ? "Yes" : "No";
-                groups.push(`Natural Language=${nlUsage}`);
-            }
-
-            // Group 5: Typo Corrections
+            // Group 3: Typo Corrections (count only, not details)
             if (ai.correctedTypos && ai.correctedTypos.length > 0) {
-                const typoStr = ai.correctedTypos.join(", ");
-                groups.push(`Typos Corrected: ${typoStr}`);
+                groups.push(`Typos: ${ai.correctedTypos.length}`);
             }
 
-            // Group 6: Confidence
+            // Group 4: Natural Language + Language (comma-separated)
+            const nlAndLang: string[] = [];
+            if (ai.naturalLanguageUsed !== undefined) {
+                const nlLabel = ai.naturalLanguageUsed ? "NL" : "Syntax";
+                nlAndLang.push(nlLabel);
+            }
+            if (ai.detectedLanguage) {
+                nlAndLang.push(`${ai.detectedLanguage}`);
+            }
+            if (nlAndLang.length > 0) {
+                groups.push(nlAndLang.join(", "));
+            }
+
+            // Group 5: Confidence
             if (ai.confidence !== undefined) {
                 const conf = Math.round(ai.confidence * 100);
                 let level = "High";

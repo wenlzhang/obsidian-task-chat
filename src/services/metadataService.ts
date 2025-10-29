@@ -192,12 +192,8 @@ export class MetadataService {
                 parts.push(`${tokenDisplay} • ${costDisplay}`);
             }
 
-            // Language (for Smart Search and Task Chat)
-            if (!isSimpleSearch) {
-                const detectedLang =
-                    message.parsedQuery?.aiUnderstanding?.detectedLanguage;
-                parts.push(`Lang: ${detectedLang || "Undetected"}`);
-            }
+            // Language is now shown in the AI Query line below, not in metadata
+            // This avoids duplication and keeps the metadata line cleaner
         } else if (isSimpleSearch) {
             // Simple Search: No AI used
             parts.push("$0.00");

@@ -650,7 +650,7 @@ export class SettingsTab extends PluginSettingTab {
         const tokenUsageSetting = new Setting(containerEl)
             .setName("Show token usage")
             .setDesc(
-                "Display API usage and cost information in chat. Note: Figures are estimates - verify with your API provider for actual billing.",
+                "Note: Figures are estimates. Check your API provider for actual billing.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -1792,7 +1792,6 @@ export class SettingsTab extends PluginSettingTab {
 
         const usageStatsSetting = new Setting(containerEl)
             .setName("Usage statistics")
-            .setDesc(`Total: ${totalTokens} tokens, $${totalCost}`)
             .addButton((button) =>
                 button.setButtonText("Reset").onClick(async () => {
                     this.plugin.settings.totalTokensUsed = 0;
@@ -1804,14 +1803,15 @@ export class SettingsTab extends PluginSettingTab {
 
         // Add warning and cost tracking link
         const usageStatsDesc = usageStatsSetting.descEl;
-        usageStatsDesc.createEl("br");
         usageStatsDesc.createEl("span", {
-            text: "⚠️ These are estimates. Always verify with your API provider dashboard for actual usage and billing. ",
+            text:
+                `Total: ${totalTokens} tokens, $${totalCost}.` +
+                "⚠️ These are estimates. Always check your API provider for actual usage and billing. ",
             cls: "setting-item-description",
         });
         usageStatsDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn about cost tracking →",
+            text: "→ Learn more",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
         });
 
