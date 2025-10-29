@@ -1788,24 +1788,18 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Pricing Information
-        const pricingSetting = new Setting(containerEl).setName("Pricing data");
-
         const lastUpdate = PricingService.getTimeSinceUpdate(
             this.plugin.settings.pricingCache.lastUpdated,
         );
         const modelCount = Object.keys(
             this.plugin.settings.pricingCache.data,
         ).length;
-        const pricingDesc = pricingSetting.descEl;
-        pricingDesc.createSpan({
-            text: `${modelCount} models cached, updated ${lastUpdate}`,
-        });
 
-        new Setting(containerEl)
-            .setName("Refresh pricing")
-            .setDesc("Update pricing data from OpenRouter API")
+        const pricingSetting = new Setting(containerEl)
+            .setName("Pricing data")
+            .setDesc(`${modelCount} models cached, updated ${lastUpdate}`)
             .addButton((button) =>
-                button.setButtonText("Refresh now").onClick(async () => {
+                button.setButtonText("Refresh").onClick(async () => {
                     button.setButtonText("Updating...");
                     button.setDisabled(true);
 
@@ -1834,21 +1828,13 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Usage Statistics
-        const usageSetting = new Setting(containerEl).setName(
-            "Usage statistics",
-        );
-
         const totalTokens =
             this.plugin.settings.totalTokensUsed.toLocaleString();
         const totalCost = this.plugin.settings.totalCost.toFixed(4);
-        const usageDesc = usageSetting.descEl;
-        usageDesc.createSpan({
-            text: `Total: ${totalTokens} tokens, $${totalCost}`,
-        });
 
         new Setting(containerEl)
-            .setName("Reset statistics")
-            .setDesc("Clear usage statistics and cost tracking")
+            .setName("Usage statistics")
+            .setDesc(`Total: ${totalTokens} tokens, $${totalCost}`)
             .addButton((button) =>
                 button.setButtonText("Reset").onClick(async () => {
                     this.plugin.settings.totalTokensUsed = 0;
@@ -1857,7 +1843,7 @@ export class SettingsTab extends PluginSettingTab {
                     this.display(); // Refresh to show updated stats
                 }),
             );
-        
+
         // Debug Logging
         new Setting(containerEl)
             .setName("Enable debug logging")
