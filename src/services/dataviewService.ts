@@ -1090,8 +1090,65 @@ export class DataviewService {
                         inclusionFilters.notes &&
                         inclusionFilters.notes.length > 0;
 
+                    // CRITICAL DEBUG: Log ALL inclusion filter criteria (page-level AND task-level)
+                    const hasTaskTagFilter =
+                        inclusionFilters.taskTags &&
+                        inclusionFilters.taskTags.length > 0;
+
+                    if (
+                        hasFolderFilter ||
+                        hasNoteTagFilter ||
+                        hasNoteFilter ||
+                        hasTaskTagFilter
+                    ) {
+                        Logger.debug(`[DEBUG] Applying inclusion filters:`);
+                        Logger.debug(
+                            `[DEBUG] === PAGE-LEVEL FILTERS (OR logic) ===`,
+                        );
+                        if (hasFolderFilter) {
+                            Logger.debug(
+                                `[DEBUG]   - Folders: ${inclusionFilters.folders!.join(", ")}`,
+                            );
+                        }
+                        if (hasNoteTagFilter) {
+                            Logger.debug(
+                                `[DEBUG]   - Note tags: ${inclusionFilters.noteTags!.join(", ")}`,
+                            );
+                        }
+                        if (hasNoteFilter) {
+                            Logger.debug(
+                                `[DEBUG]   - Notes: ${inclusionFilters.notes!.join(", ")}`,
+                            );
+                        }
+                        if (
+                            !hasFolderFilter &&
+                            !hasNoteTagFilter &&
+                            !hasNoteFilter
+                        ) {
+                            Logger.debug(
+                                `[DEBUG]   - None (all pages included)`,
+                            );
+                        }
+
+                        Logger.debug(
+                            `[DEBUG] === TASK-LEVEL FILTERS (AND logic with page filters) ===`,
+                        );
+                        if (hasTaskTagFilter) {
+                            Logger.debug(
+                                `[DEBUG]   - Task tags: ${inclusionFilters.taskTags!.join(", ")}`,
+                            );
+                        } else {
+                            Logger.debug(
+                                `[DEBUG]   - None (all tasks included)`,
+                            );
+                        }
+                    }
+
                     // Apply page-level inclusion filters (folders, note tags, specific notes)
                     if (hasFolderFilter || hasNoteTagFilter || hasNoteFilter) {
+                        let matchedPages = 0;
+                        let rejectedPages = 0;
+
                         pages = pages.where((page: any) => {
                             const pagePath = page.file.path || "";
                             const pageTags = page.file.tags || [];
@@ -1126,15 +1183,55 @@ export class DataviewService {
                                 });
 
                             // Check specific note match
+                            // Support both full path and basename matching
                             const matchesNote =
                                 hasNoteFilter &&
-                                inclusionFilters.notes!.includes(pagePath);
+                                inclusionFilters.notes!.some(
+                                    (notePath: string) => {
+                                        // Try exact path match first
+                                        if (pagePath === notePath) return true;
+
+                                        // Try basename match (without .md extension)
+                                        const pageBasename =
+                                            pagePath
+                                                .split("/")
+                                                .pop()
+                                                ?.replace(/\.md$/, "") || "";
+                                        const noteBasename =
+                                            notePath
+                                                .split("/")
+                                                .pop()
+                                                ?.replace(/\.md$/, "") || "";
+
+                                        return pageBasename === noteBasename;
+                                    },
+                                );
 
                             // OR logic: page matches if it matches ANY inclusion criteria
-                            return (
-                                matchesFolder || matchesNoteTag || matchesNote
-                            );
+                            const matches =
+                                matchesFolder || matchesNoteTag || matchesNote;
+
+                            if (matches) {
+                                matchedPages++;
+                                // CRITICAL DEBUG: Log why page matched
+                                Logger.debug(
+                                    `[DEBUG] Page MATCHED "${pagePath}": folder=${matchesFolder}, noteTag=${matchesNoteTag}, note=${matchesNote}`,
+                                );
+                            } else {
+                                rejectedPages++;
+                                if (settings.enableDebugLogging) {
+                                    Logger.debug(
+                                        `[DEBUG] Page rejected "${pagePath}": tags=[${pageTags.join(", ")}]`,
+                                    );
+                                }
+                            }
+
+                            return matches;
                         });
+
+                        Logger.debug(
+                            `[DEBUG] Inclusion filtering result: ${matchedPages} matched, ${rejectedPages} rejected`,
+                        );
                     }
 
                     // CRITICAL DEBUG: Log page count after inclusion filtering
@@ -1149,17 +1246,18 @@ export class DataviewService {
                 );
 
                 if (pages && pages.length > 0) {
-                    // CRITICAL DEBUG: Log page count before task extraction
+                    // CRITICAL: file.tasks already includes ALL tasks at all levels (parents + subtasks)
+                    // No need for expand() - DataView automatically flattens task hierarchies
+                    // Source: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
                     Logger.debug(
                         `[DEBUG] Processing ${pages.length} pages for tasks`,
                     );
 
                     let taskIndex = 0;
-                    let totalRawTasks = 0;
-                    let totalExpandedTasks = 0;
+                    let totalTasksFound = 0;
+                    let listItemsSkipped = 0;
 
-                    // Process each page separately to preserve pageTags while recursively expanding subtasks
-                    // This allows us to use DataView's expand("children") to flatten ALL subtasks at any nesting level
+                    // Process each page's tasks (already includes all subtasks at all levels)
                     for (const page of pages) {
                         if (
                             !page.file ||
@@ -1172,36 +1270,31 @@ export class DataviewService {
                         const pageTags = page.file.tags || [];
                         const pagePath = page.file.path || "";
 
-                        // Count raw tasks for this page
-                        totalRawTasks += page.file.tasks.length;
+                        // Count all items (tasks + list items)
+                        const pageItemCount = page.file.tasks.length;
+                        totalTasksFound += pageItemCount;
 
-                        // Convert page tasks to DataArray and recursively expand ALL subtasks
-                        // expand("children") will flatten subtasks at ANY nesting level:
-                        // - Task -> Subtask -> Sub-subtask -> ... (all levels)
-                        const pageTasksArray = dataviewApi.array(
-                            page.file.tasks,
-                        );
-                        const flattenedPageTasks = pageTasksArray.expand
-                            ? pageTasksArray.expand("children")
-                            : pageTasksArray;
-
-                        // Count expanded tasks for this page
-                        const expandedCount = flattenedPageTasks.length || 0;
-                        totalExpandedTasks += expandedCount;
-
-                        // Process each flattened task with existing filters
+                        // Process each task with existing filters
                         let processedCount = 0;
                         let nullTaskCount = 0;
                         let propertyFilterRejects = 0;
                         let taskTagExclusions = 0;
                         let taskTagInclusionRejects = 0;
 
-                        // Convert DataArray to regular array for iteration
-                        const tasksArray = flattenedPageTasks.array
-                            ? flattenedPageTasks.array()
-                            : flattenedPageTasks;
+                        for (const dvTask of page.file.tasks) {
+                            // CRITICAL: Use DataView's 'task' property (Boolean)
+                            // true = task with checkbox, false = regular list item
+                            // Source: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
+                            if (dvTask.task !== true) {
+                                listItemsSkipped++;
+                                if (settings.enableDebugLogging) {
+                                    Logger.debug(
+                                        `[DEBUG] Skipping list item: "${dvTask.text || dvTask.visual || "(no text)"}"`,
+                                    );
+                                }
+                                continue;
+                            }
 
-                        for (const dvTask of tasksArray) {
                             processedCount++;
 
                             const task = this.processDataviewTask(
@@ -1217,7 +1310,7 @@ export class DataviewService {
                                 const shouldInclude =
                                     !taskFilter || taskFilter(dvTask);
 
-                                // Check task-level tag exclusions
+                                // Check task-level tag exclusions using DataView's native tags property
                                 const isTaskTagExcluded =
                                     this.isTaskExcludedByTag(
                                         dvTask,
@@ -1225,31 +1318,64 @@ export class DataviewService {
                                     );
 
                                 // Check task-level tag inclusions (from chat filters)
+                                // Use DataView's native tags property (array of hashtags from task line)
                                 let matchesTaskTagInclusion = true; // Default: include all if no filter
                                 if (
                                     inclusionFilters?.taskTags &&
                                     inclusionFilters.taskTags.length > 0
                                 ) {
+                                    // DataView's tags property contains hashtags with # prefix
                                     const taskTags = dvTask.tags || [];
-                                    matchesTaskTagInclusion = taskTags.some(
-                                        (taskTag: string) => {
-                                            const normalizedTaskTag = taskTag
-                                                .replace(/^#+/, "")
-                                                .toLowerCase();
-                                            return inclusionFilters.taskTags!.some(
-                                                (filterTag: string) => {
-                                                    const normalizedFilter =
-                                                        filterTag
-                                                            .replace(/^#+/, "")
-                                                            .toLowerCase();
-                                                    return (
-                                                        normalizedTaskTag ===
-                                                        normalizedFilter
-                                                    );
-                                                },
+
+                                    if (taskTags.length === 0) {
+                                        // Task has no tags, doesn't match inclusion filter
+                                        matchesTaskTagInclusion = false;
+                                        if (settings.enableDebugLogging) {
+                                            Logger.debug(
+                                                `[DEBUG] Task has no tags, required: [${inclusionFilters.taskTags.join(", ")}]`,
                                             );
-                                        },
-                                    );
+                                        }
+                                    } else {
+                                        matchesTaskTagInclusion = taskTags.some(
+                                            (taskTag: string) => {
+                                                const normalizedTaskTag =
+                                                    taskTag
+                                                        .replace(/^#+/, "")
+                                                        .toLowerCase();
+                                                return inclusionFilters.taskTags!.some(
+                                                    (filterTag: string) => {
+                                                        const normalizedFilter =
+                                                            filterTag
+                                                                .replace(
+                                                                    /^#+/,
+                                                                    "",
+                                                                )
+                                                                .toLowerCase();
+                                                        return (
+                                                            normalizedTaskTag ===
+                                                            normalizedFilter
+                                                        );
+                                                    },
+                                                );
+                                            },
+                                        );
+
+                                        if (
+                                            settings.enableDebugLogging &&
+                                            !matchesTaskTagInclusion
+                                        ) {
+                                            Logger.debug(
+                                                `[DEBUG] Task tags [${taskTags.join(", ")}] don't match required: [${inclusionFilters.taskTags.join(", ")}]`,
+                                            );
+                                        } else if (
+                                            settings.enableDebugLogging &&
+                                            matchesTaskTagInclusion
+                                        ) {
+                                            Logger.debug(
+                                                `[DEBUG] Task tags [${taskTags.join(", ")}] MATCH required: [${inclusionFilters.taskTags.join(", ")}]`,
+                                            );
+                                        }
+                                    }
                                 }
 
                                 // CRITICAL DEBUG: Track why tasks are rejected
@@ -1279,17 +1405,17 @@ export class DataviewService {
                                 taskTagInclusionRejects > 0)
                         ) {
                             Logger.debug(
-                                `[DEBUG] Page ${pagePath}: processed=${processedCount}, null=${nullTaskCount}, propertyFilter=${propertyFilterRejects}, taskTagExcluded=${taskTagExclusions}, taskTagInclusionFailed=${taskTagInclusionRejects}`,
+                                `[DEBUG] Page ${pagePath}: processed=${processedCount} tasks, null=${nullTaskCount}, propertyFilter=${propertyFilterRejects}, taskTagExcluded=${taskTagExclusions}, taskTagInclusionFailed=${taskTagInclusionRejects}`,
                             );
                         }
                     }
 
-                    // CRITICAL DEBUG: Log overall task expansion and filtering results
+                    // CRITICAL DEBUG: Log overall task filtering results
                     Logger.debug(
-                        `[DEBUG] Found ${totalRawTasks} raw tasks from ${pages.length} pages`,
+                        `[DEBUG] Found ${totalTasksFound} items from ${pages.length} pages (tasks + list items)`,
                     );
                     Logger.debug(
-                        `[DEBUG] After expand("children"): ${totalExpandedTasks} tasks (including all nested subtasks)`,
+                        `[DEBUG] Skipped ${listItemsSkipped} list items (no checkbox)`,
                     );
                     Logger.debug(
                         `[DEBUG] After all filters: ${tasks.length} tasks accepted`,
