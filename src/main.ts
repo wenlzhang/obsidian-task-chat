@@ -445,9 +445,14 @@ export default class TaskChatPlugin extends Plugin {
         if (filter.notes && filter.notes.length > 0) {
             inclusionFilters.notes = filter.notes;
         }
+        // Add text search to DataView filters
+        if (filter.text && filter.text.trim() !== "") {
+            inclusionFilters.textSearch = filter.text.trim();
+        }
 
         // Use DataView API with both property and inclusion filters
-        let tasks = await DataviewService.parseTasksFromDataview(
+        // DataView API handles ALL filtering including text search
+        const tasks = await DataviewService.parseTasksFromDataview(
             this.app,
             this.settings,
             undefined,
@@ -458,14 +463,6 @@ export default class TaskChatPlugin extends Plugin {
                 ? inclusionFilters
                 : undefined,
         );
-
-        // Apply text filter in JavaScript (DataView doesn't support text search)
-        if (filter.text && filter.text.trim() !== "") {
-            const searchText = filter.text.toLowerCase().trim();
-            tasks = tasks.filter((task) =>
-                task.text.toLowerCase().includes(searchText),
-            );
-        }
 
         return tasks;
     }

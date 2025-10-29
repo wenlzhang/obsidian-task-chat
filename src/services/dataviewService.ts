@@ -917,6 +917,7 @@ export class DataviewService {
             noteTags?: string[]; // Include only notes with these tags
             taskTags?: string[]; // Include only tasks with these tags
             notes?: string[]; // Include only these specific notes
+            textSearch?: string; // Text to search in task content
         },
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
@@ -1129,22 +1130,48 @@ export class DataviewService {
                 }
 
                 if (pages && pages.length > 0) {
-                    // Process each page to maintain page-task association for note-level tags
-                    let taskIndex = 0;
+                    // Get ALL tasks from ALL pages using Dataview's API
+                    // Use flatMap to collect tasks from all pages efficiently
+                    const allPageTasks = pages.flatMap((page: any) => {
+                        if (page.file.tasks && Array.isArray(page.file.tasks)) {
+                            // Attach page tags to each task for later processing
+                            return page.file.tasks.map((t: any) => ({
+                                task: t,
+                                pageTags: page.file.tags || [],
+                            }));
+                        }
+                        return [];
+                    });
 
-                    for (const page of pages.array()) {
-                        const pageTags = page.file.tags || [];
-                        const pageTasks = page.file.tasks || [];
-
-                        if (pageTasks.length === 0) continue;
-
+                    if (allPageTasks && allPageTasks.length > 0) {
                         // Use Dataview's expand() to flatten ALL subtasks recursively
-                        const flattenedTasks = pageTasks.expand
-                            ? pageTasks.expand("children")
-                            : pageTasks;
+                        let flattenedTasks = allPageTasks.expand
+                            ? allPageTasks.expand("children")
+                            : allPageTasks;
 
-                        // Process each flattened task with page tags
-                        for (const dvTask of flattenedTasks.array()) {
+                        // Apply text search filter using DataView .where() API
+                        if (inclusionFilters?.textSearch) {
+                            const searchText = inclusionFilters.textSearch
+                                .toLowerCase()
+                                .trim();
+                            flattenedTasks = flattenedTasks.where(
+                                (item: any) => {
+                                    const dvTask = item.task;
+                                    const taskText = (
+                                        dvTask.text || ""
+                                    ).toLowerCase();
+                                    return taskText.includes(searchText);
+                                },
+                            );
+                        }
+
+                        let taskIndex = 0;
+
+                        // Process each flattened task
+                        for (const item of flattenedTasks.array()) {
+                            const dvTask = item.task;
+                            const pageTags = item.pageTags;
+
                             const task = this.processDataviewTask(
                                 dvTask,
                                 settings,
