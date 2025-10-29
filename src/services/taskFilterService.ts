@@ -20,66 +20,72 @@ export class TaskFilterService {
             );
         }
 
-        // Filter by folders
-        if (filter.folders && filter.folders.length > 0) {
+        // Filter by folders, tags, and notes (Section 2: Task Inclusion)
+        // Use OR logic across all inclusion filters - task matches if it's in ANY specified location
+        const hasFolderFilter = filter.folders && filter.folders.length > 0;
+        const hasNoteTagFilter = filter.noteTags && filter.noteTags.length > 0;
+        const hasTaskTagFilter = filter.taskTags && filter.taskTags.length > 0;
+        const hasNoteFilter = filter.notes && filter.notes.length > 0;
+
+        if (
+            hasFolderFilter ||
+            hasNoteTagFilter ||
+            hasTaskTagFilter ||
+            hasNoteFilter
+        ) {
             filtered = filtered.filter((task) => {
-                if (!task.folder) return false;
-                return filter.folders!.some((folder) =>
-                    task.folder!.startsWith(folder),
+                // Check folder match
+                const matchesFolder =
+                    hasFolderFilter &&
+                    task.folder &&
+                    filter.folders!.some((folder) =>
+                        task.folder!.startsWith(folder),
+                    );
+
+                // Check note-level tag match
+                const matchesNoteTag =
+                    hasNoteTagFilter &&
+                    task.tags &&
+                    task.tags.length > 0 &&
+                    filter.noteTags!.some((filterTag) => {
+                        const normalizedFilter = filterTag.replace(/^#+/, "");
+                        return task.tags.some((taskTag) => {
+                            const normalizedTask = taskTag.replace(/^#+/, "");
+                            return (
+                                normalizedTask.toLowerCase() ===
+                                normalizedFilter.toLowerCase()
+                            );
+                        });
+                    });
+
+                // Check task-level tag match
+                const matchesTaskTag =
+                    hasTaskTagFilter &&
+                    task.tags &&
+                    task.tags.length > 0 &&
+                    filter.taskTags!.some((filterTag) => {
+                        const normalizedFilter = filterTag.replace(/^#+/, "");
+                        return task.tags.some((taskTag) => {
+                            const normalizedTask = taskTag.replace(/^#+/, "");
+                            return (
+                                normalizedTask.toLowerCase() ===
+                                normalizedFilter.toLowerCase()
+                            );
+                        });
+                    });
+
+                // Check note match
+                const matchesNote =
+                    hasNoteFilter && filter.notes!.includes(task.sourcePath);
+
+                // Return true if task matches ANY of the inclusion criteria (OR logic)
+                return (
+                    matchesFolder ||
+                    matchesNoteTag ||
+                    matchesTaskTag ||
+                    matchesNote
                 );
             });
-        }
-
-        // Filter by note-level tags
-        // Note-level tags filter ALL tasks from notes that have these tags
-        // Similar to exclusions, this checks tags on the note/page, not individual tasks
-        // Implementation: task.tags from DataView includes both note and task tags
-        // For proper note-level filtering, we'd need to track note tags separately
-        // Current behavior: filters tasks that have these tags (either on note or task)
-        if (filter.noteTags && filter.noteTags.length > 0) {
-            filtered = filtered.filter((task) => {
-                if (!task.tags || task.tags.length === 0) return false;
-                // Check if any of the filter tags match task tags (case-insensitive)
-                return filter.noteTags!.some((filterTag) => {
-                    const normalizedFilter = filterTag.replace(/^#+/, "");
-                    return task.tags.some((taskTag) => {
-                        const normalizedTask = taskTag.replace(/^#+/, "");
-                        return (
-                            normalizedTask.toLowerCase() ===
-                            normalizedFilter.toLowerCase()
-                        );
-                    });
-                });
-            });
-        }
-
-        // Filter by task-level tags
-        // Task-level tags filter ONLY tasks that have these tags on the task line itself
-        // Implementation: task.tags from DataView includes tags from both note and task
-        // Current behavior: filters tasks that have these tags (either on note or task)
-        // Note: Perfect distinction would require parsing task text to find inline tags
-        if (filter.taskTags && filter.taskTags.length > 0) {
-            filtered = filtered.filter((task) => {
-                if (!task.tags || task.tags.length === 0) return false;
-                // Check if any of the filter tags match task tags (case-insensitive)
-                return filter.taskTags!.some((filterTag) => {
-                    const normalizedFilter = filterTag.replace(/^#+/, "");
-                    return task.tags.some((taskTag) => {
-                        const normalizedTask = taskTag.replace(/^#+/, "");
-                        return (
-                            normalizedTask.toLowerCase() ===
-                            normalizedFilter.toLowerCase()
-                        );
-                    });
-                });
-            });
-        }
-
-        // Filter by notes (specific file paths)
-        if (filter.notes && filter.notes.length > 0) {
-            filtered = filtered.filter((task) =>
-                filter.notes!.includes(task.sourcePath),
-            );
         }
 
         // Filter by priorities

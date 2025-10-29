@@ -1,4 +1,10 @@
-import { ItemView, WorkspaceLeaf, Notice, MarkdownRenderer } from "obsidian";
+import {
+    ItemView,
+    WorkspaceLeaf,
+    Notice,
+    MarkdownRenderer,
+    setIcon,
+} from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
 import { NavigationService } from "../services/navigationService";
@@ -160,9 +166,18 @@ export class ChatView extends ItemView {
         const filterGroup = controlsEl.createDiv("task-chat-button-group");
 
         this.filterButtonEl = filterGroup.createEl("button", {
-            text: "🔍 Filter",
             cls: "task-chat-filter-btn",
         });
+        // Add filter icon using setIcon (Lucide icon)
+        const filterIcon = this.filterButtonEl.createSpan({
+            cls: "task-chat-button-icon",
+        });
+        setIcon(filterIcon, "filter");
+        this.filterButtonEl.createSpan({
+            text: "Filter",
+            cls: "task-chat-button-text",
+        });
+
         this.filterButtonEl.addEventListener("click", () =>
             this.openFilterModal(),
         );
@@ -287,7 +302,19 @@ export class ChatView extends ItemView {
             (this.currentFilter.completionStatus &&
                 this.currentFilter.completionStatus !== "all");
 
+        // Always show task count first
+        this.filterStatusEl.createSpan({
+            text: `Found ${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
+            cls: "task-chat-filter-count",
+        });
+
         if (hasFilters) {
+            // Add separator
+            this.filterStatusEl.createSpan({
+                text: " | ",
+                cls: "task-chat-filter-separator",
+            });
+
             this.filterStatusEl.createEl("strong", {
                 text: "🔍 Active filters: ",
             });
@@ -303,7 +330,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.folders.length > 0
             ) {
                 filterParts.push(
-                    `Folders: ${this.currentFilter.folders.join(", ")}`,
+                    `Folders (${this.currentFilter.folders.length})`,
                 );
             }
 
@@ -312,7 +339,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.noteTags.length > 0
             ) {
                 filterParts.push(
-                    `Note Tags: ${this.currentFilter.noteTags.join(", ")}`,
+                    `Note Tags (${this.currentFilter.noteTags.length})`,
                 );
             }
 
@@ -321,7 +348,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.taskTags.length > 0
             ) {
                 filterParts.push(
-                    `Task Tags: ${this.currentFilter.taskTags.join(", ")}`,
+                    `Task Tags (${this.currentFilter.taskTags.length})`,
                 );
             }
 
@@ -329,11 +356,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.notes &&
                 this.currentFilter.notes.length > 0
             ) {
-                const noteNames = this.currentFilter.notes.map((path) => {
-                    const parts = path.split("/");
-                    return parts[parts.length - 1].replace(".md", "");
-                });
-                filterParts.push(`Notes: ${noteNames.join(", ")}`);
+                filterParts.push(`Notes (${this.currentFilter.notes.length})`);
             }
 
             if (
@@ -341,7 +364,7 @@ export class ChatView extends ItemView {
                 this.currentFilter.priorities.length > 0
             ) {
                 filterParts.push(
-                    `Priorities: ${this.currentFilter.priorities.join(", ")}`,
+                    `Priorities (${this.currentFilter.priorities.length})`,
                 );
             }
 
@@ -350,8 +373,12 @@ export class ChatView extends ItemView {
                 this.currentFilter.taskStatuses.length > 0
             ) {
                 filterParts.push(
-                    `Statuses: ${this.currentFilter.taskStatuses.join(", ")}`,
+                    `Statuses (${this.currentFilter.taskStatuses.length})`,
                 );
+            }
+
+            if (this.currentFilter.dueDateRange) {
+                filterParts.push(`Due Date Range`);
             }
 
             if (
@@ -359,25 +386,11 @@ export class ChatView extends ItemView {
                 this.currentFilter.completionStatus !== "all"
             ) {
                 filterParts.push(
-                    `Status: ${this.currentFilter.completionStatus}`,
+                    `Completion: ${this.currentFilter.completionStatus}`,
                 );
             }
 
-            this.filterStatusEl.createSpan({ text: filterParts.join(" | ") });
-
-            // Add separator and task count
-            this.filterStatusEl.createSpan({
-                text: " | ",
-                cls: "task-chat-filter-separator",
-            });
-            this.filterStatusEl.createSpan({
-                text: `${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
-                cls: "task-chat-filter-count",
-            });
-        } else {
-            this.filterStatusEl.createSpan({
-                text: `Found ${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
-            });
+            this.filterStatusEl.createSpan({ text: filterParts.join(", ") });
         }
     }
 
@@ -1618,6 +1631,12 @@ export class ChatView extends ItemView {
         // Re-apply current filter after refreshing tasks
         const filteredTasks = this.plugin.getFilteredTasks(this.currentFilter);
         this.updateTasks(filteredTasks, this.currentFilter);
+
+        // Show system message about refresh
+        await this.addSystemMessage(
+            `Tasks refreshed. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+        );
+
         new Notice("Tasks refreshed");
     }
 
@@ -1657,7 +1676,7 @@ export class ChatView extends ItemView {
         this.plugin.settings.currentFilter = filter;
         await this.plugin.saveSettings();
 
-        // Only show system message if there are actual filters applied
+        // Determine if filters are being applied or cleared
         const hasFilters =
             filter.text ||
             (filter.folders && filter.folders.length > 0) ||
@@ -1671,7 +1690,12 @@ export class ChatView extends ItemView {
 
         if (hasFilters) {
             await this.addSystemMessage(
-                `Filter applied. Now found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+                `Filter applied. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+            );
+        } else {
+            // Filter was cleared
+            await this.addSystemMessage(
+                `Filter cleared. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
             );
         }
     }

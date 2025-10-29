@@ -1874,3 +1874,59 @@
 .task-chat-filter-modal .modal-content > *:not(.task-chat-filter-buttons) {
     flex-shrink: 0;
 }
+
+/* ============================================
+   Additional Filter UI Refinements
+   ============================================ */
+
+/* Reduce spacing in filter modal description */
+.task-chat-filter-section-desc {
+    line-height: 1.4 !important;
+    margin-bottom: 12px !important;
+}
+
+.task-chat-filter-section-desc br + br {
+    display: none; /* Remove double line breaks */
+}
+
+/* Remove border from status category subsection */
+.task-chat-filter-subsection:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+}
+
+/* Button icon spacing */
+.task-chat-button-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+}
+
+.task-chat-button-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.task-chat-button-text {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Ensure filter button displays icon and text inline */
+.task-chat-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Make filter count more prominent */
+.task-chat-filter-count {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* Text area styling for search input */
+.task-chat-filter-modal textarea {
+    min-height: 60px;
+    font-family: var(--font-text);
+}

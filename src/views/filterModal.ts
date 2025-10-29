@@ -75,14 +75,16 @@ export class FilterModal extends Modal {
         new Setting(section)
             .setName("Filter tasks by text content")
             .setDesc("Enter keywords to search within task text")
-            .addText((text) =>
-                text
-                    .setPlaceholder("Enter search text")
+            .addTextArea((text) => {
+                text.setPlaceholder("Enter search text")
                     .setValue(this.filter.text || "")
                     .onChange((value) => {
                         this.filter.text = value;
-                    }),
-            );
+                    });
+                // Make text area resizable and larger
+                text.inputEl.rows = 3;
+                text.inputEl.style.resize = "vertical";
+            });
     }
 
     /**
