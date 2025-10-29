@@ -2025,15 +2025,23 @@ ${taskContext}`;
     /**
      * Fetch actual token usage from OpenRouter's generation API
      * OpenRouter provides accurate usage data via their generation endpoint
+     *
+     * @param generationId - The generation ID from the streaming response
+     * @param apiKey - OpenRouter API key
+     * @param retryCount - Current retry attempt (for internal use)
      */
     private static async fetchOpenRouterUsage(
         generationId: string,
         apiKey: string,
+        retryCount: number = 0,
     ): Promise<{
         promptTokens: number;
         completionTokens: number;
         actualCost?: number; // Actual cost charged by OpenRouter
     } | null> {
+        const maxRetries = 2;
+        const retryDelay = 1500; // 1.5 seconds
+
         try {
             const response = await fetch(
                 `https://openrouter.ai/api/v1/generation?id=${generationId}`,
@@ -2045,38 +2053,87 @@ ${taskContext}`;
             );
 
             if (!response.ok) {
+                // 404 might mean data isn't ready yet - retry with delay
+                if (response.status === 404 && retryCount < maxRetries) {
+                    Logger.debug(
+                        `[OpenRouter] Generation API returned 404 (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${retryDelay}ms...`,
+                    );
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, retryDelay),
+                    );
+                    return this.fetchOpenRouterUsage(
+                        generationId,
+                        apiKey,
+                        retryCount + 1,
+                    );
+                }
+
                 Logger.warn(
-                    `[OpenRouter] Generation API returned ${response.status}`,
+                    `[OpenRouter] Generation API returned ${response.status} after ${retryCount + 1} attempts`,
                 );
                 return null;
             }
 
             const data = await response.json();
 
+            Logger.debug(`[OpenRouter] ✓ Generation API response received`);
             Logger.debug(
                 `[OpenRouter] Raw generation data: ${JSON.stringify(data.data)}`,
             );
 
             // OpenRouter returns usage and cost in data.data
             if (data.data?.usage) {
+                Logger.debug(`[OpenRouter] ✓ Usage data found in response`);
+                Logger.debug(
+                    `[OpenRouter] Native tokens - prompt: ${data.data.usage.prompt_tokens}, completion: ${data.data.usage.completion_tokens}`,
+                );
+
+                // Check if native token counts are available
+                Logger.debug(
+                    `[OpenRouter] native_tokens_completion: ${data.data.native_tokens_completion}`,
+                );
+                Logger.debug(
+                    `[OpenRouter] total_cost field: ${data.data.total_cost} (type: ${typeof data.data.total_cost})`,
+                );
+
+                // Extract actual cost from OpenRouter
+                // Prefer using cost when native tokens are available (most accurate)
+                // But fall back to using total_cost if available (better than calculated)
+                let actualCost: number | undefined = undefined;
+
+                if (data.data.total_cost) {
+                    actualCost = parseFloat(data.data.total_cost);
+
+                    if (data.data.native_tokens_completion) {
+                        Logger.debug(
+                            `[OpenRouter] ✓ Got actual cost from API with native tokens: $${actualCost.toFixed(6)}`,
+                        );
+                    } else {
+                        Logger.debug(
+                            `[OpenRouter] ✓ Got cost from API (without native tokens): $${actualCost.toFixed(6)}`,
+                        );
+                        Logger.warn(
+                            `[OpenRouter] ⚠️ native_tokens_completion not found - cost may be less accurate`,
+                        );
+                    }
+                } else {
+                    Logger.warn(
+                        `[OpenRouter] ⚠️ total_cost field not found in API response`,
+                    );
+                }
+
                 const usageData = {
                     promptTokens: data.data.usage.prompt_tokens || 0,
                     completionTokens: data.data.usage.completion_tokens || 0,
-                    // OpenRouter provides actual cost charged
-                    actualCost: data.data.native_tokens_completion
-                        ? parseFloat(data.data.total_cost || 0)
-                        : undefined,
+                    actualCost: actualCost,
                 };
-
-                if (usageData.actualCost !== undefined) {
-                    Logger.debug(
-                        `[OpenRouter] ✓ Got actual cost from API: $${usageData.actualCost.toFixed(6)}`,
-                    );
-                }
 
                 return usageData;
             }
 
+            Logger.warn(
+                `[OpenRouter] ⚠️ No usage data in generation API response`,
+            );
             return null;
         } catch (error) {
             Logger.warn(
@@ -2290,9 +2347,10 @@ ${taskContext}`;
                     model: model,
                     messages: messages,
                     stream: true,
-                    // OpenAI supports stream_options, but OpenRouter doesn't
-                    // Only include for OpenAI provider
-                    ...(provider === "openai" && {
+                    // Both OpenAI and OpenRouter support stream_options for token usage
+                    // This provides accurate token counts in the streaming response
+                    ...((provider === "openai" ||
+                        provider === "openrouter") && {
                         stream_options: {
                             include_usage: true,
                         },
@@ -2321,9 +2379,25 @@ ${taskContext}`;
             // Try to extract generation ID from OpenRouter response headers
             let generationId: string | null = null;
             if (provider === "openrouter") {
-                generationId = response.headers.get("x-generation-id");
+                Logger.debug(
+                    `[OpenRouter] Attempting to extract generation ID from headers...`,
+                );
+
+                // Try different header formats
+                generationId =
+                    response.headers.get("x-generation-id") ||
+                    response.headers.get("X-Generation-Id") ||
+                    (response.headers as any)["x-generation-id"] ||
+                    null;
+
                 if (generationId) {
-                    Logger.debug(`[OpenRouter] Generation ID: ${generationId}`);
+                    Logger.debug(
+                        `[OpenRouter] ✓ Generation ID from headers: ${generationId}`,
+                    );
+                } else {
+                    Logger.debug(
+                        `[OpenRouter] ⚠️ Generation ID not in headers, will try to get from stream`,
+                    );
                 }
             }
 
@@ -2339,6 +2413,18 @@ ${taskContext}`;
                 // Capture token usage from stream (comes in final chunk)
                 if (chunk.tokenUsage) {
                     tokenUsageInfo = chunk.tokenUsage;
+                }
+
+                // Capture generation ID from stream (fallback if not in headers)
+                if (
+                    provider === "openrouter" &&
+                    chunk.generationId &&
+                    !generationId
+                ) {
+                    generationId = chunk.generationId;
+                    Logger.debug(
+                        `[OpenRouter] ✓ Generation ID from stream: ${generationId}`,
+                    );
                 }
 
                 if (chunk.done) break;

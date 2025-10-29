@@ -2186,6 +2186,130 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     }
 
     /**
+     * Fetch actual token usage from OpenRouter's generation API
+     * OpenRouter provides accurate usage data via their generation endpoint
+     *
+     * @param generationId - The generation ID from the API response
+     * @param apiKey - OpenRouter API key
+     * @param retryCount - Current retry attempt (for internal use)
+     */
+    private static async fetchOpenRouterUsage(
+        generationId: string,
+        apiKey: string,
+        retryCount: number = 0,
+    ): Promise<{
+        promptTokens: number;
+        completionTokens: number;
+        actualCost?: number; // Actual cost charged by OpenRouter
+    } | null> {
+        const maxRetries = 2;
+        const retryDelay = 1500; // 1.5 seconds
+
+        try {
+            const response = await requestUrl({
+                url: `https://openrouter.ai/api/v1/generation?id=${generationId}`,
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                // 404 might mean data isn't ready yet - retry with delay
+                if (response.status === 404 && retryCount < maxRetries) {
+                    Logger.debug(
+                        `[OpenRouter Parser] Generation API returned 404 (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${retryDelay}ms...`,
+                    );
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, retryDelay),
+                    );
+                    return this.fetchOpenRouterUsage(
+                        generationId,
+                        apiKey,
+                        retryCount + 1,
+                    );
+                }
+
+                Logger.warn(
+                    `[OpenRouter Parser] Generation API returned ${response.status} after ${retryCount + 1} attempts`,
+                );
+                return null;
+            }
+
+            const data = response.json;
+
+            Logger.debug(
+                `[OpenRouter Parser] ✓ Generation API response received`,
+            );
+            Logger.debug(
+                `[OpenRouter Parser] Raw generation data: ${JSON.stringify(data.data)}`,
+            );
+
+            // OpenRouter returns usage and cost in data.data
+            if (data.data?.usage) {
+                Logger.debug(
+                    `[OpenRouter Parser] ✓ Usage data found in response`,
+                );
+                Logger.debug(
+                    `[OpenRouter Parser] Native tokens - prompt: ${data.data.usage.prompt_tokens}, completion: ${data.data.usage.completion_tokens}`,
+                );
+
+                // Check if native token counts are available
+                Logger.debug(
+                    `[OpenRouter Parser] native_tokens_completion: ${data.data.native_tokens_completion}`,
+                );
+                Logger.debug(
+                    `[OpenRouter Parser] total_cost field: ${data.data.total_cost} (type: ${typeof data.data.total_cost})`,
+                );
+
+                // Extract actual cost from OpenRouter
+                // Prefer using cost when native tokens are available (most accurate)
+                // But fall back to using total_cost if available (better than calculated)
+                let actualCost: number | undefined = undefined;
+
+                if (data.data.total_cost) {
+                    actualCost = parseFloat(data.data.total_cost);
+
+                    if (data.data.native_tokens_completion) {
+                        Logger.debug(
+                            `[OpenRouter Parser] ✓ Got actual cost from API with native tokens: $${actualCost.toFixed(6)}`,
+                        );
+                    } else {
+                        Logger.debug(
+                            `[OpenRouter Parser] ✓ Got cost from API (without native tokens): $${actualCost.toFixed(6)}`,
+                        );
+                        Logger.warn(
+                            `[OpenRouter Parser] ⚠️ native_tokens_completion not found - cost may be less accurate`,
+                        );
+                    }
+                } else {
+                    Logger.warn(
+                        `[OpenRouter Parser] ⚠️ total_cost field not found in API response`,
+                    );
+                }
+
+                const usageData = {
+                    promptTokens: data.data.usage.prompt_tokens || 0,
+                    completionTokens: data.data.usage.completion_tokens || 0,
+                    actualCost: actualCost,
+                };
+
+                return usageData;
+            }
+
+            Logger.warn(
+                `[OpenRouter Parser] ⚠️ No usage data in generation API response`,
+            );
+            return null;
+        } catch (error) {
+            Logger.warn(
+                `[OpenRouter Parser] Failed to fetch generation data: ${error}`,
+            );
+            return null;
+        }
+    }
+
+    /**
      * Calculate cost based on token usage and model (using dynamic pricing from API)
      * Pricing data fetched from OpenRouter API and updated automatically
      */
@@ -2317,36 +2441,134 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
         // Extract token usage
         const usage = data.usage || {};
-        const promptTokens = usage.prompt_tokens || 0;
-        const completionTokens = usage.completion_tokens || 0;
-        const totalTokens =
-            usage.total_tokens || promptTokens + completionTokens;
+        let promptTokens = usage.prompt_tokens || 0;
+        let completionTokens = usage.completion_tokens || 0;
+        let totalTokens = usage.total_tokens || promptTokens + completionTokens;
+
+        // Calculate cost using pricing table (initial estimate)
+        let calculatedCost = this.calculateCost(
+            promptTokens,
+            completionTokens,
+            model,
+            provider,
+            settings.pricingCache.data,
+        );
+        let actualCost: number | undefined = undefined;
+        let isEstimated = false;
+
+        // For OpenRouter, try to fetch actual usage AND cost
+        if (provider === "openrouter") {
+            // Try to extract generation ID from response body or headers
+            let generationId: string | null = null;
+
+            // OpenRouter includes generation ID in response body (id field)
+            if (data.id) {
+                generationId = data.id;
+                Logger.debug(
+                    `[OpenRouter Parser] ✓ Generation ID from response: ${generationId}`,
+                );
+            }
+
+            // Try to get from headers if available (requestUrl may expose headers)
+            if (!generationId && (response as any).headers) {
+                const headers = (response as any).headers;
+                generationId =
+                    headers["x-generation-id"] ||
+                    headers["X-Generation-Id"] ||
+                    null;
+                if (generationId) {
+                    Logger.debug(
+                        `[OpenRouter Parser] ✓ Generation ID from headers: ${generationId}`,
+                    );
+                }
+            }
+
+            if (generationId) {
+                try {
+                    Logger.debug(
+                        `[OpenRouter Parser] Fetching actual token usage and cost for generation ${generationId}...`,
+                    );
+                    const usageData = await this.fetchOpenRouterUsage(
+                        generationId,
+                        apiKey,
+                    );
+                    if (usageData) {
+                        promptTokens = usageData.promptTokens;
+                        completionTokens = usageData.completionTokens;
+                        totalTokens = promptTokens + completionTokens;
+                        actualCost = usageData.actualCost;
+                        isEstimated = false;
+                        Logger.debug(
+                            `[OpenRouter Parser] ✓ Got actual usage: ${promptTokens} prompt + ${completionTokens} completion`,
+                        );
+                        if (actualCost !== undefined) {
+                            Logger.debug(
+                                `[OpenRouter Parser] ✓ Using actual cost from API: $${actualCost.toFixed(6)} (not calculated)`,
+                            );
+                        }
+                    } else {
+                        isEstimated = true;
+                        Logger.warn(
+                            `[OpenRouter Parser] ⚠️ Failed to fetch actual usage, using estimates`,
+                        );
+                    }
+                } catch (error) {
+                    isEstimated = true;
+                    Logger.warn(
+                        `[OpenRouter Parser] Failed to fetch actual usage, using estimates: ${error}`,
+                    );
+                }
+            } else {
+                isEstimated = true;
+                Logger.warn(
+                    `[OpenRouter Parser] ⚠️ Generation ID not found, using estimated costs`,
+                );
+            }
+        }
+
+        // Recalculate cost if we got new token counts but no actual cost
+        if (actualCost === undefined) {
+            calculatedCost = this.calculateCost(
+                promptTokens,
+                completionTokens,
+                model,
+                provider,
+                settings.pricingCache.data,
+            );
+        }
+
+        const finalCost =
+            actualCost !== undefined ? actualCost : calculatedCost;
+
+        // Log cost source for transparency
+        if (actualCost !== undefined) {
+            Logger.debug(
+                `[Cost Parser] Using actual cost from ${provider} API: $${actualCost.toFixed(6)}`,
+            );
+            if (Math.abs(actualCost - calculatedCost) > 0.000001) {
+                Logger.warn(
+                    `[Cost Parser] Actual cost ($${actualCost.toFixed(6)}) differs from calculated ($${calculatedCost.toFixed(6)}) - using actual`,
+                );
+            }
+        } else {
+            Logger.debug(
+                `[Cost Parser] Calculated cost for ${provider}/${model}: $${calculatedCost.toFixed(6)}`,
+            );
+        }
 
         const tokenUsage = {
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: this.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            estimatedCost: finalCost, // Use actual cost if available
             model: model,
             provider: provider,
-            isEstimated: false,
+            isEstimated,
             // Track parsing model separately
             parsingModel: model,
             parsingProvider: provider,
             parsingTokens: totalTokens,
-            parsingCost: this.calculateCost(
-                promptTokens,
-                completionTokens,
-                model,
-                provider,
-                settings.pricingCache.data,
-            ),
+            parsingCost: finalCost, // Use actual cost if available
         };
 
         return { response: content, tokenUsage };

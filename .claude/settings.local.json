@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//private/tmp/**)",
+      "Read(//tmp/obsidian-copilot/src/**)",
+      "Bash(gh search:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(git clone:*)",
+      "Bash(find:*)",
+      "Read(//tmp/smart-connections-research/**)",
+      "Read(//tmp/jsbrains-research/smart-chat-model/adapters/**)",
+      "Read(//tmp/jsbrains-research/smart-chat-model/**)",
+      "Read(//tmp/copilot-research/**)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

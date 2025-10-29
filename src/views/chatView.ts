@@ -869,6 +869,23 @@ export class ChatView extends ItemView {
                 this.plugin.settings,
             );
 
+            // Log what's being displayed for debugging
+            if (message.tokenUsage) {
+                Logger.debug(
+                    `[Metadata Display] Cost values - estimatedCost: $${message.tokenUsage.estimatedCost?.toFixed(6) || "N/A"}, ` +
+                        `parsingCost: $${message.tokenUsage.parsingCost?.toFixed(6) || "N/A"}, ` +
+                        `analysisCost: $${message.tokenUsage.analysisCost?.toFixed(6) || "N/A"}`,
+                );
+                Logger.debug(
+                    `[Metadata Display] Token counts - total: ${message.tokenUsage.totalTokens}, ` +
+                        `prompt: ${message.tokenUsage.promptTokens}, ` +
+                        `completion: ${message.tokenUsage.completionTokens}`,
+                );
+                Logger.debug(
+                    `[Metadata Display] Displayed text: "${metadataText}"`,
+                );
+            }
+
             if (metadataText) {
                 // Add AI understanding summary to metadata line (compact format)
                 const aiSummary = this.getAIUnderstandingSummary(message);

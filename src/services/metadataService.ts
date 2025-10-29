@@ -79,8 +79,21 @@ export class MetadataService {
                 const completionTokens =
                     message.tokenUsage.completionTokens || 0;
                 const cost = message.tokenUsage.estimatedCost || 0;
+
+                // Format cost with appropriate precision
+                let costStr: string;
+                if (cost === 0) {
+                    costStr = "$0.00";
+                } else if (cost < 0.0001) {
+                    costStr = `$${cost.toFixed(6)}`;
+                } else if (cost < 1.0) {
+                    costStr = `$${cost.toFixed(4)}`;
+                } else {
+                    costStr = `$${cost.toFixed(2)}`;
+                }
+
                 parts.push(
-                    `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), $${cost.toFixed(2)}`,
+                    `${totalTokens.toLocaleString()} tokens (${promptTokens.toLocaleString()} in, ${completionTokens.toLocaleString()} out), ${costStr}`,
                 );
 
                 // Show language info (or Undetected for failed parsing)
@@ -139,9 +152,17 @@ export class MetadataService {
                 let costStr: string;
                 if (cost === 0) {
                     costStr = "$0.00";
+                } else if (cost < 0.0001) {
+                    // Very small costs: show 6 decimal places
+                    costStr = `~$${cost.toFixed(6)}`;
                 } else if (cost < 0.01) {
+                    // Small costs: show 4 decimal places
+                    costStr = `~$${cost.toFixed(4)}`;
+                } else if (cost < 1.0) {
+                    // Medium costs: show 4 decimal places for clarity
                     costStr = `~$${cost.toFixed(4)}`;
                 } else {
+                    // Large costs: show 2 decimal places
                     costStr = `~$${cost.toFixed(2)}`;
                 }
                 parts.push(

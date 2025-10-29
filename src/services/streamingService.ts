@@ -10,13 +10,14 @@ import { Logger } from "../utils/logger";
  */
 
 export interface StreamChunk {
-    content: string; // Text content
-    done: boolean; // Stream completion flag
+    content: string;
+    done: boolean;
     tokenUsage?: {
         promptTokens?: number;
         completionTokens?: number;
         totalTokens?: number;
     };
+    generationId?: string; // For OpenRouter
 }
 
 export class StreamingService {
@@ -140,7 +141,31 @@ export class StreamingService {
             // Log raw usage data from API for debugging
             if (json.usage) {
                 Logger.debug(
-                    `[Streaming] Raw API usage data: ${JSON.stringify(json.usage)}`,
+                    `[Streaming] ✓ Raw API usage data: ${JSON.stringify(json.usage)}`,
+                );
+                Logger.debug(
+                    `[Streaming] ✓ Token counts: ${json.usage.prompt_tokens} prompt + ${json.usage.completion_tokens} completion = ${json.usage.total_tokens} total`,
+                );
+            }
+
+            // Debug: Log chunk ID (could be generation ID for OpenRouter)
+            // This ID is crucial for fetching actual costs from OpenRouter
+            if (json.id) {
+                Logger.debug(
+                    `[Streaming] ✓ Chunk ID from response: ${json.id} (type: ${typeof json.id})`,
+                );
+                if (
+                    json.id.startsWith("gen-") ||
+                    json.id.startsWith("chatcmpl-")
+                ) {
+                    Logger.debug(
+                        `[Streaming] ✓ ID format looks valid for generation ID`,
+                    );
+                }
+            } else if (finishReason || usage) {
+                // If we're finishing but don't have an ID, that's a problem
+                Logger.warn(
+                    `[Streaming] ⚠️ No generation ID in final chunk! Cannot fetch actual costs.`,
                 );
             }
 
@@ -155,6 +180,7 @@ export class StreamingService {
                 content,
                 done: isDone,
                 tokenUsage: usage,
+                generationId: json.id || undefined, // Capture generation ID for OpenRouter
             };
         } catch (error) {
             Logger.debug("Failed to parse OpenAI chunk:", data);
