@@ -1110,8 +1110,6 @@ export class SettingsTab extends PluginSettingTab {
                 }
             });
 
-        organizeSetting.settingEl.style.marginBottom = "20px";
-
         // Reset status category
         new Setting(containerEl)
             .setName("Reset status category")
