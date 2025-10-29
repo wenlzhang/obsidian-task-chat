@@ -36,17 +36,18 @@ export class SettingsTab extends PluginSettingTab {
         // UNDERSTANDING SETTINGS OVERVIEW
         // ========================================
         // AI Provider
-        new Setting(containerEl).setName("AI provider").setHeading();
+        const aiProviderSetting = new Setting(containerEl)
+            .setName("AI provider")
+            .setDesc(
+                "Choose your AI provider and configure API key, model selection, and connection settings.",
+            )
+            .setHeading();
 
-        const aiProviderInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        aiProviderInfo.createEl("p", {
-            text: "Choose your AI provider and configure API key, model selection, and connection settings.",
-        });
-        const p = aiProviderInfo.createEl("p");
-        p.createEl("a", {
-            text: "→ Learn more about AI provider setup",
+        const aiProviderDesc = aiProviderSetting.descEl;
+        aiProviderDesc.createSpan({ text: " " });
+        aiProviderDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about AI provider setup.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#1-ai-provider",
         });
 
@@ -145,9 +146,11 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        tokenSetting.descEl.createEl("br");
-        tokenSetting.descEl.createEl("a", {
-            text: "→ Learn more about max tokens and performance tuning",
+        const tokenDesc = tokenSetting.descEl;
+        tokenDesc.createSpan({ text: " " });
+        tokenDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about max tokens and performance tuning.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-max-response-tokens",
         });
 
@@ -164,24 +167,27 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        contextSetting.descEl.createEl("br");
-        contextSetting.descEl.createEl("a", {
-            text: "→ Learn more about context window and troubleshooting",
+        const contextDesc = contextSetting.descEl;
+        contextDesc.createSpan({ text: " " });
+        contextDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about context window and troubleshooting.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
         });
 
         // Model configuration subsection
-        new Setting(containerEl).setName("Model configuration").setHeading();
+        const modelConfigSetting = new Setting(containerEl)
+            .setName("Model configuration")
+            .setDesc(
+                "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
+            )
+            .setHeading();
 
-        const modelConfigDesc = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        modelConfigDesc.createEl("p", {
-            text: "Use different AI models for query parsing (Smart Search & Task Chat) and task analysis (Task Chat only) to optimize costs and performance.",
-        });
-        const modelConfigLink = modelConfigDesc.createEl("p");
-        modelConfigLink.createEl("a", {
-            text: "→ Learn more about model configuration",
+        const modelConfigDesc = modelConfigSetting.descEl;
+        modelConfigDesc.createSpan({ text: " " });
+        modelConfigDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about model configuration.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/MODEL_CONFIGURATION.md",
         });
 
@@ -428,17 +434,18 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Chat Settings
-        new Setting(containerEl).setName("Task chat").setHeading();
+        const taskChatSetting = new Setting(containerEl)
+            .setName("Task chat")
+            .setDesc(
+                "Configure chat interface behavior, history length, response tokens, and temperature.",
+            )
+            .setHeading();
 
-        const taskChatInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        taskChatInfo.createEl("p", {
-            text: "Configure chat interface behavior, history length, response tokens, and temperature.",
-        });
-        const p3 = taskChatInfo.createEl("p");
-        p3.createEl("a", {
-            text: "→ Learn more about task chat settings",
+        const taskChatDesc = taskChatSetting.descEl;
+        taskChatDesc.createSpan({ text: " " });
+        taskChatDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about task chat settings.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#2-task-chat",
         });
 
@@ -479,18 +486,19 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Add detailed explanation below the slider
-        const chatContextInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        chatContextInfo.createEl("p", {
-            text: "More history = higher token cost.",
-        });
-        const chatContextLink = chatContextInfo.createEl("p");
-        chatContextLink.createEl("a", {
-            text: "→ Learn more about chat history context",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_HISTORY_CONTEXT.md",
-        });
+        const updateChatContextDesc = (value: number) => {
+            chatContextSetting.setDesc(
+                `Number of recent messages to send to AI as context (1-100). Default: 5. Current: ${value}. More history = higher token cost.`,
+            );
+            const descEl = chatContextSetting.descEl;
+            descEl.createSpan({ text: " " });
+            descEl.createEl("a", {
+                cls: "setting-inline-link",
+                text: "Learn more about chat history context.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_HISTORY_CONTEXT.md",
+            });
+        };
+        updateChatContextDesc(this.plugin.settings.chatHistoryContextLength);
 
         new Setting(containerEl)
             .setName("Show task count")
@@ -543,32 +551,30 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Mode comparison - link to documentation
-        const modeComparisonInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        const p4 = modeComparisonInfo.createEl("p");
-        p4.createEl("strong", { text: "Chat mode comparison:" });
-        p4.appendText(
-            " Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).",
-        );
-        const p5 = modeComparisonInfo.createEl("p");
-        p5.createEl("a", {
-            text: "→ Learn more about chat modes",
+        const modeComparisonSetting = new Setting(containerEl)
+            .setName("Chat mode comparison")
+            .setDesc(
+                "Simple (free, regex-based), Smart (AI keyword expansion), Task Chat (full AI analysis).",
+            );
+        const modeDesc = modeComparisonSetting.descEl;
+        modeDesc.createSpan({ text: " " });
+        modeDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about chat modes.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/CHAT_MODES.md",
         });
 
         // Semantic Expansion
-        new Setting(containerEl).setName("Semantic expansion").setHeading();
+        const semanticExpansionSetting = new Setting(containerEl)
+            .setName("Semantic expansion")
+            .setDesc("Configure keyword expansion and custom property terms.")
+            .setHeading();
 
-        const semanticExpansionInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        semanticExpansionInfo.createEl("p", {
-            text: "Configure keyword expansion and custom property terms.",
-        });
-        const p6 = semanticExpansionInfo.createEl("p");
-        p6.createEl("a", {
-            text: "→ Learn more about semantic expansion",
+        const semanticDesc = semanticExpansionSetting.descEl;
+        semanticDesc.createSpan({ text: " " });
+        semanticDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about semantic expansion.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SEMANTIC_EXPANSION.md",
         });
 
@@ -623,10 +629,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-
-        new Setting(containerEl)
-            .setName("Dataview task properties")
-            .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
             .setName("Priority terms")
@@ -823,19 +825,22 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Dataview task properties")
-            .setClass("setting-subsection-heading");
-
-        const dataviewInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        dataviewInfo.createEl("p", {
-            text: "Configure task property field namess.",
-        });
-        const dataviewLink = dataviewInfo.createEl("p");
-        dataviewLink.createEl("a", {
-            text: "→ Learn more about Dataview integration",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
-        });
+            .setClass("setting-subsection-heading")
+            .setDesc("Configure task property field names.");
+        const dataviewDesc = containerEl.lastElementChild as HTMLElement;
+        if (dataviewDesc?.classList.contains("setting-item")) {
+            const descEl = dataviewDesc.querySelector(
+                ".setting-item-description",
+            );
+            if (descEl) {
+                descEl.createSpan({ text: " " });
+                descEl.createEl("a", {
+                    cls: "setting-inline-link",
+                    text: "Learn more about Dataview integration.",
+                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
+                });
+            }
+        }
 
         new Setting(containerEl)
             .setName("Due date field")
@@ -989,17 +994,18 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Status Category
-        new Setting(containerEl).setName("Status category").setHeading();
+        const statusCategorySetting = new Setting(containerEl)
+            .setName("Status category")
+            .setDesc(
+                "Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.",
+            )
+            .setHeading();
 
-        const statusCategoriesDesc = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        statusCategoriesDesc.createEl("p", {
-            text: "Define custom categories with checkbox symbols, scores, and query aliases. Protected: Open, Completed, In Progress, Cancelled, Other.",
-        });
-        const p9 = statusCategoriesDesc.createEl("p");
-        p9.createEl("a", {
-            text: "→ Learn more about status categories and score vs order",
+        const statusDesc = statusCategorySetting.descEl;
+        statusDesc.createSpan({ text: " " });
+        statusDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about status categories and score vs order.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/STATUS_CATEGORIES.md",
         });
 
@@ -1117,19 +1123,24 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task filtering
-        new Setting(containerEl).setName("Task filtering").setHeading();
-
-        const filteringInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        filteringInfo.createEl("p", {
-            text: "Control which tasks appear in results.",
-        });
-        const p10 = filteringInfo.createEl("p");
-        p10.createEl("a", {
-            text: "→ Learn more about filtering options",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering",
-        });
+        new Setting(containerEl)
+            .setName("Task filtering")
+            .setDesc("Control which tasks appear in results.")
+            .setHeading();
+        const filteringDesc = containerEl.lastElementChild as HTMLElement;
+        if (filteringDesc?.classList.contains("setting-item")) {
+            const descEl = filteringDesc.querySelector(
+                ".setting-item-description",
+            );
+            if (descEl) {
+                descEl.createSpan({ text: " " });
+                descEl.createEl("a", {
+                    cls: "setting-inline-link",
+                    text: "Learn more about filtering options.",
+                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#7-task-filtering",
+                });
+            }
+        }
 
         new Setting(containerEl)
             .setName("Relevance score")
@@ -1199,6 +1210,9 @@ export class SettingsTab extends PluginSettingTab {
         // Exclusions (Tags, Folders, Notes)
         new Setting(containerEl)
             .setName("Task exclusion")
+            .setDesc(
+                "Exclude tasks from searches by tags, folders, or notes. After adding exclusions, click 'Refresh' in the chat to update task counts.",
+            )
             .addButton((button) => {
                 button
                     .setButtonText("Manage exclusions")
@@ -1206,18 +1220,12 @@ export class SettingsTab extends PluginSettingTab {
                     .onClick(() => {
                         new ExclusionsModal(this.app, this.plugin).open();
                     });
+            })
+            .descEl.createEl("a", {
+                cls: "setting-inline-link",
+                text: "Learn more about task exclusion.",
+                href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
             });
-        const exclusionsInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        exclusionsInfo.createEl("p", {
-            text: "Exclude tasks from searches by tags, folders, or notes. After adding exclusions, click 'Refresh' in the chat to update task counts.",
-        });
-        const exclusionsLink = exclusionsInfo.createEl("p");
-        exclusionsLink.createEl("a", {
-            text: "→ Learn more about task exclusion",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/EXCLUSIONS.md",
-        });
 
         // Task scoring
         new Setting(containerEl).setName("Task scoring").setHeading();
@@ -1225,19 +1233,24 @@ export class SettingsTab extends PluginSettingTab {
         // Main weights
         new Setting(containerEl)
             .setName("Main weights")
-            .setClass("setting-subsection-heading");
-
-        const mainWeightsInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        mainWeightsInfo.createEl("p", {
-            text: "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
-        });
-        const mainWeightsLink = mainWeightsInfo.createEl("p");
-        mainWeightsLink.createEl("a", {
-            text: "→ Learn more about scoring weights",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
-        });
+            .setClass("setting-subsection-heading")
+            .setDesc(
+                "Control how each factor (relevance, due date, priority, status) contributes to task scores.",
+            );
+        const weightsDesc = containerEl.lastElementChild as HTMLElement;
+        if (weightsDesc?.classList.contains("setting-item")) {
+            const descEl = weightsDesc.querySelector(
+                ".setting-item-description",
+            );
+            if (descEl) {
+                descEl.createSpan({ text: " " });
+                descEl.createEl("a", {
+                    cls: "setting-inline-link",
+                    text: "Learn more about scoring weights.",
+                    href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SCORING_SYSTEM.md",
+                });
+            }
+        }
 
         new Setting(containerEl)
             .setName("Relevance weight")
@@ -1727,17 +1740,18 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Task Display
-        new Setting(containerEl).setName("Task display").setHeading();
+        const taskDisplaySetting = new Setting(containerEl)
+            .setName("Task display")
+            .setDesc(
+                "Configure result limits, sorting order, and display preferences.",
+            )
+            .setHeading();
 
-        const taskDisplayInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        taskDisplayInfo.createEl("p", {
-            text: "Configure result limits, sorting order, and display preferences.",
-        });
-        const p11 = taskDisplayInfo.createEl("p");
-        p11.createEl("a", {
-            text: "→ Learn more about task display options",
+        const taskDisplayDesc = taskDisplaySetting.descEl;
+        taskDisplayDesc.createSpan({ text: " " });
+        taskDisplayDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about task display options.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#9-task-display",
         });
 
@@ -1762,17 +1776,18 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        new Setting(containerEl).setName("Advanced").setHeading();
+        const advancedSetting = new Setting(containerEl)
+            .setName("Advanced")
+            .setDesc(
+                "Advanced settings for system prompts and pricing data management.",
+            )
+            .setHeading();
 
-        const advancedInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        advancedInfo.createEl("p", {
-            text: "Advanced settings for system prompts and pricing data management.",
-        });
-        const p12 = advancedInfo.createEl("p");
-        p12.createEl("a", {
-            text: "→ Learn more about advanced settings",
+        const advancedDesc = advancedSetting.descEl;
+        advancedDesc.createSpan({ text: " " });
+        advancedDesc.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more about advanced settings.",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#10-advanced",
         });
 
