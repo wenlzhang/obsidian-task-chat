@@ -2023,172 +2023,6 @@ ${taskContext}`;
     }
 
     /**
-     * Fetch actual token usage from OpenRouter's generation API
-     * OpenRouter provides accurate usage data via their generation endpoint
-     *
-     * @param generationId - The generation ID from the streaming response
-     * @param apiKey - OpenRouter API key
-     * @param retryCount - Current retry attempt (for internal use)
-     */
-    private static async fetchOpenRouterUsage(
-        generationId: string,
-        apiKey: string,
-        retryCount: number = 0,
-    ): Promise<{
-        promptTokens: number;
-        completionTokens: number;
-        actualCost?: number; // Actual cost charged by OpenRouter
-    } | null> {
-        const maxRetries = 2;
-        const retryDelay = 1500; // 1.5 seconds
-
-        try {
-            const response = await fetch(
-                `https://openrouter.ai/api/v1/generation?id=${generationId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                    },
-                },
-            );
-
-            if (!response.ok) {
-                // 404 might mean data isn't ready yet - retry with delay
-                if (response.status === 404 && retryCount < maxRetries) {
-                    Logger.debug(
-                        `[OpenRouter] Generation API returned 404 (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${retryDelay}ms...`,
-                    );
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, retryDelay),
-                    );
-                    return this.fetchOpenRouterUsage(
-                        generationId,
-                        apiKey,
-                        retryCount + 1,
-                    );
-                }
-
-                Logger.warn(
-                    `[OpenRouter] Generation API returned ${response.status} after ${retryCount + 1} attempts`,
-                );
-                return null;
-            }
-
-            const data = await response.json();
-
-            Logger.debug(`[OpenRouter] ✓ Generation API response received`);
-            Logger.debug(
-                `[OpenRouter] Raw generation data: ${JSON.stringify(data.data)}`,
-            );
-
-            // OpenRouter returns usage and cost in data.data
-            if (data.data?.usage) {
-                Logger.debug(`[OpenRouter] ✓ Usage data found in response`);
-                Logger.debug(
-                    `[OpenRouter] Native tokens - prompt: ${data.data.usage.prompt_tokens}, completion: ${data.data.usage.completion_tokens}`,
-                );
-
-                // Check if native token counts are available
-                Logger.debug(
-                    `[OpenRouter] native_tokens_completion: ${data.data.native_tokens_completion}`,
-                );
-                Logger.debug(
-                    `[OpenRouter] total_cost field: ${data.data.total_cost} (type: ${typeof data.data.total_cost})`,
-                );
-
-                // Extract actual cost from OpenRouter
-                // Prefer using cost when native tokens are available (most accurate)
-                // But fall back to using total_cost if available (better than calculated)
-                let actualCost: number | undefined = undefined;
-
-                if (data.data.total_cost) {
-                    actualCost = parseFloat(data.data.total_cost);
-
-                    if (data.data.native_tokens_completion) {
-                        Logger.debug(
-                            `[OpenRouter] ✓ Got actual cost from API with native tokens: $${actualCost.toFixed(6)}`,
-                        );
-                    } else {
-                        Logger.debug(
-                            `[OpenRouter] ✓ Got cost from API (without native tokens): $${actualCost.toFixed(6)}`,
-                        );
-                        Logger.warn(
-                            `[OpenRouter] ⚠️ native_tokens_completion not found - cost may be less accurate`,
-                        );
-                    }
-                } else {
-                    Logger.warn(
-                        `[OpenRouter] ⚠️ total_cost field not found in API response`,
-                    );
-                }
-
-                const usageData = {
-                    promptTokens: data.data.usage.prompt_tokens || 0,
-                    completionTokens: data.data.usage.completion_tokens || 0,
-                    actualCost: actualCost,
-                };
-
-                return usageData;
-            }
-
-            Logger.warn(
-                `[OpenRouter] ⚠️ No usage data in generation API response`,
-            );
-            return null;
-        } catch (error) {
-            Logger.warn(
-                `[OpenRouter] Failed to fetch generation data: ${error}`,
-            );
-            return null;
-        }
-    }
-
-    /**
-     * Calculate cost based on token usage and model (using dynamic pricing from API)
-     * Pricing data fetched from OpenRouter API and updated automatically
-     */
-    private static calculateCost(
-        promptTokens: number,
-        completionTokens: number,
-        model: string,
-        provider: "openai" | "anthropic" | "openrouter" | "ollama",
-        cachedPricing: Record<string, { input: number; output: number }>,
-    ): number {
-        // Ollama is free (local)
-        if (provider === "ollama") {
-            return 0;
-        }
-
-        // Get pricing from cache or embedded rates using provider-prefixed lookup
-        const rates = PricingService.getPricing(model, provider, cachedPricing);
-
-        // Default to gpt-4o-mini pricing if unknown
-        if (!rates) {
-            Logger.warn(
-                `Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
-            );
-            const fallback = PricingService.getPricing(
-                "gpt-4o-mini",
-                "openai",
-                {},
-            );
-            if (!fallback) {
-                return 0; // Should never happen
-            }
-            // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
-            const inputCost = (promptTokens / 1000000) * fallback.input;
-            const outputCost = (completionTokens / 1000000) * fallback.output;
-            return inputCost + outputCost;
-        }
-
-        // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
-        const inputCost = (promptTokens / 1000000) * rates.input;
-        const outputCost = (completionTokens / 1000000) * rates.output;
-
-        return inputCost + outputCost;
-    }
-
-    /**
      * Call AI API
      */
     private static async callAI(
@@ -2282,7 +2116,7 @@ ${taskContext}`;
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: this.calculateCost(
+            estimatedCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
@@ -2296,7 +2130,7 @@ ${taskContext}`;
             analysisModel: model,
             analysisProvider: provider,
             analysisTokens: totalTokens,
-            analysisCost: this.calculateCost(
+            analysisCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
@@ -2479,10 +2313,11 @@ ${taskContext}`;
                         Logger.debug(
                             `[OpenRouter] Fetching actual token usage and cost for generation ${generationId}...`,
                         );
-                        const usageData = await this.fetchOpenRouterUsage(
-                            generationId,
-                            apiKey,
-                        );
+                        const usageData =
+                            await PricingService.fetchOpenRouterUsage(
+                                generationId,
+                                apiKey,
+                            );
                         if (usageData) {
                             promptTokens = usageData.promptTokens;
                             completionTokens = usageData.completionTokens;
@@ -2506,7 +2341,7 @@ ${taskContext}`;
             }
 
             // Calculate cost: Use actual cost from API if available, otherwise calculate
-            const calculatedCost = this.calculateCost(
+            const calculatedCost = PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
@@ -2691,7 +2526,7 @@ ${taskContext}`;
                     promptTokens,
                     completionTokens,
                     totalTokens: promptTokens + completionTokens,
-                    estimatedCost: this.calculateCost(
+                    estimatedCost: PricingService.calculateCost(
                         promptTokens,
                         completionTokens,
                         providerConfig.model,
@@ -2705,7 +2540,7 @@ ${taskContext}`;
                     analysisModel: model,
                     analysisProvider: provider,
                     analysisTokens: promptTokens + completionTokens,
-                    analysisCost: this.calculateCost(
+                    analysisCost: PricingService.calculateCost(
                         promptTokens,
                         completionTokens,
                         model,
@@ -2771,7 +2606,7 @@ ${taskContext}`;
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: this.calculateCost(
+            estimatedCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 providerConfig.model,
@@ -2785,7 +2620,7 @@ ${taskContext}`;
             analysisModel: model,
             analysisProvider: provider,
             analysisTokens: totalTokens,
-            analysisCost: this.calculateCost(
+            analysisCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,

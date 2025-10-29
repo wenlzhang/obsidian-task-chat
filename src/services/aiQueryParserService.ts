@@ -2186,190 +2186,6 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     }
 
     /**
-     * Fetch actual token usage from OpenRouter's generation API
-     * OpenRouter provides accurate usage data via their generation endpoint
-     *
-     * @param generationId - The generation ID from the API response
-     * @param apiKey - OpenRouter API key
-     * @param retryCount - Current retry attempt (for internal use)
-     */
-    private static async fetchOpenRouterUsage(
-        generationId: string,
-        apiKey: string,
-        retryCount: number = 0,
-    ): Promise<{
-        promptTokens: number;
-        completionTokens: number;
-        actualCost?: number; // Actual cost charged by OpenRouter
-    } | null> {
-        const maxRetries = 2;
-        const retryDelay = 1500; // 1.5 seconds
-
-        try {
-            const response = await requestUrl({
-                url: `https://openrouter.ai/api/v1/generation?id=${generationId}`,
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${apiKey}`,
-                },
-            });
-
-            if (response.status !== 200) {
-                // 404 might mean data isn't ready yet - retry with delay
-                if (response.status === 404 && retryCount < maxRetries) {
-                    Logger.debug(
-                        `[OpenRouter Parser] Generation API returned 404 (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${retryDelay}ms...`,
-                    );
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, retryDelay),
-                    );
-                    return this.fetchOpenRouterUsage(
-                        generationId,
-                        apiKey,
-                        retryCount + 1,
-                    );
-                }
-
-                Logger.warn(
-                    `[OpenRouter Parser] Generation API returned ${response.status} after ${retryCount + 1} attempts`,
-                );
-                return null;
-            }
-
-            const data = response.json;
-
-            Logger.debug(
-                `[OpenRouter Parser] ✓ Generation API response received`,
-            );
-            Logger.debug(
-                `[OpenRouter Parser] Raw generation data: ${JSON.stringify(data.data)}`,
-            );
-
-            // OpenRouter returns usage and cost in data.data
-            if (data.data?.usage) {
-                Logger.debug(
-                    `[OpenRouter Parser] ✓ Usage data found in response`,
-                );
-                Logger.debug(
-                    `[OpenRouter Parser] Native tokens - prompt: ${data.data.usage.prompt_tokens}, completion: ${data.data.usage.completion_tokens}`,
-                );
-
-                // Check if native token counts are available
-                Logger.debug(
-                    `[OpenRouter Parser] native_tokens_completion: ${data.data.native_tokens_completion}`,
-                );
-                Logger.debug(
-                    `[OpenRouter Parser] total_cost field: ${data.data.total_cost} (type: ${typeof data.data.total_cost})`,
-                );
-
-                // Extract actual cost from OpenRouter
-                // Prefer using cost when native tokens are available (most accurate)
-                // But fall back to using total_cost if available (better than calculated)
-                let actualCost: number | undefined = undefined;
-
-                if (data.data.total_cost) {
-                    actualCost = parseFloat(data.data.total_cost);
-
-                    if (data.data.native_tokens_completion) {
-                        Logger.debug(
-                            `[OpenRouter Parser] ✓ Got actual cost from API with native tokens: $${actualCost.toFixed(6)}`,
-                        );
-                    } else {
-                        Logger.debug(
-                            `[OpenRouter Parser] ✓ Got cost from API (without native tokens): $${actualCost.toFixed(6)}`,
-                        );
-                        Logger.warn(
-                            `[OpenRouter Parser] ⚠️ native_tokens_completion not found - cost may be less accurate`,
-                        );
-                    }
-                } else {
-                    Logger.warn(
-                        `[OpenRouter Parser] ⚠️ total_cost field not found in API response`,
-                    );
-                }
-
-                const usageData = {
-                    promptTokens: data.data.usage.prompt_tokens || 0,
-                    completionTokens: data.data.usage.completion_tokens || 0,
-                    actualCost: actualCost,
-                };
-
-                return usageData;
-            }
-
-            Logger.warn(
-                `[OpenRouter Parser] ⚠️ No usage data in generation API response`,
-            );
-            return null;
-        } catch (error) {
-            Logger.warn(
-                `[OpenRouter Parser] Failed to fetch generation data: ${error}`,
-            );
-            return null;
-        }
-    }
-
-    /**
-     * Calculate cost based on token usage and model (using dynamic pricing from API)
-     * Pricing data fetched from OpenRouter API and updated automatically
-     */
-    private static calculateCost(
-        promptTokens: number,
-        completionTokens: number,
-        model: string,
-        provider: "openai" | "anthropic" | "openrouter" | "ollama",
-        cachedPricing: Record<string, { input: number; output: number }>,
-    ): number {
-        // Ollama is free (local)
-        if (provider === "ollama") {
-            Logger.debug(`[Cost] Ollama model ${model}: $0.00 (local)`);
-            return 0;
-        }
-
-        Logger.debug(
-            `[Cost] Calculating for: ${model} (${provider}), ${promptTokens} prompt + ${completionTokens} completion tokens`,
-        );
-
-        // Get pricing from cache or embedded rates using provider-prefixed lookup
-        const rates = PricingService.getPricing(model, provider, cachedPricing);
-
-        // Default to gpt-4o-mini pricing if unknown
-        if (!rates) {
-            Logger.warn(
-                `[Cost] Unknown model pricing for: ${model}, using gpt-4o-mini fallback`,
-            );
-            const fallback = PricingService.getPricing(
-                "gpt-4o-mini",
-                "openai",
-                {},
-            );
-            if (!fallback) {
-                Logger.error(`[Cost] Fallback pricing not found! Returning $0`);
-                return 0; // Should never happen
-            }
-            // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
-            const inputCost = (promptTokens / 1000000) * fallback.input;
-            const outputCost = (completionTokens / 1000000) * fallback.output;
-            const total = inputCost + outputCost;
-            Logger.debug(
-                `[Cost] Fallback: ${promptTokens} × $${fallback.input}/1M + ${completionTokens} × $${fallback.output}/1M = $${total.toFixed(6)}`,
-            );
-            return total;
-        }
-
-        // Calculate cost (pricing is per 1M tokens, so divide by 1,000,000)
-        const inputCost = (promptTokens / 1000000) * rates.input;
-        const outputCost = (completionTokens / 1000000) * rates.output;
-        const total = inputCost + outputCost;
-
-        Logger.debug(
-            `[Cost] ${model}: ${promptTokens} × $${rates.input}/1M + ${completionTokens} × $${rates.output}/1M = $${total.toFixed(6)}`,
-        );
-
-        return total;
-    }
-
-    /**
      * Call AI API for parsing
      * Returns both response text and token usage information
      */
@@ -2446,7 +2262,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         let totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
         // Calculate cost using pricing table (initial estimate)
-        let calculatedCost = this.calculateCost(
+        let calculatedCost = PricingService.calculateCost(
             promptTokens,
             completionTokens,
             model,
@@ -2488,7 +2304,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     Logger.debug(
                         `[OpenRouter Parser] Fetching actual token usage and cost for generation ${generationId}...`,
                     );
-                    const usageData = await this.fetchOpenRouterUsage(
+                    const usageData = await PricingService.fetchOpenRouterUsage(
                         generationId,
                         apiKey,
                     );
@@ -2528,7 +2344,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
         // Recalculate cost if we got new token counts but no actual cost
         if (actualCost === undefined) {
-            calculatedCost = this.calculateCost(
+            calculatedCost = PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
@@ -2655,7 +2471,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             promptTokens,
             completionTokens,
             totalTokens,
-            estimatedCost: this.calculateCost(
+            estimatedCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
@@ -2669,7 +2485,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             parsingModel: model,
             parsingProvider: provider,
             parsingTokens: totalTokens,
-            parsingCost: this.calculateCost(
+            parsingCost: PricingService.calculateCost(
                 promptTokens,
                 completionTokens,
                 model,
