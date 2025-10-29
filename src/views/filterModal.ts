@@ -522,7 +522,8 @@ export class FilterModal extends Modal {
      */
     private renderPriority(container: HTMLElement): void {
         // Show all possible priorities (1, 2, 3, 4, none)
-        const allPriorities = ["1", "2", "3", "4", "0"]; // 0 = none
+        // Use "none" string to match TaskPropertyService.PRIORITY_VALUES.none
+        const allPriorities = ["1", "2", "3", "4", "none"];
 
         const prioritySection = container.createDiv(
             "task-chat-filter-subsection",
@@ -561,10 +562,8 @@ export class FilterModal extends Modal {
                 }
             });
 
-            // Display label: show "none" for 0, otherwise show the number
-            const displayLabel = priority === "0" ? "none" : priority;
             toggleRow.createSpan({
-                text: displayLabel,
+                text: priority,
                 cls: "task-chat-filter-toggle-label",
             });
         });

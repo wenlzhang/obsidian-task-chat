@@ -375,10 +375,8 @@ export default class TaskChatPlugin extends Plugin {
                 this.settings,
             );
 
-            // Update chat view with all tasks
-            if (this.chatView) {
-                this.chatView.updateTasks(this.allTasks);
-            }
+            // Note: Don't update chatView here - let chatView.refreshTasks() handle it
+            // to preserve the current filter state
         } catch (error) {
             Logger.error("Error refreshing tasks:", error);
             new Notice("Failed to refresh tasks");

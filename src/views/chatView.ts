@@ -75,10 +75,14 @@ export class ChatView extends ItemView {
             this.chatModeOverride = null; // Use default
         }
 
-        // Load saved filter from settings
+        // Load saved filter from settings and apply it to get filtered tasks
         if (this.plugin.settings.currentFilter) {
             this.currentFilter = this.plugin.settings.currentFilter;
         }
+
+        // Apply filter to get current tasks
+        const filteredTasks = this.plugin.getFilteredTasks(this.currentFilter);
+        this.currentTasks = filteredTasks;
 
         this.renderView();
         await this.renderMessages();
@@ -315,8 +319,14 @@ export class ChatView extends ItemView {
                 cls: "task-chat-filter-separator",
             });
 
-            this.filterStatusEl.createEl("strong", {
-                text: "🔍 Active filters: ",
+            // Add filter icon and label
+            const filterLabel = this.filterStatusEl.createEl("strong");
+            const filterIcon = filterLabel.createSpan({
+                cls: "task-chat-filter-status-icon",
+            });
+            setIcon(filterIcon, "filter");
+            filterLabel.createSpan({
+                text: " Active filters: ",
             });
 
             const filterParts: string[] = [];

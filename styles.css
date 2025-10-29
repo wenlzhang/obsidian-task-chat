@@ -1930,3 +1930,54 @@
     min-height: 60px;
     font-family: var(--font-text);
 }
+
+/* ============================================
+   Final CSS Refinements
+   ============================================ */
+
+/* Reduce filter button icon-text spacing */
+.task-chat-filter-btn {
+    gap: 4px !important; /* Reduced from 6px */
+}
+
+/* Remove extra border from filter sections */
+.task-chat-filter-section {
+    border-bottom: none !important;
+}
+
+/* Add border only between sections (not after last one) */
+.task-chat-filter-section:not(:last-of-type) {
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+}
+
+/* Standardize task count and filter text styling */
+.task-chat-filter-count {
+    font-weight: normal !important; /* Not bold */
+    font-size: 13px !important; /* Same as regular text */
+    color: var(--text-normal) !important; /* Regular color */
+}
+
+/* Make "Active filters" label bold */
+.task-chat-filter-status strong {
+    font-weight: 600;
+}
+
+/* Ensure status categories don't have bottom border */
+.task-chat-filter-subsection {
+    border-bottom: none !important;
+}
+
+/* Filter status icon styling */
+.task-chat-filter-status-icon {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.task-chat-filter-status-icon svg {
+    width: 14px;
+    height: 14px;
+}
