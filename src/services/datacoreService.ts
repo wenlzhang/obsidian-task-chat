@@ -142,27 +142,31 @@ export class DatacoreService {
     /**
      * Check if an item is actually a task (has checkbox) vs a regular list item
      *
-     * Dataview has a 'task' boolean property (true = task, false = list item)
-     * Datacore likely has the same or similar property
+     * Per Datacore API docs (https://blacksmithgu.github.io/datacore/data/blocks):
+     * - Tasks have $type === "task"
+     * - List items have $type === "list"
      *
-     * Per API docs, tasks have:
-     * - $status: string (the status marker inside brackets)
-     * - task: boolean (possibly, similar to Dataview)
-     *
-     * Regular list items without checkboxes should be excluded
+     * IMPORTANT: Accept ALL tasks with $type="task" even if they have:
+     * - Empty $text (some tasks have custom status symbols but no text)
+     * - Custom $status symbols (-, >, ?, /, !, b, I, p, c, d, f, etc.)
      */
     private static isValidTask(task: any): boolean {
         if (!task) return false;
 
-        // Strategy 1: Check if there's an explicit 'task' property (like Dataview)
-        // This distinguishes "- [ ] task" from "- regular list item"
+        // CRITICAL: Check $type FIRST (Datacore's definitive indicator)
+        // Accept ALL items with $type="task" regardless of text content
+        if (typeof task.$type !== "undefined") {
+            return task.$type === "task";
+        }
+
+        // Fallback checks for items without $type (backwards compatibility)
+
+        // Check if there's an explicit 'task' boolean property (Dataview compatibility)
         if (typeof task.task === "boolean") {
             return task.task === true;
         }
 
-        // Strategy 2: Check if it has $status field
-        // Tasks with checkboxes have status markers: " ", "x", "/", "?", etc.
-        // Regular list items don't have $status field
+        // Check if it has $status field (tasks have this, list items don't)
         if (
             typeof task.$status === "undefined" &&
             typeof task.status === "undefined"
@@ -170,11 +174,7 @@ export class DatacoreService {
             return false;
         }
 
-        // Strategy 3: Must have text content
-        if (!task.$text && !task.text) {
-            return false;
-        }
-
+        // Accept if has $status (even with empty text)
         return true;
     }
 
@@ -689,11 +689,30 @@ export class DatacoreService {
             const results = await datacoreApi.query(query);
 
             Logger.debug(
-                `Datacore returned ${results?.length || 0} raw results`,
+                `[Datacore] Query: ${query}\n` +
+                    `  Returned: ${results?.length || 0} results\n` +
+                    `  Expected (from Dataview): ~755 tasks\n` +
+                    `  Difference: ${755 - (results?.length || 0)} tasks missing from query`,
             );
 
             if (!results || results.length === 0) {
                 return tasks;
+            }
+
+            // Sample first few results to understand structure
+            if (results.length > 0 && settings.enableDebugLogging) {
+                const sample = results[0];
+                Logger.debug(
+                    `[Datacore] Sample result structure:\n` +
+                        `  Keys: ${Object.keys(sample)
+                            .filter((k) => k.startsWith("$"))
+                            .join(", ")}\n` +
+                        `  $type: ${sample.$type}\n` +
+                        `  $status: ${sample.$status}\n` +
+                        `  $completed: ${sample.$completed}\n` +
+                        `  Has $elements: ${Array.isArray(sample.$elements)}\n` +
+                        `  $elements length: ${sample.$elements?.length || 0}`,
+                );
             }
 
             // Build page path filters for inclusion filtering
@@ -767,23 +786,59 @@ export class DatacoreService {
             //
             // Solution: Use results as-is, just filter out invalid items
             const allTasks: any[] = [];
-            let invalidItems = 0;
+            const validationStats = {
+                total: 0,
+                validTasks: 0,
+                invalidItems: 0,
+                withTypeTask: 0,
+                withTypeList: 0,
+                withTypeOther: 0,
+                noType: 0,
+            };
 
             for (const dcTask of results) {
-                if (this.isValidTask(dcTask)) {
-                    allTasks.push(dcTask);
-                } else {
-                    invalidItems++;
-                    if (settings.enableDebugLogging) {
+                validationStats.total++;
+
+                // Track what types we're seeing
+                if (typeof dcTask.$type !== "undefined") {
+                    if (dcTask.$type === "task") {
+                        validationStats.withTypeTask++;
+                    } else if (dcTask.$type === "list") {
+                        validationStats.withTypeList++;
+                    } else {
+                        validationStats.withTypeOther++;
                         Logger.debug(
-                            `[Datacore] Skipping invalid item: $type="${dcTask.$type}", text="${dcTask.$text || dcTask.text || "(no text)"}"`,
+                            `[Datacore] Unknown $type="${dcTask.$type}": "${dcTask.$text || dcTask.text}"`,
                         );
                     }
+                } else {
+                    validationStats.noType++;
+                    Logger.debug(
+                        `[Datacore] Item WITHOUT $type: text="${dcTask.$text || dcTask.text}", has $status: ${typeof dcTask.$status !== "undefined"}, task prop: ${typeof dcTask.task}`,
+                    );
+                }
+
+                if (this.isValidTask(dcTask)) {
+                    allTasks.push(dcTask);
+                    validationStats.validTasks++;
+                } else {
+                    validationStats.invalidItems++;
+                    // Log rejected items to understand why they're being filtered
+                    Logger.debug(
+                        `[Datacore] REJECTED item: $type="${dcTask.$type}", $status="${dcTask.$status}", $text="${(dcTask.$text || dcTask.text || "").substring(0, 50)}", task prop: ${dcTask.task}`,
+                    );
                 }
             }
 
             Logger.debug(
-                `Datacore processed ${results.length} results -> ${allTasks.length} valid tasks (${invalidItems} invalid items filtered)`,
+                `[Datacore] Validation Stats:\n` +
+                    `  Total from @task query: ${validationStats.total}\n` +
+                    `  - $type="task": ${validationStats.withTypeTask}\n` +
+                    `  - $type="list": ${validationStats.withTypeList}\n` +
+                    `  - $type=other: ${validationStats.withTypeOther}\n` +
+                    `  - no $type: ${validationStats.noType}\n` +
+                    `  Valid tasks accepted: ${validationStats.validTasks}\n` +
+                    `  Invalid items filtered: ${validationStats.invalidItems}`,
             );
 
             // Process each task (including subtasks)
