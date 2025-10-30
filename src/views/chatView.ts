@@ -16,7 +16,7 @@ import { AIError } from "../utils/errorHandler";
 import { cleanWarningsFromContent } from "../services/warningService";
 import { ErrorMessageService } from "../services/errorMessageService";
 import { MetadataService } from "../services/metadataService";
-import { DataViewWarningService } from "../services/dataviewWarningService";
+import { TaskIndexWarningService } from "../services/taskIndexWarningService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -486,14 +486,13 @@ export class ChatView extends ItemView {
     private renderDataviewWarning(): void {
         const taskCount = this.currentTasks.length;
 
-        // Check Dataview status using centralized service
+        // Check task indexing API status using centralized service
         // Pass filter and settings for detailed diagnostic information
-        const warning = DataViewWarningService.checkDataViewStatus(
+        const warning = TaskIndexWarningService.checkAPIStatus(
             this.app,
+            this.plugin.settings,
             taskCount,
-            false, // Not during search query
-            this.currentFilter, // Pass current filter state
-            this.plugin.settings, // Pass settings for exclusion info
+            this.currentFilter,
         );
 
         // Remove existing warning if everything is ready
@@ -525,7 +524,13 @@ export class ChatView extends ItemView {
         }
 
         // Render warning using centralized service
-        DataViewWarningService.renderWarning(this.dataviewWarningEl, warning);
+        TaskIndexWarningService.renderWarning(
+            this.dataviewWarningEl,
+            this.app,
+            this.plugin.settings,
+            taskCount,
+            this.currentFilter,
+        );
 
         Logger.debug(`[Dataview Warning] ${warning.type}: ${warning.message}`);
     }
@@ -1352,36 +1357,35 @@ export class ChatView extends ItemView {
 
                 // For 0 results, check Dataview status and add warning if needed
                 if (result.directResults.length === 0) {
-                    // IMPORTANT: Check if Dataview might be the issue
-                    // We use currentTasks.length (total tasks from Dataview) NOT directResults.length
-                    // If currentTasks.length > 0, Dataview has tasks → 0 results is a SEARCH/FILTER issue, not Dataview
-                    // If currentTasks.length === 0, Dataview has no tasks → check if it's indexing or not enabled
-                    // This ensures Dataview warnings ONLY show when it's truly a Dataview issue
-                    const dataViewWarning =
-                        DataViewWarningService.checkDataViewStatus(
+                    // IMPORTANT: Check if task indexing API might be the issue
+                    // We use currentTasks.length (total tasks from API) NOT directResults.length
+                    // If currentTasks.length > 0, API has tasks → 0 results is a SEARCH/FILTER issue, not API
+                    // If currentTasks.length === 0, API has no tasks → check if it's not enabled or indexing
+                    // This ensures API warnings ONLY show when it's truly an API issue
+                    const taskIndexWarning =
+                        TaskIndexWarningService.checkAPIStatus(
                             this.app,
-                            this.currentTasks.length, // Total tasks from Dataview
-                            true, // During search query
+                            this.plugin.settings,
+                            this.currentTasks.length, // Total tasks from API
+                            this.currentFilter,
                         );
 
-                    // Only show warning if it's a critical Dataview issue (not-enabled or indexing)
-                    // "no-tasks" warnings are filtered out by shouldShowInSearchResults()
-                    // This prevents showing Dataview warnings for search/filter issues
+                    // Only show warning if it's a critical API issue (not-enabled)
+                    // "no-tasks" warnings during search are not shown here (they show in the main banner)
+                    // This prevents showing API warnings for search/filter issues
                     if (
-                        dataViewWarning &&
-                        DataViewWarningService.shouldShowInSearchResults(
-                            dataViewWarning,
-                        )
+                        taskIndexWarning &&
+                        taskIndexWarning.type === "not-enabled"
                     ) {
-                        content = `⚠️ **${dataViewWarning.message}**\n\n${dataViewWarning.details || ""}\n\n`;
+                        content = `⚠️ **${taskIndexWarning.message}**\n\n${taskIndexWarning.details || ""}\n\n`;
 
                         if (
-                            dataViewWarning.suggestions &&
-                            dataViewWarning.suggestions.length > 0
+                            taskIndexWarning.suggestions &&
+                            taskIndexWarning.suggestions.length > 0
                         ) {
                             content += "**Troubleshooting steps:**\n";
-                            dataViewWarning.suggestions.forEach(
-                                (suggestion, index) => {
+                            taskIndexWarning.suggestions.forEach(
+                                (suggestion: string, index: number) => {
                                     content += `${index + 1}. ${suggestion}\n`;
                                 },
                             );
@@ -1454,12 +1458,10 @@ export class ChatView extends ItemView {
                                 content += `\n\n**Note:** Semantic expansion generated ${expandedOnly} semantic keywords (${actualPerCoreLang}/core/lang) from ${meta.coreKeywordsCount} core across ${languages}, but no tasks matched any of them. See details below.`;
                             }
 
-                            // Suggest troubleshooting (only if not already shown in Dataview warning)
+                            // Suggest troubleshooting (only if not already shown in API warning)
                             if (
-                                !dataViewWarning ||
-                                !DataViewWarningService.shouldShowInSearchResults(
-                                    dataViewWarning,
-                                )
+                                !taskIndexWarning ||
+                                taskIndexWarning.type !== "not-enabled"
                             ) {
                                 content += `\n\n**Tip:** Check the expansion details below to see what was searched. You may want to:\n- Verify the keywords are relevant to your tasks\n- Check if you have tasks in your vault matching these terms\n- Try simpler or different search terms`;
                             }

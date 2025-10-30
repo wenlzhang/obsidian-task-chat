@@ -826,6 +826,76 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
+        // Task Indexing API Settings
+        new Setting(containerEl).setName("Task indexing").setHeading();
+        const taskIndexInfo = containerEl.createDiv({
+            cls: "setting-item-description",
+        });
+        taskIndexInfo.appendText(
+            "Choose which API to use for task indexing and querying. ",
+        );
+        taskIndexInfo.createEl("br");
+        taskIndexInfo.appendText(
+            "Datacore offers 2-10x better performance than Dataview.",
+        );
+
+        // Import TaskIndexService at the top of the function where needed
+        const TaskIndexService =
+            require("./services/taskIndexService").TaskIndexService;
+        const status = TaskIndexService.getDetailedStatus(
+            this.app,
+            this.plugin.settings,
+        );
+
+        // API Status indicator
+        const statusDiv = containerEl.createDiv({
+            cls: "task-chat-api-status",
+        });
+        statusDiv.createEl("strong", { text: "Current status: " });
+        statusDiv.createSpan({
+            text: status.message,
+            cls: status.activeAPI ? "status-active" : "status-warning",
+        });
+
+        // API Selection dropdown
+        new Setting(containerEl)
+            .setName("Task indexing API")
+            .setDesc(
+                "Auto: Prefer Datacore (faster) → fallback to Dataview. Or choose specific API.",
+            )
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("auto", "Auto (Prefer Datacore) - Recommended")
+                    .addOption("datacore", "Datacore Only")
+                    .addOption("dataview", "Dataview Only")
+                    .setValue(this.plugin.settings.taskIndexAPI || "auto")
+                    .onChange(
+                        async (value: "auto" | "datacore" | "dataview") => {
+                            this.plugin.settings.taskIndexAPI = value;
+                            await this.plugin.saveSettings();
+
+                            // Refresh tasks with new API
+                            await this.plugin.refreshTasks();
+
+                            // Update status display
+                            this.display();
+                        },
+                    ),
+            );
+
+        // Show recommendation if Datacore is available but not being used
+        if (status.canSwitchToDatacore) {
+            const recommendationDiv = containerEl.createDiv({
+                cls: "task-chat-api-recommendation",
+            });
+            recommendationDiv.createEl("strong", {
+                text: "💡 Performance Tip: ",
+            });
+            recommendationDiv.appendText(
+                "Datacore is installed and offers significantly better performance. Consider switching to 'Auto' or 'Datacore Only' mode.",
+            );
+        }
+
         // Dataview Settings
         new Setting(containerEl).setName("Dataview integration").setHeading();
         const dataviewInfo = containerEl.createDiv({

@@ -2,7 +2,7 @@ import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
 import { SettingsTab } from "./settingsTab";
 import { PluginSettings, DEFAULT_SETTINGS } from "./settings";
 import { Task, TaskFilter } from "./models/task";
-import { DataviewService } from "./services/dataviewService";
+import { TaskIndexService } from "./services/taskIndexService";
 import { TaskFilterService } from "./services/taskFilterService";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/chatView";
 import { FilterModal } from "./views/filterModal";
@@ -29,9 +29,11 @@ export default class TaskChatPlugin extends Plugin {
         this.sessionManager = new SessionManager();
         this.sessionManager.loadFromData(this.settings.sessionData);
 
-        // Check if Dataview is available
-        if (!DataviewService.isDataviewEnabled(this.app)) {
-            Logger.warn("Dataview plugin is not enabled");
+        // Check if task indexing API is available
+        if (!TaskIndexService.isAnyAPIAvailable(this.app)) {
+            Logger.warn(
+                "No task indexing API available (Datacore or Dataview required)",
+            );
         }
 
         // Register the chat view
@@ -88,8 +90,8 @@ export default class TaskChatPlugin extends Plugin {
 
         // Load tasks on startup
         this.app.workspace.onLayoutReady(async () => {
-            // CRITICAL: Wait for DataView to be fully ready before loading tasks
-            await this.waitForDataView();
+            // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
+            await this.waitForTaskIndexAPI();
 
             await this.refreshTasks();
 
@@ -363,39 +365,25 @@ export default class TaskChatPlugin extends Plugin {
     }
 
     /**
-     * Wait for DataView plugin to be fully loaded and ready
+     * Wait for task indexing API (Datacore or Dataview) to be fully loaded and ready
      * Polls every 500ms for up to 10 seconds
      */
-    private async waitForDataView(maxAttempts = 20): Promise<void> {
-        for (let i = 0; i < maxAttempts; i++) {
-            if (DataviewService.isDataviewEnabled(this.app)) {
-                const api = DataviewService.getAPI(this.app);
-                if (api && api.pages) {
-                    Logger.debug(
-                        `DataView API ready (attempt ${i + 1}/${maxAttempts})`,
-                    );
-                    return;
-                }
-            }
+    private async waitForTaskIndexAPI(maxAttempts = 20): Promise<void> {
+        const success = await TaskIndexService.waitForAPI(
+            this.app,
+            this.settings,
+            maxAttempts,
+        );
 
-            if (i === 0) {
-                Logger.debug("Waiting for DataView plugin to be ready...");
-            } else {
-                Logger.debug(
-                    `Still waiting for DataView... (attempt ${i + 1}/${maxAttempts})`,
-                );
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 500));
+        if (!success) {
+            Logger.warn(
+                "Task indexing API not available after waiting 10 seconds - tasks may not load correctly",
+            );
+            new Notice(
+                "Task indexing API not detected. Please install Datacore or Dataview plugin.",
+                5000,
+            );
         }
-
-        Logger.warn(
-            "DataView not available after waiting 10 seconds - tasks may not load correctly",
-        );
-        new Notice(
-            "DataView plugin not detected. Please ensure it is installed and enabled.",
-            5000,
-        );
     }
 
     /**
@@ -404,13 +392,13 @@ export default class TaskChatPlugin extends Plugin {
      */
     async refreshTasks(updateChatView: boolean = true): Promise<void> {
         try {
-            // Check if Dataview is enabled
-            if (!DataviewService.isDataviewEnabled(this.app)) {
-                Logger.warn("Dataview plugin is not enabled");
+            // Check if task indexing API is available
+            if (!TaskIndexService.isAnyAPIAvailable(this.app)) {
+                Logger.warn("No task indexing API available");
                 return;
             }
 
-            this.allTasks = await DataviewService.parseTasksFromDataview(
+            this.allTasks = await TaskIndexService.parseTasksFromIndex(
                 this.app,
                 this.settings,
             );
@@ -514,8 +502,8 @@ export default class TaskChatPlugin extends Plugin {
             inclusionFilters.notes = filter.notes;
         }
 
-        // Use DataView API with both property and inclusion filters
-        const tasks = await DataviewService.parseTasksFromDataview(
+        // Use task indexing API with both property and inclusion filters
+        const tasks = await TaskIndexService.parseTasksFromIndex(
             this.app,
             this.settings,
             undefined,

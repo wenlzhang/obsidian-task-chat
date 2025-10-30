@@ -168,6 +168,13 @@ export interface PluginSettings {
         lastUpdated: number; // timestamp
     };
 
+    // Task Indexing API Selection
+    // Choose which API to use for task indexing and querying
+    // - "auto": Prefer Datacore (faster) → fallback to Dataview (default, recommended)
+    // - "datacore": Use Datacore only (requires Datacore plugin)
+    // - "dataview": Use Dataview only (requires Dataview plugin)
+    taskIndexAPI: "auto" | "datacore" | "dataview";
+
     // Dataview Settings
     dataviewKeys: {
         dueDate: string;
@@ -377,6 +384,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         data: {},
         lastUpdated: 0,
     },
+
+    // Task Indexing API Selection
+    taskIndexAPI: "auto", // Default: Auto-detect (prefer Datacore)
 
     // Dataview Settings
     dataviewKeys: {
