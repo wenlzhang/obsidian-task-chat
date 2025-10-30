@@ -62,12 +62,18 @@ export class DatacoreService {
 
     /**
      * Get field value from Datacore task
-     * Datacore stores metadata using $ prefix for built-in fields:
-     * 1. Built-in properties: $text, $symbol, $completed, $due, etc.
-     * 2. Custom properties: Same as user's configured field names
-     * 3. Inline fields: Datacore indexes these automatically
+     * Datacore API docs: https://github.com/blacksmithgu/datacore/blob/master/datacore.api.md
      *
-     * IMPORTANT: Datacore has better indexing than Dataview
+     * Task fields per API docs:
+     * - $completed: boolean
+     * - $status: string (task status marker)
+     * - $text: string
+     * - $tags: string[]
+     * - $file: string (source file path)
+     * - $elements: MarkdownListItem[] (subtasks)
+     * - $links: Link[]
+     *
+     * Additional fields may include custom properties and inline fields
      */
     private static getFieldValue(
         dcTask: any,
@@ -75,10 +81,11 @@ export class DatacoreService {
         text: string,
     ): any {
         // Strategy 1: Check Datacore built-in properties (with $ prefix)
+        // Based on official API documentation
         const builtInFieldMap: { [key: string]: string } = {
             text: "$text",
-            symbol: "$symbol",
-            status: "$symbol",
+            symbol: "$status", // API docs: $status is the status marker
+            status: "$status",
             completed: "$completed",
             due: "$due",
             dueDate: "$due",
@@ -92,6 +99,8 @@ export class DatacoreService {
             scheduledDate: "$scheduled",
             priority: "$priority",
             tags: "$tags",
+            file: "$file",
+            path: "$file", // Map path to $file
         };
 
         const builtInKey = builtInFieldMap[fieldKey];
@@ -173,13 +182,43 @@ export class DatacoreService {
 
     /**
      * Check if a task is valid for processing
+     * Per API docs, tasks have $text and $status fields
      */
     private static isValidTask(task: any): boolean {
         return (
             task &&
             (task.$text || task.text) &&
-            typeof task.$symbol !== "undefined"
+            typeof task.$status !== "undefined"
         );
+    }
+
+    /**
+     * Recursively flatten task hierarchy to extract all tasks including subtasks
+     * Per API docs, subtasks are in the $elements property
+     *
+     * @param dcTask - Datacore task object
+     * @returns Array of all tasks (parent + all nested subtasks)
+     */
+    private static flattenTaskHierarchy(dcTask: any): any[] {
+        const tasks: any[] = [];
+
+        // Add the current task
+        tasks.push(dcTask);
+
+        // Recursively process subtasks in $elements
+        if (dcTask.$elements && Array.isArray(dcTask.$elements)) {
+            for (const subtask of dcTask.$elements) {
+                // Only process if it's a task (not just a list item)
+                if (this.isValidTask(subtask)) {
+                    // Recursively flatten this subtask and its children
+                    const flattenedSubtasks =
+                        this.flattenTaskHierarchy(subtask);
+                    tasks.push(...flattenedSubtasks);
+                }
+            }
+        }
+
+        return tasks;
     }
 
     /**
@@ -218,6 +257,7 @@ export class DatacoreService {
     /**
      * Process a single Datacore task
      * Converts Datacore task format to internal Task model
+     * Uses fields from API docs: $text, $status, $file, $completed, $tags, etc.
      */
     static processDatacoreTask(
         dcTask: any,
@@ -230,12 +270,13 @@ export class DatacoreService {
             return null;
         }
 
-        // Extract path
-        const path = filePath || dcTask.$path || dcTask.path || "";
+        // Extract path (use $file per API docs)
+        const path = filePath || dcTask.$file || dcTask.file || "";
 
         // Use $text for task text (Datacore's built-in field)
         const text = dcTask.$text || dcTask.text || "";
-        const status = dcTask.$symbol || dcTask.symbol || "";
+        // Use $status for task status marker (not $symbol)
+        const status = dcTask.$status || dcTask.status || "";
         const line = dcTask.$line || dcTask.line || 0;
         const statusCategory = this.mapStatusToCategory(status, settings);
 
@@ -349,150 +390,256 @@ export class DatacoreService {
     }
 
     /**
-     * Build Datacore query string from filters
-     * Datacore uses query syntax similar to Dataview but with $ prefix for built-in fields
+     * Build simple Datacore query string
+     * We keep the query simple and do filtering post-query (like Dataview does)
+     * This ensures better compatibility and handles subtasks correctly
      */
-    private static buildDatacoreQuery(
-        settings: PluginSettings,
-        propertyFilters?: {
+    private static buildDatacoreQuery(settings: PluginSettings): string {
+        // Simple base query for all tasks
+        // Datacore will return ALL tasks including subtasks (similar to Dataview's file.tasks)
+        const query = "@task";
+
+        Logger.debug(`Datacore base query: ${query}`);
+        return query;
+    }
+
+    /**
+     * Build task filter function (post-query filtering)
+     * Mirrors DataviewService.buildTaskFilter approach
+     */
+    private static buildTaskFilter(
+        propertyFilters: {
             priority?: number | number[] | "all" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start: string; end: string } | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
-        inclusionFilters?: {
-            folders?: string[];
-            noteTags?: string[];
-            taskTags?: string[];
-            notes?: string[];
-        },
-    ): string {
-        // Start with base query for tasks
-        let query = "@task";
+        settings: PluginSettings,
+    ): ((dcTask: any) => boolean) | null {
+        const filters: ((dcTask: any) => boolean)[] = [];
 
-        const conditions: string[] = [];
-
-        // Apply property filters
-        if (propertyFilters) {
-            // Priority filter
-            if (propertyFilters.priority) {
-                if (propertyFilters.priority === "all") {
-                    conditions.push("$priority != null");
-                } else if (propertyFilters.priority === "none") {
-                    conditions.push("$priority = null");
-                } else {
-                    const priorities = Array.isArray(propertyFilters.priority)
-                        ? propertyFilters.priority
-                        : [propertyFilters.priority];
-                    const priorityConditions = priorities.map(
-                        (p) => `$priority = ${p}`,
-                    );
-                    conditions.push(`(${priorityConditions.join(" or ")})`);
-                }
-            }
-
-            // Due date filter
-            if (propertyFilters.dueDate) {
-                const dueDates = Array.isArray(propertyFilters.dueDate)
-                    ? propertyFilters.dueDate
-                    : [propertyFilters.dueDate];
-
-                const dateConditions = dueDates.map((date) => {
-                    // Handle special keywords
-                    if (date === "any" || date === "all") {
-                        return "$due != null";
-                    } else if (date === "none") {
-                        return "$due = null";
-                    } else if (date === "today") {
-                        const today = moment().format("YYYY-MM-DD");
-                        return `$due = date("${today}")`;
-                    } else if (date === "overdue") {
-                        const today = moment().format("YYYY-MM-DD");
-                        return `$due < date("${today}")`;
-                    } else {
-                        // Specific date
-                        return `$due = date("${date}")`;
-                    }
+        // Build priority filter
+        if (propertyFilters.priority) {
+            if (propertyFilters.priority === "all") {
+                // Tasks with ANY priority
+                filters.push((dcTask: any) => {
+                    const priority = dcTask.$priority;
+                    return priority !== undefined && priority !== null;
                 });
-                conditions.push(`(${dateConditions.join(" or ")})`);
-            }
+            } else if (propertyFilters.priority === "none") {
+                // Tasks with NO priority
+                filters.push((dcTask: any) => {
+                    const priority = dcTask.$priority;
+                    return priority === undefined || priority === null;
+                });
+            } else {
+                // Specific priority values
+                const targetPriorities = Array.isArray(propertyFilters.priority)
+                    ? propertyFilters.priority
+                    : [propertyFilters.priority];
 
-            // Due date range filter
-            if (propertyFilters.dueDateRange) {
-                const { start, end } = propertyFilters.dueDateRange;
-                if (start && end) {
-                    conditions.push(
-                        `$due >= date("${start}") and $due <= date("${end}")`,
+                filters.push((dcTask: any) => {
+                    const taskText = dcTask.$text || dcTask.text || "";
+                    const priorityValue = this.getFieldValue(
+                        dcTask,
+                        settings.dataviewKeys.priority,
+                        taskText,
                     );
-                } else if (start) {
-                    conditions.push(`$due >= date("${start}")`);
-                } else if (end) {
-                    conditions.push(`$due <= date("${end}")`);
+
+                    if (priorityValue !== undefined && priorityValue !== null) {
+                        const mapped = this.mapPriority(
+                            priorityValue,
+                            settings,
+                        );
+                        return (
+                            mapped !== undefined &&
+                            targetPriorities.includes(mapped)
+                        );
+                    }
+                    return false;
+                });
+            }
+        }
+
+        // Build due date filter
+        if (propertyFilters.dueDate) {
+            const dueDateValues = Array.isArray(propertyFilters.dueDate)
+                ? propertyFilters.dueDate
+                : [propertyFilters.dueDate];
+
+            filters.push((dcTask: any) => {
+                for (const dueDateValue of dueDateValues) {
+                    if (
+                        this.matchesDueDateValue(dcTask, dueDateValue, settings)
+                    ) {
+                        return true;
+                    }
                 }
-            }
-
-            // Status filter (unified s: syntax)
-            if (
-                propertyFilters.statusValues &&
-                propertyFilters.statusValues.length > 0
-            ) {
-                const statusConditions = propertyFilters.statusValues.map(
-                    (value) => {
-                        // Try exact symbol match
-                        return `$symbol = "${value}"`;
-                    },
-                );
-                conditions.push(`(${statusConditions.join(" or ")})`);
-            }
+                return false;
+            });
         }
 
-        // Apply inclusion filters (page-level)
-        if (inclusionFilters) {
-            const pageConditions: string[] = [];
+        // Build date range filter
+        if (propertyFilters.dueDateRange) {
+            const { start, end } = propertyFilters.dueDateRange;
+            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
+            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
 
-            // Folder filter
-            if (
-                inclusionFilters.folders &&
-                inclusionFilters.folders.length > 0
-            ) {
-                const folderConditions = inclusionFilters.folders.map(
-                    (folder) => `$path starts with "${folder}/"`,
+            filters.push((dcTask: any) => {
+                const taskText = dcTask.$text || dcTask.text || "";
+                const dueDateValue = this.getFieldValue(
+                    dcTask,
+                    settings.dataviewKeys.dueDate,
+                    taskText,
                 );
-                pageConditions.push(`(${folderConditions.join(" or ")})`);
-            }
 
-            // Note tags filter
-            if (
-                inclusionFilters.noteTags &&
-                inclusionFilters.noteTags.length > 0
-            ) {
-                // Note: Datacore's tag filtering syntax may vary
-                const tagConditions = inclusionFilters.noteTags.map(
-                    (tag) => `#${tag.replace(/^#+/, "")}`,
+                if (!dueDateValue) return false;
+
+                const taskDate = moment(this.formatDate(dueDateValue));
+                return (
+                    taskDate.isSameOrAfter(startDate, "day") &&
+                    taskDate.isSameOrBefore(endDate, "day")
                 );
-                pageConditions.push(`(${tagConditions.join(" or ")})`);
-            }
-
-            // Specific notes filter
-            if (inclusionFilters.notes && inclusionFilters.notes.length > 0) {
-                const noteConditions = inclusionFilters.notes.map(
-                    (note) => `$path = "${note}"`,
-                );
-                pageConditions.push(`(${noteConditions.join(" or ")})`);
-            }
-
-            if (pageConditions.length > 0) {
-                conditions.push(...pageConditions);
-            }
+            });
         }
 
-        // Combine all conditions
-        if (conditions.length > 0) {
-            query += " and " + conditions.join(" and ");
+        // Build status filter (unified s: syntax)
+        if (
+            propertyFilters.statusValues &&
+            propertyFilters.statusValues.length > 0
+        ) {
+            filters.push((dcTask: any) => {
+                // Use $status per API docs (not $symbol)
+                const taskStatus = dcTask.$status || dcTask.status;
+                if (taskStatus === undefined) return false;
+
+                return propertyFilters.statusValues!.some((value) => {
+                    // 1. Try exact symbol match
+                    if (taskStatus === value) return true;
+
+                    // 2. Try category match
+                    const normalizedValue = value
+                        .toLowerCase()
+                        .replace(/-/g, "")
+                        .replace(/\s+/g, "");
+
+                    for (const [categoryKey, categoryConfig] of Object.entries(
+                        settings.taskStatusMapping,
+                    )) {
+                        if (
+                            categoryKey.toLowerCase() === normalizedValue ||
+                            categoryKey.toLowerCase().replace(/-/g, "") ===
+                                normalizedValue
+                        ) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
+
+                        const aliases = categoryConfig.aliases
+                            .toLowerCase()
+                            .split(",")
+                            .map((a) => a.trim());
+                        if (aliases.includes(value.toLowerCase())) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
+                    }
+
+                    return false;
+                });
+            });
         }
 
-        return query;
+        // Combine all filters with AND logic
+        if (filters.length === 0) {
+            return null;
+        }
+
+        return (dcTask: any) => {
+            return filters.every((f) => f(dcTask));
+        };
+    }
+
+    /**
+     * Check if task matches a due date value
+     * Mirrors DataviewService.matchesDueDateValue
+     */
+    private static matchesDueDateValue(
+        dcTask: any,
+        dueDateValue: string,
+        settings: PluginSettings,
+    ): boolean {
+        const taskText = dcTask.$text || dcTask.text || "";
+        const taskDueDate = this.getFieldValue(
+            dcTask,
+            settings.dataviewKeys.dueDate,
+            taskText,
+        );
+
+        // Handle "all" or "any" - task must have a due date
+        if (dueDateValue === "all" || dueDateValue === "any") {
+            return taskDueDate !== undefined && taskDueDate !== null;
+        }
+
+        // Handle "none" - task must NOT have a due date
+        if (dueDateValue === "none") {
+            return taskDueDate === undefined || taskDueDate === null;
+        }
+
+        // Task must have a due date for other comparisons
+        if (!taskDueDate) return false;
+
+        const formattedDate = this.formatDate(taskDueDate);
+        if (!formattedDate) return false;
+
+        const taskDate = moment(formattedDate, "YYYY-MM-DD", true);
+        if (!taskDate.isValid()) return false;
+
+        // Handle "today"
+        if (dueDateValue === "today") {
+            return taskDate.isSame(moment(), "day");
+        }
+
+        // Handle "overdue"
+        if (dueDateValue === "overdue") {
+            return taskDate.isBefore(moment(), "day");
+        }
+
+        // Handle "tomorrow"
+        if (dueDateValue === "tomorrow") {
+            return taskDate.isSame(moment().add(1, "day"), "day");
+        }
+
+        // Handle "future"
+        if (dueDateValue === "future") {
+            return taskDate.isAfter(moment(), "day");
+        }
+
+        // Handle "week" (next 7 days)
+        if (dueDateValue === "week") {
+            const weekEnd = moment().add(7, "days");
+            return (
+                taskDate.isSameOrAfter(moment(), "day") &&
+                taskDate.isSameOrBefore(weekEnd, "day")
+            );
+        }
+
+        // Handle "next-week" (days 8-14)
+        if (dueDateValue === "next-week") {
+            const nextWeekStart = moment().add(8, "days");
+            const nextWeekEnd = moment().add(14, "days");
+            return (
+                taskDate.isSameOrAfter(nextWeekStart, "day") &&
+                taskDate.isSameOrBefore(nextWeekEnd, "day")
+            );
+        }
+
+        // Handle specific date (YYYY-MM-DD)
+        const specificDate = moment(dueDateValue, "YYYY-MM-DD", true);
+        if (specificDate.isValid()) {
+            return taskDate.isSame(specificDate, "day");
+        }
+
+        return false;
     }
 
     /**
@@ -566,34 +713,113 @@ export class DatacoreService {
         const tasks: Task[] = [];
 
         try {
-            // Build Datacore query
-            const query = this.buildDatacoreQuery(
-                settings,
-                propertyFilters,
-                inclusionFilters,
-            );
+            // Build simple query and task filter
+            const query = this.buildDatacoreQuery(settings);
+            const taskFilter = propertyFilters
+                ? this.buildTaskFilter(propertyFilters, settings)
+                : null;
 
             Logger.debug(`Datacore query: ${query}`);
 
-            // Execute query
+            // Execute query to get all tasks (including subtasks)
             const results = await datacoreApi.query(query);
 
-            Logger.debug(`Datacore returned ${results?.length || 0} results`);
+            Logger.debug(
+                `Datacore returned ${results?.length || 0} raw results`,
+            );
 
             if (!results || results.length === 0) {
                 return tasks;
             }
 
-            // Process each task
-            let taskIndex = 0;
+            // Build page path filters for inclusion filtering
+            const matchedPagePaths = new Set<string>();
+            const hasInclusionFilters = !!(
+                inclusionFilters?.folders ||
+                inclusionFilters?.noteTags ||
+                inclusionFilters?.notes
+            );
+            const hasTaskTagFilter = !!(
+                inclusionFilters?.taskTags &&
+                inclusionFilters.taskTags.length > 0
+            );
+
+            // If we have inclusion filters, we need to get page information
+            // Datacore returns tasks with $file field (per API docs)
+            if (hasInclusionFilters) {
+                // Get unique page paths from results
+                const uniquePaths = new Set(
+                    results.map((t: any) => t.$file || t.file || ""),
+                );
+
+                for (const pagePath of uniquePaths) {
+                    if (!pagePath) continue;
+
+                    // Check folder match
+                    const matchesFolder =
+                        inclusionFilters?.folders &&
+                        inclusionFilters.folders.length > 0 &&
+                        inclusionFilters.folders.some(
+                            (folder: string) =>
+                                pagePath.startsWith(folder + "/") ||
+                                pagePath === folder,
+                        );
+
+                    // Check specific note match
+                    const matchesNote =
+                        inclusionFilters?.notes &&
+                        inclusionFilters.notes.length > 0 &&
+                        inclusionFilters.notes.some(
+                            (notePath: string) => pagePath === notePath,
+                        );
+
+                    // For note tags, we would need to query page metadata
+                    // For now, we'll skip note tag filtering in Datacore
+                    // TODO: Implement note tag filtering when we understand Datacore's page API better
+
+                    if (matchesFolder || matchesNote) {
+                        matchedPagePaths.add(pagePath);
+                    }
+                }
+
+                Logger.debug(
+                    `Inclusion filtering: ${matchedPagePaths.size} pages matched`,
+                );
+            }
+
+            // CRITICAL: Flatten task hierarchy to get ALL tasks including subtasks
+            // Per API docs, subtasks are in $elements property
+            const allTasks: any[] = [];
             for (const dcTask of results) {
-                // Apply exclusions (post-query filtering)
-                // Folder exclusions
+                if (this.isValidTask(dcTask)) {
+                    const flattenedTasks = this.flattenTaskHierarchy(dcTask);
+                    allTasks.push(...flattenedTasks);
+                }
+            }
+
+            Logger.debug(
+                `Datacore flattened ${results.length} parent tasks to ${allTasks.length} total tasks (including subtasks)`,
+            );
+
+            // Process each task (including subtasks)
+            let taskIndex = 0;
+            let propertyFilterRejects = 0;
+            let exclusionRejects = 0;
+            let inclusionRejects = 0;
+
+            for (const dcTask of allTasks) {
+                // Use $file per API docs (not $path)
+                const taskPath = dcTask.$file || dcTask.file || "";
+
+                // NOTE: We do NOT filter out completed tasks here
+                // The scoring system handles prioritizing incomplete tasks over completed ones
+                // Users can explicitly filter by status if they want
+
+                // Apply folder exclusions
                 if (
                     settings.exclusions.folders &&
                     settings.exclusions.folders.length > 0
                 ) {
-                    const taskPath = dcTask.$path || dcTask.path || "";
                     const isExcluded = settings.exclusions.folders.some(
                         (folder: string) => {
                             const normalizedFolder = folder.replace(
@@ -603,50 +829,83 @@ export class DatacoreService {
                             return taskPath.startsWith(normalizedFolder + "/");
                         },
                     );
-                    if (isExcluded) continue;
-                }
-
-                // Note exclusions
-                if (
-                    settings.exclusions.notes &&
-                    settings.exclusions.notes.length > 0
-                ) {
-                    const taskPath = dcTask.$path || dcTask.path || "";
-                    if (settings.exclusions.notes.includes(taskPath)) {
+                    if (isExcluded) {
+                        exclusionRejects++;
                         continue;
                     }
                 }
 
-                // Task tag exclusions
+                // Apply note exclusions
+                if (
+                    settings.exclusions.notes &&
+                    settings.exclusions.notes.length > 0 &&
+                    settings.exclusions.notes.includes(taskPath)
+                ) {
+                    exclusionRejects++;
+                    continue;
+                }
+
+                // Apply task tag exclusions
                 if (
                     this.isTaskExcludedByTag(
                         dcTask,
                         settings.exclusions.taskTags || [],
                     )
                 ) {
+                    exclusionRejects++;
                     continue;
                 }
 
-                // Task tag inclusion filter (if specified)
-                if (
-                    inclusionFilters?.taskTags &&
-                    inclusionFilters.taskTags.length > 0
-                ) {
-                    const taskTags = dcTask.$tags || dcTask.tags || [];
-                    const hasRequiredTag = taskTags.some((taskTag: string) => {
-                        const normalizedTaskTag = taskTag
-                            .replace(/^#+/, "")
-                            .toLowerCase();
-                        return inclusionFilters.taskTags!.some(
-                            (filterTag: string) => {
-                                const normalizedFilter = filterTag
+                // Apply property filters (post-query)
+                const shouldInclude = !taskFilter || taskFilter(dcTask);
+                if (!shouldInclude) {
+                    propertyFilterRejects++;
+                    continue;
+                }
+
+                // Apply inclusion filters (OR logic: page matches OR task has required tag)
+                let matchesInclusion = false;
+
+                if (!hasInclusionFilters && !hasTaskTagFilter) {
+                    // No inclusion filters = include all
+                    matchesInclusion = true;
+                } else {
+                    // Check if page passed filters
+                    const pagePassedFilter =
+                        matchedPagePaths.size === 0 ||
+                        matchedPagePaths.has(taskPath);
+
+                    // Check if task has required tags
+                    let taskHasRequiredTag = false;
+                    if (hasTaskTagFilter) {
+                        const taskTags = dcTask.$tags || dcTask.tags || [];
+                        taskHasRequiredTag = taskTags.some(
+                            (taskTag: string) => {
+                                const normalizedTaskTag = taskTag
                                     .replace(/^#+/, "")
                                     .toLowerCase();
-                                return normalizedTaskTag === normalizedFilter;
+                                return inclusionFilters!.taskTags!.some(
+                                    (filterTag: string) => {
+                                        const normalizedFilter = filterTag
+                                            .replace(/^#+/, "")
+                                            .toLowerCase();
+                                        return (
+                                            normalizedTaskTag ===
+                                            normalizedFilter
+                                        );
+                                    },
+                                );
                             },
                         );
-                    });
-                    if (!hasRequiredTag) continue;
+                    }
+
+                    // OR logic: include if matches ANY criterion
+                    matchesInclusion = pagePassedFilter || taskHasRequiredTag;
+                }
+
+                if (!matchesInclusion) {
+                    inclusionRejects++;
+                    continue;
                 }
 
                 // Process task
@@ -654,7 +913,7 @@ export class DatacoreService {
                     dcTask,
                     settings,
                     taskIndex++,
-                    dcTask.$path || dcTask.path || "",
+                    taskPath,
                     [], // Page tags would need separate query
                 );
 
@@ -664,7 +923,7 @@ export class DatacoreService {
             }
 
             Logger.debug(
-                `Processed ${tasks.length} tasks from Datacore after filtering`,
+                `Datacore filtering stats: ${allTasks.length} total tasks (flattened) -> ${tasks.length} final (property:${propertyFilterRejects}, exclusion:${exclusionRejects}, inclusion:${inclusionRejects})`,
             );
         } catch (error) {
             Logger.error("Error querying Datacore:", error);

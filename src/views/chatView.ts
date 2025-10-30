@@ -496,7 +496,7 @@ export class ChatView extends ItemView {
         );
 
         // Remove existing warning if everything is ready
-        if (!warning) {
+        if (warning.type === "ready") {
             if (this.dataviewWarningEl) {
                 this.dataviewWarningEl.remove();
                 this.dataviewWarningEl = null;
