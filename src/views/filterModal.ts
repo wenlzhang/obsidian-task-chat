@@ -204,16 +204,20 @@ export class FilterModal extends Modal {
                 cls: "task-chat-filter-inclusion-badge",
             });
 
-            // Display name (for notes, show basename only)
+            // Display name (for notes, show filename.md only)
             let displayText = value;
-            if (type === "note" && value.includes("/")) {
-                displayText = value.split("/").pop() || value;
+            if (type === "note") {
+                // Extract just the filename with extension
+                const filename = value.split("/").pop() || value;
+                displayText = filename.endsWith(".md")
+                    ? filename
+                    : `${filename}.md`;
             }
 
             badge.createSpan({
                 cls: "task-chat-filter-inclusion-badge-text",
                 text: displayText,
-                attr: { title: value }, // Show full path on hover
+                attr: { title: type === "note" ? value : undefined }, // Show full path on hover for notes
             });
 
             const removeBtn = badge.createEl("button", {

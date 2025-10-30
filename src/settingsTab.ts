@@ -836,7 +836,7 @@ export class SettingsTab extends PluginSettingTab {
         );
         taskIndexInfo.createEl("br");
         taskIndexInfo.appendText(
-            "Datacore offers 2-10x better performance than Dataview.",
+            "Datacore offers 2-10x better performance than Dataview. Auto mode automatically prefers Datacore when available, or falls back to Dataview.",
         );
 
         // Import TaskIndexService at the top of the function where needed
@@ -847,32 +847,53 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings,
         );
 
-        // API Status indicator
-        const statusDiv = containerEl.createDiv({
-            cls: "task-chat-api-status",
-        });
-        statusDiv.createEl("strong", { text: "Current status: " });
-        statusDiv.createSpan({
-            text: status.message,
-            cls: status.activeAPI ? "status-active" : "status-warning",
-        });
-
         // API Selection dropdown
         new Setting(containerEl)
             .setName("Task indexing API")
             .setDesc(
-                "Auto: Prefer Datacore (faster) → fallback to Dataview. Or choose specific API.",
+                "Select which API to use. Click 'Refresh' after changing to reload tasks.",
             )
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("auto", "Auto (Prefer Datacore) - Recommended")
-                    .addOption("datacore", "Datacore Only")
-                    .addOption("dataview", "Dataview Only")
+                    .addOption("auto", "Auto (prefer Datacore)")
+                    .addOption("datacore", "Datacore only")
+                    .addOption("dataview", "Dataview only")
                     .setValue(this.plugin.settings.taskIndexAPI || "auto")
                     .onChange(
                         async (value: "auto" | "datacore" | "dataview") => {
                             this.plugin.settings.taskIndexAPI = value;
                             await this.plugin.saveSettings();
+
+                            // Show warning if selected API is not available
+                            const newStatus =
+                                TaskIndexService.getDetailedStatus(
+                                    this.app,
+                                    this.plugin.settings,
+                                );
+
+                            if (!newStatus.activeAPI) {
+                                // Selected API not available
+                                new Notice(
+                                    `⚠️ ${value === "datacore" ? "Datacore" : "Dataview"} is not installed or enabled. Please install it to use this mode.`,
+                                    8000,
+                                );
+                            } else if (
+                                value === "auto" &&
+                                newStatus.activeAPI === "dataview" &&
+                                !newStatus.datacoreAvailable
+                            ) {
+                                // Auto mode but Datacore not available
+                                new Notice(
+                                    "ℹ️ Datacore not installed. Using Dataview as fallback.",
+                                    5000,
+                                );
+                            } else {
+                                // Success
+                                new Notice(
+                                    `✓ Switched to ${value === "auto" ? "auto mode" : value === "datacore" ? "Datacore" : "Dataview"}. Click 'Refresh' to reload tasks.`,
+                                    4000,
+                                );
+                            }
 
                             // Refresh tasks with new API
                             await this.plugin.refreshTasks();
@@ -882,19 +903,6 @@ export class SettingsTab extends PluginSettingTab {
                         },
                     ),
             );
-
-        // Show recommendation if Datacore is available but not being used
-        if (status.canSwitchToDatacore) {
-            const recommendationDiv = containerEl.createDiv({
-                cls: "task-chat-api-recommendation",
-            });
-            recommendationDiv.createEl("strong", {
-                text: "💡 Performance Tip: ",
-            });
-            recommendationDiv.appendText(
-                "Datacore is installed and offers significantly better performance. Consider switching to 'Auto' or 'Datacore Only' mode.",
-            );
-        }
 
         // Dataview Settings
         new Setting(containerEl).setName("Dataview integration").setHeading();

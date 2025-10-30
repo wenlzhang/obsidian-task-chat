@@ -146,9 +146,19 @@ export class ExclusionsModal extends Modal {
                 cls: "task-chat-exclusion-badge",
             });
 
+            // For notes, show only filename.md instead of full path
+            let displayText = value || "(Root)";
+            if (type === "Note" && value) {
+                // Extract just the filename with extension
+                const filename = value.split("/").pop() || value;
+                displayText = filename.endsWith(".md")
+                    ? filename
+                    : `${filename}.md`;
+            }
+
             const text = badge.createSpan({
                 cls: "task-chat-exclusion-badge-text",
-                text: value || "(Root)",
+                text: displayText,
             });
 
             const removeBtn = badge.createEl("button", {
