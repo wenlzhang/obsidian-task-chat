@@ -13,7 +13,7 @@ import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
 import { PricingService } from "./pricingService";
 import { TaskSortService } from "./taskSortService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
-import { DataviewService } from "./dataviewService";
+import { TaskIndexService } from "./taskIndexService";
 import { Logger } from "../utils/logger";
 import { StreamingService, StreamChunk } from "./streamingService";
 import {
@@ -471,7 +471,7 @@ export class AIService {
                 );
 
                 tasksAfterPropertyFilter =
-                    await DataviewService.parseTasksFromDataview(
+                    await TaskIndexService.parseTasksFromIndex(
                         app,
                         settings,
                         undefined, // No legacy date filter
@@ -485,6 +485,22 @@ export class AIService {
             }
 
             // Step 2: Apply remaining filters (folder, tags, keywords) in JavaScript
+            Logger.debug(
+                `[AIService] Before JS filtering: ${tasksAfterPropertyFilter.length} tasks`,
+            );
+            Logger.debug(
+                `[AIService] Applying JS filters:`,
+                JSON.stringify(
+                    {
+                        folder: intent.extractedFolder,
+                        tags: intent.extractedTags,
+                        keywords: intent.keywords,
+                    },
+                    null,
+                    2,
+                ),
+            );
+
             const filteredTasks = TaskSearchService.applyCompoundFilters(
                 tasksAfterPropertyFilter,
                 {
@@ -501,7 +517,7 @@ export class AIService {
             );
 
             Logger.debug(
-                `After filtering: ${filteredTasks.length} tasks found`,
+                `[AIService] After JS filtering: ${filteredTasks.length} tasks found`,
             );
 
             // Detect query type for adaptive scoring
