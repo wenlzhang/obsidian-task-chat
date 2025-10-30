@@ -61,12 +61,12 @@ export class AIService {
      * @param settings Plugin settings
      */
     static async sendMessage(
-        app: App, // Prefixed with _ to indicate intentionally unused
+        app: App,
         message: string,
         tasks: Task[],
         chatHistory: ChatMessage[],
         settings: PluginSettings,
-        _currentFilter?: import("../models/task").TaskFilter, // Prefixed with _ - not needed as tasks are pre-filtered
+        currentFilter?: import("../models/task").TaskFilter, // Used for property filter reloads
         onStream?: (chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
@@ -359,6 +359,18 @@ export class AIService {
             if (hasPropertyFilters) {
                 // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
+
+                // CRITICAL FIX: Pass inclusion filters from chat interface to property reload
+                // This ensures that folder/tag selections are preserved when using property queries
+                const inclusionFilters = currentFilter
+                    ? {
+                          folders: currentFilter.folders,
+                          noteTags: currentFilter.noteTags,
+                          taskTags: currentFilter.taskTags,
+                          notes: currentFilter.notes,
+                      }
+                    : undefined;
+
                 tasksAfterPropertyFilter =
                     await DataviewService.parseTasksFromDataview(
                         app,
@@ -370,6 +382,7 @@ export class AIService {
                             dueDateRange: intent.extractedDueDateRange, // Date range
                             status: intent.extractedStatus, // Can be string or string[]
                         },
+                        inclusionFilters, // Pass chat interface filters!
                     );
             }
 
