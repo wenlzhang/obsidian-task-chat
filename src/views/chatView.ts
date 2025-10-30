@@ -1297,6 +1297,18 @@ export class ChatView extends ItemView {
                 this.plugin.sessionManager.getCurrentMessages(),
             );
 
+            // DEBUG: Log current filter being passed to AIService
+            if (effectiveSettings.enableDebugLogging) {
+                Logger.debug(
+                    "[ChatView] Sending query to AIService with currentFilter:",
+                    JSON.stringify(this.currentFilter, null, 2),
+                );
+                Logger.debug(
+                    "[ChatView] Current tasks count:",
+                    this.currentTasks.length,
+                );
+            }
+
             const result = await AIService.sendMessage(
                 this.plugin.app,
                 message,

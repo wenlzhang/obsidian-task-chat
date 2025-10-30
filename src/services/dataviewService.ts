@@ -871,6 +871,19 @@ export class DataviewService {
             return [];
         }
 
+        // DEBUG: Log received inclusionFilters
+        Logger.debug("[DataviewService] parseTasksFromDataview called with:");
+        Logger.debug(
+            "  propertyFilters:",
+            propertyFilters ? JSON.stringify(propertyFilters, null, 2) : "none",
+        );
+        Logger.debug(
+            "  inclusionFilters:",
+            inclusionFilters
+                ? JSON.stringify(inclusionFilters, null, 2)
+                : "none",
+        );
+
         // Log exclusion information
         if (
             settings.exclusions &&

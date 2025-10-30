@@ -360,8 +360,7 @@ export class AIService {
                 // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
 
-                // CRITICAL FIX: Pass inclusion filters from chat interface to property reload
-                // This ensures that folder/tag selections are preserved when using property queries
+                // CRITICAL FIX: Extract inclusion filters from currentFilter
                 const inclusionFilters = currentFilter
                     ? {
                           folders: currentFilter.folders,
@@ -371,19 +370,118 @@ export class AIService {
                       }
                     : undefined;
 
+                // CRITICAL FIX: Merge property filters from both query AND currentFilter
+                // Query filters take precedence, but preserve currentFilter properties not in query
+                const mergedPropertyFilters: {
+                    priority?: number | number[] | null;
+                    dueDate?: string | null;
+                    dueDateRange?: { start: string; end: string } | null;
+                    status?: string | string[] | null;
+                } = {
+                    // Start with query-extracted properties (from intent)
+                    priority: intent.extractedPriority,
+                    dueDate: intent.extractedDueDateFilter,
+                    // Only include dueDateRange if both start and end are present
+                    dueDateRange:
+                        intent.extractedDueDateRange?.start &&
+                        intent.extractedDueDateRange?.end
+                            ? {
+                                  start: intent.extractedDueDateRange.start,
+                                  end: intent.extractedDueDateRange.end,
+                              }
+                            : undefined,
+                    status: intent.extractedStatus,
+                };
+
+                // Merge currentFilter property filters if they exist and query didn't override
+                if (currentFilter) {
+                    // Merge dueDateRange from currentFilter if query didn't specify one
+                    // Only merge if both start and end are present
+                    if (
+                        !mergedPropertyFilters.dueDateRange &&
+                        currentFilter.dueDateRange &&
+                        currentFilter.dueDateRange.start &&
+                        currentFilter.dueDateRange.end
+                    ) {
+                        mergedPropertyFilters.dueDateRange = {
+                            start: currentFilter.dueDateRange.start,
+                            end: currentFilter.dueDateRange.end,
+                        };
+                    }
+
+                    // Merge priorities from currentFilter if query didn't specify any
+                    // Note: currentFilter.priorities is string[], need to convert to number[]
+                    if (
+                        !mergedPropertyFilters.priority &&
+                        currentFilter.priorities &&
+                        currentFilter.priorities.length > 0
+                    ) {
+                        const priorityNumbers = currentFilter.priorities
+                            .map((p) => parseInt(p, 10))
+                            .filter((p) => !isNaN(p));
+                        if (priorityNumbers.length > 0) {
+                            mergedPropertyFilters.priority =
+                                priorityNumbers.length === 1
+                                    ? priorityNumbers[0]
+                                    : priorityNumbers;
+                        }
+                    }
+
+                    // Merge taskStatuses from currentFilter if query didn't specify any
+                    if (
+                        !mergedPropertyFilters.status &&
+                        currentFilter.taskStatuses &&
+                        currentFilter.taskStatuses.length > 0
+                    ) {
+                        mergedPropertyFilters.status =
+                            currentFilter.taskStatuses.length === 1
+                                ? currentFilter.taskStatuses[0]
+                                : currentFilter.taskStatuses;
+                    }
+                }
+
+                // DEBUG: Log filter extraction and merging
+                Logger.debug(
+                    "[AIService] Property filters detected, reloading tasks from Dataview",
+                );
+                Logger.debug(
+                    "[AIService] currentFilter received:",
+                    currentFilter
+                        ? JSON.stringify(currentFilter, null, 2)
+                        : "undefined",
+                );
+                Logger.debug(
+                    "[AIService] Extracted inclusionFilters:",
+                    inclusionFilters
+                        ? JSON.stringify(inclusionFilters, null, 2)
+                        : "undefined",
+                );
+                Logger.debug(
+                    "[AIService] Query property filters (from intent):",
+                    {
+                        priority: intent.extractedPriority,
+                        dueDate: intent.extractedDueDateFilter,
+                        dueDateRange: intent.extractedDueDateRange,
+                        status: intent.extractedStatus,
+                    },
+                );
+                Logger.debug(
+                    "[AIService] Merged property filters (query + currentFilter):",
+                    mergedPropertyFilters,
+                );
+
                 tasksAfterPropertyFilter =
                     await DataviewService.parseTasksFromDataview(
                         app,
                         settings,
                         undefined, // No legacy date filter
-                        {
-                            priority: intent.extractedPriority, // Can be number or number[]
-                            dueDate: intent.extractedDueDateFilter, // Single date or relative
-                            dueDateRange: intent.extractedDueDateRange, // Date range
-                            status: intent.extractedStatus, // Can be string or string[]
-                        },
-                        inclusionFilters, // Pass chat interface filters!
+                        mergedPropertyFilters,
+                        inclusionFilters, // Pass chat interface inclusion filters!
                     );
+
+                Logger.debug(
+                    `[AIService] Tasks after property reload: ${tasksAfterPropertyFilter.length}`,
+                );
             }
 
             // Step 2: Apply remaining filters (folder, tags, keywords) in JavaScript
