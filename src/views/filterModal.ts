@@ -87,7 +87,11 @@ export class FilterModal extends Modal {
             cls: "task-chat-filter-section-desc",
         });
         desc.createSpan({
-            text: "Include tasks from specific folders, tags, or notes. Leave empty to include all.",
+            text: "Include tasks from specific folders, tags, or notes. Tasks match if they meet ",
+        });
+        desc.createEl("strong", { text: "ANY" });
+        desc.createSpan({
+            text: " of these criteria (OR logic). Leave empty to include all.",
         });
         desc.createEl("br");
         desc.createEl("br");
@@ -376,13 +380,25 @@ export class FilterModal extends Modal {
     }
 
     /**
-     * Section 3: Task properties (due date, priority, status)
+     * Section 2: Task properties (due date, priority, status)
      */
     private renderTaskPropertiesSection(container: HTMLElement): void {
         const section = container.createDiv("task-chat-filter-section");
         section.createEl("h3", {
             text: "Task properties",
             cls: "task-chat-filter-section-title",
+        });
+
+        // Add description with AND logic explanation
+        const desc = section.createDiv({
+            cls: "task-chat-filter-section-desc",
+        });
+        desc.createSpan({
+            text: "Filter by task properties. Tasks must match ",
+        });
+        desc.createEl("strong", { text: "ALL" });
+        desc.createSpan({
+            text: " selected property criteria (AND logic). Leave empty for no filtering.",
         });
 
         // Due Date Range

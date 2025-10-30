@@ -11,6 +11,21 @@ Task Chat provides two powerful ways to control which tasks appear in your searc
 
 **Important:** Exclusions always take priority over inclusions. If a task is excluded in settings, it won't appear even if included by filters.
 
+### Task Indexing APIs
+
+Task Chat supports two APIs for indexing and querying tasks:
+
+| API | Performance | Status |
+|-----|-------------|--------|
+| **Datacore** | 2-10x faster | Recommended (auto-detects) |
+| **Dataview** | Standard | Fallback if Datacore unavailable |
+
+**Auto mode** (recommended): Automatically uses Datacore when available, falls back to Dataview otherwise.
+
+Configure in: **Settings → Task Chat → Task indexing → Task indexing API**
+
+Both APIs support the same filtering features described in this guide. The only difference is performance.
+
 ## Table of Contents
 
 - [Inclusions (Filter Interface)](#inclusions-filter-interface)
@@ -243,32 +258,64 @@ Task Chat distinguishes between two types of tags to give you precise control:
 
 ### Filter Logic
 
-**OR logic across dimensions:**
-Tasks are included if they match **ANY** of the following:
-- Is in an included folder, OR
-- Is from a note with an included tag, OR
-- Has an included task tag, OR
-- Is in an included note, OR
-- Has an included priority, OR
-- Has a due date in the included range, OR
-- Has an included status
+Task Chat uses **two different logic systems** for different filter types:
 
-**AND logic within dimensions:**
-Multiple filters from different categories work together.
+#### 📍 Source Filters (OR Logic)
+Tasks are included if they match **ANY** of these criteria:
+- **Folders**: Is in an included folder, **OR**
+- **Note tags**: Is from a note with an included tag, **OR**
+- **Task tags**: Has an included task tag, **OR**
+- **Notes**: Is in an included specific note
 
 **Example:**
 ```
 Include:
 - Folders: ["Projects"]
 - Task Tags: ["#urgent"]
-- Priorities: [1, 2]
 
 Result:
-✅ Task in "Projects/" folder → Included (matches folder)
-✅ Task with #urgent tag (anywhere) → Included (matches tag)
-✅ High priority task ⏫ (anywhere) → Included (matches priority)
-✅ Task in "Projects/" with #urgent → Included (matches multiple)
-❌ Task not matching any criteria → Not included
+✅ Task in "Projects/" folder (no tags) → Included
+✅ Task with #urgent (in any folder) → Included
+✅ Task in "Projects/" with #urgent → Included
+✅ Task in "Archive/" with #urgent → Included (tag matches)
+❌ Task in "Archive/" (no #urgent) → Not included
+```
+
+#### 🎯 Task Property Filters (AND Logic)
+Tasks must match **ALL** selected property criteria:
+- **Priorities**: Has one of the selected priorities, **AND**
+- **Due date**: Falls within the date range, **AND**
+- **Status**: Has one of the selected statuses
+
+**Example:**
+```
+Include:
+- Priorities: [1, 2] (high priority)
+- Due Date: This Week
+- Statuses: ["open"]
+
+Result:
+✅ Priority 1, due this week, open → Included (all match)
+❌ Priority 1, due next month, open → Not included (date doesn't match)
+❌ Priority 3, due this week, open → Not included (priority doesn't match)
+❌ Priority 1, due this week, completed → Not included (status doesn't match)
+```
+
+#### 🔗 Combining Source + Property Filters
+Source filters (OR) are applied first, then property filters (AND) refine the results.
+
+**Example:**
+```
+Include:
+- Folders: ["Projects"] OR Task Tags: ["#urgent"] (Source OR)
+- AND Priorities: [1, 2] (Property AND)
+- AND Due Date: This Week (Property AND)
+
+Result:
+✅ "Projects/" task, priority 1, due this week → Included
+✅ Task with #urgent, priority 2, due this week → Included
+❌ "Projects/" task, priority 3, due this week → Not included (priority)
+❌ Task with #urgent, priority 1, due next month → Not included (date)
 ```
 
 ---
@@ -296,6 +343,27 @@ Exclusions are **permanent rules** that hide tasks from ALL searches. They're us
 - Template notes
 - Completed projects
 - Personal notes you never want to see in searches
+
+### Exclusion Logic (AND)
+
+Tasks must pass **ALL** exclusion rules to be included:
+- **NOT** in excluded folder, **AND**
+- **NOT** has excluded note tag, **AND**
+- **NOT** has excluded task tag, **AND**
+- **NOT** in excluded specific note
+
+**Example:**
+```
+Exclude:
+- Folders: ["Archive"]
+- Task Tags: ["#draft"]
+
+Result:
+✅ Task in "Projects/" (no #draft) → Included (passes all exclusions)
+❌ Task in "Archive/" (no #draft) → Excluded (fails folder rule)
+❌ Task in "Projects/" with #draft → Excluded (fails tag rule)
+❌ Task in "Archive/" with #draft → Excluded (fails both rules)
+```
 
 ### How to Manage Exclusions
 
