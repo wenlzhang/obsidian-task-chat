@@ -116,74 +116,21 @@ export class DataviewService {
         }
 
         // Strategy 4: Extract emoji shorthands from text (fallback)
-        const emojiValue = this.extractEmojiShorthand(text, fieldKey);
+        const emojiValue = TaskPropertyService.extractEmojiShorthand(
+            text,
+            fieldKey,
+        );
         if (emojiValue !== undefined) {
             return emojiValue;
         }
 
         // Strategy 5: Extract from inline field syntax in text
-        const inlineValue = this.extractInlineField(text, fieldKey);
+        const inlineValue = TaskPropertyService.extractInlineField(
+            text,
+            fieldKey,
+        );
         if (inlineValue !== undefined) {
             return inlineValue;
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Extract Dataview emoji shorthands
-     * See: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
-     *
-     * IMPORTANT: Dataview emoji shorthands use FIXED field names:
-     * 🗓️ → "due" (always this name in Dataview, regardless of user settings)
-     * ✅ → "completion" (always this name, even if user configured "completed")
-     * ➕ → "created" (always this name)
-     * 🛫 → "start" (always this name)
-     * ⏳ → "scheduled" (always this name)
-     *
-     * This method extracts emoji dates from text as a fallback.
-     * The primary extraction happens in getFieldValue() using Dataview's API.
-     */
-    private static extractEmojiShorthand(
-        text: string,
-        fieldKey: string,
-    ): string | undefined {
-        if (!text || typeof text !== "string") return undefined;
-
-        // Use centralized emoji patterns from TaskPropertyService
-        // Check all emoji patterns and return the first match
-        // This allows the function to work regardless of field naming
-        for (const pattern of Object.values(
-            TaskPropertyService.DATE_EMOJI_PATTERNS,
-        )) {
-            const match = text.match(pattern);
-            if (match && match[1]) {
-                const extractedDate = match[1].trim();
-                const momentDate = moment(extractedDate, "YYYY-MM-DD", true);
-                if (momentDate.isValid()) {
-                    return extractedDate;
-                }
-            }
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Extract inline field from task text using [key::value] syntax
-     */
-    private static extractInlineField(
-        text: string,
-        fieldKey: string,
-    ): string | undefined {
-        if (!text || typeof text !== "string") return undefined;
-
-        // Match [fieldKey::value] or [fieldKey:: value]
-        const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
-        const match = text.match(regex);
-
-        if (match && match[1]) {
-            return match[1].trim();
         }
 
         return undefined;

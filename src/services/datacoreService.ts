@@ -119,13 +119,19 @@ export class DatacoreService {
         }
 
         // Strategy 4: Extract emoji shorthands from text (fallback compatibility)
-        const emojiValue = this.extractEmojiShorthand(text, fieldKey);
+        const emojiValue = TaskPropertyService.extractEmojiShorthand(
+            text,
+            fieldKey,
+        );
         if (emojiValue !== undefined) {
             return emojiValue;
         }
 
         // Strategy 5: Extract from inline field syntax in text
-        const inlineValue = this.extractInlineField(text, fieldKey);
+        const inlineValue = TaskPropertyService.extractInlineField(
+            text,
+            fieldKey,
+        );
         if (inlineValue !== undefined) {
             return inlineValue;
         }
@@ -134,72 +140,61 @@ export class DatacoreService {
     }
 
     /**
-     * Extract Datacore emoji shorthands (same format as Dataview)
-     * Datacore maintains compatibility with Tasks plugin emoji format
-     */
-    private static extractEmojiShorthand(
-        text: string,
-        fieldKey: string,
-    ): string | undefined {
-        if (!text || typeof text !== "string") return undefined;
-
-        // Use centralized emoji patterns from TaskPropertyService
-        for (const pattern of Object.values(
-            TaskPropertyService.DATE_EMOJI_PATTERNS,
-        )) {
-            const match = text.match(pattern);
-            if (match && match[1]) {
-                const extractedDate = match[1].trim();
-                const momentDate = moment(extractedDate, "YYYY-MM-DD", true);
-                if (momentDate.isValid()) {
-                    return extractedDate;
-                }
-            }
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Extract inline field from task text using [key::value] syntax
-     */
-    private static extractInlineField(
-        text: string,
-        fieldKey: string,
-    ): string | undefined {
-        if (!text || typeof text !== "string") return undefined;
-
-        // Match [fieldKey::value] or [fieldKey:: value]
-        const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
-        const match = text.match(regex);
-
-        if (match && match[1]) {
-            return match[1].trim();
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Check if a task is valid for processing
-     * Per API docs, tasks have $text and $status fields
+     * Check if an item is actually a task (has checkbox) vs a regular list item
+     *
+     * Dataview has a 'task' boolean property (true = task, false = list item)
+     * Datacore likely has the same or similar property
+     *
+     * Per API docs, tasks have:
+     * - $status: string (the status marker inside brackets)
+     * - task: boolean (possibly, similar to Dataview)
+     *
+     * Regular list items without checkboxes should be excluded
      */
     private static isValidTask(task: any): boolean {
-        return (
-            task &&
-            (task.$text || task.text) &&
-            typeof task.$status !== "undefined"
-        );
+        if (!task) return false;
+
+        // Strategy 1: Check if there's an explicit 'task' property (like Dataview)
+        // This distinguishes "- [ ] task" from "- regular list item"
+        if (typeof task.task === "boolean") {
+            return task.task === true;
+        }
+
+        // Strategy 2: Check if it has $status field
+        // Tasks with checkboxes have status markers: " ", "x", "/", "?", etc.
+        // Regular list items don't have $status field
+        if (
+            typeof task.$status === "undefined" &&
+            typeof task.status === "undefined"
+        ) {
+            return false;
+        }
+
+        // Strategy 3: Must have text content
+        if (!task.$text && !task.text) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
      * Recursively flatten task hierarchy to extract all tasks including subtasks
      * Per API docs, subtasks are in the $elements property
      *
+     * IMPORTANT: This should only include actual tasks (with checkboxes),
+     * not regular list items
+     *
      * @param dcTask - Datacore task object
+     * @param settings - Plugin settings (for debug logging)
+     * @param listItemsSkipped - Counter for skipped list items
      * @returns Array of all tasks (parent + all nested subtasks)
      */
-    private static flattenTaskHierarchy(dcTask: any): any[] {
+    private static flattenTaskHierarchy(
+        dcTask: any,
+        settings: PluginSettings,
+        listItemsSkipped: { count: number },
+    ): any[] {
         const tasks: any[] = [];
 
         // Add the current task
@@ -207,13 +202,25 @@ export class DatacoreService {
 
         // Recursively process subtasks in $elements
         if (dcTask.$elements && Array.isArray(dcTask.$elements)) {
-            for (const subtask of dcTask.$elements) {
-                // Only process if it's a task (not just a list item)
-                if (this.isValidTask(subtask)) {
+            for (const element of dcTask.$elements) {
+                // Only process if it's actually a task (has checkbox)
+                // Skip regular list items without checkboxes
+                if (this.isValidTask(element)) {
                     // Recursively flatten this subtask and its children
-                    const flattenedSubtasks =
-                        this.flattenTaskHierarchy(subtask);
+                    const flattenedSubtasks = this.flattenTaskHierarchy(
+                        element,
+                        settings,
+                        listItemsSkipped,
+                    );
                     tasks.push(...flattenedSubtasks);
+                } else {
+                    // Track skipped list items for debugging
+                    listItemsSkipped.count++;
+                    if (settings.enableDebugLogging) {
+                        Logger.debug(
+                            `[Datacore] Skipping list item (no checkbox): "${element.$text || element.text || "(no text)"}"`,
+                        );
+                    }
                 }
             }
         }
@@ -390,16 +397,23 @@ export class DatacoreService {
     }
 
     /**
-     * Build simple Datacore query string
-     * We keep the query simple and do filtering post-query (like Dataview does)
-     * This ensures better compatibility and handles subtasks correctly
+     * Build Datacore query string
+     * Per Datacore API: @task returns only tasks (with checkboxes), NOT list items
+     *
+     * Examples from Datacore docs:
+     * - `@task` - all tasks (excludes list items automatically)
+     * - `@task and $completed = false` - only open tasks
+     * - `@list-item and $type = "list"` - only list items (we don't want these)
+     *
+     * This is equivalent to Dataview's file.tasks filtering
      */
     private static buildDatacoreQuery(settings: PluginSettings): string {
-        // Simple base query for all tasks
-        // Datacore will return ALL tasks including subtasks (similar to Dataview's file.tasks)
+        // Use @task query - automatically excludes list items per Datacore API
         const query = "@task";
 
-        Logger.debug(`Datacore base query: ${query}`);
+        Logger.debug(
+            `Datacore query: ${query} (excludes list items automatically)`,
+        );
         return query;
     }
 
@@ -748,8 +762,10 @@ export class DatacoreService {
             // Datacore returns tasks with $file field (per API docs)
             if (hasInclusionFilters) {
                 // Get unique page paths from results
-                const uniquePaths = new Set(
-                    results.map((t: any) => t.$file || t.file || ""),
+                const uniquePaths = new Set<string>(
+                    results.map(
+                        (t: any) => (t.$file || t.file || "") as string,
+                    ),
                 );
 
                 for (const pagePath of uniquePaths) {
@@ -789,16 +805,23 @@ export class DatacoreService {
 
             // CRITICAL: Flatten task hierarchy to get ALL tasks including subtasks
             // Per API docs, subtasks are in $elements property
+            // Also filter out regular list items (without checkboxes)
             const allTasks: any[] = [];
+            const listItemsSkipped = { count: 0 };
+
             for (const dcTask of results) {
                 if (this.isValidTask(dcTask)) {
-                    const flattenedTasks = this.flattenTaskHierarchy(dcTask);
+                    const flattenedTasks = this.flattenTaskHierarchy(
+                        dcTask,
+                        settings,
+                        listItemsSkipped,
+                    );
                     allTasks.push(...flattenedTasks);
                 }
             }
 
             Logger.debug(
-                `Datacore flattened ${results.length} parent tasks to ${allTasks.length} total tasks (including subtasks)`,
+                `Datacore flattened ${results.length} parent tasks to ${allTasks.length} total tasks (excluding ${listItemsSkipped.count} list items)`,
             );
 
             // Process each task (including subtasks)

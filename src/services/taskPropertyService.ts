@@ -1939,4 +1939,83 @@ export class TaskPropertyService {
 
         return fixed;
     }
+
+    // ============================================================================
+    // FIELD EXTRACTION UTILITIES
+    // Used by both DataviewService and DatacoreService
+    // ============================================================================
+
+    /**
+     * Extract emoji shorthand date from task text
+     *
+     * IMPORTANT: Only extracts the emoji for the SPECIFIC field being requested
+     * Don't extract other date emojis (e.g., don't return created date when looking for due date)
+     *
+     * @param text - Task text containing emoji shorthands
+     * @param fieldKey - Field name being requested (due, dueDate, created, etc.)
+     * @returns Extracted date string in YYYY-MM-DD format, or undefined
+     */
+    static extractEmojiShorthand(
+        text: string,
+        fieldKey: string,
+    ): string | undefined {
+        if (!text || typeof text !== "string") return undefined;
+
+        // Map field key to specific emoji pattern
+        // Only check the emoji that corresponds to THIS field
+        const fieldToEmojiPattern: { [key: string]: RegExp } = {
+            due: this.DATE_EMOJI_PATTERNS.due,
+            dueDate: this.DATE_EMOJI_PATTERNS.due,
+            completion: this.DATE_EMOJI_PATTERNS.completion,
+            completedDate: this.DATE_EMOJI_PATTERNS.completion,
+            completed: this.DATE_EMOJI_PATTERNS.completion,
+            created: this.DATE_EMOJI_PATTERNS.created,
+            createdDate: this.DATE_EMOJI_PATTERNS.created,
+            start: this.DATE_EMOJI_PATTERNS.start,
+            startDate: this.DATE_EMOJI_PATTERNS.start,
+            scheduled: this.DATE_EMOJI_PATTERNS.scheduled,
+            scheduledDate: this.DATE_EMOJI_PATTERNS.scheduled,
+        };
+
+        const pattern = fieldToEmojiPattern[fieldKey];
+        if (!pattern) {
+            // No specific emoji pattern for this field
+            return undefined;
+        }
+
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            const extractedDate = match[1].trim();
+            const momentDate = moment(extractedDate, "YYYY-MM-DD", true);
+            if (momentDate.isValid()) {
+                return extractedDate;
+            }
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Extract inline field from task text using [key::value] syntax
+     *
+     * @param text - Task text containing inline fields
+     * @param fieldKey - Field name to extract
+     * @returns Extracted value, or undefined
+     */
+    static extractInlineField(
+        text: string,
+        fieldKey: string,
+    ): string | undefined {
+        if (!text || typeof text !== "string") return undefined;
+
+        // Match [fieldKey::value] or [fieldKey:: value]
+        const regex = new RegExp(`\\[${fieldKey}::([^\\]]+)\\]`, "i");
+        const match = text.match(regex);
+
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+
+        return undefined;
+    }
 }
