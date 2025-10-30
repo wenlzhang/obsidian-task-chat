@@ -179,39 +179,6 @@ export class DatacoreService {
     }
 
     /**
-     * Check if a task should be excluded based on task-level tags
-     * This checks tags that are ON the task line itself
-     */
-    private static isTaskExcludedByTag(
-        dcTask: any,
-        excludedTags: string[],
-    ): boolean {
-        if (!excludedTags || excludedTags.length === 0) {
-            return false;
-        }
-
-        // Get task-level tags from Datacore task object
-        const taskTags = dcTask.$tags || dcTask.tags || [];
-
-        if (taskTags.length === 0) {
-            return false;
-        }
-
-        // Check if task has any excluded tag (case-insensitive comparison)
-        return excludedTags.some((excludedTag: string) => {
-            const normalizedExcluded = excludedTag.replace(/^#+/, "");
-
-            return taskTags.some((taskTag: string) => {
-                const normalizedTaskTag = taskTag.replace(/^#+/, "");
-                return (
-                    normalizedTaskTag.toLowerCase() ===
-                    normalizedExcluded.toLowerCase()
-                );
-            });
-        });
-    }
-
-    /**
      * Process a single Datacore task
      * Converts Datacore task format to internal Task model
      * Uses fields from API docs: $text, $status, $file, $completed, $tags, etc.
@@ -347,22 +314,126 @@ export class DatacoreService {
     }
 
     /**
-     * Build Datacore query string
-     * Per Datacore API: @task returns only tasks (with checkboxes), NOT list items
+     * Build comprehensive Datacore query with exclusions AND inclusions
+     * Per user requirements:
+     * - SOURCE LEVEL (query): folders, notes, note tags (exclusions + inclusions)
+     * - POST-QUERY LEVEL: task tags, task properties (exclusions + inclusions)
      *
-     * Examples from Datacore docs:
+     * Per Datacore API docs:
      * - `@task` - all tasks (excludes list items automatically)
-     * - `@task and $completed = false` - only open tasks
-     * - `@list-item and $type = "list"` - only list items (we don't want these)
+     * - `#tag` - filter by page tag (note-level)
+     * - `!#tag` - exclude by page tag
+     * - `path("folder")` or `path("Note.md")` - filter by path
+     * - `!path("folder")` or `!path("Note.md")` - exclude by path
+     * - `and` / `or` - combine conditions
      *
-     * This is equivalent to Dataview's file.tasks filtering
+     * Note: Task-level tags use dcTask.$tags API post-query (query #tag filters pages)
      */
-    private static buildDatacoreQuery(settings: PluginSettings): string {
-        // Use @task query - automatically excludes list items per Datacore API
-        const query = "@task";
+    private static buildDatacoreQuery(
+        settings: PluginSettings,
+        inclusionFilters?: {
+            folders?: string[];
+            noteTags?: string[];
+            taskTags?: string[];
+            notes?: string[];
+        },
+    ): string {
+        const queryParts: string[] = ["@task"];
+
+        // ========================================
+        // EXCLUSIONS (Settings tab level)
+        // ========================================
+
+        // Exclude folders
+        if (
+            settings.exclusions.folders &&
+            settings.exclusions.folders.length > 0
+        ) {
+            for (const folder of settings.exclusions.folders) {
+                queryParts.push(`!path("${folder}")`);
+            }
+        }
+
+        // Exclude specific notes (files)
+        if (settings.exclusions.notes && settings.exclusions.notes.length > 0) {
+            for (const note of settings.exclusions.notes) {
+                queryParts.push(`!path("${note}")`);
+            }
+        }
+
+        // Exclude note-level tags (page tags)
+        if (
+            settings.exclusions.noteTags &&
+            settings.exclusions.noteTags.length > 0
+        ) {
+            for (const tag of settings.exclusions.noteTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                queryParts.push(`!#${normalizedTag}`);
+            }
+        }
+
+        // NOTE: Task-level tag exclusions handled post-query with dcTask.$tags
+
+        // ========================================
+        // INCLUSIONS (Chat interface level)
+        // ========================================
+
+        // Include folders - add ALL to query with OR logic
+        if (inclusionFilters?.folders && inclusionFilters.folders.length > 0) {
+            if (inclusionFilters.folders.length === 1) {
+                queryParts.push(`path("${inclusionFilters.folders[0]}")`);
+            } else {
+                // Multiple folders with OR logic: (path("A") or path("B"))
+                const folderConditions = inclusionFilters.folders
+                    .map((folder) => `path("${folder}")`)
+                    .join(" or ");
+                queryParts.push(`(${folderConditions})`);
+            }
+        }
+
+        // Include specific notes (files) - add ALL to query with OR logic
+        if (inclusionFilters?.notes && inclusionFilters.notes.length > 0) {
+            if (inclusionFilters.notes.length === 1) {
+                queryParts.push(`path("${inclusionFilters.notes[0]}")`);
+            } else {
+                // Multiple notes with OR logic: (path("A.md") or path("B.md"))
+                const noteConditions = inclusionFilters.notes
+                    .map((note) => `path("${note}")`)
+                    .join(" or ");
+                queryParts.push(`(${noteConditions})`);
+            }
+        }
+
+        // Include note-level tags - add ALL to query with OR logic
+        if (
+            inclusionFilters?.noteTags &&
+            inclusionFilters.noteTags.length > 0
+        ) {
+            if (inclusionFilters.noteTags.length === 1) {
+                const normalizedTag = inclusionFilters.noteTags[0].replace(
+                    /^#+/,
+                    "",
+                );
+                queryParts.push(`#${normalizedTag}`);
+            } else {
+                // Multiple tags with OR logic: (#tag1 or #tag2)
+                const tagConditions = inclusionFilters.noteTags
+                    .map((tag) => {
+                        const normalizedTag = tag.replace(/^#+/, "");
+                        return `#${normalizedTag}`;
+                    })
+                    .join(" or ");
+                queryParts.push(`(${tagConditions})`);
+            }
+        }
+
+        // NOTE: Task-level tag inclusions handled post-query with dcTask.$tags
+        // NOTE: Task properties handled post-query
+
+        const query = queryParts.join(" and ");
 
         Logger.debug(
-            `Datacore query: ${query} (excludes list items automatically)`,
+            `Datacore query (source-level): ${query} (folders + notes + note tags)`,
         );
         return query;
     }
@@ -677,8 +748,10 @@ export class DatacoreService {
         const tasks: Task[] = [];
 
         try {
-            // Build simple query and task filter
-            const query = this.buildDatacoreQuery(settings);
+            // Build query for source-level filtering: folders + note tags (exclusions + inclusions)
+            const query = this.buildDatacoreQuery(settings, inclusionFilters);
+
+            // Build post-query filter for task properties (priority, due date, status)
             const taskFilter = propertyFilters
                 ? this.buildTaskFilter(propertyFilters, settings)
                 : null;
@@ -715,61 +788,37 @@ export class DatacoreService {
                 );
             }
 
-            // Build page path filters for inclusion filtering
-            const matchedPagePaths = new Set<string>();
-            const hasInclusionFilters = !!(
-                inclusionFilters?.folders ||
-                inclusionFilters?.noteTags ||
-                inclusionFilters?.notes
-            );
-            const hasTaskTagFilter = !!(
-                inclusionFilters?.taskTags &&
-                inclusionFilters.taskTags.length > 0
+            // Build page metadata map for note-level tags
+            // We only need this for passing to processDatacoreTask
+            const pageTagsMap = new Map<string, string[]>();
+
+            // Get unique page paths from task results
+            const uniquePaths = new Set<string>(
+                results.map((t: any) => (t.$file || t.file || "") as string),
             );
 
-            // If we have inclusion filters, we need to get page information
-            // Datacore returns tasks with $file field (per API docs)
-            if (hasInclusionFilters) {
-                // Get unique page paths from results
-                const uniquePaths = new Set<string>(
-                    results.map(
-                        (t: any) => (t.$file || t.file || "") as string,
-                    ),
-                );
+            // Query all pages using Datacore API to get their tags
+            try {
+                const pagesQuery = 'FROM ""';
+                const pages = await datacoreApi.query(pagesQuery);
 
-                for (const pagePath of uniquePaths) {
-                    if (!pagePath) continue;
+                if (pages && Array.isArray(pages)) {
+                    for (const page of pages) {
+                        const pagePath = page.$file || page.file || "";
+                        if (!pagePath || !uniquePaths.has(pagePath)) continue;
 
-                    // Check folder match
-                    const matchesFolder =
-                        inclusionFilters?.folders &&
-                        inclusionFilters.folders.length > 0 &&
-                        inclusionFilters.folders.some(
-                            (folder: string) =>
-                                pagePath.startsWith(folder + "/") ||
-                                pagePath === folder,
-                        );
-
-                    // Check specific note match
-                    const matchesNote =
-                        inclusionFilters?.notes &&
-                        inclusionFilters.notes.length > 0 &&
-                        inclusionFilters.notes.some(
-                            (notePath: string) => pagePath === notePath,
-                        );
-
-                    // For note tags, we would need to query page metadata
-                    // For now, we'll skip note tag filtering in Datacore
-                    // TODO: Implement note tag filtering when we understand Datacore's page API better
-
-                    if (matchesFolder || matchesNote) {
-                        matchedPagePaths.add(pagePath);
+                        // Get tags from page using Datacore's native $tags property
+                        const pageTags = page.$tags || page.tags || [];
+                        if (pageTags.length > 0) {
+                            pageTagsMap.set(pagePath, pageTags);
+                        }
                     }
+                    Logger.debug(
+                        `Fetched note tags for ${pageTagsMap.size} pages (out of ${uniquePaths.size} pages with tasks)`,
+                    );
                 }
-
-                Logger.debug(
-                    `Inclusion filtering: ${matchedPagePaths.size} pages matched`,
-                );
+            } catch (error) {
+                Logger.warn("Failed to fetch page tags from Datacore:", error);
             }
 
             // IMPORTANT: @task query returns ALL tasks (including subtasks) as a FLAT list
@@ -855,45 +904,44 @@ export class DatacoreService {
                 // The scoring system handles prioritizing incomplete tasks over completed ones
                 // Users can explicitly filter by status if they want
 
-                // Apply folder exclusions
+                // ========================================
+                // EXCLUSIONS (Settings tab level)
+                // Order: Query-level first, then post-query
+                // ========================================
+
+                // NOTE: Folders, notes, and note-level tags are handled at query level
+                // Only task-level tags need post-query filtering for exclusions
+
+                // Apply task-level tag exclusions using Datacore API (dcTask.$tags)
                 if (
-                    settings.exclusions.folders &&
-                    settings.exclusions.folders.length > 0
+                    settings.exclusions.taskTags &&
+                    settings.exclusions.taskTags.length > 0
                 ) {
-                    const isExcluded = settings.exclusions.folders.some(
-                        (folder: string) => {
-                            const normalizedFolder = folder.replace(
-                                /^\/+|\/+$/g,
-                                "",
-                            );
-                            return taskPath.startsWith(normalizedFolder + "/");
-                        },
-                    );
-                    if (isExcluded) {
-                        exclusionRejects++;
-                        continue;
+                    const taskTags = dcTask.$tags || dcTask.tags || [];
+                    if (taskTags.length > 0) {
+                        const isExcluded = settings.exclusions.taskTags.some(
+                            (excludedTag: string) => {
+                                const normalizedExcluded = excludedTag.replace(
+                                    /^#+/,
+                                    "",
+                                );
+                                return taskTags.some((taskTag: string) => {
+                                    const normalizedTaskTag = taskTag.replace(
+                                        /^#+/,
+                                        "",
+                                    );
+                                    return (
+                                        normalizedTaskTag.toLowerCase() ===
+                                        normalizedExcluded.toLowerCase()
+                                    );
+                                });
+                            },
+                        );
+                        if (isExcluded) {
+                            exclusionRejects++;
+                            continue;
+                        }
                     }
-                }
-
-                // Apply note exclusions
-                if (
-                    settings.exclusions.notes &&
-                    settings.exclusions.notes.length > 0 &&
-                    settings.exclusions.notes.includes(taskPath)
-                ) {
-                    exclusionRejects++;
-                    continue;
-                }
-
-                // Apply task tag exclusions
-                if (
-                    this.isTaskExcludedByTag(
-                        dcTask,
-                        settings.exclusions.taskTags || [],
-                    )
-                ) {
-                    exclusionRejects++;
-                    continue;
                 }
 
                 // Apply property filters (post-query)
@@ -903,49 +951,40 @@ export class DatacoreService {
                     continue;
                 }
 
-                // Apply inclusion filters (OR logic: page matches OR task has required tag)
-                let matchesInclusion = false;
+                // ========================================
+                // INCLUSIONS (Chat interface filter level)
+                // Applied after exclusions
+                // ========================================
+                // NOTE: Folders, notes, and note tags are already filtered at query level
+                // Only need to check: task tags
 
-                if (!hasInclusionFilters && !hasTaskTagFilter) {
-                    // No inclusion filters = include all
-                    matchesInclusion = true;
-                } else {
-                    // Check if page passed filters
-                    const pagePassedFilter =
-                        matchedPagePaths.size === 0 ||
-                        matchedPagePaths.has(taskPath);
-
-                    // Check if task has required tags
-                    let taskHasRequiredTag = false;
-                    if (hasTaskTagFilter) {
-                        const taskTags = dcTask.$tags || dcTask.tags || [];
-                        taskHasRequiredTag = taskTags.some(
-                            (taskTag: string) => {
-                                const normalizedTaskTag = taskTag
-                                    .replace(/^#+/, "")
-                                    .toLowerCase();
-                                return inclusionFilters!.taskTags!.some(
-                                    (filterTag: string) => {
-                                        const normalizedFilter = filterTag
-                                            .replace(/^#+/, "")
-                                            .toLowerCase();
-                                        return (
-                                            normalizedTaskTag ===
-                                            normalizedFilter
-                                        );
-                                    },
-                                );
-                            },
-                        );
+                // Check task tag inclusion (AND logic)
+                if (
+                    inclusionFilters?.taskTags &&
+                    inclusionFilters.taskTags.length > 0
+                ) {
+                    const taskTags = dcTask.$tags || dcTask.tags || [];
+                    const hasRequiredTaskTag = taskTags.some(
+                        (taskTag: string) => {
+                            const normalizedTaskTag = taskTag
+                                .replace(/^#+/, "")
+                                .toLowerCase();
+                            return inclusionFilters.taskTags!.some(
+                                (filterTag: string) => {
+                                    const normalizedFilter = filterTag
+                                        .replace(/^#+/, "")
+                                        .toLowerCase();
+                                    return (
+                                        normalizedTaskTag === normalizedFilter
+                                    );
+                                },
+                            );
+                        },
+                    );
+                    if (!hasRequiredTaskTag) {
+                        inclusionRejects++;
+                        continue;
                     }
-
-                    // OR logic: include if matches ANY criterion
-                    matchesInclusion = pagePassedFilter || taskHasRequiredTag;
-                }
-
-                if (!matchesInclusion) {
-                    inclusionRejects++;
-                    continue;
                 }
 
                 // Process task
@@ -954,7 +993,7 @@ export class DatacoreService {
                     settings,
                     taskIndex++,
                     taskPath,
-                    [], // Page tags would need separate query
+                    pageTagsMap.get(taskPath) || [], // Pass note-level tags from page
                 );
 
                 if (task) {

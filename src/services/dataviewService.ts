@@ -150,6 +150,94 @@ export class DataviewService {
     }
 
     /**
+     * Build comprehensive Dataview source string with exclusions AND inclusions
+     * Per Dataview docs:
+     * - "#tag" - include tag
+     * - "-#tag" - exclude tag
+     * - '"folder"' - include folder (note the quotes!)
+     * - "or" - combine conditions with OR logic
+     *
+     * This builds the PRE-FILTERING source that applies BOTH:
+     * 1. Exclusions (from settings tab) - folders, note tags
+     * 2. Inclusions (from chat interface) - folders, note tags
+     *
+     * Note: Task-level tags and task properties filtered post-query
+     */
+    private static buildDataviewSourceString(
+        settings: PluginSettings,
+        inclusionFilters?: {
+            folders?: string[];
+            noteTags?: string[];
+            taskTags?: string[];
+            notes?: string[];
+        },
+    ): string {
+        const exclusionParts: string[] = [];
+        const inclusionParts: string[] = [];
+
+        // ========================================
+        // EXCLUSIONS (Settings tab level)
+        // ========================================
+
+        // Exclude note-level tags
+        if (
+            settings.exclusions.noteTags &&
+            settings.exclusions.noteTags.length > 0
+        ) {
+            for (const tag of settings.exclusions.noteTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                exclusionParts.push(`-#${normalizedTag}`);
+            }
+        }
+
+        // Exclude folders
+        if (
+            settings.exclusions.folders &&
+            settings.exclusions.folders.length > 0
+        ) {
+            for (const folder of settings.exclusions.folders) {
+                exclusionParts.push(`-"${folder}"`);
+            }
+        }
+
+        // ========================================
+        // INCLUSIONS (Chat interface level)
+        // ========================================
+
+        // Include folders
+        if (inclusionFilters?.folders && inclusionFilters.folders.length > 0) {
+            for (const folder of inclusionFilters.folders) {
+                inclusionParts.push(`"${folder}"`);
+            }
+        }
+
+        // Include note-level tags
+        if (
+            inclusionFilters?.noteTags &&
+            inclusionFilters.noteTags.length > 0
+        ) {
+            for (const tag of inclusionFilters.noteTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                inclusionParts.push(`#${normalizedTag}`);
+            }
+        }
+
+        // NOTE: Task-level tag exclusions/inclusions handled post-query with dvTask.tags
+        // NOTE: Specific note exclusions/inclusions handled post-query
+        // NOTE: Task properties (priority, due date, status) handled post-query
+
+        // Combine exclusions and inclusions
+        // Dataview uses OR logic in source strings
+        const allParts = [...exclusionParts, ...inclusionParts];
+        const sourceString = allParts.length > 0 ? allParts.join(" or ") : "";
+
+        Logger.debug(
+            `Dataview source string (pre-filtering): "${sourceString}" (exclusions + inclusions)`,
+        );
+        return sourceString;
+    }
+
+    /**
      * Check if a task should be excluded based on task-level tags
      * This checks tags that are ON the task line itself (e.g., "- [ ] Task #skip")
      * @param dvTask DataView task object
@@ -941,16 +1029,23 @@ export class DataviewService {
             );
         }
 
-        // Fetch ALL pages using DataView JavaScript API
-        // Then filter using .where() method (JavaScript API, not DQL WHERE clause)
+        // Build source string for Dataview filtering
+        // Per Dataview docs: use source string for tag/folder filtering, then .where() for complex logic
         if (
             !foundTasks &&
             dataviewApi.pages &&
             typeof dataviewApi.pages === "function"
         ) {
             try {
-                // Get ALL pages first (no source filter)
-                let pages = dataviewApi.pages("");
+                // Build comprehensive pre-filtering source string with exclusions AND inclusions
+                // Format: dv.pages("-#excluded or #included or \"folder\"")
+                const sourceString = this.buildDataviewSourceString(
+                    settings,
+                    inclusionFilters,
+                );
+
+                // Get pages using source string (applies exclusions AND inclusions at API level)
+                let pages = dataviewApi.pages(sourceString);
 
                 // CRITICAL DEBUG: Log page count before any filtering
                 Logger.debug(
@@ -971,63 +1066,8 @@ export class DataviewService {
                         });
                     }
 
-                    // Exclude folders (and subfolders)
-                    if (
-                        settings.exclusions.folders &&
-                        settings.exclusions.folders.length > 0
-                    ) {
-                        pages = pages.where((page: any) => {
-                            const pagePath = page.file.path || "";
-                            return !settings.exclusions.folders.some(
-                                (folder: string) => {
-                                    const normalizedFolder = folder.replace(
-                                        /^\/+|\/+$/g,
-                                        "",
-                                    );
-                                    if (
-                                        !normalizedFolder ||
-                                        normalizedFolder === "/"
-                                    )
-                                        return false;
-                                    // Check if page is in this folder or subfolder
-                                    return pagePath.startsWith(
-                                        normalizedFolder + "/",
-                                    );
-                                },
-                            );
-                        });
-                    }
-
-                    // Exclude note-level tags (file.tags includes both frontmatter and inline)
-                    // This excludes ALL tasks in notes that have these tags
-                    if (
-                        settings.exclusions.noteTags &&
-                        settings.exclusions.noteTags.length > 0
-                    ) {
-                        pages = pages.where((page: any) => {
-                            // Get all tags from the page
-                            const pageTags = page.file.tags || [];
-
-                            // Check if page has any excluded note tag (case-insensitive)
-                            return !settings.exclusions.noteTags.some(
-                                (excludedTag: string) => {
-                                    // Normalize for comparison (remove # prefix)
-                                    const normalizedExcluded =
-                                        excludedTag.replace(/^#+/, "");
-
-                                    return pageTags.some((pageTag: string) => {
-                                        const normalizedPageTag =
-                                            pageTag.replace(/^#+/, "");
-                                        // Case-insensitive comparison
-                                        return (
-                                            normalizedPageTag.toLowerCase() ===
-                                            normalizedExcluded.toLowerCase()
-                                        );
-                                    });
-                                },
-                            );
-                        });
-                    }
+                    // NOTE: Folder and note-level tag exclusions are now handled
+                    // at source string level (in buildDataviewSourceString)
 
                     // CRITICAL DEBUG: Log page count after exclusion filtering
                     Logger.debug(
@@ -1270,15 +1310,27 @@ export class DataviewService {
 
                             // Apply task-level filter if provided
                             if (task) {
+                                // Apply property filters
                                 const shouldInclude =
                                     !taskFilter || taskFilter(dvTask);
 
-                                // Check task-level tag exclusions using DataView's native tags property
+                                // ========================================
+                                // EXCLUSIONS (Settings tab level)
+                                // Note: Folder and note tag exclusions are handled at source string level
+                                // Task tag exclusions are handled here using Dataview API
+                                // ========================================
+
+                                // Check task-level tag exclusions using Dataview's native dvTask.tags API
                                 const isTaskTagExcluded =
                                     this.isTaskExcludedByTag(
                                         dvTask,
                                         settings.exclusions.taskTags || [],
                                     );
+
+                                // ========================================
+                                // INCLUSIONS (Chat interface filter level)
+                                // Applied after exclusions
+                                // ========================================
 
                                 // CRITICAL: Check inclusion filters using OR logic
                                 // Include if: (page matches filters) OR (task has required tag)
@@ -1289,7 +1341,7 @@ export class DataviewService {
                                     matchedPagePaths.size === 0 || // No page filters = all pages pass
                                     matchedPagePaths.has(pagePath);
 
-                                // Check if task has required tags
+                                // Check if task has required tags using Dataview's native dvTask.tags API
                                 let taskHasRequiredTag = false;
                                 if (
                                     inclusionFilters?.taskTags &&

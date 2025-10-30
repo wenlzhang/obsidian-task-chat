@@ -95,6 +95,51 @@ export class ChatView extends ItemView {
 
         this.renderView();
         await this.renderMessages();
+
+        // Poll for API readiness and update warning status
+        // This ensures the warning disappears once the API is ready and tasks are loaded
+        this.startWarningPolling();
+    }
+
+    /**
+     * Poll for task indexing API readiness and update warning status
+     * Continues polling until API is ready or max attempts reached
+     */
+    private startWarningPolling(): void {
+        let attempts = 0;
+        const maxAttempts = 20; // 10 seconds total (500ms * 20)
+        let wasNotReady = true;
+
+        const pollInterval = setInterval(async () => {
+            attempts++;
+
+            // Check if we should stop polling
+            const warning = TaskIndexWarningService.checkAPIStatus(
+                this.app,
+                this.plugin.settings,
+                this.currentTasks.length,
+                this.currentFilter,
+            );
+
+            // If API just became ready and we had no tasks, trigger a refresh
+            if (
+                warning.type === "ready" &&
+                wasNotReady &&
+                this.currentTasks.length === 0
+            ) {
+                wasNotReady = false;
+                // Trigger task refresh to load tasks now that API is ready
+                await this.plugin.refreshTasks(true);
+            }
+
+            // Update warning status after potential task refresh
+            this.renderDataviewWarning();
+
+            // Stop polling if API is ready or max attempts reached
+            if (warning.type === "ready" || attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+            }
+        }, 500); // Poll every 500ms
     }
 
     async onClose(): Promise<void> {
