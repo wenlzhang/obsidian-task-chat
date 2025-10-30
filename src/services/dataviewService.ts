@@ -165,9 +165,14 @@ export class DataviewService {
      * - Inclusions use OR: ("folder1" or #tag1 or "folder2") (match any)
      * - Combined: !#excluded1 and !#excluded2 and ("folder1" or #tag1)
      *
-     * This builds the SOURCE-LEVEL filtering that applies BOTH:
-     * 1. Exclusions (from settings tab) - folders, note tags
-     * 2. Inclusions (from chat interface) - folders, note tags
+     * CRITICAL LIMITATION:
+     * - DataView source filters PAGES, not tasks
+     * - If task tag inclusions exist, we CANNOT use source inclusions
+     * - Must scan all pages and filter in task loop to support: folder1 OR task-tag1
+     *
+     * This builds the SOURCE-LEVEL filtering that applies:
+     * 1. Exclusions (always applied) - folders, note tags
+     * 2. Inclusions (only if NO task tag inclusions) - folders, note tags
      *
      * Note: Specific notes, task-level tags, and task properties filtered post-query
      */
@@ -185,9 +190,10 @@ export class DataviewService {
 
         // ========================================
         // EXCLUSIONS (Settings tab level) - AND logic
+        // All exclusions use AND: condition1 AND condition2 AND condition3
         // ========================================
 
-        // Exclude note-level tags
+        // Exclude note-level tags (page-level: tasks in pages with these tags)
         if (
             settings.exclusions.noteTags &&
             settings.exclusions.noteTags.length > 0
@@ -198,7 +204,7 @@ export class DataviewService {
             }
         }
 
-        // Exclude folders
+        // Exclude folders (page-level: tasks in these folders)
         if (
             settings.exclusions.folders &&
             settings.exclusions.folders.length > 0
@@ -208,31 +214,57 @@ export class DataviewService {
             }
         }
 
+        // NOTE: Task tag exclusions NOT here - handled post-query in task loop
+        // Why? Source string filters PAGES, not individual tasks
+        // Task tags are on the task line itself, so must check after getting tasks
+
         // ========================================
         // INCLUSIONS (Chat interface level) - OR logic
+        // CRITICAL: Only add if NO task tag inclusions!
         // ========================================
 
-        // Include folders
-        if (inclusionFilters?.folders && inclusionFilters.folders.length > 0) {
-            for (const folder of inclusionFilters.folders) {
-                inclusionParts.push(`"${folder}"`);
+        // Check if task tag inclusions exist
+        const hasTaskTagInclusions = !!(
+            inclusionFilters?.taskTags && inclusionFilters.taskTags.length > 0
+        );
+
+        // If task tag inclusions exist, we MUST scan all pages
+        // because source string filters PAGES, not tasks
+        // Example: folder1 OR #urgent (task tag)
+        // - If source="folder1", we only get pages from folder1
+        // - Tasks with #urgent in OTHER folders are never scanned!
+        // Solution: Use empty source (or exclusions only) and filter in task loop
+        if (!hasTaskTagInclusions) {
+            // Safe to use source inclusions since no task-level filtering needed
+
+            // Include folders
+            if (
+                inclusionFilters?.folders &&
+                inclusionFilters.folders.length > 0
+            ) {
+                for (const folder of inclusionFilters.folders) {
+                    inclusionParts.push(`"${folder}"`);
+                }
+            }
+
+            // Include note-level tags
+            if (
+                inclusionFilters?.noteTags &&
+                inclusionFilters.noteTags.length > 0
+            ) {
+                for (const tag of inclusionFilters.noteTags) {
+                    const normalizedTag = TaskFilterService.normalizeTag(tag);
+                    inclusionParts.push(`#${normalizedTag}`);
+                }
             }
         }
 
-        // Include note-level tags
-        if (
-            inclusionFilters?.noteTags &&
-            inclusionFilters.noteTags.length > 0
-        ) {
-            for (const tag of inclusionFilters.noteTags) {
-                const normalizedTag = TaskFilterService.normalizeTag(tag);
-                inclusionParts.push(`#${normalizedTag}`);
-            }
-        }
+        // NOTE: If hasTaskTagInclusions=true, inclusionParts stays empty
+        // This means source string will ONLY have exclusions
+        // All inclusions (folders, note tags, notes, task tags) handled in task loop
 
-        // NOTE: Task-level tag exclusions/inclusions handled post-query with dvTask.tags
-        // NOTE: Specific note exclusions/inclusions handled post-query (no source syntax for specific files)
-        // NOTE: Task properties (priority, due date, status) handled post-query
+        // NOTE: Specific note exclusions/inclusions always handled post-query (no source syntax for specific files)
+        // NOTE: Task properties (priority, due date, status) always handled post-query
 
         // ========================================
         // COMBINE: exclusions AND (inclusions OR)
@@ -270,9 +302,17 @@ export class DataviewService {
     /**
      * Check if a task should be excluded based on task-level tags
      * This checks tags that are ON the task line itself (e.g., "- [ ] Task #skip")
+     *
+     * OR LOGIC: Exclude if task has ANY of the excluded tags
+     * Example: excludedTags = ["skip", "archive"]
+     *   - Task with #skip → EXCLUDED
+     *   - Task with #archive → EXCLUDED
+     *   - Task with #skip AND #archive → EXCLUDED
+     *   - Task with neither → NOT EXCLUDED
+     *
      * @param dvTask DataView task object
-     * @param excludedTags Array of tags to exclude
-     * @returns true if task should be excluded, false otherwise
+     * @param excludedTags Array of tags to exclude (e.g., ["skip", "archive"])
+     * @returns true if task should be excluded (has ANY excluded tag), false otherwise
      */
     private static isTaskExcludedByTag(
         dvTask: any,
@@ -289,7 +329,8 @@ export class DataviewService {
             return false;
         }
 
-        // Check if task has any excluded tag using shared utility
+        // OR logic: Return true if task has ANY excluded tag
+        // .some() returns true if ANY element passes the test
         return excludedTags.some((excludedTag: string) => {
             return taskTags.some((taskTag: string) => {
                 return TaskFilterService.tagsMatch(taskTag, excludedTag);
@@ -1107,15 +1148,17 @@ export class DataviewService {
 
                 // ========================================
                 // INCLUSION FILTER SETUP
-                // Handle OR logic: (source match) OR (note match) OR (task tag match)
+                // Handle OR logic: (folder) OR (note tag) OR (note) OR (task tag)
                 // ========================================
 
                 // Check what inclusion filters we have
-                const hasSourceInclusion = !!(
-                    (inclusionFilters?.folders &&
-                        inclusionFilters.folders.length > 0) ||
-                    (inclusionFilters?.noteTags &&
-                        inclusionFilters.noteTags.length > 0)
+                const hasFolderInclusion = !!(
+                    inclusionFilters?.folders &&
+                    inclusionFilters.folders.length > 0
+                );
+                const hasNoteTagInclusion = !!(
+                    inclusionFilters?.noteTags &&
+                    inclusionFilters.noteTags.length > 0
                 );
                 const hasNoteInclusion = !!(
                     inclusionFilters?.notes && inclusionFilters.notes.length > 0
@@ -1125,6 +1168,11 @@ export class DataviewService {
                     inclusionFilters.taskTags.length > 0
                 );
 
+                // Track if source inclusions are in source string or need manual check
+                const sourceInclusionsInQuery =
+                    (hasFolderInclusion || hasNoteTagInclusion) &&
+                    !hasTaskTagInclusion;
+
                 // Normalize included note paths for comparison in task loop
                 const normalizedIncludedNotes =
                     hasNoteInclusion && inclusionFilters.notes
@@ -1133,16 +1181,20 @@ export class DataviewService {
                           )
                         : [];
 
-                // Track if any page-level inclusions exist
+                // Track if any inclusions exist
                 const hasAnyInclusion =
+                    hasFolderInclusion ||
+                    hasNoteTagInclusion ||
                     hasNoteInclusion ||
-                    hasTaskTagInclusion ||
-                    hasSourceInclusion;
+                    hasTaskTagInclusion;
 
                 if (hasAnyInclusion) {
                     Logger.debug(`[DEBUG] Inclusion filters detected:`);
                     Logger.debug(
-                        `[DEBUG]   - Source (folders/note tags): ${hasSourceInclusion ? "YES (handled in source string)" : "NO"}`,
+                        `[DEBUG]   - Folders: ${hasFolderInclusion ? inclusionFilters.folders!.length : "NO"}${sourceInclusionsInQuery ? " (in source string)" : " (checked in loop)"}`,
+                    );
+                    Logger.debug(
+                        `[DEBUG]   - Note tags: ${hasNoteTagInclusion ? inclusionFilters.noteTags!.length : "NO"}${sourceInclusionsInQuery ? " (in source string)" : " (checked in loop)"}`,
                     );
                     Logger.debug(
                         `[DEBUG]   - Specific notes: ${hasNoteInclusion ? normalizedIncludedNotes.length : "NO"}`,
@@ -1150,8 +1202,13 @@ export class DataviewService {
                     Logger.debug(
                         `[DEBUG]   - Task tags: ${hasTaskTagInclusion ? inclusionFilters.taskTags!.length : "NO"}`,
                     );
+                    if (hasTaskTagInclusion) {
+                        Logger.debug(
+                            `[DEBUG] ⚠️  Task tags detected - scanning ALL pages to support OR logic with folders/note tags`,
+                        );
+                    }
                     Logger.debug(
-                        `[DEBUG] Using OR logic: task matches if from (source) OR (note) OR (has task tag)`,
+                        `[DEBUG] Using OR logic: task matches if ANY filter matches`,
                     );
                 }
 
@@ -1227,12 +1284,22 @@ export class DataviewService {
                                     !taskFilter || taskFilter(dvTask);
 
                                 // ========================================
-                                // EXCLUSIONS (Settings tab level)
-                                // Note: Folder and note tag exclusions are handled at source string level
-                                // Task tag exclusions are handled here using Dataview API
+                                // TASK TAG EXCLUSIONS (Settings tab level)
+                                // ========================================
+                                // Logic: Exclude if task has ANY excluded tag (OR within task tags)
+                                //        Combined with other exclusions using AND
+                                //
+                                // Example: Exclude [#skip, #archive]
+                                //   - Task has #skip → EXCLUDE
+                                //   - Task has #archive → EXCLUDE
+                                //   - Task has both → EXCLUDE
+                                //   - Task has neither → continue checking
+                                //
+                                // Combined with other filters:
+                                //   Final = shouldInclude AND !isTaskTagExcluded AND matchesInclusion
+                                //   All exclusions must pass (AND logic across filter types)
                                 // ========================================
 
-                                // Check task-level tag exclusions using Dataview's native dvTask.tags API
                                 const isTaskTagExcluded =
                                     this.isTaskExcludedByTag(
                                         dvTask,
@@ -1240,8 +1307,23 @@ export class DataviewService {
                                     );
 
                                 // ========================================
-                                // INCLUSIONS (Chat interface filter level)
-                                // OR logic: (source) OR (note) OR (task tag)
+                                // TASK TAG INCLUSIONS (Chat interface filter level)
+                                // ========================================
+                                // Logic: Include if task has ANY required tag (OR within task tags)
+                                //        Combined with other inclusions using OR
+                                //
+                                // Example: Include [#urgent, #important]
+                                //   - Task has #urgent → INCLUDE
+                                //   - Task has #important → INCLUDE
+                                //   - Task has both → INCLUDE
+                                //   - Task has neither → check other inclusion filters
+                                //
+                                // Combined with other filters (OR logic):
+                                //   matchesInclusion = matchesFolder OR matchesNoteTag OR matchesNote OR matchesTaskTag
+                                //   Task included if it matches ANY inclusion criterion
+                                //
+                                // CRITICAL: When task tag inclusions exist, ALL pages must be scanned
+                                // because source string can't filter tasks (only pages)
                                 // ========================================
 
                                 let matchesInclusion = false;
@@ -1250,12 +1332,50 @@ export class DataviewService {
                                     // No inclusion filters = include all
                                     matchesInclusion = true;
                                 } else {
-                                    // Check 1: Page from source string (folders/note tags)
-                                    // If source filters exist, page is already from source
-                                    const fromSource = hasSourceInclusion;
+                                    // Check 1: Folder match
+                                    let matchesFolder = false;
+                                    if (hasFolderInclusion) {
+                                        if (sourceInclusionsInQuery) {
+                                            // Page already from source string (all pages match)
+                                            matchesFolder = true;
+                                        } else {
+                                            // Manually check folder (task tags exist, so couldn't use source string)
+                                            matchesFolder =
+                                                inclusionFilters.folders!.some(
+                                                    (folder: string) =>
+                                                        pagePath.startsWith(
+                                                            folder + "/",
+                                                        ) ||
+                                                        pagePath === folder,
+                                                );
+                                        }
+                                    }
 
-                                    // Check 2: Page is in specific notes list
-                                    const fromNote =
+                                    // Check 2: Note tag match
+                                    let matchesNoteTag = false;
+                                    if (hasNoteTagInclusion) {
+                                        if (sourceInclusionsInQuery) {
+                                            // Page already from source string (all pages match)
+                                            matchesNoteTag = true;
+                                        } else {
+                                            // Manually check note tags (task tags exist, so couldn't use source string)
+                                            matchesNoteTag = pageTags.some(
+                                                (pageTag: string) => {
+                                                    return inclusionFilters.noteTags!.some(
+                                                        (filterTag: string) => {
+                                                            return TaskFilterService.tagsMatch(
+                                                                pageTag,
+                                                                filterTag,
+                                                            );
+                                                        },
+                                                    );
+                                                },
+                                            );
+                                        }
+                                    }
+
+                                    // Check 3: Specific note match
+                                    const matchesNote =
                                         hasNoteInclusion &&
                                         normalizedIncludedNotes.includes(
                                             TaskFilterService.normalizePathForDataview(
@@ -1263,12 +1383,12 @@ export class DataviewService {
                                             ),
                                         );
 
-                                    // Check 3: Task has required task tags
-                                    let hasTaskTag = false;
+                                    // Check 4: Task tag match
+                                    let matchesTaskTag = false;
                                     if (hasTaskTagInclusion) {
                                         const taskTags = dvTask.tags || [];
                                         if (taskTags.length > 0) {
-                                            hasTaskTag = taskTags.some(
+                                            matchesTaskTag = taskTags.some(
                                                 (taskTag: string) => {
                                                     return inclusionFilters.taskTags!.some(
                                                         (filterTag: string) => {
@@ -1285,7 +1405,10 @@ export class DataviewService {
 
                                     // OR logic: include if ANY matches
                                     matchesInclusion =
-                                        fromSource || fromNote || hasTaskTag;
+                                        matchesFolder ||
+                                        matchesNoteTag ||
+                                        matchesNote ||
+                                        matchesTaskTag;
 
                                     // Debug logging
                                     if (
@@ -1293,17 +1416,45 @@ export class DataviewService {
                                         !matchesInclusion
                                     ) {
                                         Logger.debug(
-                                            `[DEBUG] Task REJECTED: fromSource=${fromSource}, fromNote=${fromNote}, hasTaskTag=${hasTaskTag}, page="${pagePath}"`,
+                                            `[DEBUG] Task REJECTED: folder=${matchesFolder}, noteTag=${matchesNoteTag}, note=${matchesNote}, taskTag=${matchesTaskTag}, page="${pagePath}"`,
                                         );
                                     }
                                 }
 
-                                // CRITICAL DEBUG: Track why tasks are rejected
+                                // ========================================
+                                // FINAL FILTER LOGIC - Combine ALL filters
+                                // ========================================
+                                // Complete AND/OR Logic:
+                                //
+                                // EXCLUSIONS (AND logic - all must pass):
+                                //   1. Property filters (priority, due, status) - post-query AND
+                                //   2. Task tag exclusions - post-query AND
+                                //   Combined: Task must pass ALL exclusion checks
+                                //
+                                // INCLUSIONS (OR logic - any can match):
+                                //   1. Folder match - OR
+                                //   2. Note tag match - OR
+                                //   3. Specific note match - OR
+                                //   4. Task tag match - OR
+                                //   Combined: Task matches if ANY inclusion criterion met
+                                //
+                                // FINAL: shouldInclude AND !isTaskTagExcluded AND matchesInclusion
+                                //        All exclusions pass AND any inclusion matches
+                                //
+                                // Example: Include (Folder1 OR #urgent), Exclude (#skip)
+                                //   Task in Folder1, no #skip → ✅ INCLUDED (Folder1 match)
+                                //   Task in Folder2 with #urgent, no #skip → ✅ INCLUDED (#urgent match)
+                                //   Task in Folder1 with #skip → ❌ EXCLUDED (#skip exclusion)
+                                //   Task in Folder2, no tags → ❌ EXCLUDED (no inclusion match)
+                                // ========================================
+
+                                // Track rejection reasons for debugging
                                 if (!shouldInclude) propertyFilterRejects++;
                                 if (isTaskTagExcluded) taskTagExclusions++;
                                 if (!matchesInclusion)
                                     taskTagInclusionRejects++;
 
+                                // Apply complete filter logic
                                 if (
                                     shouldInclude &&
                                     !isTaskTagExcluded &&
