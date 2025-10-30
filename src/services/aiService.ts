@@ -360,15 +360,41 @@ export class AIService {
                 // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
 
-                // CRITICAL FIX: Extract inclusion filters from currentFilter
-                const inclusionFilters = currentFilter
-                    ? {
-                          folders: currentFilter.folders,
-                          noteTags: currentFilter.noteTags,
-                          taskTags: currentFilter.taskTags,
-                          notes: currentFilter.notes,
-                      }
-                    : undefined;
+                // CRITICAL FIX: Merge inclusion filters from BOTH currentFilter AND query
+                // This eliminates redundant JavaScript filtering later
+                const inclusionFilters: {
+                    folders?: string[];
+                    noteTags?: string[];
+                    taskTags?: string[];
+                    notes?: string[];
+                } = {};
+
+                // Add chat interface filters (from currentFilter)
+                if (currentFilter?.folders?.length) {
+                    inclusionFilters.folders = [...currentFilter.folders];
+                }
+                if (currentFilter?.noteTags?.length) {
+                    inclusionFilters.noteTags = [...currentFilter.noteTags];
+                }
+                if (currentFilter?.taskTags?.length) {
+                    inclusionFilters.taskTags = [...currentFilter.taskTags];
+                }
+                if (currentFilter?.notes?.length) {
+                    inclusionFilters.notes = [...currentFilter.notes];
+                }
+
+                // OPTIMIZATION: Add query-extracted filters to API level (not JavaScript)
+                // This moves folder/tag filtering from JavaScript to API level for better performance
+                if (intent.extractedFolder) {
+                    if (!inclusionFilters.folders)
+                        inclusionFilters.folders = [];
+                    inclusionFilters.folders.push(intent.extractedFolder);
+                }
+                if (intent.extractedTags?.length) {
+                    if (!inclusionFilters.taskTags)
+                        inclusionFilters.taskTags = [];
+                    inclusionFilters.taskTags.push(...intent.extractedTags);
+                }
 
                 // CRITICAL FIX: Merge property filters from both query AND currentFilter
                 // Query filters take precedence, but preserve currentFilter properties not in query
@@ -440,35 +466,53 @@ export class AIService {
                     }
                 }
 
-                // DEBUG: Log filter extraction and merging
+                // DEBUG: Log complete filter merging process
                 Logger.debug(
-                    "[AIService] Property filters detected, reloading tasks from Dataview",
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
                 );
                 Logger.debug(
-                    "[AIService] currentFilter received:",
+                    "[AIService] 🔄 Property filters detected - reloading tasks from API",
+                );
+                Logger.debug(
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                );
+
+                // Show filter sources
+                Logger.debug("[AIService] 📋 Filter Sources:");
+                Logger.debug(
+                    "  • Chat Interface:",
                     currentFilter
                         ? JSON.stringify(currentFilter, null, 2)
-                        : "undefined",
+                        : "none",
+                );
+                Logger.debug("  • Query Text (extracted):", {
+                    priority: intent.extractedPriority,
+                    dueDate: intent.extractedDueDateFilter,
+                    dueDateRange: intent.extractedDueDateRange,
+                    status: intent.extractedStatus,
+                    folder: intent.extractedFolder,
+                    tags: intent.extractedTags,
+                    keywords: intent.keywords,
+                });
+
+                // Show merged results
+                Logger.debug("[AIService] ✅ Merged Filters (sent to API):");
+                Logger.debug(
+                    "  • Property Filters:",
+                    JSON.stringify(mergedPropertyFilters, null, 2),
                 );
                 Logger.debug(
-                    "[AIService] Extracted inclusionFilters:",
-                    inclusionFilters
+                    "  • Inclusion Filters:",
+                    Object.keys(inclusionFilters).length > 0
                         ? JSON.stringify(inclusionFilters, null, 2)
-                        : "undefined",
+                        : "none (all tasks included)",
                 );
                 Logger.debug(
-                    "[AIService] Query property filters (from intent):",
-                    {
-                        priority: intent.extractedPriority,
-                        dueDate: intent.extractedDueDateFilter,
-                        dueDateRange: intent.extractedDueDateRange,
-                        status: intent.extractedStatus,
-                    },
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
                 );
-                Logger.debug(
-                    "[AIService] Merged property filters (query + currentFilter):",
-                    mergedPropertyFilters,
-                );
+
+                // Performance tracking
+                const reloadStartTime = performance.now();
 
                 tasksAfterPropertyFilter =
                     await TaskIndexService.parseTasksFromIndex(
@@ -479,46 +523,49 @@ export class AIService {
                         inclusionFilters, // Pass chat interface inclusion filters!
                     );
 
+                const reloadEndTime = performance.now();
+                const reloadDuration = reloadEndTime - reloadStartTime;
+
                 Logger.debug(
-                    `[AIService] Tasks after property reload: ${tasksAfterPropertyFilter.length}`,
+                    `[AIService] ⚡ API reload completed in ${reloadDuration.toFixed(2)}ms`,
+                );
+                Logger.debug(
+                    `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks`,
                 );
             }
 
-            // Step 2: Apply remaining filters (folder, tags, keywords) in JavaScript
-            Logger.debug(
-                `[AIService] Before JS filtering: ${tasksAfterPropertyFilter.length} tasks`,
-            );
-            Logger.debug(
-                `[AIService] Applying JS filters:`,
-                JSON.stringify(
+            // Step 2: Apply keyword filtering ONLY (all other filters already at API level)
+            // OPTIMIZATION: Folders and tags now filtered at API level, only keywords need JavaScript matching
+            let filteredTasks = tasksAfterPropertyFilter;
+
+            if (intent.keywords.length > 0) {
+                Logger.debug(
+                    `[AIService] Applying keyword filter: [${intent.keywords.join(", ")}]`,
+                );
+                Logger.debug(
+                    `[AIService] Before keyword filtering: ${tasksAfterPropertyFilter.length} tasks`,
+                );
+
+                filteredTasks = TaskSearchService.applyCompoundFilters(
+                    tasksAfterPropertyFilter,
                     {
-                        folder: intent.extractedFolder,
-                        tags: intent.extractedTags,
-                        keywords: intent.keywords,
+                        priority: undefined, // Already at API level
+                        dueDate: undefined, // Already at API level
+                        status: undefined, // Already at API level
+                        folder: undefined, // Now at API level (optimization!)
+                        tags: undefined, // Now at API level (optimization!)
+                        keywords: intent.keywords, // ONLY keywords need JS filtering
                     },
-                    null,
-                    2,
-                ),
-            );
+                );
 
-            const filteredTasks = TaskSearchService.applyCompoundFilters(
-                tasksAfterPropertyFilter,
-                {
-                    priority: undefined, // Already filtered at Dataview level
-                    dueDate: undefined, // Already filtered at Dataview level
-                    status: undefined, // Already filtered at Dataview level
-                    folder: intent.extractedFolder,
-                    tags: intent.extractedTags,
-                    keywords:
-                        intent.keywords.length > 0
-                            ? intent.keywords
-                            : undefined,
-                },
-            );
-
-            Logger.debug(
-                `[AIService] After JS filtering: ${filteredTasks.length} tasks found`,
-            );
+                Logger.debug(
+                    `[AIService] After keyword filtering: ${filteredTasks.length} tasks found`,
+                );
+            } else {
+                Logger.debug(
+                    `[AIService] No keywords - using ${tasksAfterPropertyFilter.length} tasks from API (all filtering at API level)`,
+                );
+            }
 
             // Detect query type for adaptive scoring
             const queryType = this.detectQueryType(intent);
