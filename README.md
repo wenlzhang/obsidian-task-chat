@@ -10,7 +10,7 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 - **🚫 Task Exclusions** - Exclude tasks by tags, folders, or notes
 - **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
 - **💬 Natural Language** - Ask questions in plain language
-- **🔄 Dataview Integration** - Works seamlessly with Dataview syntax
+- **🔄 Task Indexing** - Supports Datacore (2-10x faster) and Dataview
 
 ## 🎯 Three Chat Modes
 
@@ -458,13 +458,15 @@ See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - Built for [Obsidian](https://obsidian.md/)
-- Powered by [Dataview](https://github.com/blacksmithgu/obsidian-dataview) for vault-wide task indexing
+- Powered by [Datacore](https://github.com/blacksmithgu/datacore) (recommended) or [Dataview](https://github.com/blacksmithgu/obsidian-dataview) for vault-wide task indexing
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
 - Exclusions UI pattern inspired by [Obsidian Copilot](https://github.com/logancyang/obsidian-copilot) by Logan Yang
 
 ## 📚 Additional Resources
 
+- **[Task Indexing](docs/TASK_INDEXING.md)** - Datacore vs Dataview setup and performance
+- **[Task Filtering](docs/FILTERING.md)** - Inclusions, exclusions, and filter logic
 - **[Chat Modes](docs/CHAT_MODES.md)** - Detailed mode comparison
 - **[Cost Tracking](docs/COST_TRACKING.md)** - Token and cost transparency
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states

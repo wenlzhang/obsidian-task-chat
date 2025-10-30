@@ -17,6 +17,7 @@ import { cleanWarningsFromContent } from "../services/warningService";
 import { ErrorMessageService } from "../services/errorMessageService";
 import { MetadataService } from "../services/metadataService";
 import { TaskIndexWarningService } from "../services/taskIndexWarningService";
+import { TaskIndexService } from "../services/taskIndexService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 

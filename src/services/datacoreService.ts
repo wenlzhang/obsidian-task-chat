@@ -742,8 +742,6 @@ export class DatacoreService {
                 ? this.buildTaskFilter(propertyFilters, settings)
                 : null;
 
-            Logger.debug(`Datacore query: ${query}`);
-
             // Execute query to get all tasks (including subtasks)
             const results = await datacoreApi.query(query);
 
@@ -840,17 +838,6 @@ export class DatacoreService {
                 }
             }
 
-            Logger.debug(
-                `[Datacore] Validation Stats:\n` +
-                    `  Total from @task query: ${validationStats.total}\n` +
-                    `  - $type="task": ${validationStats.withTypeTask}\n` +
-                    `  - $type="list": ${validationStats.withTypeList}\n` +
-                    `  - $type=other: ${validationStats.withTypeOther}\n` +
-                    `  - no $type: ${validationStats.noType}\n` +
-                    `  Valid tasks accepted: ${validationStats.validTasks}\n` +
-                    `  Invalid items filtered: ${validationStats.invalidItems}`,
-            );
-
             // Process each task (including subtasks)
             let taskIndex = 0;
             let propertyFilterRejects = 0;
@@ -891,10 +878,6 @@ export class DatacoreService {
                     tasks.push(task);
                 }
             }
-
-            Logger.debug(
-                `Datacore filtering stats: ${allTasks.length} total tasks -> ${tasks.length} final (property filters rejected: ${propertyFilterRejects})`,
-            );
         } catch (error) {
             Logger.error("Error querying Datacore:", error);
         }

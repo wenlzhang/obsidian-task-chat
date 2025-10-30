@@ -1023,53 +1023,6 @@ export class DataviewService {
             return [];
         }
 
-        // DEBUG: Log received inclusionFilters
-        Logger.debug("[DataviewService] parseTasksFromDataview called with:");
-        Logger.debug(
-            "  propertyFilters:",
-            propertyFilters ? JSON.stringify(propertyFilters, null, 2) : "none",
-        );
-        Logger.debug(
-            "  inclusionFilters:",
-            inclusionFilters
-                ? JSON.stringify(inclusionFilters, null, 2)
-                : "none",
-        );
-
-        // Log exclusion information
-        if (
-            settings.exclusions &&
-            (settings.exclusions.noteTags?.length > 0 ||
-                settings.exclusions.taskTags?.length > 0 ||
-                settings.exclusions.folders?.length > 0 ||
-                settings.exclusions.notes?.length > 0)
-        ) {
-            const exclusionParts: string[] = [];
-            if (settings.exclusions.noteTags?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.noteTags.length} note tag(s)`,
-                );
-            }
-            if (settings.exclusions.taskTags?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.taskTags.length} task tag(s)`,
-                );
-            }
-            if (settings.exclusions.folders?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.folders.length} folder(s)`,
-                );
-            }
-            if (settings.exclusions.notes?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.notes.length} note(s)`,
-                );
-            }
-            Logger.debug(
-                `DataView JavaScript API exclusions (using .where() method): ${exclusionParts.join(", ")}`,
-            );
-        }
-
         const tasks: Task[] = [];
         let foundTasks = false;
 
@@ -1078,20 +1031,6 @@ export class DataviewService {
         const taskFilter = propertyFilters
             ? this.buildTaskFilter(propertyFilters, settings)
             : null;
-
-        if (taskFilter) {
-            const filterDesc = [];
-            if (propertyFilters?.priority)
-                filterDesc.push(`priority=${propertyFilters.priority}`);
-            if (propertyFilters?.dueDate)
-                filterDesc.push(`dueDate=${propertyFilters.dueDate}`);
-            if (propertyFilters?.status)
-                filterDesc.push(`status=${propertyFilters.status}`);
-            Logger.debug(`Task-level filtering: ${filterDesc.join(", ")}`);
-            Logger.debug(
-                `Child tasks will be evaluated independently of parents`,
-            );
-        }
 
         // Build source string for Dataview filtering
         // Per Dataview docs: use source string for tag/folder filtering, then .where() for complex logic
@@ -1110,11 +1049,6 @@ export class DataviewService {
 
                 // Get pages using source string (applies exclusions AND inclusions at API level)
                 let pages = dataviewApi.pages(sourceString);
-
-                // CRITICAL DEBUG: Log page count before any filtering
-                Logger.debug(
-                    `[DEBUG] DataView returned ${pages?.length || 0} pages total`,
-                );
 
                 // ========================================
                 // PAGE-LEVEL FILTERING (specific notes only)
@@ -1140,10 +1074,6 @@ export class DataviewService {
                             normalizedPagePath,
                         );
                     });
-
-                    Logger.debug(
-                        `[DEBUG] Excluded ${settings.exclusions.notes.length} specific note(s)`,
-                    );
                 }
 
                 // ========================================
@@ -1188,41 +1118,10 @@ export class DataviewService {
                     hasNoteInclusion ||
                     hasTaskTagInclusion;
 
-                if (hasAnyInclusion) {
-                    Logger.debug(`[DEBUG] Inclusion filters detected:`);
-                    Logger.debug(
-                        `[DEBUG]   - Folders: ${hasFolderInclusion ? inclusionFilters.folders!.length : "NO"}${sourceInclusionsInQuery ? " (in source string)" : " (checked in loop)"}`,
-                    );
-                    Logger.debug(
-                        `[DEBUG]   - Note tags: ${hasNoteTagInclusion ? inclusionFilters.noteTags!.length : "NO"}${sourceInclusionsInQuery ? " (in source string)" : " (checked in loop)"}`,
-                    );
-                    Logger.debug(
-                        `[DEBUG]   - Specific notes: ${hasNoteInclusion ? normalizedIncludedNotes.length : "NO"}`,
-                    );
-                    Logger.debug(
-                        `[DEBUG]   - Task tags: ${hasTaskTagInclusion ? inclusionFilters.taskTags!.length : "NO"}`,
-                    );
-                    if (hasTaskTagInclusion) {
-                        Logger.debug(
-                            `[DEBUG] ⚠️  Task tags detected - scanning ALL pages to support OR logic with folders/note tags`,
-                        );
-                    }
-                    Logger.debug(
-                        `[DEBUG] Using OR logic: task matches if ANY filter matches`,
-                    );
-                }
-
-                Logger.debug(
-                    `[DEBUG] Processing ${pages?.length || 0} pages for tasks`,
-                );
-
                 if (pages && pages.length > 0) {
                     // CRITICAL: file.tasks already includes ALL tasks at all levels (parents + subtasks)
                     // No need for expand() - DataView automatically flattens task hierarchies
                     // Source: https://blacksmithgu.github.io/obsidian-dataview/annotation/metadata-tasks/
-                    Logger.debug(
-                        `[DEBUG] Processing ${pages.length} pages for tasks`,
-                    );
 
                     let taskIndex = 0;
                     let totalTasksFound = 0;
@@ -1543,26 +1442,6 @@ export class DataviewService {
                     );
                 }
             }
-        }
-
-        if (taskFilter) {
-            Logger.debug(
-                `Task-level filtering complete: ${tasks.length} tasks matched`,
-            );
-        }
-
-        // Log summary including exclusions
-        const totalExclusionsForLog =
-            (settings.exclusions?.noteTags?.length || 0) +
-            (settings.exclusions?.taskTags?.length || 0) +
-            (settings.exclusions?.folders?.length || 0) +
-            (settings.exclusions?.notes?.length || 0);
-        if (totalExclusionsForLog > 0) {
-            Logger.debug(
-                `Total tasks from DataView (filtered with .where(), ${totalExclusionsForLog} exclusion(s)): ${tasks.length} tasks`,
-            );
-        } else {
-            Logger.debug(`Total tasks from DataView: ${tasks.length}`);
         }
 
         return tasks;
