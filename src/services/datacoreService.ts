@@ -2,6 +2,7 @@ import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskPropertyService } from "./taskPropertyService";
+import { TaskFilterService } from "./taskFilterService";
 import { Logger } from "../utils/logger";
 
 /**
@@ -348,11 +349,6 @@ export class DatacoreService {
             notes?: string[];
         },
     ): string {
-        Logger.debug(
-            `[DATACORE QUERY] Building query with inclusionFilters:`,
-            JSON.stringify(inclusionFilters, null, 2),
-        );
-
         const queryParts: string[] = ["@task"];
 
         // ========================================
@@ -364,9 +360,6 @@ export class DatacoreService {
             settings.exclusions.folders &&
             settings.exclusions.folders.length > 0
         ) {
-            Logger.debug(
-                `[DATACORE QUERY] Excluding folders: ${settings.exclusions.folders.join(", ")}`,
-            );
             for (const folder of settings.exclusions.folders) {
                 queryParts.push(`!path("${folder}")`);
             }
@@ -374,18 +367,11 @@ export class DatacoreService {
 
         // Exclude specific notes (tasks in these specific pages)
         if (settings.exclusions.notes && settings.exclusions.notes.length > 0) {
-            Logger.debug(
-                `[DATACORE QUERY] Excluding notes: ${settings.exclusions.notes.join(", ")}`,
-            );
             for (const note of settings.exclusions.notes) {
                 // Extract just the filename without path or extension
                 // Datacore uses $name which is the filename only (no path, no extension)
                 const fileName =
-                    note.split("/").pop()?.replace(/\.md$/i, "") ||
-                    note.replace(/\.md$/i, "");
-                Logger.debug(
-                    `[DATACORE QUERY] Note exclusion: childof(@page and $name = "${fileName}")`,
-                );
+                    TaskFilterService.normalizePathForDatacore(note);
                 queryParts.push(`!childof(@page and $name = "${fileName}")`);
             }
         }
@@ -395,11 +381,8 @@ export class DatacoreService {
             settings.exclusions.noteTags &&
             settings.exclusions.noteTags.length > 0
         ) {
-            Logger.debug(
-                `[DATACORE QUERY] Excluding note tags: ${settings.exclusions.noteTags.join(", ")}`,
-            );
             for (const tag of settings.exclusions.noteTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 queryParts.push(`!childof(@page and #${normalizedTag})`);
             }
         }
@@ -409,11 +392,8 @@ export class DatacoreService {
             settings.exclusions.taskTags &&
             settings.exclusions.taskTags.length > 0
         ) {
-            Logger.debug(
-                `[DATACORE QUERY] Excluding task tags: ${settings.exclusions.taskTags.join(", ")}`,
-            );
             for (const tag of settings.exclusions.taskTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 queryParts.push(`!#${normalizedTag}`);
             }
         }
@@ -426,9 +406,6 @@ export class DatacoreService {
 
         // Include folders
         if (inclusionFilters?.folders && inclusionFilters.folders.length > 0) {
-            Logger.debug(
-                `[DATACORE QUERY] Including folders: ${inclusionFilters.folders.join(", ")}`,
-            );
             for (const folder of inclusionFilters.folders) {
                 inclusionConditions.push(`path("${folder}")`);
             }
@@ -436,18 +413,14 @@ export class DatacoreService {
 
         // Include specific notes (tasks in these specific pages)
         if (inclusionFilters?.notes && inclusionFilters.notes.length > 0) {
-            Logger.debug(
-                `[DATACORE QUERY] Including notes: ${inclusionFilters.notes.join(", ")}`,
-            );
             for (const note of inclusionFilters.notes) {
                 // Extract just the filename without path or extension
                 // Datacore uses $name which is the filename only (no path, no extension)
                 const fileName =
-                    note.split("/").pop()?.replace(/\.md$/i, "") ||
-                    note.replace(/\.md$/i, "");
-                const condition = `childof(@page and $name = "${fileName}")`;
-                Logger.debug(`[DATACORE QUERY] Note inclusion: ${condition}`);
-                inclusionConditions.push(condition);
+                    TaskFilterService.normalizePathForDatacore(note);
+                inclusionConditions.push(
+                    `childof(@page and $name = "${fileName}")`,
+                );
             }
         }
 
@@ -456,11 +429,8 @@ export class DatacoreService {
             inclusionFilters?.noteTags &&
             inclusionFilters.noteTags.length > 0
         ) {
-            Logger.debug(
-                `[DATACORE QUERY] Including note tags: ${inclusionFilters.noteTags.join(", ")}`,
-            );
             for (const tag of inclusionFilters.noteTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 inclusionConditions.push(
                     `childof(@page and #${normalizedTag})`,
                 );
@@ -472,11 +442,8 @@ export class DatacoreService {
             inclusionFilters?.taskTags &&
             inclusionFilters.taskTags.length > 0
         ) {
-            Logger.debug(
-                `[DATACORE QUERY] Including task tags: ${inclusionFilters.taskTags.join(", ")}`,
-            );
             for (const tag of inclusionFilters.taskTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 inclusionConditions.push(`#${normalizedTag}`);
             }
         }
@@ -485,14 +452,9 @@ export class DatacoreService {
         if (inclusionConditions.length > 0) {
             const inclusionQuery = inclusionConditions.join(" or ");
             queryParts.push(`(${inclusionQuery})`);
-            Logger.debug(
-                `[DATACORE QUERY] Inclusion OR group: (${inclusionQuery})`,
-            );
         }
 
         const query = queryParts.join(" and ");
-
-        Logger.debug(`[DATACORE QUERY] Final query: ${query}`);
         return query;
     }
 
@@ -769,219 +731,6 @@ export class DatacoreService {
             return [];
         }
 
-        // DIAGNOSTIC: Check Datacore API health
-        Logger.debug(
-            `[DATACORE API CHECK] API object exists: ${!!datacoreApi}`,
-        );
-        Logger.debug(
-            `[DATACORE API CHECK] Top-level keys: ${Object.keys(datacoreApi).join(", ")}`,
-        );
-        Logger.debug(
-            `[DATACORE API CHECK] query method type: ${typeof datacoreApi.query}`,
-        );
-
-        // Check if API is nested
-        if (datacoreApi.api) {
-            Logger.debug(
-                `[DATACORE API CHECK] Found nested .api object with keys: ${Object.keys(datacoreApi.api).join(", ")}`,
-            );
-        }
-        if (datacoreApi.core) {
-            Logger.debug(
-                `[DATACORE API CHECK] Found .core object with keys: ${Object.keys(datacoreApi.core).join(", ")}`,
-            );
-        }
-
-        // Check window.datacore structure
-        const windowDc = (window as any).datacore;
-        if (windowDc) {
-            Logger.debug(
-                `[DATACORE API CHECK] window.datacore keys: ${Object.keys(windowDc).join(", ")}`,
-            );
-            if (windowDc.api) {
-                Logger.debug(
-                    `[DATACORE API CHECK] window.datacore.api keys: ${Object.keys(windowDc.api).join(", ")}`,
-                );
-                Logger.debug(
-                    `[DATACORE API CHECK] window.datacore.api.query type: ${typeof windowDc.api.query}`,
-                );
-            }
-        }
-
-        // Check plugin API
-        const datacorePlugin = (app as any).plugins?.plugins?.datacore;
-        if (datacorePlugin) {
-            Logger.debug(`[DATACORE API CHECK] Found datacore plugin object`);
-            Logger.debug(
-                `[DATACORE API CHECK] Plugin keys: ${Object.keys(datacorePlugin).join(", ")}`,
-            );
-
-            // Check initialization status - THIS IS KEY!
-            if (datacorePlugin.core) {
-                Logger.debug(
-                    `[DATACORE API CHECK] ⚠️  Plugin.core.initialized: ${datacorePlugin.core.initialized}`,
-                );
-                Logger.debug(
-                    `[DATACORE API CHECK] Plugin.core._loaded: ${datacorePlugin.core._loaded}`,
-                );
-
-                // Check datastore for indexed data
-                if (datacorePlugin.core.datastore) {
-                    const ds = datacorePlugin.core.datastore;
-                    Logger.debug(
-                        `[DATACORE API CHECK] Datastore exists, checking index...`,
-                    );
-                    try {
-                        // Try to access indexed data
-                        if (ds.pages) {
-                            Logger.debug(
-                                `[DATACORE API CHECK] Datastore.pages type: ${typeof ds.pages}`,
-                            );
-                            if (ds.pages.size !== undefined) {
-                                Logger.debug(
-                                    `[DATACORE API CHECK] ⚠️  Datastore has ${ds.pages.size} pages indexed`,
-                                );
-                            }
-                        }
-                    } catch (e) {
-                        Logger.debug(
-                            `[DATACORE API CHECK] Could not check datastore pages:`,
-                            e,
-                        );
-                    }
-                }
-            }
-
-            if (datacorePlugin.api) {
-                Logger.debug(
-                    `[DATACORE API CHECK] Plugin has .api with keys: ${Object.keys(datacorePlugin.api).join(", ")}`,
-                );
-            }
-        }
-
-        // Test if basic query works
-        try {
-            Logger.debug(`[DATACORE API CHECK] Testing basic @task query...`);
-            const testQuery = "@task";
-            const testResults = await datacoreApi.query(testQuery);
-            Logger.debug(
-                `[DATACORE API CHECK] Basic @task returned: ${testResults?.length || 0} tasks`,
-            );
-            Logger.debug(
-                `[DATACORE API CHECK] Result is array: ${Array.isArray(testResults)}`,
-            );
-            if (testResults && testResults.length > 0) {
-                const sample = testResults[0];
-                Logger.debug(
-                    `[DATACORE API CHECK] Sample task keys: ${Object.keys(sample).join(", ")}`,
-                );
-                Logger.debug(
-                    `[DATACORE API CHECK] Sample $file: ${sample.$file || sample.file}`,
-                );
-            }
-
-            // Try alternate API access if window.datacore.api exists
-            if (windowDc?.api?.query) {
-                Logger.debug(
-                    `[DATACORE API CHECK] Testing via window.datacore.api.query...`,
-                );
-                const apiResults = await windowDc.api.query(testQuery);
-                Logger.debug(
-                    `[DATACORE API CHECK] window.datacore.api.query returned: ${apiResults?.length || 0} tasks`,
-                );
-            }
-
-            // Try plugin API if available
-            if (datacorePlugin?.api?.query) {
-                Logger.debug(
-                    `[DATACORE API CHECK] Testing via plugin.api.query...`,
-                );
-                const pluginResults = await datacorePlugin.api.query(testQuery);
-                Logger.debug(
-                    `[DATACORE API CHECK] plugin.api.query returned: ${pluginResults?.length || 0} tasks`,
-                );
-            }
-
-            // Check for useQuery method (user's suggestion!)
-            Logger.debug(
-                `[DATACORE API CHECK] Checking for useQuery method...`,
-            );
-            Logger.debug(
-                `[DATACORE API CHECK] datacoreApi.useQuery type: ${typeof datacoreApi.useQuery}`,
-            );
-            if (typeof datacoreApi.useQuery === "function") {
-                Logger.debug(
-                    `[DATACORE API CHECK] Testing dc.useQuery() instead...`,
-                );
-                const useQueryResults = datacoreApi.useQuery(testQuery);
-                Logger.debug(
-                    `[DATACORE API CHECK] dc.useQuery returned type: ${typeof useQueryResults}`,
-                );
-                Logger.debug(
-                    `[DATACORE API CHECK] dc.useQuery result: ${useQueryResults?.length || 0} items`,
-                );
-            }
-
-            // Check window.datacore.api.useQuery
-            if (windowDc?.api?.useQuery) {
-                Logger.debug(
-                    `[DATACORE API CHECK] Testing window.datacore.api.useQuery...`,
-                );
-                const apiUseQueryResults = windowDc.api.useQuery(testQuery);
-                Logger.debug(
-                    `[DATACORE API CHECK] window.datacore.api.useQuery returned: ${apiUseQueryResults?.length || 0} items`,
-                );
-            }
-
-            // Check plugin.api.useQuery
-            if (datacorePlugin?.api?.useQuery) {
-                Logger.debug(
-                    `[DATACORE API CHECK] Testing plugin.api.useQuery...`,
-                );
-                const pluginUseQueryResults =
-                    datacorePlugin.api.useQuery(testQuery);
-                Logger.debug(
-                    `[DATACORE API CHECK] plugin.api.useQuery returned: ${pluginUseQueryResults?.length || 0} items`,
-                );
-            }
-        } catch (apiError) {
-            Logger.error(`[DATACORE API CHECK] API query failed:`, apiError);
-        }
-
-        // Log exclusion information
-        if (
-            settings.exclusions &&
-            (settings.exclusions.noteTags?.length > 0 ||
-                settings.exclusions.taskTags?.length > 0 ||
-                settings.exclusions.folders?.length > 0 ||
-                settings.exclusions.notes?.length > 0)
-        ) {
-            const exclusionParts: string[] = [];
-            if (settings.exclusions.noteTags?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.noteTags.length} note tag(s)`,
-                );
-            }
-            if (settings.exclusions.taskTags?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.taskTags.length} task tag(s)`,
-                );
-            }
-            if (settings.exclusions.folders?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.folders.length} folder(s)`,
-                );
-            }
-            if (settings.exclusions.notes?.length > 0) {
-                exclusionParts.push(
-                    `${settings.exclusions.notes.length} note(s)`,
-                );
-            }
-            Logger.debug(
-                `Datacore query exclusions: ${exclusionParts.join(", ")}`,
-            );
-        }
-
         const tasks: Task[] = [];
 
         try {
@@ -998,264 +747,8 @@ export class DatacoreService {
             // Execute query to get all tasks (including subtasks)
             const results = await datacoreApi.query(query);
 
-            Logger.debug(
-                `[DATACORE RESULTS] Query returned: ${results?.length || 0} results`,
-            );
-
-            // If note tag filter returns 0, verify the tag exists in the vault
-            if (
-                (!results || results.length === 0) &&
-                inclusionFilters?.noteTags &&
-                inclusionFilters.noteTags.length > 0
-            ) {
-                try {
-                    const testTag = inclusionFilters.noteTags[0].replace(
-                        /^#+/,
-                        "",
-                    );
-                    const pageCheckQuery = `@page and #${testTag}`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Testing if pages with tag exist: ${pageCheckQuery}`,
-                    );
-                    const pagesWithTag =
-                        await datacoreApi.query(pageCheckQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Found ${pagesWithTag?.length || 0} pages with tag #${testTag}`,
-                    );
-                    if (pagesWithTag && pagesWithTag.length > 0) {
-                        const samplePage = pagesWithTag[0];
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Sample page: ${samplePage.$file || samplePage.file}\n` +
-                                `  Tags: ${JSON.stringify(samplePage.$tags || [])}`,
-                        );
-                    }
-                } catch (testError) {
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Failed to test page query:`,
-                        testError,
-                    );
-                }
-            }
-
-            // If note filter returns 0, verify the page exists and test different query formats
-            if (
-                (!results || results.length === 0) &&
-                inclusionFilters?.notes &&
-                inclusionFilters.notes.length > 0
-            ) {
-                try {
-                    const testNote = inclusionFilters.notes[0];
-                    const notePathNoExt = testNote.replace(/\.md$/i, "");
-
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Testing note filter for: ${testNote}`,
-                    );
-
-                    // Test 1: Does the page exist?
-                    const pageQuery = `@page and path("${notePathNoExt}")`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 1 - Check if page exists: ${pageQuery}`,
-                    );
-                    const pageExists = await datacoreApi.query(pageQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Page exists: ${pageExists?.length > 0 ? "YES" : "NO"} (${pageExists?.length || 0} matches)`,
-                    );
-                    if (pageExists && pageExists.length > 0) {
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Page path in Datacore: ${pageExists[0].$file || pageExists[0].file}`,
-                        );
-                    }
-
-                    // Test 2: Try path() directly on @task
-                    const directPathQuery = `@task and path("${notePathNoExt}")`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 2 - Direct path on @task: ${directPathQuery}`,
-                    );
-                    const directPathResults =
-                        await datacoreApi.query(directPathQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Direct path returned: ${directPathResults?.length || 0} tasks`,
-                    );
-
-                    // Test 3: Try with .md extension
-                    const withExtQuery = `@task and path("${testNote}")`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 3 - With .md extension: ${withExtQuery}`,
-                    );
-                    const withExtResults =
-                        await datacoreApi.query(withExtQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] With extension returned: ${withExtResults?.length || 0} tasks`,
-                    );
-
-                    // Test 4: Try childof with @page
-                    const childofQuery = `@task and childof(@page and path("${notePathNoExt}"))`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 4 - childof(@page): ${childofQuery}`,
-                    );
-                    const childofResults =
-                        await datacoreApi.query(childofQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] childof returned: ${childofResults?.length || 0} tasks`,
-                    );
-
-                    // Test 5: Try using $file property
-                    const fileQuery = `@page and $file = "${notePathNoExt}"`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 5 - Using $file: ${fileQuery}`,
-                    );
-                    const fileResults = await datacoreApi.query(fileQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] $file returned: ${fileResults?.length || 0} pages`,
-                    );
-
-                    // Test 6: Try using $name property (your suggestion!)
-                    const fileName =
-                        notePathNoExt.split("/").pop() || notePathNoExt;
-                    const nameQuery = `@page and $name = "${fileName}"`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 6 - Using $name: ${nameQuery}`,
-                    );
-                    const nameResults = await datacoreApi.query(nameQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] $name returned: ${nameResults?.length || 0} pages`,
-                    );
-                    if (nameResults && nameResults.length > 0) {
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Found page with $name! Path: ${nameResults[0].$file || nameResults[0].file}`,
-                        );
-
-                        // Test 6a: If $name works, try it with childof on tasks
-                        const nameChildofQuery = `@task and childof(@page and $name = "${fileName}")`;
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Test 6a - childof with $name: ${nameChildofQuery}`,
-                        );
-                        const nameChildofResults =
-                            await datacoreApi.query(nameChildofQuery);
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] childof($name) returned: ${nameChildofResults?.length || 0} tasks`,
-                        );
-                    }
-
-                    // Test 7: Try $file with full path including extension
-                    const fileExtQuery = `@page and $file = "${testNote}"`;
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 7 - Using $file with .md: ${fileExtQuery}`,
-                    );
-                    const fileExtResults =
-                        await datacoreApi.query(fileExtQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] $file (with .md) returned: ${fileExtResults?.length || 0} pages`,
-                    );
-
-                    // Test 8: Just query all pages to see the format
-                    const allPagesQuery = "@page";
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 8 - Getting all pages to see path format`,
-                    );
-                    const allPages = await datacoreApi.query(allPagesQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] @page returned: ${allPages?.length || 0} total pages`,
-                    );
-                    if (allPages && allPages.length > 0) {
-                        const taskChatPages = allPages.filter((p: any) =>
-                            (p.$file || p.file || "").includes("Task Chat"),
-                        );
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Found ${taskChatPages.length} pages in "Task Chat" folder`,
-                        );
-                        if (taskChatPages.length > 0) {
-                            Logger.debug(
-                                `[DATACORE DIAGNOSTICS] Sample pages in "Task Chat" folder:`,
-                            );
-                            taskChatPages.slice(0, 3).forEach((p: any) => {
-                                Logger.debug(
-                                    `  - $file: "${p.$file || p.file}", $name: "${p.$name || p.name}"`,
-                                );
-                            });
-                        }
-                    }
-
-                    // Test 9: Try path() with just filename + .md (user's suggestion!)
-                    const justFileName = testNote.split("/").pop() || testNote;
-                    if (justFileName !== testNote) {
-                        const filenameQuery = `@task and path("${justFileName}")`;
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Test 9 - Just filename: ${filenameQuery}`,
-                        );
-                        const filenameResults =
-                            await datacoreApi.query(filenameQuery);
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Just filename returned: ${filenameResults?.length || 0} tasks`,
-                        );
-                    }
-
-                    // Test 10: Get all tasks and check actual file paths
-                    const allTasksQuery = "@task";
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Test 10 - Getting all tasks to check paths`,
-                    );
-                    const allTasks = await datacoreApi.query(allTasksQuery);
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] @task returned: ${allTasks?.length || 0} total tasks`,
-                    );
-                    if (allTasks && allTasks.length > 0) {
-                        const tasksInFile = allTasks.filter((t: any) =>
-                            (t.$file || t.file || "").includes(
-                                "Test Task Chat",
-                            ),
-                        );
-                        Logger.debug(
-                            `[DATACORE DIAGNOSTICS] Found ${tasksInFile.length} tasks with "Test Task Chat" in path`,
-                        );
-                        if (tasksInFile.length > 0) {
-                            Logger.debug(
-                                `[DATACORE DIAGNOSTICS] Sample task file path: "${tasksInFile[0].$file || tasksInFile[0].file}"`,
-                            );
-                        }
-                    }
-                } catch (testError) {
-                    Logger.debug(
-                        `[DATACORE DIAGNOSTICS] Failed to test note queries:`,
-                        testError,
-                    );
-                }
-            }
-
             if (!results || results.length === 0) {
-                Logger.debug(
-                    `[DATACORE RESULTS] No results returned from query. This could mean:
-  1. The query syntax is incorrect
-  2. No tasks match the filters
-  3. The inclusion filters are too restrictive`,
-                );
                 return tasks;
-            }
-
-            // Log sample file paths from results to help debug path/tag filtering
-            const samplePaths = results
-                .slice(0, 5)
-                .map((r: any) => r.$file || r.file || "unknown");
-            Logger.debug(
-                `[DATACORE RESULTS] Sample file paths from results:\n  ${samplePaths.join("\n  ")}`,
-            );
-
-            // Sample first few results to understand structure
-            if (results.length > 0 && settings.enableDebugLogging) {
-                const sample = results[0];
-                Logger.debug(
-                    `[DATACORE RESULTS] Sample result structure:\n` +
-                        `  Keys: ${Object.keys(sample)
-                            .filter((k) => k.startsWith("$"))
-                            .join(", ")}\n` +
-                        `  $type: ${sample.$type}\n` +
-                        `  $status: ${sample.$status}\n` +
-                        `  $completed: ${sample.$completed}\n` +
-                        `  $file: ${sample.$file}\n` +
-                        `  $tags: ${JSON.stringify(sample.$tags || [])}\n` +
-                        `  Has $elements: ${Array.isArray(sample.$elements)}\n` +
-                        `  $elements length: ${sample.$elements?.length || 0}`,
-                );
             }
 
             // Build page metadata map for note-level tags
@@ -1272,9 +765,6 @@ export class DatacoreService {
             try {
                 const pagesQuery = "@page";
                 const pages = await datacoreApi.query(pagesQuery);
-                Logger.debug(
-                    `[DATACORE PAGE TAGS] Queried @page, got ${pages?.length || 0} pages`,
-                );
 
                 if (pages && Array.isArray(pages)) {
                     for (const page of pages) {
@@ -1286,24 +776,6 @@ export class DatacoreService {
                         if (pageTags.length > 0) {
                             pageTagsMap.set(pagePath, pageTags);
                         }
-                    }
-                    Logger.debug(
-                        `[DATACORE PAGE TAGS] Fetched note tags for ${pageTagsMap.size} pages (out of ${uniquePaths.size} pages with tasks)`,
-                    );
-
-                    // Log sample page tags to help debug
-                    const sampleEntries = Array.from(
-                        pageTagsMap.entries(),
-                    ).slice(0, 3);
-                    if (sampleEntries.length > 0) {
-                        Logger.debug(
-                            `[DATACORE PAGE TAGS] Sample page tags:\n${sampleEntries
-                                .map(
-                                    ([path, tags]) =>
-                                        `  ${path}: [${tags.join(", ")}]`,
-                                )
-                                .join("\n")}`,
-                        );
                     }
                 }
             } catch (error) {

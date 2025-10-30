@@ -4,8 +4,47 @@ import { TaskPropertyService } from "./taskPropertyService";
 
 /**
  * Service for filtering tasks based on various criteria
+ * Also provides shared utilities for query building and filter normalization
  */
 export class TaskFilterService {
+    /**
+     * Normalize a tag by removing the # prefix
+     * Used by both Datacore and Dataview services
+     */
+    static normalizeTag(tag: string): string {
+        return tag.replace(/^#+/, "");
+    }
+
+    /**
+     * Normalize a file path for Datacore queries
+     * Extracts just the filename without path or extension
+     * Example: "Task Chat/Test Task Chat.md" -> "Test Task Chat"
+     */
+    static normalizePathForDatacore(path: string): string {
+        const fileName =
+            path.split("/").pop()?.replace(/\.md$/i, "") ||
+            path.replace(/\.md$/i, "");
+        return fileName;
+    }
+
+    /**
+     * Normalize a file path for Dataview queries
+     * Removes .md extension but keeps the full path
+     * Example: "Task Chat/Test Task Chat.md" -> "Task Chat/Test Task Chat"
+     */
+    static normalizePathForDataview(path: string): string {
+        return path.replace(/\.md$/i, "");
+    }
+
+    /**
+     * Check if two tags match (case-insensitive, normalized)
+     * Used for comparing task tags with filter tags
+     */
+    static tagsMatch(tag1: string, tag2: string): boolean {
+        const normalized1 = this.normalizeTag(tag1).toLowerCase();
+        const normalized2 = this.normalizeTag(tag2).toLowerCase();
+        return normalized1 === normalized2;
+    }
     /**
      * Apply filters to a list of tasks
      */

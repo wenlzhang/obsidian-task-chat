@@ -2,6 +2,7 @@ import { App, moment } from "obsidian";
 import { Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskPropertyService } from "./taskPropertyService";
+import { TaskFilterService } from "./taskFilterService";
 import { Logger } from "../utils/logger";
 
 /**
@@ -185,7 +186,7 @@ export class DataviewService {
             settings.exclusions.noteTags.length > 0
         ) {
             for (const tag of settings.exclusions.noteTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 exclusionParts.push(`-#${normalizedTag}`);
             }
         }
@@ -217,7 +218,7 @@ export class DataviewService {
             inclusionFilters.noteTags.length > 0
         ) {
             for (const tag of inclusionFilters.noteTags) {
-                const normalizedTag = tag.replace(/^#+/, "");
+                const normalizedTag = TaskFilterService.normalizeTag(tag);
                 inclusionParts.push(`#${normalizedTag}`);
             }
         }
@@ -259,17 +260,10 @@ export class DataviewService {
             return false;
         }
 
-        // Check if task has any excluded tag (case-insensitive comparison)
+        // Check if task has any excluded tag using shared utility
         return excludedTags.some((excludedTag: string) => {
-            const normalizedExcluded = excludedTag.replace(/^#+/, "");
-
             return taskTags.some((taskTag: string) => {
-                const normalizedTaskTag = taskTag.replace(/^#+/, "");
-                // Case-insensitive comparison
-                return (
-                    normalizedTaskTag.toLowerCase() ===
-                    normalizedExcluded.toLowerCase()
-                );
+                return TaskFilterService.tagsMatch(taskTag, excludedTag);
             });
         });
     }
@@ -1059,9 +1053,21 @@ export class DataviewService {
                         settings.exclusions.notes &&
                         settings.exclusions.notes.length > 0
                     ) {
+                        // Normalize paths for comparison (remove .md extension)
+                        const normalizedExcludedPaths =
+                            settings.exclusions.notes.map((note) =>
+                                TaskFilterService.normalizePathForDataview(
+                                    note,
+                                ),
+                            );
+
                         pages = pages.where((page: any) => {
-                            return !settings.exclusions.notes.includes(
-                                page.file.path,
+                            const normalizedPagePath =
+                                TaskFilterService.normalizePathForDataview(
+                                    page.file.path,
+                                );
+                            return !normalizedExcludedPaths.includes(
+                                normalizedPagePath,
                             );
                         });
                     }
@@ -1174,31 +1180,31 @@ export class DataviewService {
                                         pagePath === folder,
                                 );
 
-                            // Check note-level tag match
+                            // Check note-level tag match using shared utility
                             const matchesNoteTag =
                                 hasNoteTagFilter &&
                                 pageTags.some((pageTag: string) => {
-                                    const normalizedPageTag = pageTag
-                                        .replace(/^#+/, "")
-                                        .toLowerCase();
                                     return inclusionFilters.noteTags!.some(
                                         (filterTag: string) => {
-                                            const normalizedFilter = filterTag
-                                                .replace(/^#+/, "")
-                                                .toLowerCase();
-                                            return (
-                                                normalizedPageTag ===
-                                                normalizedFilter
+                                            return TaskFilterService.tagsMatch(
+                                                pageTag,
+                                                filterTag,
                                             );
                                         },
                                     );
                                 });
 
-                            // Check specific note match (use DataView's path directly)
+                            // Check specific note match (normalize paths for comparison)
                             const matchesNote =
                                 hasNoteFilter &&
                                 inclusionFilters.notes!.some(
-                                    (notePath: string) => pagePath === notePath,
+                                    (notePath: string) =>
+                                        TaskFilterService.normalizePathForDataview(
+                                            pagePath,
+                                        ) ===
+                                        TaskFilterService.normalizePathForDataview(
+                                            notePath,
+                                        ),
                                 );
 
                             // OR logic: page matches if it matches ANY inclusion criteria
@@ -1341,7 +1347,7 @@ export class DataviewService {
                                     matchedPagePaths.size === 0 || // No page filters = all pages pass
                                     matchedPagePaths.has(pagePath);
 
-                                // Check if task has required tags using Dataview's native dvTask.tags API
+                                // Check if task has required tags using Dataview's native dvTask.tags API and shared utility
                                 let taskHasRequiredTag = false;
                                 if (
                                     inclusionFilters?.taskTags &&
@@ -1351,22 +1357,11 @@ export class DataviewService {
                                     if (taskTags.length > 0) {
                                         taskHasRequiredTag = taskTags.some(
                                             (taskTag: string) => {
-                                                const normalizedTaskTag =
-                                                    taskTag
-                                                        .replace(/^#+/, "")
-                                                        .toLowerCase();
                                                 return inclusionFilters.taskTags!.some(
                                                     (filterTag: string) => {
-                                                        const normalizedFilter =
-                                                            filterTag
-                                                                .replace(
-                                                                    /^#+/,
-                                                                    "",
-                                                                )
-                                                                .toLowerCase();
-                                                        return (
-                                                            normalizedTaskTag ===
-                                                            normalizedFilter
+                                                        return TaskFilterService.tagsMatch(
+                                                            taskTag,
+                                                            filterTag,
                                                         );
                                                     },
                                                 );
