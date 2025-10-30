@@ -826,32 +826,30 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Task Indexing API Settings
-        new Setting(containerEl).setName("Task indexing").setHeading();
-        const taskIndexInfo = containerEl.createDiv({
+        // Dataview Settings
+        new Setting(containerEl)
+            .setName("Datacore & Dataview integration")
+            .setHeading();
+        const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        taskIndexInfo.appendText(
-            "Choose which API to use for task indexing and querying. ",
-        );
-        taskIndexInfo.createEl("br");
-        taskIndexInfo.appendText(
-            "Datacore offers 2-10x better performance than Dataview. Auto mode automatically prefers Datacore when available, or falls back to Dataview.",
-        );
+        dataviewInfo.appendText("Configure Datacore and Dataview settings. ");
+        dataviewInfo.createEl("a", {
+            cls: "setting-inline-link",
+            text: "Learn more.",
+            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
+        });
 
-        // Import TaskIndexService at the top of the function where needed
         const TaskIndexService =
             require("./services/taskIndexService").TaskIndexService;
         const status = TaskIndexService.getDetailedStatus(
             this.app,
             this.plugin.settings,
         );
-
-        // API Selection dropdown
         new Setting(containerEl)
             .setName("Task indexing API")
             .setDesc(
-                "Select which API to use. Click 'Refresh' after changing to reload tasks.",
+                "Datacore offers 2-10x better performance than Dataview. Click 'Refresh' after changing to reload tasks.",
             )
             .addDropdown((dropdown) =>
                 dropdown
@@ -903,18 +901,6 @@ export class SettingsTab extends PluginSettingTab {
                         },
                     ),
             );
-
-        // Dataview Settings
-        new Setting(containerEl).setName("Dataview integration").setHeading();
-        const dataviewInfo = containerEl.createDiv({
-            cls: "setting-item-description",
-        });
-        dataviewInfo.appendText("Configure task property field names. ");
-        dataviewInfo.createEl("a", {
-            cls: "setting-inline-link",
-            text: "Learn more.",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
-        });
 
         new Setting(containerEl)
             .setName("Task properties")
