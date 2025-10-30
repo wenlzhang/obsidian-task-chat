@@ -79,19 +79,17 @@ export class ChatView extends ItemView {
         // This allows filters to survive Obsidian restarts
         this.currentFilter = { ...this.plugin.settings.currentFilter };
 
+        // CRITICAL: Refresh tasks when view opens to ensure we have latest data
+        // This fixes issue where warning doesn't auto-disappear after restart
+        if (TaskIndexService.isAnyAPIAvailable(this.app)) {
+            await this.plugin.refreshTasks(true);
+        }
+
         // Apply filter to get current tasks
         const filteredTasks = await this.plugin.getFilteredTasks(
             this.currentFilter,
         );
         this.currentTasks = filteredTasks;
-
-        // Log restored filter for debugging
-        if (Object.keys(this.currentFilter).length > 0) {
-            Logger.debug(
-                "Restored chat interface filter from settings:",
-                this.currentFilter,
-            );
-        }
 
         this.renderView();
         await this.renderMessages();
@@ -103,17 +101,13 @@ export class ChatView extends ItemView {
 
     /**
      * Poll for task indexing API readiness and update warning status
-     * Continues polling until API is ready or max attempts reached
+     * Continues polling until API is ready
      */
     private startWarningPolling(): void {
-        let attempts = 0;
-        const maxAttempts = 20; // 10 seconds total (500ms * 20)
         let wasNotReady = true;
 
         const pollInterval = setInterval(async () => {
-            attempts++;
-
-            // Check if we should stop polling
+            // Check current API status
             const warning = TaskIndexWarningService.checkAPIStatus(
                 this.app,
                 this.plugin.settings,
@@ -121,25 +115,20 @@ export class ChatView extends ItemView {
                 this.currentFilter,
             );
 
-            // If API just became ready and we had no tasks, trigger a refresh
-            if (
-                warning.type === "ready" &&
-                wasNotReady &&
-                this.currentTasks.length === 0
-            ) {
+            // If API just became ready, refresh tasks to ensure we have latest data
+            if (warning.type === "ready" && wasNotReady) {
                 wasNotReady = false;
-                // Trigger task refresh to load tasks now that API is ready
                 await this.plugin.refreshTasks(true);
             }
 
-            // Update warning status after potential task refresh
+            // Always update warning status to reflect current state
             this.renderDataviewWarning();
 
-            // Stop polling if API is ready or max attempts reached
-            if (warning.type === "ready" || attempts >= maxAttempts) {
+            // Stop polling once API is ready and we have tasks OR warning disappeared
+            if (warning.type === "ready") {
                 clearInterval(pollInterval);
             }
-        }, 500); // Poll every 500ms
+        }, 2000); // Poll every 2 seconds
     }
 
     async onClose(): Promise<void> {

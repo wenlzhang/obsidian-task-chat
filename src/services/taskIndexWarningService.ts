@@ -208,7 +208,7 @@ export class TaskIndexWarningService {
                 details:
                     hasFilters || hasExclusions
                         ? "Your filters or exclusions may be too restrictive."
-                        : `${apiName} is active but found no tasks in your vault.`,
+                        : `${apiName} is active, but no tasks were found in your vault.`,
                 suggestions,
                 apiInfo,
                 filterInfo,
