@@ -179,56 +179,6 @@ export class DatacoreService {
     }
 
     /**
-     * Recursively flatten task hierarchy to extract all tasks including subtasks
-     * Per API docs, subtasks are in the $elements property
-     *
-     * IMPORTANT: This should only include actual tasks (with checkboxes),
-     * not regular list items
-     *
-     * @param dcTask - Datacore task object
-     * @param settings - Plugin settings (for debug logging)
-     * @param listItemsSkipped - Counter for skipped list items
-     * @returns Array of all tasks (parent + all nested subtasks)
-     */
-    private static flattenTaskHierarchy(
-        dcTask: any,
-        settings: PluginSettings,
-        listItemsSkipped: { count: number },
-    ): any[] {
-        const tasks: any[] = [];
-
-        // Add the current task
-        tasks.push(dcTask);
-
-        // Recursively process subtasks in $elements
-        if (dcTask.$elements && Array.isArray(dcTask.$elements)) {
-            for (const element of dcTask.$elements) {
-                // Only process if it's actually a task (has checkbox)
-                // Skip regular list items without checkboxes
-                if (this.isValidTask(element)) {
-                    // Recursively flatten this subtask and its children
-                    const flattenedSubtasks = this.flattenTaskHierarchy(
-                        element,
-                        settings,
-                        listItemsSkipped,
-                    );
-                    tasks.push(...flattenedSubtasks);
-                } else {
-                    // Track skipped list items for debugging
-                    listItemsSkipped.count++;
-                    if (settings.enableDebugLogging) {
-                        Logger.debug(
-                            `[Datacore] Skipping list item (no checkbox): "${element.$text || element.text || "(no text)"}"`,
-                        );
-                    }
-                }
-            }
-        }
-
-        return tasks;
-    }
-
-    /**
      * Check if a task should be excluded based on task-level tags
      * This checks tags that are ON the task line itself
      */
@@ -803,25 +753,37 @@ export class DatacoreService {
                 );
             }
 
-            // CRITICAL: Flatten task hierarchy to get ALL tasks including subtasks
-            // Per API docs, subtasks are in $elements property
-            // Also filter out regular list items (without checkboxes)
+            // IMPORTANT: @task query returns ALL tasks (including subtasks) as a FLAT list
+            // Similar to Dataview's file.tasks, Datacore already flattens the hierarchy
+            // We do NOT need to recursively flatten - that causes double counting!
+            //
+            // Example of the problem:
+            // - [ ] Parent task
+            //   - [ ] Child task
+            //
+            // Datacore's @task returns: [Parent, Child] (2 items, already flat)
+            // If we flatten: Parent -> [Parent, Child from $elements] + Child -> [Child]
+            // Result: [Parent, Child, Child] = 3 tasks (WRONG! Child counted twice)
+            //
+            // Solution: Use results as-is, just filter out invalid items
             const allTasks: any[] = [];
-            const listItemsSkipped = { count: 0 };
+            let invalidItems = 0;
 
             for (const dcTask of results) {
                 if (this.isValidTask(dcTask)) {
-                    const flattenedTasks = this.flattenTaskHierarchy(
-                        dcTask,
-                        settings,
-                        listItemsSkipped,
-                    );
-                    allTasks.push(...flattenedTasks);
+                    allTasks.push(dcTask);
+                } else {
+                    invalidItems++;
+                    if (settings.enableDebugLogging) {
+                        Logger.debug(
+                            `[Datacore] Skipping invalid item: $type="${dcTask.$type}", text="${dcTask.$text || dcTask.text || "(no text)"}"`,
+                        );
+                    }
                 }
             }
 
             Logger.debug(
-                `Datacore flattened ${results.length} parent tasks to ${allTasks.length} total tasks (excluding ${listItemsSkipped.count} list items)`,
+                `Datacore processed ${results.length} results -> ${allTasks.length} valid tasks (${invalidItems} invalid items filtered)`,
             );
 
             // Process each task (including subtasks)
