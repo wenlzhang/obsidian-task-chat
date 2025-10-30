@@ -38,7 +38,6 @@ export class SettingsTab extends PluginSettingTab {
         // AI Provider
         const aiProviderSetting = new Setting(containerEl)
             .setName("AI provider")
-            .setDesc("Configure your AI provider.")
             .setHeading();
 
         const aiProviderDesc = aiProviderSetting.descEl;
@@ -144,13 +143,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        const tokenDesc = tokenSetting.descEl;
-        tokenDesc.createSpan({ text: " " });
-        tokenDesc.createEl("a", {
-            cls: "setting-inline-link",
-            text: "Learn more.",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-max-response-tokens",
-        });
 
         const contextSetting = new Setting(containerEl)
             .setName("Context window")
@@ -165,13 +157,6 @@ export class SettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }),
             );
-        const contextDesc = contextSetting.descEl;
-        contextDesc.createSpan({ text: " " });
-        contextDesc.createEl("a", {
-            cls: "setting-inline-link",
-            text: "Learn more.",
-            href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/AI_PROVIDER_CONFIGURATION.md#-context-window",
-        });
 
         // Model configuration
         const modelConfigSetting = new Setting(containerEl)
@@ -666,7 +651,7 @@ export class SettingsTab extends PluginSettingTab {
         tokenUsageDesc.createSpan({ text: " " });
         tokenUsageDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "Learn more →",
+            text: "Learn more",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
         });
 
@@ -750,7 +735,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Dataview task properties")
+            .setName("Datacore & Dataview task properties")
             .setClass("setting-subsection-heading")
             .setDesc("Configure terms to denote task properties.");
 
@@ -830,10 +815,11 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Datacore & Dataview integration")
             .setHeading();
+        
         const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
-        dataviewInfo.appendText("Configure Datacore and Dataview settings. ");
+        dataviewInfo.createSpan({ text: " " });
         dataviewInfo.createEl("a", {
             cls: "setting-inline-link",
             text: "Learn more.",
@@ -1238,7 +1224,7 @@ export class SettingsTab extends PluginSettingTab {
             })
             .descEl.createEl("a", {
                 cls: "setting-inline-link",
-                text: "Learn more about filtering.",
+                text: "Learn more.",
                 href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/FILTERING.md",
             });
 
@@ -1271,7 +1257,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Relevance score")
             .setDesc(
-                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Use to exclude tasks with weak keyword matches.`,
+                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Exclude tasks with weak keyword matches.`,
             )
             .addSlider((slider) => {
                 // Dynamic maximum based on actual max relevance score
@@ -1507,6 +1493,7 @@ export class SettingsTab extends PluginSettingTab {
             .addButton((button) =>
                 button
                     .setButtonText("Reset relevance core keyword match bonus")
+                    .setWarning()
                     .onClick(async () => {
                         this.plugin.settings.relevanceCoreWeight =
                             DEFAULT_SETTINGS.relevanceCoreWeight;
@@ -1610,6 +1597,7 @@ export class SettingsTab extends PluginSettingTab {
             .addButton((button) =>
                 button
                     .setButtonText("Reset due date sub-coefficients")
+                    .setWarning()
                     .onClick(async () => {
                         this.plugin.settings.dueDateOverdueScore =
                             DEFAULT_SETTINGS.dueDateOverdueScore;
@@ -1713,6 +1701,7 @@ export class SettingsTab extends PluginSettingTab {
             .addButton((button) =>
                 button
                     .setButtonText("Reset priority sub-coefficients")
+                    .setWarning()
                     .onClick(async () => {
                         this.plugin.settings.priorityP1Score =
                             DEFAULT_SETTINGS.priorityP1Score;
@@ -1870,22 +1859,20 @@ export class SettingsTab extends PluginSettingTab {
         usageStatsDesc.createEl("span", {
             text:
                 `Total: ${totalTokens} tokens, $${totalCost}.` +
-                "⚠️ These are estimates. Always check your API provider for actual usage and billing. ",
+                "These are estimates. Always check your API provider for actual usage and billing. ",
             cls: "setting-item-description",
         });
         usageStatsDesc.createEl("a", {
             cls: "setting-inline-link",
-            text: "→ Learn more",
+            text: "Learn more",
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/COST_TRACKING.md",
         });
 
         // Debug Logging
         new Setting(containerEl)
             .setName("Enable debug logging")
-            .setDesc(
-                "Show detailed logs in developer console for troubleshooting. " +
-                    "Note: This may impact performance and should only be enabled when debugging issues. " +
-                    "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
+            .setDesc("This may impact performance and should only be enabled when debugging issues. " +
+                "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -2678,8 +2665,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Task sorting (tag-based UI)
         const sortSetting = new Setting(this.sortByContainerEl)
-            .setName("Multi-criteria task sorting")
-            .setDesc("Relevance is always first.");
+            .setName("Multi-criteria sorting")
         sortSetting.descEl.createSpan({ text: " " });
         sortSetting.descEl.createEl("a", {
             text: "Learn more.",
