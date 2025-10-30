@@ -314,20 +314,27 @@ export class DatacoreService {
     }
 
     /**
-     * Build comprehensive Datacore query with exclusions AND inclusions
-     * Per user requirements:
-     * - SOURCE LEVEL (query): folders, notes, note tags (exclusions + inclusions)
-     * - POST-QUERY LEVEL: task tags, task properties (exclusions + inclusions)
+     * Build comprehensive Datacore query with correct syntax
+     * Per official Datacore documentation (blacksmithgu.github.io/datacore):
      *
-     * Per Datacore API docs:
-     * - `@task` - all tasks (excludes list items automatically)
-     * - `#tag` - filter by page tag (note-level)
-     * - `!#tag` - exclude by page tag
-     * - `path("folder")` or `path("Note.md")` - filter by path
-     * - `!path("folder")` or `!path("Note.md")` - exclude by path
-     * - `and` / `or` - combine conditions
+     * ARCHITECTURE:
+     * - SOURCE filters (folders, notes, note tags, task tags): OR logic across all
+     * - EXCLUSIONS: AND logic (all exclusions applied)
+     * - TASK PROPERTIES (due, priority, status): Post-query with AND logic
      *
-     * Note: Task-level tags use dcTask.$tags API post-query (query #tag filters pages)
+     * DATACORE SYNTAX:
+     * - @task - matches all tasks
+     * - path("folder") - matches files in folder
+     * - path("file.md") - matches specific file
+     * - childof(@page and #tag) - matches tasks in pages with tag (NOTE TAGS)
+     * - #tag - matches tasks with tag (TASK TAGS)
+     * - !(...) - negation for exclusions
+     * - and / or - logical operators
+     *
+     * QUERY STRUCTURE:
+     * @task
+     * and !path("excluded") and !childof(@page and #excludedNoteTag) and !#excludedTaskTag
+     * and (path("folder") or path("note.md") or childof(@page and #noteTag) or #taskTag)
      */
     private static buildDatacoreQuery(
         settings: PluginSettings,
@@ -338,10 +345,15 @@ export class DatacoreService {
             notes?: string[];
         },
     ): string {
+        Logger.debug(
+            `[DATACORE QUERY] Building query with inclusionFilters:`,
+            JSON.stringify(inclusionFilters, null, 2),
+        );
+
         const queryParts: string[] = ["@task"];
 
         // ========================================
-        // EXCLUSIONS (Settings tab level)
+        // EXCLUSIONS (AND logic - all applied)
         // ========================================
 
         // Exclude folders
@@ -349,92 +361,120 @@ export class DatacoreService {
             settings.exclusions.folders &&
             settings.exclusions.folders.length > 0
         ) {
+            Logger.debug(
+                `[DATACORE QUERY] Excluding folders: ${settings.exclusions.folders.join(", ")}`,
+            );
             for (const folder of settings.exclusions.folders) {
                 queryParts.push(`!path("${folder}")`);
             }
         }
 
-        // Exclude specific notes (files)
+        // Exclude specific notes
         if (settings.exclusions.notes && settings.exclusions.notes.length > 0) {
+            Logger.debug(
+                `[DATACORE QUERY] Excluding notes: ${settings.exclusions.notes.join(", ")}`,
+            );
             for (const note of settings.exclusions.notes) {
                 queryParts.push(`!path("${note}")`);
             }
         }
 
-        // Exclude note-level tags (page tags)
+        // Exclude note-level tags (tasks in pages with these tags)
         if (
             settings.exclusions.noteTags &&
             settings.exclusions.noteTags.length > 0
         ) {
+            Logger.debug(
+                `[DATACORE QUERY] Excluding note tags: ${settings.exclusions.noteTags.join(", ")}`,
+            );
             for (const tag of settings.exclusions.noteTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                queryParts.push(`!childof(@page and #${normalizedTag})`);
+            }
+        }
+
+        // Exclude task-level tags (tasks with these tags)
+        if (
+            settings.exclusions.taskTags &&
+            settings.exclusions.taskTags.length > 0
+        ) {
+            Logger.debug(
+                `[DATACORE QUERY] Excluding task tags: ${settings.exclusions.taskTags.join(", ")}`,
+            );
+            for (const tag of settings.exclusions.taskTags) {
                 const normalizedTag = tag.replace(/^#+/, "");
                 queryParts.push(`!#${normalizedTag}`);
             }
         }
 
-        // NOTE: Task-level tag exclusions handled post-query with dcTask.$tags
-
         // ========================================
-        // INCLUSIONS (Chat interface level)
+        // INCLUSIONS (OR logic - at least one must match)
         // ========================================
 
-        // Include folders - add ALL to query with OR logic
+        const inclusionConditions: string[] = [];
+
+        // Include folders
         if (inclusionFilters?.folders && inclusionFilters.folders.length > 0) {
-            if (inclusionFilters.folders.length === 1) {
-                queryParts.push(`path("${inclusionFilters.folders[0]}")`);
-            } else {
-                // Multiple folders with OR logic: (path("A") or path("B"))
-                const folderConditions = inclusionFilters.folders
-                    .map((folder) => `path("${folder}")`)
-                    .join(" or ");
-                queryParts.push(`(${folderConditions})`);
+            Logger.debug(
+                `[DATACORE QUERY] Including folders: ${inclusionFilters.folders.join(", ")}`,
+            );
+            for (const folder of inclusionFilters.folders) {
+                inclusionConditions.push(`path("${folder}")`);
             }
         }
 
-        // Include specific notes (files) - add ALL to query with OR logic
+        // Include specific notes
         if (inclusionFilters?.notes && inclusionFilters.notes.length > 0) {
-            if (inclusionFilters.notes.length === 1) {
-                queryParts.push(`path("${inclusionFilters.notes[0]}")`);
-            } else {
-                // Multiple notes with OR logic: (path("A.md") or path("B.md"))
-                const noteConditions = inclusionFilters.notes
-                    .map((note) => `path("${note}")`)
-                    .join(" or ");
-                queryParts.push(`(${noteConditions})`);
+            Logger.debug(
+                `[DATACORE QUERY] Including notes: ${inclusionFilters.notes.join(", ")}`,
+            );
+            for (const note of inclusionFilters.notes) {
+                inclusionConditions.push(`path("${note}")`);
             }
         }
 
-        // Include note-level tags - add ALL to query with OR logic
+        // Include note-level tags (tasks in pages with these tags)
         if (
             inclusionFilters?.noteTags &&
             inclusionFilters.noteTags.length > 0
         ) {
-            if (inclusionFilters.noteTags.length === 1) {
-                const normalizedTag = inclusionFilters.noteTags[0].replace(
-                    /^#+/,
-                    "",
+            Logger.debug(
+                `[DATACORE QUERY] Including note tags: ${inclusionFilters.noteTags.join(", ")}`,
+            );
+            for (const tag of inclusionFilters.noteTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                inclusionConditions.push(
+                    `childof(@page and #${normalizedTag})`,
                 );
-                queryParts.push(`#${normalizedTag}`);
-            } else {
-                // Multiple tags with OR logic: (#tag1 or #tag2)
-                const tagConditions = inclusionFilters.noteTags
-                    .map((tag) => {
-                        const normalizedTag = tag.replace(/^#+/, "");
-                        return `#${normalizedTag}`;
-                    })
-                    .join(" or ");
-                queryParts.push(`(${tagConditions})`);
             }
         }
 
-        // NOTE: Task-level tag inclusions handled post-query with dcTask.$tags
-        // NOTE: Task properties handled post-query
+        // Include task-level tags (tasks with these tags)
+        if (
+            inclusionFilters?.taskTags &&
+            inclusionFilters.taskTags.length > 0
+        ) {
+            Logger.debug(
+                `[DATACORE QUERY] Including task tags: ${inclusionFilters.taskTags.join(", ")}`,
+            );
+            for (const tag of inclusionFilters.taskTags) {
+                const normalizedTag = tag.replace(/^#+/, "");
+                inclusionConditions.push(`#${normalizedTag}`);
+            }
+        }
+
+        // Add inclusion conditions with OR logic
+        if (inclusionConditions.length > 0) {
+            const inclusionQuery = inclusionConditions.join(" or ");
+            queryParts.push(`(${inclusionQuery})`);
+            Logger.debug(
+                `[DATACORE QUERY] Inclusion OR group: (${inclusionQuery})`,
+            );
+        }
 
         const query = queryParts.join(" and ");
 
-        Logger.debug(
-            `Datacore query (source-level): ${query} (folders + notes + note tags)`,
-        );
+        Logger.debug(`[DATACORE QUERY] Final query: ${query}`);
         return query;
     }
 
@@ -762,27 +802,75 @@ export class DatacoreService {
             const results = await datacoreApi.query(query);
 
             Logger.debug(
-                `[Datacore] Query: ${query}\n` +
-                    `  Returned: ${results?.length || 0} results\n` +
-                    `  Expected (from Dataview): ~755 tasks\n` +
-                    `  Difference: ${755 - (results?.length || 0)} tasks missing from query`,
+                `[DATACORE RESULTS] Query returned: ${results?.length || 0} results`,
             );
 
+            // If note tag filter returns 0, verify the tag exists in the vault
+            if (
+                (!results || results.length === 0) &&
+                inclusionFilters?.noteTags &&
+                inclusionFilters.noteTags.length > 0
+            ) {
+                try {
+                    const testTag = inclusionFilters.noteTags[0].replace(
+                        /^#+/,
+                        "",
+                    );
+                    const pageCheckQuery = `@page and #${testTag}`;
+                    Logger.debug(
+                        `[DATACORE DIAGNOSTICS] Testing if pages with tag exist: ${pageCheckQuery}`,
+                    );
+                    const pagesWithTag =
+                        await datacoreApi.query(pageCheckQuery);
+                    Logger.debug(
+                        `[DATACORE DIAGNOSTICS] Found ${pagesWithTag?.length || 0} pages with tag #${testTag}`,
+                    );
+                    if (pagesWithTag && pagesWithTag.length > 0) {
+                        const samplePage = pagesWithTag[0];
+                        Logger.debug(
+                            `[DATACORE DIAGNOSTICS] Sample page: ${samplePage.$file || samplePage.file}\n` +
+                                `  Tags: ${JSON.stringify(samplePage.$tags || [])}`,
+                        );
+                    }
+                } catch (testError) {
+                    Logger.debug(
+                        `[DATACORE DIAGNOSTICS] Failed to test page query:`,
+                        testError,
+                    );
+                }
+            }
+
             if (!results || results.length === 0) {
+                Logger.debug(
+                    `[DATACORE RESULTS] No results returned from query. This could mean:
+  1. The query syntax is incorrect
+  2. No tasks match the filters
+  3. The inclusion filters are too restrictive`,
+                );
                 return tasks;
             }
+
+            // Log sample file paths from results to help debug path/tag filtering
+            const samplePaths = results
+                .slice(0, 5)
+                .map((r: any) => r.$file || r.file || "unknown");
+            Logger.debug(
+                `[DATACORE RESULTS] Sample file paths from results:\n  ${samplePaths.join("\n  ")}`,
+            );
 
             // Sample first few results to understand structure
             if (results.length > 0 && settings.enableDebugLogging) {
                 const sample = results[0];
                 Logger.debug(
-                    `[Datacore] Sample result structure:\n` +
+                    `[DATACORE RESULTS] Sample result structure:\n` +
                         `  Keys: ${Object.keys(sample)
                             .filter((k) => k.startsWith("$"))
                             .join(", ")}\n` +
                         `  $type: ${sample.$type}\n` +
                         `  $status: ${sample.$status}\n` +
                         `  $completed: ${sample.$completed}\n` +
+                        `  $file: ${sample.$file}\n` +
+                        `  $tags: ${JSON.stringify(sample.$tags || [])}\n` +
                         `  Has $elements: ${Array.isArray(sample.$elements)}\n` +
                         `  $elements length: ${sample.$elements?.length || 0}`,
                 );
@@ -798,9 +886,13 @@ export class DatacoreService {
             );
 
             // Query all pages using Datacore API to get their tags
+            // Note: Use @page for Datacore (not FROM "" which is Dataview syntax)
             try {
-                const pagesQuery = 'FROM ""';
+                const pagesQuery = "@page";
                 const pages = await datacoreApi.query(pagesQuery);
+                Logger.debug(
+                    `[DATACORE PAGE TAGS] Queried @page, got ${pages?.length || 0} pages`,
+                );
 
                 if (pages && Array.isArray(pages)) {
                     for (const page of pages) {
@@ -814,8 +906,23 @@ export class DatacoreService {
                         }
                     }
                     Logger.debug(
-                        `Fetched note tags for ${pageTagsMap.size} pages (out of ${uniquePaths.size} pages with tasks)`,
+                        `[DATACORE PAGE TAGS] Fetched note tags for ${pageTagsMap.size} pages (out of ${uniquePaths.size} pages with tasks)`,
                     );
+
+                    // Log sample page tags to help debug
+                    const sampleEntries = Array.from(
+                        pageTagsMap.entries(),
+                    ).slice(0, 3);
+                    if (sampleEntries.length > 0) {
+                        Logger.debug(
+                            `[DATACORE PAGE TAGS] Sample page tags:\n${sampleEntries
+                                .map(
+                                    ([path, tags]) =>
+                                        `  ${path}: [${tags.join(", ")}]`,
+                                )
+                                .join("\n")}`,
+                        );
+                    }
                 }
             } catch (error) {
                 Logger.warn("Failed to fetch page tags from Datacore:", error);
@@ -893,8 +1000,6 @@ export class DatacoreService {
             // Process each task (including subtasks)
             let taskIndex = 0;
             let propertyFilterRejects = 0;
-            let exclusionRejects = 0;
-            let inclusionRejects = 0;
 
             for (const dcTask of allTasks) {
                 // Use $file per API docs (not $path)
@@ -905,86 +1010,18 @@ export class DatacoreService {
                 // Users can explicitly filter by status if they want
 
                 // ========================================
-                // EXCLUSIONS (Settings tab level)
-                // Order: Query-level first, then post-query
+                // POST-QUERY FILTERING
                 // ========================================
+                // NOTE: All source-level filters (folders, notes, note tags, task tags)
+                // are now handled at query level with correct OR/AND logic.
+                // Only task properties (due, priority, status) need post-query filtering.
 
-                // NOTE: Folders, notes, and note-level tags are handled at query level
-                // Only task-level tags need post-query filtering for exclusions
-
-                // Apply task-level tag exclusions using Datacore API (dcTask.$tags)
-                if (
-                    settings.exclusions.taskTags &&
-                    settings.exclusions.taskTags.length > 0
-                ) {
-                    const taskTags = dcTask.$tags || dcTask.tags || [];
-                    if (taskTags.length > 0) {
-                        const isExcluded = settings.exclusions.taskTags.some(
-                            (excludedTag: string) => {
-                                const normalizedExcluded = excludedTag.replace(
-                                    /^#+/,
-                                    "",
-                                );
-                                return taskTags.some((taskTag: string) => {
-                                    const normalizedTaskTag = taskTag.replace(
-                                        /^#+/,
-                                        "",
-                                    );
-                                    return (
-                                        normalizedTaskTag.toLowerCase() ===
-                                        normalizedExcluded.toLowerCase()
-                                    );
-                                });
-                            },
-                        );
-                        if (isExcluded) {
-                            exclusionRejects++;
-                            continue;
-                        }
-                    }
-                }
-
-                // Apply property filters (post-query)
+                // Apply task property filters (due date, priority, status)
+                // These use AND logic - all specified properties must match
                 const shouldInclude = !taskFilter || taskFilter(dcTask);
                 if (!shouldInclude) {
                     propertyFilterRejects++;
                     continue;
-                }
-
-                // ========================================
-                // INCLUSIONS (Chat interface filter level)
-                // Applied after exclusions
-                // ========================================
-                // NOTE: Folders, notes, and note tags are already filtered at query level
-                // Only need to check: task tags
-
-                // Check task tag inclusion (AND logic)
-                if (
-                    inclusionFilters?.taskTags &&
-                    inclusionFilters.taskTags.length > 0
-                ) {
-                    const taskTags = dcTask.$tags || dcTask.tags || [];
-                    const hasRequiredTaskTag = taskTags.some(
-                        (taskTag: string) => {
-                            const normalizedTaskTag = taskTag
-                                .replace(/^#+/, "")
-                                .toLowerCase();
-                            return inclusionFilters.taskTags!.some(
-                                (filterTag: string) => {
-                                    const normalizedFilter = filterTag
-                                        .replace(/^#+/, "")
-                                        .toLowerCase();
-                                    return (
-                                        normalizedTaskTag === normalizedFilter
-                                    );
-                                },
-                            );
-                        },
-                    );
-                    if (!hasRequiredTaskTag) {
-                        inclusionRejects++;
-                        continue;
-                    }
                 }
 
                 // Process task
@@ -1002,7 +1039,7 @@ export class DatacoreService {
             }
 
             Logger.debug(
-                `Datacore filtering stats: ${allTasks.length} total tasks (flattened) -> ${tasks.length} final (property:${propertyFilterRejects}, exclusion:${exclusionRejects}, inclusion:${inclusionRejects})`,
+                `Datacore filtering stats: ${allTasks.length} total tasks -> ${tasks.length} final (property filters rejected: ${propertyFilterRejects})`,
             );
         } catch (error) {
             Logger.error("Error querying Datacore:", error);
