@@ -220,7 +220,7 @@ export class FilterModal extends Modal {
             badge.createSpan({
                 cls: "task-chat-filter-inclusion-badge-text",
                 text: displayText,
-                attr: { title: type === "note" ? value : undefined }, // Show full path on hover for notes
+                attr: { title: type === "note" ? (value ?? null) : null }, // Show full path on hover for notes
             });
 
             const removeBtn = badge.createEl("button", {

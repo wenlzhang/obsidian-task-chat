@@ -10,80 +10,13 @@ import { Logger } from "../../utils/logger";
 
 /**
  * Service for searching and matching tasks based on queries
+ *
+ * NOTE: All search modes (Simple Search, Smart Search, Task Chat) use
+ * the comprehensive scoring system via scoreTasksComprehensive() which
+ * respects user-configurable coefficients for relevance, due date,
+ * priority, and status scoring.
  */
 export class TaskSearchService {
-    /**
-     * Search tasks by text query with fuzzy matching
-     */
-    static searchTasks(tasks: Task[], query: string, maxResults = 20): Task[] {
-        if (!query || query.trim() === "") {
-            return tasks;
-        }
-
-        const normalizedQuery = query.toLowerCase().trim();
-        const queryWords = normalizedQuery.split(/\s+/);
-
-        // Score each task based on relevance
-        const scoredTasks = tasks.map((task) => {
-            const taskText = task.text.toLowerCase();
-            let score = 0;
-
-            // Exact match gets highest score
-            if (taskText.includes(normalizedQuery)) {
-                score += 100;
-            }
-
-            // Check for individual word matches
-            queryWords.forEach((word) => {
-                if (word.length < 2) return; // Skip very short words
-
-                if (taskText.includes(word)) {
-                    score += 10;
-                }
-
-                // Check folder match
-                if (task.folder && task.folder.toLowerCase().includes(word)) {
-                    score += 5;
-                }
-
-                // Check tags match
-                task.tags.forEach((tag) => {
-                    if (tag.toLowerCase().includes(word)) {
-                        score += 5;
-                    }
-                });
-            });
-
-            // Boost incomplete tasks
-            if (task.statusCategory !== "completed") {
-                score += 2;
-            }
-
-            // Boost high priority tasks (1=highest, 2=high, 3=medium, 4=low)
-            if (task.priority === 1) {
-                score += 3;
-            } else if (task.priority === 2) {
-                score += 2;
-            } else if (task.priority === 3) {
-                score += 1;
-            }
-
-            // Boost tasks with due dates
-            if (task.dueDate) {
-                score += 2;
-            }
-
-            return { task, score };
-        });
-
-        // Filter tasks with score > 0 and sort by score
-        return scoredTasks
-            .filter((item) => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, maxResults)
-            .map((item) => item.task);
-    }
-
     /**
      * Remove property syntax from query string POSITIONALLY (beginning/end only)
      * This preserves task content that happens to contain property-related words in the middle
@@ -882,7 +815,7 @@ export class TaskSearchService {
      * @param specialKeywords Extracted special keywords (optional)
      */
     private static validateQueryProperties(
-        priority: number | number[] | "all" | "none" | null,
+        priority: number | number[] | "all" | "none" | "any" | null,
         dueDateRange: { start?: string; end?: string } | null,
         project?: string | null,
         specialKeywords?: string[],
