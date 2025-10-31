@@ -62,15 +62,13 @@ export class DataviewService {
 
     /**
      * Get field value from Dataview task using multiple strategies
-     * Dataview stores metadata in multiple places:
-     * 1. Direct properties (from frontmatter or emoji shorthands): task.fieldName
-     * 2. Fields object (from inline fields): task.fields.fieldName
-     * 3. Dataview standard emoji field names (due, completion, created, etc.)
-     * 4. Emoji shorthands extracted from text (fallback)
-     * 5. Inline field syntax in text: [fieldName::value]
+     * Delegates to unified extraction method in TaskPropertyService
      *
-     * IMPORTANT: Respects user's configured field names while also checking
-     * Dataview's standard emoji shorthand field names
+     * @param dvTask - Dataview task object
+     * @param fieldKey - Field name to extract
+     * @param text - Task text for fallback extraction
+     * @param settings - Plugin settings
+     * @returns Field value, or undefined if not found
      */
     private static getFieldValue(
         dvTask: any,
@@ -78,79 +76,13 @@ export class DataviewService {
         text: string,
         settings: PluginSettings,
     ): any {
-        // Strategy 1: Check user's configured field name (direct property)
-        if (dvTask[fieldKey] !== undefined) {
-            return dvTask[fieldKey];
-        }
-
-        // Strategy 2: Check user's configured field name (fields object)
-        if (dvTask.fields && dvTask.fields[fieldKey] !== undefined) {
-            return dvTask.fields[fieldKey];
-        }
-
-        // Strategy 3: Check Dataview's standard emoji shorthand field names
-        // These are FIXED by Dataview and different from user's configured names
-        // Build dynamic mapping respecting user's configured field names
-        const standardFieldMap: { [key: string]: string[] } = {
-            // Map common user field names to Dataview's standard emoji field names
-            // Due date fields - use user's configured name + standard aliases
-            [settings.dataviewKeys.dueDate]: ["due"],
-            due: ["due"],
-            dueDate: ["due"],
-            deadline: ["due"],
-            // Completion date fields - use user's configured name + standard aliases
-            [settings.dataviewKeys.completedDate]: ["completion"],
-            completion: ["completion"],
-            completed: ["completion"], // Dataview uses "completion", not "completed"
-            completedDate: ["completion"],
-            // Created date fields - use user's configured name + standard aliases
-            [settings.dataviewKeys.createdDate]: ["created"],
-            created: ["created"],
-            createdDate: ["created"],
-            // Start/scheduled dates
-            start: ["start"],
-            startDate: ["start"],
-            scheduled: ["scheduled"],
-            scheduledDate: ["scheduled"],
-            // Priority fields - use user's configured name + standard aliases
-            [settings.dataviewKeys.priority]: ["priority"],
-            priority: ["priority"],
-            p: ["priority"],
-            pri: ["priority"],
-            prio: ["priority"],
-        };
-
-        const standardFields = standardFieldMap[fieldKey] || [];
-        for (const standardField of standardFields) {
-            // Check direct property
-            if (dvTask[standardField] !== undefined) {
-                return dvTask[standardField];
-            }
-            // Check fields object
-            if (dvTask.fields && dvTask.fields[standardField] !== undefined) {
-                return dvTask.fields[standardField];
-            }
-        }
-
-        // Strategy 4: Extract emoji shorthands from text (fallback)
-        const emojiValue = TaskPropertyService.extractEmojiShorthand(
-            text,
+        return TaskPropertyService.getUnifiedFieldValue(
+            dvTask,
             fieldKey,
-        );
-        if (emojiValue !== undefined) {
-            return emojiValue;
-        }
-
-        // Strategy 5: Extract from inline field syntax in text
-        const inlineValue = TaskPropertyService.extractInlineField(
             text,
-            fieldKey,
+            settings,
+            "dataview",
         );
-        if (inlineValue !== undefined) {
-            return inlineValue;
-        }
-
-        return undefined;
     }
 
     /**
@@ -749,103 +681,8 @@ export class DataviewService {
     // and is delegated at line 427. The implementation is no longer duplicated here.
 
     /**
-     * Helper: Check if a task matches a specific due date value
-     * Uses centralized keyword matching from TaskPropertyService
-     */
-    private static matchesDueDateValue(
-        dvTask: any,
-        dueDateValue: string,
-        dueDateFields: string[],
-        settings: PluginSettings,
-    ): boolean {
-        const taskText = dvTask.visual || dvTask.text || dvTask.content || "";
-
-        // Check for special value "any" or "all" - has any due date
-        if (
-            dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.any ||
-            dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.all
-        ) {
-            return dueDateFields.some((field) => {
-                const value = this.getFieldValue(
-                    dvTask,
-                    field,
-                    taskText,
-                    settings,
-                );
-                return value !== undefined && value !== null;
-            });
-        }
-
-        // Check for special value "none" - no due date
-        if (
-            dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none
-        ) {
-            return !dueDateFields.some((field) => {
-                const value = this.getFieldValue(
-                    dvTask,
-                    field,
-                    taskText,
-                    settings,
-                );
-                return value !== undefined && value !== null;
-            });
-        }
-
-        // Check for standard due date keywords (today, tomorrow, yesterday, overdue, future, week, last-week, next-week, month, last-month, next-month, year, last-year, next-year)
-        // Use centralized matching from TaskPropertyService
-        const dueDateKeywords = Object.values(
-            TaskPropertyService.DUE_DATE_KEYWORDS,
-        ) as string[];
-        if (dueDateKeywords.includes(dueDateValue)) {
-            return dueDateFields.some((field) => {
-                const value = this.getFieldValue(
-                    dvTask,
-                    field,
-                    taskText,
-                    settings,
-                );
-                return TaskPropertyService.matchesDueDateKeyword(
-                    value,
-                    dueDateValue as keyof typeof TaskPropertyService.DUE_DATE_KEYWORDS,
-                    this.formatDate.bind(this),
-                );
-            });
-        }
-
-        // Check for relative date with enhanced syntax
-        // Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
-        const parsedRelativeDate =
-            TaskPropertyService.parseRelativeDate(dueDateValue);
-        if (parsedRelativeDate) {
-            return dueDateFields.some((field) => {
-                const value = this.getFieldValue(
-                    dvTask,
-                    field,
-                    taskText,
-                    settings,
-                );
-                const formatted = this.formatDate(value);
-                return formatted === parsedRelativeDate;
-            });
-        }
-
-        // Check for specific date (YYYY-MM-DD format or other formats)
-        return dueDateFields.some((field) => {
-            const value = this.getFieldValue(dvTask, field, taskText, settings);
-            const formatted = this.formatDate(value);
-            return formatted === dueDateValue;
-        });
-    }
-
-    /**
      * Build task-level filter based on extracted intent
-     * Applies to INDIVIDUAL TASKS (not pages) during recursive processing
-     * This ensures child tasks are evaluated independently of their parents
-     *
-     * CRITICAL: Filters at task level, not page level, so:
-     * - Child tasks with due dates match even if parent doesn't
-     * - List items without task markers are recursively processed
-     * - Each task/subtask is evaluated independently
+     * Delegates to unified filter building method in TaskPropertyService
      *
      * @param intent Extracted intent with property filters
      * @param settings Plugin settings with user-configured field names
@@ -853,252 +690,19 @@ export class DataviewService {
      */
     private static buildTaskFilter(
         intent: {
-            priority?: number | number[] | "all" | "any" | "none" | null; // Support multi-value and special values
-            dueDate?: string | string[] | null; // Support multi-value
+            priority?: number | number[] | "all" | "any" | "none" | null;
+            dueDate?: string | string[] | null;
             dueDateRange?: { start?: string; end?: string } | null;
-            status?: string | string[] | null; // Support multi-value
-            statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
+            status?: string | string[] | null;
+            statusValues?: string[] | null;
         },
         settings: PluginSettings,
     ): ((dvTask: any) => boolean) | null {
-        const filters: ((dvTask: any) => boolean)[] = [];
-
-        // Build priority filter (supports multi-value and special values)
-        if (intent.priority) {
-            // Use centralized priority field names
-            const priorityFields =
-                TaskPropertyService.getAllPriorityFieldNames(settings);
-
-            // Handle "all" and "any" as synonyms
-            if (
-                intent.priority ===
-                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all ||
-                intent.priority ===
-                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.any
-            ) {
-                // Tasks with ANY priority (P1-P4)
-                filters.push((dvTask: any) => {
-                    const taskText =
-                        dvTask.visual || dvTask.text || dvTask.content || "";
-                    return priorityFields.some((field) => {
-                        const value = this.getFieldValue(
-                            dvTask,
-                            field,
-                            taskText,
-                            settings,
-                        );
-                        if (value === undefined || value === null) return false;
-
-                        const mapped = this.mapPriority(value, settings);
-                        return (
-                            mapped !== undefined && mapped >= 1 && mapped <= 4
-                        );
-                    });
-                });
-            } else if (
-                intent.priority ===
-                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
-            ) {
-                // Tasks with NO priority
-                filters.push((dvTask: any) => {
-                    const taskText =
-                        dvTask.visual || dvTask.text || dvTask.content || "";
-                    return !priorityFields.some((field) => {
-                        const value = this.getFieldValue(
-                            dvTask,
-                            field,
-                            taskText,
-                            settings,
-                        );
-                        if (value === undefined || value === null) return false;
-
-                        const mapped = this.mapPriority(value, settings);
-                        return mapped !== undefined;
-                    });
-                });
-            } else {
-                // Specific priority values
-                const targetPriorities = Array.isArray(intent.priority)
-                    ? intent.priority
-                    : [intent.priority];
-
-                filters.push((dvTask: any) => {
-                    const taskText =
-                        dvTask.visual || dvTask.text || dvTask.content || "";
-                    // Check ALL priority field names using getFieldValue
-                    for (const field of priorityFields) {
-                        const value = this.getFieldValue(
-                            dvTask,
-                            field,
-                            taskText,
-                            settings,
-                        );
-                        if (value !== undefined && value !== null) {
-                            const mapped = this.mapPriority(value, settings);
-                            if (
-                                mapped !== undefined &&
-                                targetPriorities.includes(mapped)
-                            ) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                });
-            }
-        }
-
-        // Build due date filter (checks task metadata, supports multi-value)
-        if (intent.dueDate) {
-            // Use centralized date field names
-            const dueDateFields =
-                TaskPropertyService.getAllDueDateFieldNames(settings);
-
-            // Handle multi-value due dates (d:today,tomorrow,overdue)
-            const dueDateValues = Array.isArray(intent.dueDate)
-                ? intent.dueDate
-                : [intent.dueDate];
-
-            // Build filter that matches ANY of the due date values (OR logic)
-            filters.push((dvTask: any) => {
-                for (const dueDateValue of dueDateValues) {
-                    if (
-                        this.matchesDueDateValue(
-                            dvTask,
-                            dueDateValue,
-                            dueDateFields,
-                            settings,
-                        )
-                    ) {
-                        return true; // Match ANY value
-                    }
-                }
-                return false;
-            });
-        }
-
-        // Build date range filter
-        if (intent.dueDateRange) {
-            // Use centralized date field names
-            const dueDateFields =
-                TaskPropertyService.getAllDueDateFieldNames(settings);
-            const { start, end } = intent.dueDateRange;
-
-            // Skip if both start and end are missing
-            if (!start && !end) {
-                return null;
-            }
-
-            // Parse range keywords using centralized method from TaskPropertyService
-            const startDate = start
-                ? TaskPropertyService.parseDateRangeKeyword(start)
-                : null;
-            const endDate = end
-                ? TaskPropertyService.parseDateRangeKeyword(end)
-                : null;
-
-            filters.push((dvTask: any) => {
-                const taskText =
-                    dvTask.visual || dvTask.text || dvTask.content || "";
-                return dueDateFields.some((field) => {
-                    const value = this.getFieldValue(
-                        dvTask,
-                        field,
-                        taskText,
-                        settings,
-                    );
-                    if (!value) return false;
-
-                    const taskDate = moment(this.formatDate(value));
-
-                    // Check start date if provided
-                    if (
-                        startDate &&
-                        !taskDate.isSameOrAfter(startDate, "day")
-                    ) {
-                        return false;
-                    }
-
-                    // Check end date if provided
-                    if (endDate && !taskDate.isSameOrBefore(endDate, "day")) {
-                        return false;
-                    }
-
-                    return true;
-                });
-            });
-        }
-
-        // Build status filter (supports multi-value)
-        if (intent.status) {
-            const targetStatuses = Array.isArray(intent.status)
-                ? intent.status
-                : [intent.status];
-
-            filters.push((dvTask: any) => {
-                const status = dvTask.status;
-                if (status !== undefined) {
-                    const mapped = this.mapStatusToCategory(status, settings);
-                    return targetStatuses.includes(mapped);
-                }
-                return false;
-            });
-        }
-
-        // NEW: Build unified status filter (s: syntax - categories or symbols)
-        // Supports: s:open, s:x, s:done, s:x,/, etc.
-        if (intent.statusValues && intent.statusValues.length > 0) {
-            filters.push((dvTask: any) => {
-                const taskStatus = dvTask.status;
-                if (taskStatus === undefined) return false;
-
-                // Check each value with OR logic
-                return intent.statusValues!.some((value) => {
-                    // 1. Try exact symbol match first (highest priority)
-                    if (taskStatus === value) return true;
-
-                    // 2. Try matching against category (internal name or aliases)
-                    // Normalize value for comparison: remove hyphens, lowercase
-                    const normalizedValue = value
-                        .toLowerCase()
-                        .replace(/-/g, "")
-                        .replace(/\s+/g, "");
-
-                    for (const [categoryKey, categoryConfig] of Object.entries(
-                        settings.taskStatusMapping,
-                    )) {
-                        // Check internal name match (case-insensitive, normalized)
-                        if (
-                            categoryKey.toLowerCase() === normalizedValue ||
-                            categoryKey.toLowerCase().replace(/-/g, "") ===
-                                normalizedValue
-                        ) {
-                            return categoryConfig.symbols.includes(taskStatus);
-                        }
-
-                        // Check aliases match (case-insensitive)
-                        const aliases = categoryConfig.aliases
-                            .toLowerCase()
-                            .split(",")
-                            .map((a) => a.trim());
-                        if (aliases.includes(value.toLowerCase())) {
-                            return categoryConfig.symbols.includes(taskStatus);
-                        }
-                    }
-
-                    return false;
-                });
-            });
-        }
-
-        // Combine all filters with AND logic
-        if (filters.length === 0) {
-            return null; // No filters
-        }
-
-        return (dvTask: any) => {
-            return filters.every((f) => f(dvTask));
-        };
+        return TaskPropertyService.buildUnifiedTaskFilter(
+            intent,
+            settings,
+            "dataview",
+        );
     }
 
     /**

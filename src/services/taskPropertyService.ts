@@ -5,6 +5,12 @@ import * as chrono from "chrono-node";
 import { Logger } from "../utils/logger";
 
 /**
+ * Task source type for unified field extraction
+ * Distinguishes between Dataview and Datacore APIs
+ */
+export type TaskSource = "dataview" | "datacore";
+
+/**
  * Centralized Task Property Service
  *
  * This service consolidates ALL task property operations (status, priority, due date)
@@ -2075,5 +2081,517 @@ export class TaskPropertyService {
         }
 
         return undefined;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // UNIFIED FIELD EXTRACTION (Dataview + Datacore)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    /**
+     * Get task text based on source (Dataview vs Datacore)
+     * @param task - Task object from either Dataview or Datacore
+     * @param source - Source type ('dataview' or 'datacore')
+     * @returns Task text
+     */
+    private static getTaskText(task: any, source: TaskSource): string {
+        if (source === "datacore") {
+            return task.$text || task.text || "";
+        } else {
+            return task.visual || task.text || task.content || "";
+        }
+    }
+
+    /**
+     * Get Datacore built-in field key (with $ prefix)
+     * Maps common field names to Datacore's $ prefixed built-ins
+     */
+    private static getDatacoreBuiltInKey(fieldKey: string): string | null {
+        const builtInMap: { [key: string]: string } = {
+            text: "$text",
+            symbol: "$status",
+            status: "$status",
+            completed: "$completed",
+            due: "$due",
+            dueDate: "$due",
+            deadline: "$due",
+            created: "$created",
+            createdDate: "$created",
+            completion: "$completion",
+            completedDate: "$completion",
+            start: "$start",
+            startDate: "$start",
+            scheduled: "$scheduled",
+            scheduledDate: "$scheduled",
+            priority: "$priority",
+            p: "$priority",
+            pri: "$priority",
+            prio: "$priority",
+            tags: "$tags",
+            file: "$file",
+            path: "$file",
+        };
+        return builtInMap[fieldKey] || null;
+    }
+
+    /**
+     * Get standard field mapping for a given field key and source
+     * Returns array of standard field names to check
+     */
+    private static getStandardFieldMapping(
+        fieldKey: string,
+        settings: PluginSettings,
+        source: TaskSource,
+    ): string[] {
+        const fieldMap: { [key: string]: string[] } = {};
+
+        if (source === "datacore") {
+            // Datacore: $ prefix for built-ins
+            fieldMap[settings.dataviewKeys.dueDate] = ["$due"];
+            fieldMap["due"] = ["$due"];
+            fieldMap["dueDate"] = ["$due"];
+            fieldMap["deadline"] = ["$due"];
+            fieldMap[settings.dataviewKeys.completedDate] = ["$completion"];
+            fieldMap["completion"] = ["$completion"];
+            fieldMap["completed"] = ["$completion"];
+            fieldMap["completedDate"] = ["$completion"];
+            fieldMap[settings.dataviewKeys.createdDate] = ["$created"];
+            fieldMap["created"] = ["$created"];
+            fieldMap["createdDate"] = ["$created"];
+            fieldMap["start"] = ["$start"];
+            fieldMap["startDate"] = ["$start"];
+            fieldMap["scheduled"] = ["$scheduled"];
+            fieldMap["scheduledDate"] = ["$scheduled"];
+            fieldMap[settings.dataviewKeys.priority] = ["$priority"];
+            fieldMap["priority"] = ["$priority"];
+            fieldMap["p"] = ["$priority"];
+            fieldMap["pri"] = ["$priority"];
+            fieldMap["prio"] = ["$priority"];
+            fieldMap["tags"] = ["$tags"];
+            fieldMap["file"] = ["$file"];
+            fieldMap["path"] = ["$file"];
+        } else {
+            // Dataview: emoji shorthand names
+            fieldMap[settings.dataviewKeys.dueDate] = ["due"];
+            fieldMap["due"] = ["due"];
+            fieldMap["dueDate"] = ["due"];
+            fieldMap["deadline"] = ["due"];
+            fieldMap[settings.dataviewKeys.completedDate] = ["completion"];
+            fieldMap["completion"] = ["completion"];
+            fieldMap["completed"] = ["completion"];
+            fieldMap["completedDate"] = ["completion"];
+            fieldMap[settings.dataviewKeys.createdDate] = ["created"];
+            fieldMap["created"] = ["created"];
+            fieldMap["createdDate"] = ["created"];
+            fieldMap["start"] = ["start"];
+            fieldMap["startDate"] = ["start"];
+            fieldMap["scheduled"] = ["scheduled"];
+            fieldMap["scheduledDate"] = ["scheduled"];
+            fieldMap[settings.dataviewKeys.priority] = ["priority"];
+            fieldMap["priority"] = ["priority"];
+            fieldMap["p"] = ["priority"];
+            fieldMap["pri"] = ["priority"];
+            fieldMap["prio"] = ["priority"];
+        }
+
+        return fieldMap[fieldKey] || [];
+    }
+
+    /**
+     * Unified field value extraction for both Dataview and Datacore
+     * Handles different task object structures transparently
+     *
+     * @param task - Task object from either Dataview or Datacore
+     * @param fieldKey - Field name to extract
+     * @param text - Task text for fallback extraction
+     * @param settings - Plugin settings
+     * @param source - Source type ('dataview' or 'datacore')
+     * @returns Field value, or undefined if not found
+     */
+    static getUnifiedFieldValue(
+        task: any,
+        fieldKey: string,
+        text: string,
+        settings: PluginSettings,
+        source: TaskSource,
+    ): any {
+        // Strategy 1: Check source-specific direct fields
+        if (source === "datacore") {
+            // Try $ prefix first for Datacore built-ins
+            const builtInKey = this.getDatacoreBuiltInKey(fieldKey);
+            if (builtInKey && task[builtInKey] !== undefined) {
+                return task[builtInKey];
+            }
+        }
+
+        // Try direct property (both sources)
+        if (task[fieldKey] !== undefined) {
+            return task[fieldKey];
+        }
+
+        // Strategy 2: Check fields object (same for both)
+        if (task.fields && task.fields[fieldKey] !== undefined) {
+            return task.fields[fieldKey];
+        }
+
+        // Strategy 3: Check standard fields (source-specific mapping)
+        const standardFields = this.getStandardFieldMapping(
+            fieldKey,
+            settings,
+            source,
+        );
+        for (const standardField of standardFields) {
+            if (task[standardField] !== undefined) {
+                return task[standardField];
+            }
+            if (task.fields && task.fields[standardField] !== undefined) {
+                return task.fields[standardField];
+            }
+        }
+
+        // Strategy 4: Extract emoji shorthands from text (same for both)
+        const emojiValue = this.extractEmojiShorthand(text, fieldKey);
+        if (emojiValue !== undefined) {
+            return emojiValue;
+        }
+
+        // Strategy 5: Extract from inline field syntax (same for both)
+        const inlineValue = this.extractInlineField(text, fieldKey);
+        if (inlineValue !== undefined) {
+            return inlineValue;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Unified due date matching for both Dataview and Datacore
+     * Checks if a task matches a specific due date value
+     *
+     * @param task - Task object from either Dataview or Datacore
+     * @param dueDateValue - Due date value to match against
+     * @param dueDateFields - Array of due date field names to check
+     * @param settings - Plugin settings
+     * @param source - Source type ('dataview' or 'datacore')
+     * @returns True if task matches the due date value
+     */
+    static matchesUnifiedDueDateValue(
+        task: any,
+        dueDateValue: string,
+        dueDateFields: string[],
+        settings: PluginSettings,
+        source: TaskSource,
+    ): boolean {
+        const taskText = this.getTaskText(task, source);
+
+        // Check for "all"/"any" - has any due date
+        if (
+            dueDateValue === this.DUE_DATE_FILTER_KEYWORDS.all ||
+            dueDateValue === this.DUE_DATE_FILTER_KEYWORDS.any
+        ) {
+            return dueDateFields.some((field) => {
+                const value = this.getUnifiedFieldValue(
+                    task,
+                    field,
+                    taskText,
+                    settings,
+                    source,
+                );
+                return value !== undefined && value !== null;
+            });
+        }
+
+        // Check for "none" - no due date
+        if (dueDateValue === this.DUE_DATE_FILTER_KEYWORDS.none) {
+            return !dueDateFields.some((field) => {
+                const value = this.getUnifiedFieldValue(
+                    task,
+                    field,
+                    taskText,
+                    settings,
+                    source,
+                );
+                return value !== undefined && value !== null;
+            });
+        }
+
+        // Check for date keywords (today, overdue, etc.)
+        const dueDateKeywords = Object.values(
+            this.DUE_DATE_KEYWORDS,
+        ) as string[];
+        if (dueDateKeywords.includes(dueDateValue)) {
+            return dueDateFields.some((field) => {
+                const value = this.getUnifiedFieldValue(
+                    task,
+                    field,
+                    taskText,
+                    settings,
+                    source,
+                );
+                return this.matchesDueDateKeyword(
+                    value,
+                    dueDateValue as keyof typeof TaskPropertyService.DUE_DATE_KEYWORDS,
+                    this.formatDate.bind(this),
+                );
+            });
+        }
+
+        // Check for relative dates (1d, 2w, etc.)
+        const parsedRelativeDate = this.parseRelativeDate(dueDateValue);
+        if (parsedRelativeDate) {
+            return dueDateFields.some((field) => {
+                const value = this.getUnifiedFieldValue(
+                    task,
+                    field,
+                    taskText,
+                    settings,
+                    source,
+                );
+                const formatted = this.formatDate(value);
+                return formatted === parsedRelativeDate;
+            });
+        }
+
+        // Check for specific dates (YYYY-MM-DD)
+        return dueDateFields.some((field) => {
+            const value = this.getUnifiedFieldValue(
+                task,
+                field,
+                taskText,
+                settings,
+                source,
+            );
+            const formatted = this.formatDate(value);
+            return formatted === dueDateValue;
+        });
+    }
+
+    /**
+     * Unified filter building for both Dataview and Datacore
+     * Creates a filter function that can be applied to tasks from either source
+     *
+     * @param propertyFilters - Property filters to apply
+     * @param settings - Plugin settings
+     * @param source - Source type ('dataview' or 'datacore')
+     * @returns Filter function, or null if no filters
+     */
+    static buildUnifiedTaskFilter(
+        propertyFilters: {
+            priority?: number | number[] | "all" | "any" | "none" | null;
+            dueDate?: string | string[] | null;
+            dueDateRange?: { start?: string; end?: string } | null;
+            status?: string | string[] | null;
+            statusValues?: string[] | null;
+        },
+        settings: PluginSettings,
+        source: TaskSource,
+    ): ((task: any) => boolean) | null {
+        const filters: ((task: any) => boolean)[] = [];
+
+        // Build priority filter
+        if (propertyFilters.priority) {
+            const priorityFields = this.getAllPriorityFieldNames(settings);
+
+            if (
+                propertyFilters.priority ===
+                    this.PRIORITY_FILTER_KEYWORDS.all ||
+                propertyFilters.priority === this.PRIORITY_FILTER_KEYWORDS.any
+            ) {
+                // Tasks with ANY priority (P1-P4)
+                filters.push((task: any) => {
+                    const taskText = this.getTaskText(task, source);
+                    return priorityFields.some((field) => {
+                        const value = this.getUnifiedFieldValue(
+                            task,
+                            field,
+                            taskText,
+                            settings,
+                            source,
+                        );
+                        if (value === undefined || value === null) return false;
+                        const mapped = this.mapPriority(value, settings);
+                        return (
+                            mapped !== undefined && mapped >= 1 && mapped <= 4
+                        );
+                    });
+                });
+            } else if (
+                propertyFilters.priority === this.PRIORITY_FILTER_KEYWORDS.none
+            ) {
+                // Tasks with NO priority
+                filters.push((task: any) => {
+                    const taskText = this.getTaskText(task, source);
+                    return !priorityFields.some((field) => {
+                        const value = this.getUnifiedFieldValue(
+                            task,
+                            field,
+                            taskText,
+                            settings,
+                            source,
+                        );
+                        if (value === undefined || value === null) return false;
+                        const mapped = this.mapPriority(value, settings);
+                        return mapped !== undefined;
+                    });
+                });
+            } else {
+                // Specific priority values
+                const targetPriorities = Array.isArray(propertyFilters.priority)
+                    ? propertyFilters.priority
+                    : [propertyFilters.priority];
+
+                filters.push((task: any) => {
+                    const taskText = this.getTaskText(task, source);
+                    return priorityFields.some((field) => {
+                        const value = this.getUnifiedFieldValue(
+                            task,
+                            field,
+                            taskText,
+                            settings,
+                            source,
+                        );
+                        if (value !== undefined && value !== null) {
+                            const mapped = this.mapPriority(value, settings);
+                            return (
+                                mapped !== undefined &&
+                                targetPriorities.includes(mapped)
+                            );
+                        }
+                        return false;
+                    });
+                });
+            }
+        }
+
+        // Build due date filter
+        if (propertyFilters.dueDate) {
+            const dueDateFields = this.getAllDueDateFieldNames(settings);
+            const dueDateValues = Array.isArray(propertyFilters.dueDate)
+                ? propertyFilters.dueDate
+                : [propertyFilters.dueDate];
+
+            filters.push((task: any) => {
+                for (const dueDateValue of dueDateValues) {
+                    if (
+                        this.matchesUnifiedDueDateValue(
+                            task,
+                            dueDateValue,
+                            dueDateFields,
+                            settings,
+                            source,
+                        )
+                    ) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // Build date range filter
+        if (propertyFilters.dueDateRange) {
+            const dueDateFields = this.getAllDueDateFieldNames(settings);
+            const { start, end } = propertyFilters.dueDateRange;
+
+            if (start || end) {
+                const startDate = start
+                    ? this.parseDateRangeKeyword(start)
+                    : null;
+                const endDate = end ? this.parseDateRangeKeyword(end) : null;
+
+                filters.push((task: any) => {
+                    const taskText = this.getTaskText(task, source);
+                    return dueDateFields.some((field) => {
+                        const value = this.getUnifiedFieldValue(
+                            task,
+                            field,
+                            taskText,
+                            settings,
+                            source,
+                        );
+                        if (!value) return false;
+
+                        const taskDate = moment(this.formatDate(value));
+
+                        if (
+                            startDate &&
+                            !taskDate.isSameOrAfter(startDate, "day")
+                        )
+                            return false;
+                        if (endDate && !taskDate.isSameOrBefore(endDate, "day"))
+                            return false;
+
+                        return true;
+                    });
+                });
+            }
+        }
+
+        // Build status filter
+        if (propertyFilters.status) {
+            const targetStatuses = Array.isArray(propertyFilters.status)
+                ? propertyFilters.status
+                : [propertyFilters.status];
+
+            filters.push((task: any) => {
+                const status =
+                    source === "datacore"
+                        ? task.$status || task.status
+                        : task.status;
+                if (status !== undefined) {
+                    const mapped = this.mapStatusToCategory(status, settings);
+                    return targetStatuses.includes(mapped);
+                }
+                return false;
+            });
+        }
+
+        // Build unified status filter (s: syntax)
+        if (
+            propertyFilters.statusValues &&
+            propertyFilters.statusValues.length > 0
+        ) {
+            filters.push((task: any) => {
+                const taskStatus =
+                    source === "datacore"
+                        ? task.$status || task.status
+                        : task.status;
+                if (taskStatus === undefined) return false;
+
+                return propertyFilters.statusValues!.some((value) => {
+                    if (taskStatus === value) return true;
+
+                    const normalizedValue = value
+                        .toLowerCase()
+                        .replace(/-/g, "")
+                        .replace(/\s+/g, "");
+
+                    for (const [categoryKey, categoryConfig] of Object.entries(
+                        settings.taskStatusMapping,
+                    )) {
+                        if (
+                            categoryKey.toLowerCase() === normalizedValue ||
+                            categoryKey.toLowerCase().replace(/-/g, "") ===
+                                normalizedValue
+                        ) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
+
+                        const aliases = categoryConfig.aliases
+                            .toLowerCase()
+                            .split(",")
+                            .map((a) => a.trim());
+                        if (aliases.includes(value.toLowerCase())) {
+                            return categoryConfig.symbols.includes(taskStatus);
+                        }
+                    }
+
+                    return false;
+                });
+            });
+        }
+
+        if (filters.length === 0) return null;
+
+        return (task: any) => filters.every((f) => f(task));
     }
 }
