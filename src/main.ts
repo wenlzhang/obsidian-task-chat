@@ -145,12 +145,31 @@ export default class TaskChatPlugin extends Plugin {
             // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
             await this.waitForTaskIndexAPI();
 
-            // Only update task count on startup (lightweight, 20-30x faster than full refresh)
+            // Give API extra time to finish initial indexing
+            // Datacore/Dataview may report "ready" but still be indexing
+            Logger.info("Waiting for API to complete initial indexing...");
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Load full task list on startup (needed for searches without property filters)
+            // This ensures getAllTasks() doesn't return empty array
+            Logger.info("Loading task list on startup...");
+            this.allTasks = await TaskIndexService.parseTasksFromIndex(
+                this.app,
+                this.settings,
+            );
+            Logger.info(
+                `Loaded ${this.allTasks.length} tasks (with exclusions applied from settings)`,
+            );
+
+            // Update task count (will use cached allTasks if no filter)
             await this.updateTaskCount();
 
             // Start auto-refresh if enabled
             if (this.settings.autoRefreshTaskCount) {
                 this.startAutoRefreshTaskCount();
+                Logger.info(
+                    `Auto-refresh started (interval: ${this.settings.autoRefreshTaskCountInterval}s)`,
+                );
             }
 
             // Auto-open sidebar if enabled
@@ -444,9 +463,14 @@ export default class TaskChatPlugin extends Plugin {
                 return;
             }
 
+            // Reload task list with current exclusions from settings
             this.allTasks = await TaskIndexService.parseTasksFromIndex(
                 this.app,
                 this.settings,
+            );
+
+            Logger.info(
+                `Refreshed task list: ${this.allTasks.length} tasks (with exclusions applied)`,
             );
 
             // Update chat view if it exists and updateChatView is true
@@ -454,6 +478,14 @@ export default class TaskChatPlugin extends Plugin {
             if (updateChatView && this.chatView) {
                 // Re-apply current filter to get updated task list
                 const currentFilter = this.chatView.getCurrentFilter();
+
+                // CRITICAL: Update task count at top of chat view
+                // This ensures count is accurate after exclusion/reload
+                const taskCount = await this.getFilteredTaskCount(
+                    currentFilter,
+                );
+                this.chatView.updateTaskCount(taskCount);
+
                 const filteredTasks =
                     await this.getFilteredTasks(currentFilter);
 
@@ -701,9 +733,32 @@ export default class TaskChatPlugin extends Plugin {
         );
 
         this.autoRefreshInterval = window.setInterval(async () => {
-            const filter = this.chatView?.getCurrentFilter() || {};
-            await this.updateTaskCount(filter);
-            Logger.debug("Auto-refreshed task count");
+            try {
+                // Update task list in background (needed for searches)
+                const previousCount = this.allTasks.length;
+                this.allTasks = await TaskIndexService.parseTasksFromIndex(
+                    this.app,
+                    this.settings,
+                );
+
+                // Update task count in UI (silent, no system message)
+                const filter = this.chatView?.getCurrentFilter() || {};
+                await this.updateTaskCount(filter);
+
+                // Log if count changed
+                const newCount = this.allTasks.length;
+                if (newCount !== previousCount) {
+                    Logger.info(
+                        `Auto-refresh: Task count changed from ${previousCount} to ${newCount}`,
+                    );
+                } else {
+                    Logger.debug(
+                        `Auto-refresh completed (${newCount} tasks, no change)`,
+                    );
+                }
+            } catch (error) {
+                Logger.error("Auto-refresh failed:", error);
+            }
         }, intervalMs);
     }
 

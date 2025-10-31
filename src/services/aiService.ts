@@ -347,16 +347,57 @@ export class AIService {
                 );
             }
 
-            // Step 1: Filter by properties at Dataview API level (if any property filters)
+            // Step 1: Filter by properties at Dataview API level (if any property filters OR currentFilter)
             let tasksAfterPropertyFilter = tasks;
-            const hasPropertyFilters = !!(
+
+            // Check if query has property filters
+            const queryHasPropertyFilters = !!(
                 intent.extractedPriority ||
                 intent.extractedDueDateFilter ||
                 intent.extractedDueDateRange ||
                 intent.extractedStatus
             );
 
-            if (hasPropertyFilters) {
+            // Check if currentFilter has inclusion filters (folders, notes, tags)
+            const currentFilterHasInclusions = !!(
+                currentFilter &&
+                ((currentFilter.folders && currentFilter.folders.length > 0) ||
+                    (currentFilter.notes && currentFilter.notes.length > 0) ||
+                    (currentFilter.noteTags &&
+                        currentFilter.noteTags.length > 0) ||
+                    (currentFilter.taskTags &&
+                        currentFilter.taskTags.length > 0))
+            );
+
+            // Check if currentFilter has property filters
+            const currentFilterHasProperties = !!(
+                currentFilter &&
+                ((currentFilter.priorities &&
+                    currentFilter.priorities.length > 0) ||
+                    (currentFilter.taskStatuses &&
+                        currentFilter.taskStatuses.length > 0) ||
+                    currentFilter.dueDateRange)
+            );
+
+            // DECISION LOGIC:
+            // - Reload if query has property filters (need to apply them at API level)
+            // - Reload if currentFilter has ANY filters (inclusions or properties)
+            // - Otherwise use cached tasks (already has exclusions applied from startup)
+            const shouldReloadWithFilters =
+                queryHasPropertyFilters ||
+                currentFilterHasInclusions ||
+                currentFilterHasProperties;
+
+            // DEBUG: Log reload decision with details
+            Logger.debug("[AIService] Filter reload check:", {
+                shouldReload: shouldReloadWithFilters,
+                queryHasPropertyFilters,
+                currentFilterHasInclusions,
+                currentFilterHasProperties,
+                cachedTasksCount: tasks.length,
+            });
+
+            if (shouldReloadWithFilters) {
                 // Reload tasks from Dataview API with property filters
                 // Multi-value support: priority and status can be arrays
 

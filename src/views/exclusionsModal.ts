@@ -203,7 +203,11 @@ export class ExclusionsModal extends Modal {
         await this.plugin.saveSettings();
 
         // AUTO-REFRESH: Trigger task refresh after removing exclusion
-        await this.plugin.refreshTasks();
+        // Show system message to inform user
+        await this.plugin.refreshTasks(true, {
+            showSystemMessage: true,
+            context: "Exclusion removed.",
+        });
     }
 
     private showAddMenu(e: MouseEvent, listContainer: HTMLElement) {
@@ -256,7 +260,11 @@ export class ExclusionsModal extends Modal {
                 this.renderExclusionsList(listContainer);
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                await this.plugin.refreshTasks();
+                // Show system message to inform user
+                await this.plugin.refreshTasks(true, {
+                    showSystemMessage: true,
+                    context: "Exclusion added.",
+                });
             }
         });
 
@@ -275,7 +283,11 @@ export class ExclusionsModal extends Modal {
                 this.renderExclusionsList(listContainer);
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                await this.plugin.refreshTasks();
+                // Show system message to inform user
+                await this.plugin.refreshTasks(true, {
+                    showSystemMessage: true,
+                    context: "Exclusion added.",
+                });
             }
         });
 
@@ -294,7 +306,11 @@ export class ExclusionsModal extends Modal {
                 this.renderExclusionsList(listContainer);
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                await this.plugin.refreshTasks();
+                // Show system message to inform user
+                await this.plugin.refreshTasks(true, {
+                    showSystemMessage: true,
+                    context: "Exclusion added.",
+                });
             }
         });
 
@@ -314,7 +330,11 @@ export class ExclusionsModal extends Modal {
                 this.renderExclusionsList(listContainer);
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                await this.plugin.refreshTasks();
+                // Show system message to inform user
+                await this.plugin.refreshTasks(true, {
+                    showSystemMessage: true,
+                    context: "Exclusion added.",
+                });
             }
         });
 

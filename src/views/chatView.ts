@@ -104,19 +104,28 @@ export class ChatView extends ItemView {
      */
     private startWarningPolling(): void {
         let wasNotReady = true;
+        let pollCount = 0;
+        const maxPolls = 30; // Maximum 60 seconds (30 polls × 2 seconds)
 
         const pollInterval = setInterval(async () => {
-            // Check current API status
+            pollCount++;
+
+            // Check current API status using filteredTaskCount
+            // (currentTasks is empty until user sends a query)
             const warning = TaskIndexWarningService.checkAPIStatus(
                 this.app,
                 this.plugin.settings,
-                this.currentTasks.length,
+                this.filteredTaskCount,
                 this.currentFilter,
             );
 
             // If API just became ready, update task count and show system message
             if (warning.type === "ready" && wasNotReady) {
                 wasNotReady = false;
+
+                // Wait a bit for indexing to complete
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
                 this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
                     this.currentFilter,
                 );
@@ -127,18 +136,31 @@ export class ChatView extends ItemView {
                     this.app,
                     this.plugin.settings,
                 );
-                const apiName = activeAPI === "datacore" ? "Datacore" : activeAPI === "dataview" ? "Dataview" : "Unknown";
+                const apiName =
+                    activeAPI === "datacore"
+                        ? "Datacore"
+                        : activeAPI === "dataview"
+                          ? "Dataview"
+                          : "Unknown";
                 await this.addSystemMessage(
-                    `Task indexing ready (${apiName}). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`
+                    `Task indexing ready (${apiName}). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
                 );
             }
 
             // Always update warning status to reflect current state
             this.renderDataviewWarning();
 
-            // Stop polling once API is ready and we have tasks OR warning disappeared
-            if (warning.type === "ready") {
+            // Stop polling if: API ready AND tasks found, OR timeout reached
+            if (
+                (warning.type === "ready" && this.filteredTaskCount > 0) ||
+                pollCount >= maxPolls
+            ) {
                 clearInterval(pollInterval);
+                if (pollCount >= maxPolls) {
+                    Logger.warn(
+                        "Warning polling stopped after timeout (API may still be indexing)",
+                    );
+                }
             }
         }, 2000); // Poll every 2 seconds
     }
@@ -530,7 +552,10 @@ export class ChatView extends ItemView {
      * - Enabled but 0 tasks: Troubleshooting tips
      */
     private renderDataviewWarning(): void {
-        const taskCount = this.currentTasks.length;
+        // Use filteredTaskCount instead of currentTasks.length
+        // currentTasks is empty until user sends a query (lazy loading)
+        // but filteredTaskCount is updated on startup and when API becomes ready
+        const taskCount = this.filteredTaskCount;
 
         // Check task indexing API status using centralized service
         // Pass filter and settings for detailed diagnostic information
