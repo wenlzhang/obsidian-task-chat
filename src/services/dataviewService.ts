@@ -76,6 +76,7 @@ export class DataviewService {
         dvTask: any,
         fieldKey: string,
         text: string,
+        settings: PluginSettings,
     ): any {
         // Strategy 1: Check user's configured field name (direct property)
         if (dvTask[fieldKey] !== undefined) {
@@ -89,19 +90,34 @@ export class DataviewService {
 
         // Strategy 3: Check Dataview's standard emoji shorthand field names
         // These are FIXED by Dataview and different from user's configured names
+        // Build dynamic mapping respecting user's configured field names
         const standardFieldMap: { [key: string]: string[] } = {
             // Map common user field names to Dataview's standard emoji field names
-            due: ["due"], // User might configure as "due", "dueDate", etc.
+            // Due date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.dueDate]: ["due"],
+            due: ["due"],
             dueDate: ["due"],
+            deadline: ["due"],
+            // Completion date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.completedDate]: ["completion"],
             completion: ["completion"],
             completed: ["completion"], // Dataview uses "completion", not "completed"
             completedDate: ["completion"],
+            // Created date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.createdDate]: ["created"],
             created: ["created"],
             createdDate: ["created"],
+            // Start/scheduled dates
             start: ["start"],
             startDate: ["start"],
             scheduled: ["scheduled"],
             scheduledDate: ["scheduled"],
+            // Priority fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.priority]: ["priority"],
+            priority: ["priority"],
+            p: ["priority"],
+            pri: ["priority"],
+            prio: ["priority"],
         };
 
         const standardFields = standardFieldMap[fieldKey] || [];
@@ -372,8 +388,20 @@ export class DataviewService {
 
         // Handle priority using unified field extraction
         let priority;
-        const priorityKey = settings.dataviewKeys.priority;
-        const priorityValue = this.getFieldValue(dvTask, priorityKey, text);
+
+        // Check ALL possible priority field names (not just user's configured one)
+        let priorityValue;
+        const priorityFields =
+            TaskPropertyService.getAllPriorityFieldNames(settings);
+        for (const fieldName of priorityFields) {
+            priorityValue = this.getFieldValue(
+                dvTask,
+                fieldName,
+                text,
+                settings,
+            );
+            if (priorityValue !== undefined) break;
+        }
 
         if (priorityValue !== undefined) {
             priority = this.mapPriority(priorityValue, settings);
@@ -393,12 +421,19 @@ export class DataviewService {
         // Handle dates using unified field extraction
         let dueDate, createdDate, completedDate;
 
-        // Due date - check all Dataview locations
-        const dueDateValue = this.getFieldValue(
-            dvTask,
-            settings.dataviewKeys.dueDate,
-            text,
-        );
+        // Due date - check ALL possible due date field names (not just user's configured one)
+        let dueDateValue;
+        const dueDateFields =
+            TaskPropertyService.getAllDueDateFieldNames(settings);
+        for (const fieldName of dueDateFields) {
+            dueDateValue = this.getFieldValue(
+                dvTask,
+                fieldName,
+                text,
+                settings,
+            );
+            if (dueDateValue !== undefined) break;
+        }
         if (dueDateValue) {
             dueDate = this.formatDate(dueDateValue, settings.dateFormats.due);
         }
@@ -408,6 +443,7 @@ export class DataviewService {
             dvTask,
             settings.dataviewKeys.createdDate,
             text,
+            settings,
         );
         if (createdDateValue) {
             createdDate = this.formatDate(
@@ -421,6 +457,7 @@ export class DataviewService {
             dvTask,
             settings.dataviewKeys.completedDate,
             text,
+            settings,
         );
         if (completedDateValue) {
             completedDate = this.formatDate(
@@ -721,25 +758,37 @@ export class DataviewService {
         dueDateFields: string[],
         settings: PluginSettings,
     ): boolean {
+        const taskText = dvTask.visual || dvTask.text || dvTask.content || "";
+
         // Check for special value "any" or "all" - has any due date
         if (
             dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.any ||
             dueDateValue === TaskPropertyService.DUE_DATE_KEYWORDS.all
         ) {
-            return dueDateFields.some(
-                (field) =>
-                    dvTask[field] !== undefined && dvTask[field] !== null,
-            );
+            return dueDateFields.some((field) => {
+                const value = this.getFieldValue(
+                    dvTask,
+                    field,
+                    taskText,
+                    settings,
+                );
+                return value !== undefined && value !== null;
+            });
         }
 
         // Check for special value "none" - no due date
         if (
             dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none
         ) {
-            return !dueDateFields.some(
-                (field) =>
-                    dvTask[field] !== undefined && dvTask[field] !== null,
-            );
+            return !dueDateFields.some((field) => {
+                const value = this.getFieldValue(
+                    dvTask,
+                    field,
+                    taskText,
+                    settings,
+                );
+                return value !== undefined && value !== null;
+            });
         }
 
         // Check for standard due date keywords (today, tomorrow, yesterday, overdue, future, week, last-week, next-week, month, last-month, next-month, year, last-year, next-year)
@@ -748,13 +797,19 @@ export class DataviewService {
             TaskPropertyService.DUE_DATE_KEYWORDS,
         ) as string[];
         if (dueDateKeywords.includes(dueDateValue)) {
-            return dueDateFields.some((field) =>
-                TaskPropertyService.matchesDueDateKeyword(
-                    dvTask[field],
+            return dueDateFields.some((field) => {
+                const value = this.getFieldValue(
+                    dvTask,
+                    field,
+                    taskText,
+                    settings,
+                );
+                return TaskPropertyService.matchesDueDateKeyword(
+                    value,
                     dueDateValue as keyof typeof TaskPropertyService.DUE_DATE_KEYWORDS,
                     this.formatDate.bind(this),
-                ),
-            );
+                );
+            });
         }
 
         // Check for relative date with enhanced syntax
@@ -763,14 +818,21 @@ export class DataviewService {
             TaskPropertyService.parseRelativeDate(dueDateValue);
         if (parsedRelativeDate) {
             return dueDateFields.some((field) => {
-                const formatted = this.formatDate(dvTask[field]);
+                const value = this.getFieldValue(
+                    dvTask,
+                    field,
+                    taskText,
+                    settings,
+                );
+                const formatted = this.formatDate(value);
                 return formatted === parsedRelativeDate;
             });
         }
 
         // Check for specific date (YYYY-MM-DD format or other formats)
         return dueDateFields.some((field) => {
-            const formatted = this.formatDate(dvTask[field]);
+            const value = this.getFieldValue(dvTask, field, taskText, settings);
+            const formatted = this.formatDate(value);
             return formatted === dueDateValue;
         });
     }
@@ -816,8 +878,15 @@ export class DataviewService {
             ) {
                 // Tasks with ANY priority (P1-P4)
                 filters.push((dvTask: any) => {
+                    const taskText =
+                        dvTask.visual || dvTask.text || dvTask.content || "";
                     return priorityFields.some((field) => {
-                        const value = dvTask[field];
+                        const value = this.getFieldValue(
+                            dvTask,
+                            field,
+                            taskText,
+                            settings,
+                        );
                         if (value === undefined || value === null) return false;
 
                         const mapped = this.mapPriority(value, settings);
@@ -832,8 +901,15 @@ export class DataviewService {
             ) {
                 // Tasks with NO priority
                 filters.push((dvTask: any) => {
+                    const taskText =
+                        dvTask.visual || dvTask.text || dvTask.content || "";
                     return !priorityFields.some((field) => {
-                        const value = dvTask[field];
+                        const value = this.getFieldValue(
+                            dvTask,
+                            field,
+                            taskText,
+                            settings,
+                        );
                         if (value === undefined || value === null) return false;
 
                         const mapped = this.mapPriority(value, settings);
@@ -847,9 +923,16 @@ export class DataviewService {
                     : [intent.priority];
 
                 filters.push((dvTask: any) => {
-                    // Check task's own fields
+                    const taskText =
+                        dvTask.visual || dvTask.text || dvTask.content || "";
+                    // Check ALL priority field names using getFieldValue
                     for (const field of priorityFields) {
-                        const value = dvTask[field];
+                        const value = this.getFieldValue(
+                            dvTask,
+                            field,
+                            taskText,
+                            settings,
+                        );
                         if (value !== undefined && value !== null) {
                             const mapped = this.mapPriority(value, settings);
                             if (
@@ -915,8 +998,15 @@ export class DataviewService {
                 : null;
 
             filters.push((dvTask: any) => {
+                const taskText =
+                    dvTask.visual || dvTask.text || dvTask.content || "";
                 return dueDateFields.some((field) => {
-                    const value = dvTask[field];
+                    const value = this.getFieldValue(
+                        dvTask,
+                        field,
+                        taskText,
+                        settings,
+                    );
                     if (!value) return false;
 
                     const taskDate = moment(this.formatDate(value));
@@ -1488,7 +1578,7 @@ export class DataviewService {
         app: App,
         settings: PluginSettings,
         propertyFilters?: {
-            priority?: number | number[] | "all" | "none" | null;
+            priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;

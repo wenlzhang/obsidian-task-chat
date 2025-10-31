@@ -80,25 +80,41 @@ export class DatacoreService {
         dcTask: any,
         fieldKey: string,
         text: string,
+        settings: PluginSettings,
     ): any {
         // Strategy 1: Check Datacore built-in properties (with $ prefix)
         // Based on official API documentation
+        // Build dynamic mapping respecting user's configured field names
         const builtInFieldMap: { [key: string]: string } = {
             text: "$text",
             symbol: "$status", // API docs: $status is the status marker
             status: "$status",
             completed: "$completed",
+            // Due date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.dueDate]: "$due",
             due: "$due",
             dueDate: "$due",
+            deadline: "$due",
+            // Created date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.createdDate]: "$created",
             created: "$created",
             createdDate: "$created",
+            // Completion date fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.completedDate]: "$completion",
             completion: "$completion",
             completedDate: "$completion",
+            // Start/scheduled dates
             start: "$start",
             startDate: "$start",
             scheduled: "$scheduled",
             scheduledDate: "$scheduled",
+            // Priority fields - use user's configured name + standard aliases
+            [settings.dataviewKeys.priority]: "$priority",
             priority: "$priority",
+            p: "$priority",
+            pri: "$priority",
+            prio: "$priority",
+            // Other fields
             tags: "$tags",
             file: "$file",
             path: "$file", // Map path to $file
@@ -212,14 +228,23 @@ export class DatacoreService {
 
         // Handle priority using unified field extraction
         let priority;
-        const priorityKey = settings.dataviewKeys.priority;
 
         // Check Datacore built-in priority first
         let priorityValue = dcTask.$priority;
 
-        // Fallback to user's configured field name
+        // Check ALL possible priority field names (not just user's configured one)
         if (priorityValue === undefined) {
-            priorityValue = this.getFieldValue(dcTask, priorityKey, text);
+            const priorityFields =
+                TaskPropertyService.getAllPriorityFieldNames(settings);
+            for (const fieldName of priorityFields) {
+                priorityValue = this.getFieldValue(
+                    dcTask,
+                    fieldName,
+                    text,
+                    settings,
+                );
+                if (priorityValue !== undefined) break;
+            }
         }
 
         if (priorityValue !== undefined) {
@@ -241,12 +266,19 @@ export class DatacoreService {
 
         // Due date - check Datacore locations
         let dueDateValue = dcTask.$due;
+        // Check ALL possible due date field names (not just user's configured one)
         if (dueDateValue === undefined) {
-            dueDateValue = this.getFieldValue(
-                dcTask,
-                settings.dataviewKeys.dueDate,
-                text,
-            );
+            const dueDateFields =
+                TaskPropertyService.getAllDueDateFieldNames(settings);
+            for (const fieldName of dueDateFields) {
+                dueDateValue = this.getFieldValue(
+                    dcTask,
+                    fieldName,
+                    text,
+                    settings,
+                );
+                if (dueDateValue !== undefined) break;
+            }
         }
         if (dueDateValue) {
             dueDate = this.formatDate(dueDateValue, settings.dateFormats.due);
@@ -259,6 +291,7 @@ export class DatacoreService {
                 dcTask,
                 settings.dataviewKeys.createdDate,
                 text,
+                settings,
             );
         }
         if (createdDateValue) {
@@ -275,6 +308,7 @@ export class DatacoreService {
                 dcTask,
                 settings.dataviewKeys.completedDate,
                 text,
+                settings,
             );
         }
         if (completedDateValue) {
@@ -495,6 +529,7 @@ export class DatacoreService {
                             dcTask,
                             field,
                             taskText,
+                            settings,
                         );
                         if (value === undefined || value === null) return false;
 
@@ -516,6 +551,7 @@ export class DatacoreService {
                             dcTask,
                             field,
                             taskText,
+                            settings,
                         );
                         if (value === undefined || value === null) return false;
 
@@ -531,23 +567,30 @@ export class DatacoreService {
 
                 filters.push((dcTask: any) => {
                     const taskText = dcTask.$text || dcTask.text || "";
-                    const priorityValue = this.getFieldValue(
-                        dcTask,
-                        settings.dataviewKeys.priority,
-                        taskText,
-                    );
-
-                    if (priorityValue !== undefined && priorityValue !== null) {
-                        const mapped = this.mapPriority(
-                            priorityValue,
+                    // Check ALL possible priority field names (not just user's configured one)
+                    return priorityFields.some((field) => {
+                        const priorityValue = this.getFieldValue(
+                            dcTask,
+                            field,
+                            taskText,
                             settings,
                         );
-                        return (
-                            mapped !== undefined &&
-                            targetPriorities.includes(mapped)
-                        );
-                    }
-                    return false;
+
+                        if (
+                            priorityValue !== undefined &&
+                            priorityValue !== null
+                        ) {
+                            const mapped = this.mapPriority(
+                                priorityValue,
+                                settings,
+                            );
+                            return (
+                                mapped !== undefined &&
+                                targetPriorities.includes(mapped)
+                            );
+                        }
+                        return false;
+                    });
                 });
             }
         }
@@ -588,11 +631,20 @@ export class DatacoreService {
 
             filters.push((dcTask: any) => {
                 const taskText = dcTask.$text || dcTask.text || "";
-                const dueDateValue = this.getFieldValue(
-                    dcTask,
-                    settings.dataviewKeys.dueDate,
-                    taskText,
-                );
+                // Check ALL possible due date field names (not just user's configured one)
+                const dueDateFields =
+                    TaskPropertyService.getAllDueDateFieldNames(settings);
+
+                let dueDateValue: any = undefined;
+                for (const fieldName of dueDateFields) {
+                    dueDateValue = this.getFieldValue(
+                        dcTask,
+                        fieldName,
+                        taskText,
+                        settings,
+                    );
+                    if (dueDateValue !== undefined) break;
+                }
 
                 if (!dueDateValue) return false;
 
@@ -697,11 +749,20 @@ export class DatacoreService {
         settings: PluginSettings,
     ): boolean {
         const taskText = dcTask.$text || dcTask.text || "";
-        const taskDueDate = this.getFieldValue(
-            dcTask,
-            settings.dataviewKeys.dueDate,
-            taskText,
-        );
+        // Check ALL possible due date field names (not just user's configured one)
+        const dueDateFields =
+            TaskPropertyService.getAllDueDateFieldNames(settings);
+
+        let taskDueDate: any = undefined;
+        for (const fieldName of dueDateFields) {
+            taskDueDate = this.getFieldValue(
+                dcTask,
+                fieldName,
+                taskText,
+                settings,
+            );
+            if (taskDueDate !== undefined) break;
+        }
 
         // Handle "all" or "any" - task must have a due date
         // Use centralized constants from TaskPropertyService
