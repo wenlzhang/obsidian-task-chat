@@ -1,5 +1,5 @@
-import { Logger } from "./logger";
-import { ModelProviderService } from "../services/ai/modelProviderService";
+import { Logger } from "../../utils/logger";
+import { ModelProviderService } from "../ai/modelProviderService";
 
 /**
  * Structured error information for display in chat UI

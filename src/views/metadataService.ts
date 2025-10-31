@@ -1,5 +1,5 @@
-import { ChatMessage } from "../../models/task";
-import { PluginSettings, getProviderForPurpose } from "../../settings";
+import { ChatMessage } from "../models/task";
+import { PluginSettings, getProviderForPurpose } from "../settings";
 
 /**
  * Service for formatting chat message metadata

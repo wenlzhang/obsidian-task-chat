@@ -1,4 +1,4 @@
-import { StructuredError } from "../../utils/errorHandler";
+import { StructuredError } from "./errorHandler";
 
 /**
  * Service for rendering error messages in chat UI

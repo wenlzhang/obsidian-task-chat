@@ -1,6 +1,6 @@
 import { App, requestUrl, moment } from "obsidian";
 import { Task, ChatMessage, TokenUsage } from "../../models/task";
-import { ErrorHandler, AIError } from "../../utils/errorHandler";
+import { ErrorHandler, AIError } from "../warnings/errorHandler";
 import {
     PluginSettings,
     SortCriterion,

@@ -3,7 +3,7 @@ import {
     SessionData,
     ChatMessage,
     TaskFilter,
-} from "../../models/task";
+} from "../models/task";
 
 /**
  * Service for managing chat sessions

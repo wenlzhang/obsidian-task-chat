@@ -4,7 +4,6 @@ import {
     Notice,
     MarkdownRenderer,
     setIcon,
-    moment,
 } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/ai/aiService";
@@ -13,10 +12,10 @@ import { SessionModal } from "./sessionModal";
 import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
-import { AIError } from "../utils/errorHandler";
+import { AIError } from "../services/warnings/errorHandler";
 import { cleanWarningsFromContent } from "../services/warnings/warningService";
 import { ErrorMessageService } from "../services/warnings/errorMessageService";
-import { MetadataService } from "../services/tasks/metadataService";
+import { MetadataService } from "./metadataService";
 import { TaskIndexWarningService } from "../services/warnings/taskIndexWarningService";
 import { TaskIndexService } from "../services/tasks/taskIndexService";
 

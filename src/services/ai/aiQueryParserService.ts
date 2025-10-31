@@ -12,7 +12,7 @@ import { StopWords } from "../../utils/stopWords";
 import { DataviewService } from "../tasks/dataviewService";
 import { PricingService } from "./pricingService";
 import { Logger } from "../../utils/logger";
-import { ErrorHandler, AIError } from "../../utils/errorHandler";
+import { ErrorHandler, AIError } from "../warnings/errorHandler";
 import { TokenUsage } from "../../models/task";
 
 /**
