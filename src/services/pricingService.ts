@@ -472,7 +472,9 @@ export class PricingService {
         }
 
         if (actualCost === undefined) {
-            Logger.warn(`[OpenRouter] ⚠️ No valid cost field found in API response`);
+            Logger.warn(
+                `[OpenRouter] ⚠️ No valid cost field found in API response`,
+            );
         }
 
         const usageData = {

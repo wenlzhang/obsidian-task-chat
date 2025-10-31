@@ -473,7 +473,9 @@ export default class TaskChatPlugin extends Plugin {
             // DataView/DataCore maintain their own indexes and will return fresh data
             // Cache invalidation is pointless and prevents warm cache benefits
 
-            Logger.info("Refreshing task count (cache preserved for efficiency)");
+            Logger.info(
+                "Refreshing task count (cache preserved for efficiency)",
+            );
 
             // Update chat view if it exists and updateChatView is true
             if (updateChatView && this.chatView) {
@@ -481,9 +483,8 @@ export default class TaskChatPlugin extends Plugin {
                 const currentFilter = this.chatView.getCurrentFilter();
 
                 // Update task count at top of chat view (lightweight!)
-                const taskCount = await this.getFilteredTaskCount(
-                    currentFilter,
-                );
+                const taskCount =
+                    await this.getFilteredTaskCount(currentFilter);
                 this.chatView.updateTaskCount(taskCount);
 
                 // Clear cached tasks in chatView (lazy reload on next query)

@@ -382,11 +382,13 @@ export class AIService {
             // DECISION LOGIC:
             // - Reload if query has property filters (need to apply them at API level)
             // - Reload if currentFilter has ANY filters (inclusions or properties)
+            // - Reload if query has keywords (need fresh task set for keyword filtering)
             // - Otherwise use cached tasks (already has exclusions applied from startup)
             const shouldReloadWithFilters =
                 queryHasPropertyFilters ||
                 currentFilterHasInclusions ||
-                currentFilterHasProperties;
+                currentFilterHasProperties ||
+                intent.keywords.length > 0;
 
             // DEBUG: Log reload decision with details
             Logger.debug("[AIService] Filter reload check:", {
@@ -394,6 +396,7 @@ export class AIService {
                 queryHasPropertyFilters,
                 currentFilterHasInclusions,
                 currentFilterHasProperties,
+                hasKeywords: intent.keywords.length > 0,
                 cachedTasksCount: tasks.length,
             });
 

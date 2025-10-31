@@ -544,8 +544,12 @@ export class DatacoreService {
                 return null;
             }
 
-            const startDate = start ? TaskPropertyService.parseDateRangeKeyword(start) : null;
-            const endDate = end ? TaskPropertyService.parseDateRangeKeyword(end) : null;
+            const startDate = start
+                ? TaskPropertyService.parseDateRangeKeyword(start)
+                : null;
+            const endDate = end
+                ? TaskPropertyService.parseDateRangeKeyword(end)
+                : null;
 
             filters.push((dcTask: any) => {
                 const taskText = dcTask.$text || dcTask.text || "";

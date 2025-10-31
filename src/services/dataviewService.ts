@@ -904,8 +904,12 @@ export class DataviewService {
             }
 
             // Parse range keywords using centralized method from TaskPropertyService
-            const startDate = start ? TaskPropertyService.parseDateRangeKeyword(start) : null;
-            const endDate = end ? TaskPropertyService.parseDateRangeKeyword(end) : null;
+            const startDate = start
+                ? TaskPropertyService.parseDateRangeKeyword(start)
+                : null;
+            const endDate = end
+                ? TaskPropertyService.parseDateRangeKeyword(end)
+                : null;
 
             filters.push((dvTask: any) => {
                 return dueDateFields.some((field) => {
@@ -915,7 +919,10 @@ export class DataviewService {
                     const taskDate = moment(this.formatDate(value));
 
                     // Check start date if provided
-                    if (startDate && !taskDate.isSameOrAfter(startDate, "day")) {
+                    if (
+                        startDate &&
+                        !taskDate.isSameOrAfter(startDate, "day")
+                    ) {
                         return false;
                     }
 
