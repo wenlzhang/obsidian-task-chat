@@ -272,7 +272,7 @@ export class ChatView extends ItemView {
         const refreshBtn = refreshGroup.createEl("button", {
             text: "Refresh",
         });
-        refreshBtn.addEventListener("click", () => this.refreshTasks());
+        refreshBtn.addEventListener("click", () => this.refreshTaskCount());
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
@@ -1684,7 +1684,11 @@ export class ChatView extends ItemView {
     /**
      * Refresh task count (lightweight, 20-30x faster than full refresh!)
      */
-    private async refreshTasks(): Promise<void> {
+    /**
+     * Refresh task count (lightweight operation)
+     * Updates count without loading full task list
+     */
+    private async refreshTaskCount(): Promise<void> {
         // Update task count with current filter (respects inclusions/exclusions)
         this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
             this.currentFilter,
@@ -1693,8 +1697,8 @@ export class ChatView extends ItemView {
         // Update display
         this.updateFilterStatus();
 
-        // Clear cached tasks so they're reloaded on next query
-        this.currentTasks = [];
+        // No cache invalidation needed - next query will fetch fresh data from API
+        // Preserving cache improves performance for rapid repeated queries
 
         // Show system message about refresh
         await this.addSystemMessage(

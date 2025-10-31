@@ -202,9 +202,9 @@ export class ExclusionsModal extends Modal {
         }
         await this.plugin.saveSettings();
 
-        // AUTO-REFRESH: Trigger task refresh after removing exclusion
+        // AUTO-REFRESH: Trigger task count refresh after removing exclusion
         // Show system message to inform user
-        await this.plugin.refreshTasks(true, {
+        await this.plugin.refreshTaskCount(true, {
             showSystemMessage: true,
             context: "Exclusion removed.",
         });
@@ -261,7 +261,7 @@ export class ExclusionsModal extends Modal {
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
                 // Show system message to inform user
-                await this.plugin.refreshTasks(true, {
+                await this.plugin.refreshTaskCount(true, {
                     showSystemMessage: true,
                     context: "Exclusion added.",
                 });
@@ -284,7 +284,7 @@ export class ExclusionsModal extends Modal {
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
                 // Show system message to inform user
-                await this.plugin.refreshTasks(true, {
+                await this.plugin.refreshTaskCount(true, {
                     showSystemMessage: true,
                     context: "Exclusion added.",
                 });
@@ -307,7 +307,7 @@ export class ExclusionsModal extends Modal {
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
                 // Show system message to inform user
-                await this.plugin.refreshTasks(true, {
+                await this.plugin.refreshTaskCount(true, {
                     showSystemMessage: true,
                     context: "Exclusion added.",
                 });
@@ -331,7 +331,7 @@ export class ExclusionsModal extends Modal {
 
                 // AUTO-REFRESH: Trigger task refresh after adding exclusion
                 // Show system message to inform user
-                await this.plugin.refreshTasks(true, {
+                await this.plugin.refreshTaskCount(true, {
                     showSystemMessage: true,
                     context: "Exclusion added.",
                 });

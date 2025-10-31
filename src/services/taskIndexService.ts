@@ -15,8 +15,28 @@ import { Logger } from "../utils/logger";
  *
  * Provides a unified interface for the rest of the plugin,
  * abstracting away the underlying indexing implementation.
+ *
+ * Features:
+ * - Query result caching (2-second TTL for rapid repeated queries)
+ * - Automatic cache cleanup
+ * - Minimal memory overhead (only caches filtered subsets)
  */
 export class TaskIndexService {
+    /**
+     * Query result cache with 2-second TTL
+     * Key: JSON stringified filters
+     * Value: { tasks: Task[], timestamp: number }
+     */
+    private static queryCache = new Map<
+        string,
+        { tasks: Task[]; timestamp: number }
+    >();
+
+    /**
+     * Cache TTL in milliseconds (2 seconds)
+     */
+    private static readonly CACHE_TTL = 2000;
+
     /**
      * Detect which APIs are currently available
      * @returns Object with availability status for each API
@@ -200,10 +220,35 @@ export class TaskIndexService {
             return [];
         }
 
+        // Generate cache key from filters (exclude settings for faster key generation)
+        const cacheKey = JSON.stringify({
+            api: activeAPI,
+            dateFilter,
+            propertyFilters,
+            inclusionFilters,
+            exclusions: settings.exclusions, // Include exclusions as they affect results
+        });
+
+        // Check cache
+        const cached = this.queryCache.get(cacheKey);
+        const now = Date.now();
+
+        if (cached && now - cached.timestamp < this.CACHE_TTL) {
+            Logger.debug(
+                `Query cache HIT (age: ${now - cached.timestamp}ms, ${cached.tasks.length} tasks)`,
+            );
+            return cached.tasks;
+        }
+
+        // Clean up expired cache entries (keep cache size small)
+        this.cleanupExpiredCache();
+
         try {
+            let tasks: Task[];
+
             if (activeAPI === "datacore") {
                 Logger.debug("Fetching tasks from Datacore");
-                return await DatacoreService.parseTasksFromDatacore(
+                tasks = await DatacoreService.parseTasksFromDatacore(
                     app,
                     settings,
                     dateFilter,
@@ -212,7 +257,7 @@ export class TaskIndexService {
                 );
             } else {
                 Logger.debug("Fetching tasks from Dataview");
-                return await DataviewService.parseTasksFromDataview(
+                tasks = await DataviewService.parseTasksFromDataview(
                     app,
                     settings,
                     dateFilter,
@@ -220,9 +265,49 @@ export class TaskIndexService {
                     inclusionFilters,
                 );
             }
+
+            // Cache the results
+            this.queryCache.set(cacheKey, { tasks, timestamp: now });
+            Logger.debug(
+                `Query cached (${tasks.length} tasks, TTL: ${this.CACHE_TTL}ms)`,
+            );
+
+            return tasks;
         } catch (error) {
             Logger.error(`Error fetching tasks from ${activeAPI}:`, error);
             return [];
+        }
+    }
+
+    /**
+     * Clean up expired cache entries to prevent memory leaks
+     * Only keeps entries that are still valid
+     */
+    private static cleanupExpiredCache(): void {
+        const now = Date.now();
+        let cleanedCount = 0;
+
+        for (const [key, value] of this.queryCache.entries()) {
+            if (now - value.timestamp >= this.CACHE_TTL) {
+                this.queryCache.delete(key);
+                cleanedCount++;
+            }
+        }
+
+        if (cleanedCount > 0) {
+            Logger.debug(`Cleaned up ${cleanedCount} expired cache entries`);
+        }
+    }
+
+    /**
+     * Clear all cached query results
+     * Useful when settings change or manual refresh is triggered
+     */
+    static clearQueryCache(): void {
+        const size = this.queryCache.size;
+        this.queryCache.clear();
+        if (size > 0) {
+            Logger.debug(`Cleared query cache (${size} entries removed)`);
         }
     }
 

@@ -71,7 +71,7 @@ export default class TaskChatPlugin extends Plugin {
             id: "refresh-tasks",
             name: "Refresh tasks",
             callback: async () => {
-                await this.refreshTasks();
+                await this.refreshTaskCount();
                 new Notice("Tasks refreshed");
             },
         });
@@ -453,7 +453,12 @@ export default class TaskChatPlugin extends Plugin {
      * @param updateChatView - If true, update the chat view count (default: true)
      * @param options - Optional configuration for refresh behavior
      */
-    async refreshTasks(
+    /**
+     * Refresh task count (lightweight operation)
+     * Does NOT reload full task list - just updates count
+     * Preserves cache for efficiency
+     */
+    async refreshTaskCount(
         updateChatView: boolean = true,
         options?: { showSystemMessage?: boolean; context?: string },
     ): Promise<void> {
@@ -464,11 +469,11 @@ export default class TaskChatPlugin extends Plugin {
                 return;
             }
 
-            // OPTIMIZATION: Don't load full task list (wasteful!)
-            // Just invalidate cache and update count
-            this.allTasks = []; // Clear cache, next query will load fresh
+            // OPTIMIZATION: Don't invalidate cache unnecessarily!
+            // DataView/DataCore maintain their own indexes and will return fresh data
+            // Cache invalidation is pointless and prevents warm cache benefits
 
-            Logger.info("Invalidating task cache (next query will load fresh data)");
+            Logger.info("Refreshing task count (cache preserved for efficiency)");
 
             // Update chat view if it exists and updateChatView is true
             if (updateChatView && this.chatView) {
@@ -729,8 +734,8 @@ export default class TaskChatPlugin extends Plugin {
                 // Just update count (lightweight, 20-30x faster)
                 const previousCount = this.taskCount;
 
-                // Invalidate cache so next query gets fresh data
-                this.allTasks = [];
+                // No cache invalidation needed - DataView/DataCore maintain their own indexes
+                // Preserving cache improves performance for rapid repeated queries
 
                 // Update task count in UI (silent, no system message)
                 const filter = this.chatView?.getCurrentFilter() || {};

@@ -886,8 +886,8 @@ export class SettingsTab extends PluginSettingTab {
                                     4000,
                                 );
 
-                                // Refresh tasks with new API and show system message
-                                await this.plugin.refreshTasks(true, {
+                                // Refresh task count with new API and show system message
+                                await this.plugin.refreshTaskCount(true, {
                                     showSystemMessage: true,
                                     context: `Switched to ${apiName}.`,
                                 });
