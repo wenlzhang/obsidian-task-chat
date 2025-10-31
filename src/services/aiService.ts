@@ -350,12 +350,14 @@ export class AIService {
             // Step 1: Filter by properties at Dataview API level (if any property filters OR currentFilter)
             let tasksAfterPropertyFilter = tasks;
 
-            // Check if query has property filters
+            // Check if query has property filters (including folder and tags)
             const queryHasPropertyFilters = !!(
                 intent.extractedPriority ||
                 intent.extractedDueDateFilter ||
                 intent.extractedDueDateRange ||
-                intent.extractedStatus
+                intent.extractedStatus ||
+                intent.extractedFolder ||
+                (intent.extractedTags && intent.extractedTags.length > 0)
             );
 
             // Check if currentFilter has inclusion filters (folders, notes, tags)

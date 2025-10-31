@@ -333,6 +333,7 @@ export class TaskPropertyService {
         project: /##+[A-Za-z0-9_-]+/g,
         search: /search:\s*["']?[^"'&|]+["']?/gi,
         hashtag: /#([\w-]+)/g,
+        folder: /(?:(?:in|from|under)\s+)?(?:folder|directory)[:\s]+["']?[^"'\s,&|]+["']?/gi,
         operators: /[&|!]/g,
 
         // Note: dueDateKeywords is dynamically generated from BASE_DUE_DATE_TERMS
@@ -1519,17 +1520,27 @@ export class TaskPropertyService {
     ): string | null {
         // Handle null/undefined values
         if (!value) {
+            Logger.debug("[resolveStatusValue] Input value is null/undefined");
             return null;
         }
 
         const lowerValue = value.toLowerCase();
+        Logger.debug(
+            `[resolveStatusValue] Attempting to resolve: "${value}" (lowercase: "${lowerValue}")`,
+        );
 
         // Check each category in the status mapping
+        Logger.debug(
+            `[resolveStatusValue] Checking user taskStatusMapping (${Object.keys(settings.taskStatusMapping).length} categories)`,
+        );
         for (const [categoryKey, config] of Object.entries(
             settings.taskStatusMapping,
         )) {
             // Check if value matches category key
             if (categoryKey.toLowerCase() === lowerValue) {
+                Logger.debug(
+                    `[resolveStatusValue] ✓ Matched category key: "${categoryKey}"`,
+                );
                 return categoryKey;
             }
 
@@ -1539,6 +1550,9 @@ export class TaskPropertyService {
                     .split(",")
                     .map((a) => a.trim().toLowerCase());
                 if (aliases.includes(lowerValue)) {
+                    Logger.debug(
+                        `[resolveStatusValue] ✓ Matched alias in category: "${categoryKey}"`,
+                    );
                     return categoryKey;
                 }
             }
@@ -1547,11 +1561,45 @@ export class TaskPropertyService {
             if (config.symbols && Array.isArray(config.symbols)) {
                 const symbols = config.symbols.map((s) => s.toLowerCase());
                 if (symbols.includes(lowerValue)) {
+                    Logger.debug(
+                        `[resolveStatusValue] ✓ Matched symbol in category: "${categoryKey}"`,
+                    );
                     return categoryKey;
                 }
             }
         }
 
+        // FALLBACK: Check default status config if not found in user settings
+        // This ensures standard keywords like "open", "completed" work even with custom mappings
+        Logger.debug(
+            `[resolveStatusValue] Not found in user settings, checking DEFAULT_STATUS_CONFIG (${Object.keys(this.DEFAULT_STATUS_CONFIG).length} categories)`,
+        );
+        for (const [categoryKey, defaultConfig] of Object.entries(
+            this.DEFAULT_STATUS_CONFIG,
+        )) {
+            // Check if value matches default category key
+            if (categoryKey.toLowerCase() === lowerValue) {
+                Logger.debug(
+                    `[resolveStatusValue] ✓ Matched DEFAULT category key: "${categoryKey}"`,
+                );
+                return categoryKey;
+            }
+
+            // Check if value matches default terms
+            const terms = defaultConfig.terms
+                .split(",")
+                .map((t) => t.trim().toLowerCase());
+            if (terms.includes(lowerValue)) {
+                Logger.debug(
+                    `[resolveStatusValue] ✓ Matched DEFAULT term in category: "${categoryKey}"`,
+                );
+                return categoryKey;
+            }
+        }
+
+        Logger.warn(
+            `[resolveStatusValue] ✗ No match found for "${value}" in user settings or defaults`,
+        );
         return null;
     }
 

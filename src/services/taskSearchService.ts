@@ -118,6 +118,7 @@ export class TaskSearchService {
             TaskPropertyService.QUERY_PATTERNS.dueUnified,
             TaskPropertyService.QUERY_PATTERNS.project,
             TaskPropertyService.QUERY_PATTERNS.search,
+            TaskPropertyService.QUERY_PATTERNS.folder,
             TaskPropertyService.getDueDateKeywordsPattern(),
             TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
             TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
@@ -519,6 +520,8 @@ export class TaskSearchService {
             query.matchAll(/\b(?:s|status):([^\s&|]+)/gi),
         );
 
+        const unresolvedValues: string[] = [];
+
         for (const match of explicitMatches) {
             const rawValues = match[1];
             const values = rawValues.split(",").map((v) => v.trim());
@@ -536,15 +539,25 @@ export class TaskSearchService {
                     Logger.debug(`Resolved to category: ${resolved}`);
                     allStatuses.add(resolved);
                 } else {
-                    // If explicit syntax was used but no match found, throw error
-                    const availableCategories = Object.keys(
-                        settings.taskStatusMapping,
-                    ).join(", ");
-                    const errorMsg = `Status category or symbol "${value}" does not exist. Available categories: ${availableCategories}`;
-                    Logger.error(`${errorMsg}`);
-                    throw new Error(errorMsg);
+                    // Collect unresolved values for warning (graceful degradation)
+                    unresolvedValues.push(value);
+                    Logger.warn(
+                        `Status value "${value}" could not be resolved. Continuing with other filters...`,
+                    );
                 }
             }
+        }
+
+        // Log warning for unresolved values if any, but don't fail the entire query
+        if (unresolvedValues.length > 0) {
+            const availableCategories = Object.keys(
+                settings.taskStatusMapping,
+            ).join(", ");
+            Logger.warn(
+                `Some status values could not be resolved: ${unresolvedValues.join(", ")}. ` +
+                    `Available categories: ${availableCategories}. ` +
+                    `Continuing with resolved filters: ${Array.from(allStatuses).join(", ") || "none"}`,
+            );
         }
 
         // Return collected statuses

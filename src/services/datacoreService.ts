@@ -577,7 +577,27 @@ export class DatacoreService {
             });
         }
 
-        // Build status filter (unified s: syntax)
+        // Build status filter (standard status property)
+        if (propertyFilters.status) {
+            const targetStatuses = Array.isArray(propertyFilters.status)
+                ? propertyFilters.status
+                : [propertyFilters.status];
+
+            filters.push((dcTask: any) => {
+                // Use $status per API docs (not $symbol)
+                const taskStatus = dcTask.$status || dcTask.status;
+                if (taskStatus !== undefined) {
+                    const mapped = this.mapStatusToCategory(
+                        taskStatus,
+                        settings,
+                    );
+                    return targetStatuses.includes(mapped);
+                }
+                return false;
+            });
+        }
+
+        // Build status filter (unified s: syntax - legacy support)
         if (
             propertyFilters.statusValues &&
             propertyFilters.statusValues.length > 0
