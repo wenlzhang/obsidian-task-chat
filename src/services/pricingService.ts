@@ -443,26 +443,36 @@ export class PricingService {
             data.data.total_cost !== undefined &&
             data.data.total_cost !== null
         ) {
-            actualCost =
+            const parsedCost =
                 typeof data.data.total_cost === "number"
                     ? data.data.total_cost
                     : parseFloat(data.data.total_cost);
 
-            Logger.debug(
-                `[OpenRouter] ✓ Got actual cost from API: $${actualCost.toFixed(6)}`,
-            );
+            // Only set actualCost if parsing succeeded
+            if (!isNaN(parsedCost)) {
+                actualCost = parsedCost;
+                Logger.debug(
+                    `[OpenRouter] ✓ Got actual cost from API: $${parsedCost.toFixed(6)}`,
+                );
+            }
         } else if (data.data.usage !== undefined && data.data.usage !== null) {
             // Fallback: some responses might have cost in 'usage' field
-            actualCost =
+            const parsedCost =
                 typeof data.data.usage === "number"
                     ? data.data.usage
                     : parseFloat(data.data.usage);
 
-            Logger.debug(
-                `[OpenRouter] ✓ Got actual cost from 'usage' field: $${actualCost.toFixed(6)}`,
-            );
-        } else {
-            Logger.warn(`[OpenRouter] ⚠️ No cost field found in API response`);
+            // Only set actualCost if parsing succeeded
+            if (!isNaN(parsedCost)) {
+                actualCost = parsedCost;
+                Logger.debug(
+                    `[OpenRouter] ✓ Got actual cost from 'usage' field: $${parsedCost.toFixed(6)}`,
+                );
+            }
+        }
+
+        if (actualCost === undefined) {
+            Logger.warn(`[OpenRouter] ⚠️ No valid cost field found in API response`);
         }
 
         const usageData = {

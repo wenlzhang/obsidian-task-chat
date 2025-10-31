@@ -11,6 +11,7 @@ import {
  */
 export class ExclusionsModal extends Modal {
     plugin: TaskChatPlugin;
+    private changesMade = false; // Track if any exclusions were added/removed
 
     constructor(app: App, plugin: TaskChatPlugin) {
         super(app);
@@ -202,11 +203,13 @@ export class ExclusionsModal extends Modal {
         }
         await this.plugin.saveSettings();
 
-        // AUTO-REFRESH: Trigger task count refresh after removing exclusion
-        // Show system message to inform user
+        // Mark that changes were made
+        this.changesMade = true;
+
+        // Update task count silently (no system message yet)
+        // System message will be shown when modal closes
         await this.plugin.refreshTaskCount(true, {
-            showSystemMessage: true,
-            context: "Exclusion removed.",
+            showSystemMessage: false,
         });
     }
 
@@ -259,11 +262,13 @@ export class ExclusionsModal extends Modal {
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
 
-                // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                // Show system message to inform user
+                // Mark that changes were made
+                this.changesMade = true;
+
+                // Update task count silently (no system message yet)
+                // System message will be shown when modal closes
                 await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: true,
-                    context: "Exclusion added.",
+                    showSystemMessage: false,
                 });
             }
         });
@@ -282,11 +287,13 @@ export class ExclusionsModal extends Modal {
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
 
-                // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                // Show system message to inform user
+                // Mark that changes were made
+                this.changesMade = true;
+
+                // Update task count silently (no system message yet)
+                // System message will be shown when modal closes
                 await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: true,
-                    context: "Exclusion added.",
+                    showSystemMessage: false,
                 });
             }
         });
@@ -305,11 +312,13 @@ export class ExclusionsModal extends Modal {
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
 
-                // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                // Show system message to inform user
+                // Mark that changes were made
+                this.changesMade = true;
+
+                // Update task count silently (no system message yet)
+                // System message will be shown when modal closes
                 await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: true,
-                    context: "Exclusion added.",
+                    showSystemMessage: false,
                 });
             }
         });
@@ -329,11 +338,13 @@ export class ExclusionsModal extends Modal {
                 await this.plugin.saveSettings();
                 this.renderExclusionsList(listContainer);
 
-                // AUTO-REFRESH: Trigger task refresh after adding exclusion
-                // Show system message to inform user
+                // Mark that changes were made
+                this.changesMade = true;
+
+                // Update task count silently (no system message yet)
+                // System message will be shown when modal closes
                 await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: true,
-                    context: "Exclusion added.",
+                    showSystemMessage: false,
                 });
             }
         });
@@ -341,8 +352,17 @@ export class ExclusionsModal extends Modal {
         modal.open();
     }
 
-    onClose() {
+    async onClose() {
         const { contentEl } = this;
         contentEl.empty();
+
+        // Show single system message if any changes were made during this session
+        if (this.changesMade) {
+            // Trigger final refresh with system message
+            await this.plugin.refreshTaskCount(true, {
+                showSystemMessage: true,
+                context: "Exclusions updated.",
+            });
+        }
     }
 }

@@ -231,7 +231,8 @@ export class TaskIndexService {
 
         // Check cache
         const cached = this.queryCache.get(cacheKey);
-        const now = Date.now();
+        const moment = (window as any).moment;
+        const now = moment().valueOf();
 
         if (cached && now - cached.timestamp < this.CACHE_TTL) {
             Logger.debug(
@@ -284,7 +285,8 @@ export class TaskIndexService {
      * Only keeps entries that are still valid
      */
     private static cleanupExpiredCache(): void {
-        const now = Date.now();
+        const moment = (window as any).moment;
+        const now = moment().valueOf();
         let cleanedCount = 0;
 
         for (const [key, value] of this.queryCache.entries()) {
