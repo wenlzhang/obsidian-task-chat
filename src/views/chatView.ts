@@ -4,6 +4,7 @@ import {
     Notice,
     MarkdownRenderer,
     setIcon,
+    moment,
 } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/aiService";
@@ -1338,10 +1339,11 @@ export class ChatView extends ItemView {
                 Logger.debug(
                     "[ChatView] Fetching full task list for query processing...",
                 );
-                const startTime = Date.now();
+                const startTime = moment().valueOf();
                 this.currentTasks = await this.plugin.getAllTasks();
+                const elapsed = moment().valueOf() - startTime;
                 Logger.debug(
-                    `[ChatView] Fetched ${this.currentTasks.length} tasks in ${Date.now() - startTime}ms`,
+                    `[ChatView] Fetched ${this.currentTasks.length} tasks in ${elapsed}ms`,
                 );
             }
 
