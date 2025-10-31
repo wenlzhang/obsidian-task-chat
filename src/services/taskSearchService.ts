@@ -18,7 +18,7 @@ export class TaskSearchService {
     static searchTasks(
         tasks: Task[],
         query: string,
-        maxResults: number = 20,
+        maxResults = 20,
     ): Task[] {
         if (!query || query.trim() === "") {
             return tasks;
@@ -1260,10 +1260,10 @@ export class TaskSearchService {
         queryHasPriority: boolean,
         queryHasStatus: boolean,
         sortCriteria: string[],
-        relevCoeff: number = 20,
-        dateCoeff: number = 4,
-        priorCoeff: number = 1,
-        statusCoeff: number = 1,
+        relevCoeff = 20,
+        dateCoeff = 4,
+        priorCoeff = 1,
+        statusCoeff = 1,
         settings: import("../settings").PluginSettings,
     ): Array<{
         task: Task;

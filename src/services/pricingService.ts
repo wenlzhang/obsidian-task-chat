@@ -299,8 +299,8 @@ export class PricingService {
     static async fetchOpenRouterUsage(
         generationId: string,
         apiKey: string,
-        retryCount: number = 0,
-        useFetch: boolean = false,
+        retryCount = 0,
+        useFetch = false,
     ): Promise<{
         promptTokens: number;
         completionTokens: number;

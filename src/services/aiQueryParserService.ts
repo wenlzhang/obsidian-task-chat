@@ -146,7 +146,7 @@ export class QueryParserService {
      */
     private static extractJSON(response: string): string {
         // Step 1: Remove various reasoning/thinking blocks from different models
-        let cleaned = response
+        const cleaned = response
             // DeepSeek's <think> tags
             .replace(/<think>[\s\S]*?<\/think>/gi, "")
             // Generic <reasoning> tags
@@ -2255,7 +2255,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         let totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
         // Calculate cost using pricing table (initial estimate)
-        let calculatedCost = PricingService.calculateCost(
+        const calculatedCost = PricingService.calculateCost(
             promptTokens,
             completionTokens,
             model,

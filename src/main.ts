@@ -24,8 +24,8 @@ export default class TaskChatPlugin extends Plugin {
     private allTasks: Task[] = [];
     private chatView: ChatView | null = null;
     sessionManager: SessionManager;
-    private taskCount: number = 0;
-    private taskCountLastUpdated: number = 0;
+    private taskCount = 0;
+    private taskCountLastUpdated = 0;
     private autoRefreshInterval: number | null = null;
 
     async onload(): Promise<void> {
@@ -459,7 +459,7 @@ export default class TaskChatPlugin extends Plugin {
      * Preserves cache for efficiency
      */
     async refreshTaskCount(
-        updateChatView: boolean = true,
+        updateChatView = true,
         options?: { showSystemMessage?: boolean; context?: string },
     ): Promise<void> {
         try {

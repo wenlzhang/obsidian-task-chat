@@ -8,7 +8,7 @@ import TaskChatPlugin from "../main";
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
     private onSessionSelect: (sessionId: string) => void;
-    private selectionMode: boolean = false;
+    private selectionMode = false;
     private selectedSessionIds: Set<string> = new Set();
 
     constructor(

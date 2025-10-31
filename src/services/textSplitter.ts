@@ -18,7 +18,7 @@ export class TextSplitter {
         const hashtagPattern = /#[^\s#]+/g;
         const hashtags = text.match(hashtagPattern) || [];
         // Remove hashtags temporarily
-        let cleanText = text.replace(hashtagPattern, " ");
+        const cleanText = text.replace(hashtagPattern, " ");
 
         // Step 2: Split by whitespace and punctuation for alphabetic languages
         // This handles English, German, French, Spanish, etc.

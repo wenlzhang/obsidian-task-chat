@@ -255,7 +255,7 @@ export class AIService {
                 );
 
                 // If nothing was extracted, treat entire query as keyword search
-                let keywords =
+                const keywords =
                     parsedQuery.keywords && parsedQuery.keywords.length > 0
                         ? parsedQuery.keywords
                         : hasAnyFilter
@@ -2779,7 +2779,7 @@ ${taskContext}`;
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
-        useStreaming: boolean = false,
+        useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
         const { provider, model, temperature } = getProviderForPurpose(
@@ -3027,7 +3027,7 @@ ${taskContext}`;
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
-        useStreaming: boolean = false,
+        useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
         const { provider, model, temperature } = getProviderForPurpose(

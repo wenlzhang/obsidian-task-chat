@@ -122,7 +122,7 @@ export class DataViewWarningService {
     static checkDataViewStatus(
         app: App,
         taskCount: number,
-        isSearchQuery: boolean = false,
+        isSearchQuery = false,
         filter?: TaskFilter,
         settings?: PluginSettings,
     ): DataViewWarning | null {

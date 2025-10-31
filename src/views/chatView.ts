@@ -26,14 +26,14 @@ export class ChatView extends ItemView {
     private plugin: TaskChatPlugin;
     private currentTasks: Task[] = [];
     private currentFilter: TaskFilter = {};
-    private filteredTaskCount: number = 0; // Track count for current filter
+    private filteredTaskCount = 0; // Track count for current filter
     private messagesEl: HTMLElement;
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
     private filterStatusEl: HTMLElement;
     private filterButtonEl: HTMLButtonElement | null = null;
     private dataviewWarningEl: HTMLElement | null = null;
-    private isProcessing: boolean = false;
+    private isProcessing = false;
     private typingIndicator: HTMLElement | null = null;
     private chatModeSelect: HTMLSelectElement | null = null;
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override

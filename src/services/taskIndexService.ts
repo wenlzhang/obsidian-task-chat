@@ -325,7 +325,7 @@ export class TaskIndexService {
     static async waitForAPI(
         app: App,
         settings: PluginSettings,
-        maxAttempts: number = 20,
+        maxAttempts = 20,
     ): Promise<boolean> {
         for (let i = 0; i < maxAttempts; i++) {
             const activeAPI = this.determineActiveAPI(app, settings);
