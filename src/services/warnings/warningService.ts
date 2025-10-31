@@ -3,8 +3,8 @@
  * Centralized management of all warning messages, diagnostics, and cleanup
  */
 
-import { PluginSettings } from "../settings";
-import { Task } from "../models/task";
+import { PluginSettings } from "../../settings";
+import { Task } from "../../models/task";
 
 /**
  * Generate detailed diagnostic message for zero-results scenarios

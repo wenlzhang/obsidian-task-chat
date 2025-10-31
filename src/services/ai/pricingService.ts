@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { Logger } from "../utils/logger";
+import { Logger } from "../../utils/logger";
 
 /**
  * Service for fetching and managing AI model pricing data

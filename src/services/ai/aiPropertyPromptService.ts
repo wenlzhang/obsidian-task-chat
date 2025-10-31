@@ -1,5 +1,5 @@
-import { PluginSettings } from "../settings";
-import { TaskPropertyService } from "./taskPropertyService";
+import { PluginSettings } from "../../settings";
+import { TaskPropertyService } from "../tasks/taskPropertyService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 
 /**

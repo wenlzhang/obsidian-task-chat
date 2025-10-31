@@ -1,9 +1,9 @@
 import { App } from "obsidian";
-import { Task } from "../models/task";
-import { PluginSettings } from "../settings";
+import { Task } from "../../models/task";
+import { PluginSettings } from "../../settings";
 import { DataviewService } from "./dataviewService";
 import { DatacoreService } from "./datacoreService";
-import { Logger } from "../utils/logger";
+import { Logger } from "../../utils/logger";
 
 /**
  * Unified Task Indexing Service

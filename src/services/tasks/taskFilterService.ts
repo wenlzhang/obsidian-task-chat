@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { Task, TaskFilter } from "../models/task";
+import { Task, TaskFilter } from "../../models/task";
 import { TaskPropertyService } from "./taskPropertyService";
 
 /**

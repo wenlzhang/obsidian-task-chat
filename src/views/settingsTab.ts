@@ -1,21 +1,21 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
-import TaskChatPlugin from "./main";
-import { ModelProviderService } from "./services/modelProviderService";
-import { PricingService } from "./services/pricingService";
-import { TaskPropertyService } from "./services/taskPropertyService";
+import TaskChatPlugin from "../main";
+import { ModelProviderService } from "../services/ai/modelProviderService";
+import { PricingService } from "../services/ai/pricingService";
+import { TaskPropertyService } from "../services/tasks/taskPropertyService";
 import {
     DEFAULT_SETTINGS,
     isStatusCategoryProtected,
     isStatusCategoryFullyLocked,
     PROTECTED_STATUS_CATEGORIES,
-} from "./settings";
-import { StopWords } from "./services/stopWords";
-import { Logger } from "./utils/logger";
+} from "../settings";
+import { StopWords } from "../utils/stopWords";
+import { Logger } from "../utils/logger";
 import {
     generateModelValidationWarning,
     generateModelListNotLoadedInfo,
-} from "./services/warningService";
-import { ExclusionsModal } from "./views/exclusionsModal";
+} from "../services/warnings/warningService";
+import { ExclusionsModal } from "./exclusionsModal";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -827,7 +827,7 @@ export class SettingsTab extends PluginSettingTab {
         });
 
         const TaskIndexService =
-            require("./services/taskIndexService").TaskIndexService;
+            require("../services/tasks/taskIndexService").TaskIndexService;
         const status = TaskIndexService.getDetailedStatus(
             this.app,
             this.plugin.settings,
@@ -2820,12 +2820,12 @@ export class SettingsTab extends PluginSettingTab {
                         selected &&
                         selected !== "" &&
                         !sortOrder.includes(
-                            selected as import("./settings").SortCriterion,
+                            selected as import("../settings").SortCriterion,
                         )
                     ) {
                         const newOrder = [
                             ...sortOrder,
-                            selected as import("./settings").SortCriterion,
+                            selected as import("../settings").SortCriterion,
                         ];
                         this.plugin.settings.taskSortOrder = newOrder;
                         await this.plugin.saveSettings();
@@ -2857,7 +2857,7 @@ export class SettingsTab extends PluginSettingTab {
      * Get display name for a sort criterion
      */
     private getCriterionDisplayName(
-        criterion: import("./settings").SortCriterion,
+        criterion: import("../settings").SortCriterion,
     ): string {
         switch (criterion) {
             case "relevance":
@@ -2881,9 +2881,9 @@ export class SettingsTab extends PluginSettingTab {
      * Get available criteria that aren't already in the sort order
      */
     private getAvailableCriteria(
-        currentOrder: import("./settings").SortCriterion[],
-    ): import("./settings").SortCriterion[] {
-        const allCriteria: import("./settings").SortCriterion[] = [
+        currentOrder: import("../settings").SortCriterion[],
+    ): import("../settings").SortCriterion[] {
+        const allCriteria: import("../settings").SortCriterion[] = [
             "relevance",
             "dueDate",
             "priority",

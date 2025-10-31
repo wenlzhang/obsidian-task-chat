@@ -1,5 +1,5 @@
-import { PluginSettings, SortCriterion } from "../settings";
-import { TaskPropertyService } from "./taskPropertyService";
+import { PluginSettings, SortCriterion } from "../../settings";
+import { TaskPropertyService } from "../tasks/taskPropertyService";
 
 /**
  * Shared utility service for building AI prompt components

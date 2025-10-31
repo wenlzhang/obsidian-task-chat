@@ -1,6 +1,5 @@
 import { App, Modal, Setting, Menu, moment } from "obsidian";
 import { TaskFilter } from "../models/task";
-import { TaskFilterService } from "../services/taskFilterService";
 import { Task } from "../models/task";
 import {
     FolderSuggestModal,

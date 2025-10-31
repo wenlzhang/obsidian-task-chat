@@ -1,12 +1,12 @@
-import { Task, QueryIntent } from "../models/task";
-import { TextSplitter } from "./textSplitter";
-import { StopWords } from "./stopWords";
+import { Task, QueryIntent } from "../../models/task";
+import { TextSplitter } from "../../utils/textSplitter";
+import { StopWords } from "../../utils/stopWords";
 import { PropertyDetectionService } from "./propertyDetectionService";
 import { TaskPropertyService } from "./taskPropertyService";
-import { PluginSettings } from "../settings";
+import { PluginSettings } from "../../settings";
 import { moment } from "obsidian";
-import { TypoCorrection } from "../utils/typoCorrection";
-import { Logger } from "../utils/logger";
+import { TypoCorrection } from "../../utils/typoCorrection";
+import { Logger } from "../../utils/logger";
 
 /**
  * Service for searching and matching tasks based on queries
@@ -15,11 +15,7 @@ export class TaskSearchService {
     /**
      * Search tasks by text query with fuzzy matching
      */
-    static searchTasks(
-        tasks: Task[],
-        query: string,
-        maxResults = 20,
-    ): Task[] {
+    static searchTasks(tasks: Task[], query: string, maxResults = 20): Task[] {
         if (!query || query.trim() === "") {
             return tasks;
         }
@@ -1071,7 +1067,7 @@ export class TaskSearchService {
         taskText: string,
         coreKeywords: string[],
         allKeywords: string[],
-        settings: import("../settings").PluginSettings,
+        settings: import("../../settings").PluginSettings,
     ): number {
         // Count core keyword matches
         const coreKeywordsMatched = coreKeywords.filter((coreKw) =>
@@ -1106,7 +1102,7 @@ export class TaskSearchService {
      */
     private static calculateDueDateScore(
         dueDate: string | undefined,
-        settings: import("../settings").PluginSettings,
+        settings: import("../../settings").PluginSettings,
     ): number {
         // No due date = user-configurable score (default: 0.1)
         if (!dueDate) return settings.dueDateNoneScore;
@@ -1146,7 +1142,7 @@ export class TaskSearchService {
      */
     private static calculatePriorityScore(
         priority: number | undefined,
-        settings: import("../settings").PluginSettings,
+        settings: import("../../settings").PluginSettings,
     ): number {
         if (!priority) return settings.priorityNoneScore;
 
@@ -1172,7 +1168,7 @@ export class TaskSearchService {
      */
     private static calculateStatusScore(
         statusCategory: string | undefined,
-        settings: import("../settings").PluginSettings,
+        settings: import("../../settings").PluginSettings,
     ): number {
         if (!statusCategory) {
             // Default to "open" category score if exists, otherwise 1.0
@@ -1264,7 +1260,7 @@ export class TaskSearchService {
         dateCoeff = 4,
         priorCoeff = 1,
         statusCoeff = 1,
-        settings: import("../settings").PluginSettings,
+        settings: import("../../settings").PluginSettings,
     ): Array<{
         task: Task;
         score: number;

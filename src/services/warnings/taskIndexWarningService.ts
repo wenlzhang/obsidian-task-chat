@@ -1,7 +1,7 @@
 import { App } from "obsidian";
-import { TaskIndexService } from "./taskIndexService";
-import { TaskFilter } from "../models/task";
-import type { PluginSettings } from "../settings";
+import { TaskIndexService } from "../tasks/taskIndexService";
+import { TaskFilter } from "../../models/task";
+import type { PluginSettings } from "../../settings";
 
 /**
  * Warning types for task indexing API state

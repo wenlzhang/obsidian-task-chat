@@ -6,17 +6,17 @@ import {
     TFolder,
     moment,
 } from "obsidian";
-import { SettingsTab } from "./settingsTab";
+import { SettingsTab } from "./views/settingsTab";
 import { PluginSettings, DEFAULT_SETTINGS } from "./settings";
 import { Task, TaskFilter } from "./models/task";
-import { TaskIndexService } from "./services/taskIndexService";
-import { TaskFilterService } from "./services/taskFilterService";
+import { TaskIndexService } from "./services/tasks/taskIndexService";
+import { TaskFilterService } from "./services/tasks/taskFilterService";
 import { ChatView, CHAT_VIEW_TYPE } from "./views/chatView";
 import { FilterModal } from "./views/filterModal";
-import { SessionManager } from "./services/sessionManager";
-import { ModelProviderService } from "./services/modelProviderService";
-import { PricingService } from "./services/pricingService";
-import { StopWords } from "./services/stopWords";
+import { SessionManager } from "./services/ai/sessionManager";
+import { ModelProviderService } from "./services/ai/modelProviderService";
+import { PricingService } from "./services/ai/pricingService";
+import { StopWords } from "./utils/stopWords";
 import { Logger } from "./utils/logger";
 
 export default class TaskChatPlugin extends Plugin {

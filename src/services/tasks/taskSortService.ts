@@ -1,5 +1,5 @@
-import { Task } from "../models/task";
-import { PluginSettings, SortCriterion } from "../settings";
+import { Task } from "../../models/task";
+import { PluginSettings, SortCriterion } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 
 export class TaskSortService {

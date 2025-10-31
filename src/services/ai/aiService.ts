@@ -1,25 +1,25 @@
 import { App, requestUrl, moment } from "obsidian";
-import { Task, ChatMessage, TokenUsage } from "../models/task";
-import { ErrorHandler, AIError } from "../utils/errorHandler";
+import { Task, ChatMessage, TokenUsage } from "../../models/task";
+import { ErrorHandler, AIError } from "../../utils/errorHandler";
 import {
     PluginSettings,
     SortCriterion,
     getCurrentProviderConfig,
     getProviderForPurpose,
     getProviderConfigForPurpose,
-} from "../settings";
-import { TaskSearchService } from "./taskSearchService";
+} from "../../settings";
+import { TaskSearchService } from "../tasks/taskSearchService";
 import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
 import { PricingService } from "./pricingService";
-import { TaskSortService } from "./taskSortService";
+import { TaskSortService } from "../tasks/taskSortService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
-import { TaskIndexService } from "./taskIndexService";
-import { Logger } from "../utils/logger";
+import { TaskIndexService } from "../tasks/taskIndexService";
+import { Logger } from "../../utils/logger";
 import { StreamingService, StreamChunk } from "./streamingService";
 import {
     generateZeroResultsDiagnostic,
     generateAIFormatWarning,
-} from "./warningService";
+} from "../warnings/warningService";
 
 /**
  * Service for AI chat functionality
@@ -66,7 +66,7 @@ export class AIService {
         tasks: Task[],
         chatHistory: ChatMessage[],
         settings: PluginSettings,
-        currentFilter?: import("../models/task").TaskFilter, // Used for property filter reloads
+        currentFilter?: import("../../models/task").TaskFilter, // Used for property filter reloads
         onStream?: (chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{

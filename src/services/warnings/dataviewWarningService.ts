@@ -1,7 +1,7 @@
 import { App } from "obsidian";
-import { DataviewService } from "./dataviewService";
-import { TaskFilter } from "../models/task";
-import type { PluginSettings } from "../settings";
+import { DataviewService } from "../tasks/dataviewService";
+import { TaskFilter } from "../../models/task";
+import type { PluginSettings } from "../../settings";
 
 /**
  * Warning types for Dataview state

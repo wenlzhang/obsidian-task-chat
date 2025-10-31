@@ -1,8 +1,8 @@
 import { moment } from "obsidian";
-import { Task, TaskStatusCategory, DateRange } from "../models/task";
-import { PluginSettings } from "../settings";
+import { Task, TaskStatusCategory, DateRange } from "../../models/task";
+import { PluginSettings } from "../../settings";
 import * as chrono from "chrono-node";
-import { Logger } from "../utils/logger";
+import { Logger } from "../../utils/logger";
 
 /**
  * Task source type for unified field extraction

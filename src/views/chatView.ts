@@ -7,18 +7,18 @@ import {
     moment,
 } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
-import { AIService } from "../services/aiService";
-import { NavigationService } from "../services/navigationService";
+import { AIService } from "../services/ai/aiService";
+import { NavigationService } from "../utils/navigationService";
 import { SessionModal } from "./sessionModal";
 import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../utils/errorHandler";
-import { cleanWarningsFromContent } from "../services/warningService";
-import { ErrorMessageService } from "../services/errorMessageService";
-import { MetadataService } from "../services/metadataService";
-import { TaskIndexWarningService } from "../services/taskIndexWarningService";
-import { TaskIndexService } from "../services/taskIndexService";
+import { cleanWarningsFromContent } from "../services/warnings/warningService";
+import { ErrorMessageService } from "../services/warnings/errorMessageService";
+import { MetadataService } from "../services/tasks/metadataService";
+import { TaskIndexWarningService } from "../services/warnings/taskIndexWarningService";
+import { TaskIndexService } from "../services/tasks/taskIndexService";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 

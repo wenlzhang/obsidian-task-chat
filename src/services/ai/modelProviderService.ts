@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import { Logger } from "../utils/logger";
+import { Logger } from "../../utils/logger";
 
 /**
  * Service for fetching available AI models from different providers

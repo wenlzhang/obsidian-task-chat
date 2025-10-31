@@ -1,4 +1,4 @@
-import { PluginSettings } from "../settings";
+import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 
 /**

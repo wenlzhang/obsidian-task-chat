@@ -4,16 +4,16 @@ import {
     getCurrentProviderConfig,
     getProviderForPurpose,
     getProviderConfigForPurpose,
-} from "../settings";
+} from "../../settings";
 import { PromptBuilderService } from "./aiPromptBuilderService";
 import { AIPropertyPromptService } from "./aiPropertyPromptService";
-import { TaskPropertyService } from "./taskPropertyService";
-import { StopWords } from "./stopWords";
-import { DataviewService } from "./dataviewService";
+import { TaskPropertyService } from "../tasks/taskPropertyService";
+import { StopWords } from "../../utils/stopWords";
+import { DataviewService } from "../tasks/dataviewService";
 import { PricingService } from "./pricingService";
-import { Logger } from "../utils/logger";
-import { ErrorHandler, AIError } from "../utils/errorHandler";
-import { TokenUsage } from "../models/task";
+import { Logger } from "../../utils/logger";
+import { ErrorHandler, AIError } from "../../utils/errorHandler";
+import { TokenUsage } from "../../models/task";
 
 /**
  * Structured query result from AI parsing - Three-part system

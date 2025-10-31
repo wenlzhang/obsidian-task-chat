@@ -1,4 +1,4 @@
-import { App, Notice, TFile, WorkspaceLeaf, MarkdownView } from "obsidian";
+import { App, Notice, TFile, MarkdownView } from "obsidian";
 import { Task } from "../models/task";
 import { Logger } from "../utils/logger";
 

@@ -1,9 +1,9 @@
 import { App } from "obsidian";
-import { Task, TaskStatusCategory } from "../models/task";
-import { PluginSettings } from "../settings";
+import { Task, TaskStatusCategory } from "../../models/task";
+import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
-import { Logger } from "../utils/logger";
+import { Logger } from "../../utils/logger";
 
 /**
  * Service for integrating with Datacore plugin to fetch tasks
