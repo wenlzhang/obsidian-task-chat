@@ -272,8 +272,9 @@ export class TaskSearchService {
 
         // Pattern 1: p:1,2,3 or priority:1,2,3 (comma-separated within single occurrence)
         // Pattern 2: p:1 p:2 p:3 or priority:1 priority:2 (multiple occurrences)
+        // Use centralized pattern from TaskPropertyService
         const unifiedMatches = Array.from(
-            query.matchAll(/\b(?:p|priority):([^\s&|]+)/gi),
+            query.matchAll(TaskPropertyService.QUERY_PATTERNS.priorityUnified),
         );
         for (const match of unifiedMatches) {
             const rawValues = match[1];
@@ -282,10 +283,17 @@ export class TaskSearchService {
                 .map((v) => v.trim().toLowerCase());
 
             for (const value of values) {
-                if (value === "all") {
-                    hasSpecialValue = "all";
-                } else if (value === "none") {
-                    hasSpecialValue = "none";
+                // Use centralized constants
+                if (
+                    value === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+                ) {
+                    hasSpecialValue =
+                        TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all;
+                } else if (
+                    value === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
+                ) {
+                    hasSpecialValue =
+                        TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none;
                 } else {
                     const num = parseInt(value);
                     if (!isNaN(num) && num >= 1 && num <= 4) {
@@ -296,7 +304,10 @@ export class TaskSearchService {
         }
 
         // Pattern 3: p1 p2 p3 (legacy space-separated)
-        const explicitMatches = Array.from(query.matchAll(/\bp([1-4])\b/gi));
+        // Use centralized pattern from TaskPropertyService
+        const explicitMatches = Array.from(
+            query.matchAll(TaskPropertyService.QUERY_PATTERNS.priority),
+        );
         for (const match of explicitMatches) {
             const num = parseInt(match[1]);
             allPriorities.add(num);
@@ -374,25 +385,38 @@ export class TaskSearchService {
         const allDueDates = new Set<string>();
         const lowerQuery = query.toLowerCase();
 
-        // Helper function to map value to internal format
+        // Helper function to map value to internal format using centralized constants
         const mapDueDateValue = (value: string): string => {
             const v = value.toLowerCase();
-            if (v === "all" || v === "any") return "any";
-            if (v === "none") return "none";
-            if (v === "today") return "today";
-            if (v === "tomorrow") return "tomorrow";
-            if (v === "week" || v === "thisweek") return "week";
-            if (v === "nextweek") return "next-week";
-            if (v === "overdue") return "overdue";
-            if (v === "future") return "future";
+            // Use centralized constants from TaskPropertyService
+            if (
+                v === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.all ||
+                v === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.any
+            )
+                return TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.any;
+            if (v === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none)
+                return TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none;
+            if (v === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.today)
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.today;
+            if (v === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.tomorrow)
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.tomorrow;
+            if (v === "week" || v === "thisweek")
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.week;
+            if (v === "nextweek")
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.nextWeek;
+            if (v === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.overdue)
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.overdue;
+            if (v === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.future)
+                return TaskPropertyService.DUE_DATE_TIME_KEYWORDS.future;
             if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; // Date format
             return v; // Return as-is for custom formats
         };
 
         // Pattern 1: d:today,tomorrow or due:today,tomorrow (comma-separated within single occurrence)
         // Pattern 2: d:today d:tomorrow or due:today due:tomorrow (multiple occurrences)
+        // Use centralized pattern from TaskPropertyService
         const unifiedMatches = Array.from(
-            query.matchAll(/\b(?:d|due):([^\s&|]+)/gi),
+            query.matchAll(TaskPropertyService.QUERY_PATTERNS.dueUnified),
         );
         for (const match of unifiedMatches) {
             const rawValues = match[1];
@@ -516,8 +540,9 @@ export class TaskSearchService {
 
         // Pattern 1: s:open,x or status:open,x (comma-separated within single occurrence)
         // Pattern 2: s:open s:x or status:open status:x (multiple occurrences)
+        // Use centralized pattern from TaskPropertyService
         const explicitMatches = Array.from(
-            query.matchAll(/\b(?:s|status):([^\s&|]+)/gi),
+            query.matchAll(TaskPropertyService.QUERY_PATTERNS.status),
         );
 
         const unresolvedValues: string[] = [];

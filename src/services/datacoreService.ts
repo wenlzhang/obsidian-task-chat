@@ -476,17 +476,49 @@ export class DatacoreService {
 
         // Build priority filter
         if (propertyFilters.priority) {
-            if (propertyFilters.priority === "all") {
-                // Tasks with ANY priority
+            // Use centralized priority field names
+            const priorityFields =
+                TaskPropertyService.getAllPriorityFieldNames(settings);
+
+            if (
+                propertyFilters.priority ===
+                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+            ) {
+                // Tasks with ANY priority (P1-P4)
                 filters.push((dcTask: any) => {
-                    const priority = dcTask.$priority;
-                    return priority !== undefined && priority !== null;
+                    const taskText = dcTask.$text || dcTask.text || "";
+                    return priorityFields.some((field) => {
+                        const value = this.getFieldValue(
+                            dcTask,
+                            field,
+                            taskText,
+                        );
+                        if (value === undefined || value === null) return false;
+
+                        const mapped = this.mapPriority(value, settings);
+                        return (
+                            mapped !== undefined && mapped >= 1 && mapped <= 4
+                        );
+                    });
                 });
-            } else if (propertyFilters.priority === "none") {
+            } else if (
+                propertyFilters.priority ===
+                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
+            ) {
                 // Tasks with NO priority
                 filters.push((dcTask: any) => {
-                    const priority = dcTask.$priority;
-                    return priority === undefined || priority === null;
+                    const taskText = dcTask.$text || dcTask.text || "";
+                    return !priorityFields.some((field) => {
+                        const value = this.getFieldValue(
+                            dcTask,
+                            field,
+                            taskText,
+                        );
+                        if (value === undefined || value === null) return false;
+
+                        const mapped = this.mapPriority(value, settings);
+                        return mapped !== undefined;
+                    });
                 });
             } else {
                 // Specific priority values
@@ -669,12 +701,18 @@ export class DatacoreService {
         );
 
         // Handle "all" or "any" - task must have a due date
-        if (dueDateValue === "all" || dueDateValue === "any") {
+        // Use centralized constants from TaskPropertyService
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.all ||
+            dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.any
+        ) {
             return taskDueDate !== undefined && taskDueDate !== null;
         }
 
         // Handle "none" - task must NOT have a due date
-        if (dueDateValue === "none") {
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none
+        ) {
             return taskDueDate === undefined || taskDueDate === null;
         }
 
@@ -687,28 +725,34 @@ export class DatacoreService {
         const taskDate = moment(formattedDate, "YYYY-MM-DD", true);
         if (!taskDate.isValid()) return false;
 
-        // Handle "today"
-        if (dueDateValue === "today") {
+        // Handle "today" - use centralized constant
+        if (dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.today) {
             return taskDate.isSame(moment(), "day");
         }
 
-        // Handle "overdue"
-        if (dueDateValue === "overdue") {
+        // Handle "overdue" - use centralized constant
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.overdue
+        ) {
             return taskDate.isBefore(moment(), "day");
         }
 
-        // Handle "tomorrow"
-        if (dueDateValue === "tomorrow") {
+        // Handle "tomorrow" - use centralized constant
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.tomorrow
+        ) {
             return taskDate.isSame(moment().add(1, "day"), "day");
         }
 
-        // Handle "future"
-        if (dueDateValue === "future") {
+        // Handle "future" - use centralized constant
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.future
+        ) {
             return taskDate.isAfter(moment(), "day");
         }
 
-        // Handle "week" (next 7 days)
-        if (dueDateValue === "week") {
+        // Handle "week" (next 7 days) - use centralized constant
+        if (dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.week) {
             const weekEnd = moment().add(7, "days");
             return (
                 taskDate.isSameOrAfter(moment(), "day") &&
@@ -716,8 +760,10 @@ export class DatacoreService {
             );
         }
 
-        // Handle "next-week" (days 8-14)
-        if (dueDateValue === "next-week") {
+        // Handle "next-week" (days 8-14) - use centralized constant
+        if (
+            dueDateValue === TaskPropertyService.DUE_DATE_TIME_KEYWORDS.nextWeek
+        ) {
             const nextWeekStart = moment().add(8, "days");
             const nextWeekEnd = moment().add(14, "days");
             return (
