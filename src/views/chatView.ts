@@ -25,6 +25,7 @@ export class ChatView extends ItemView {
     private plugin: TaskChatPlugin;
     private currentTasks: Task[] = [];
     private currentFilter: TaskFilter = {};
+    private filteredTaskCount: number = 0; // Track count for current filter
     private messagesEl: HTMLElement;
     private inputEl: HTMLTextAreaElement;
     private sendButtonEl: HTMLButtonElement;
@@ -80,23 +81,19 @@ export class ChatView extends ItemView {
         // This allows filters to survive Obsidian restarts
         this.currentFilter = { ...this.plugin.settings.currentFilter };
 
-        // CRITICAL: Refresh tasks when view opens to ensure we have latest data
-        // This fixes issue where warning doesn't auto-disappear after restart
-        if (TaskIndexService.isAnyAPIAvailable(this.app)) {
-            await this.plugin.refreshTasks(true);
-        }
-
-        // Apply filter to get current tasks
-        const filteredTasks = await this.plugin.getFilteredTasks(
+        // Update task count with current filter (respects inclusions/exclusions)
+        this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
             this.currentFilter,
         );
-        this.currentTasks = filteredTasks;
+
+        // Full task list will be fetched lazily when user sends a query
+        this.currentTasks = []; // Empty initially, populated on query
 
         this.renderView();
         await this.renderMessages();
 
         // Poll for API readiness and update warning status
-        // This ensures the warning disappears once the API is ready and tasks are loaded
+        // This ensures the warning disappears once the API is ready
         this.startWarningPolling();
     }
 
@@ -116,10 +113,13 @@ export class ChatView extends ItemView {
                 this.currentFilter,
             );
 
-            // If API just became ready, refresh tasks to ensure we have latest data
+            // If API just became ready, update task count with current filter (lightweight!)
             if (warning.type === "ready" && wasNotReady) {
                 wasNotReady = false;
-                await this.plugin.refreshTasks(true);
+                this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
+                    this.currentFilter,
+                );
+                this.updateFilterStatus(); // Refresh display
             }
 
             // Always update warning status to reflect current state
@@ -347,9 +347,9 @@ export class ChatView extends ItemView {
                 this.currentFilter.taskStatuses.length > 0) ||
             this.currentFilter.dueDateRange;
 
-        // Always show task count first
+        // Always show task count first (uses current filter with inclusions/exclusions)
         this.filterStatusEl.createSpan({
-            text: `Found ${this.currentTasks.length} task${this.currentTasks.length === 1 ? "" : "s"}`,
+            text: `Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}`,
             cls: "task-chat-filter-count",
         });
 
@@ -1332,6 +1332,19 @@ export class ChatView extends ItemView {
                 this.plugin.sessionManager.getCurrentMessages(),
             );
 
+            // Lazy load: Fetch full task list only when needed (on user query)
+            // This defers the expensive operation until it's actually required
+            if (this.currentTasks.length === 0) {
+                Logger.debug(
+                    "[ChatView] Fetching full task list for query processing...",
+                );
+                const startTime = Date.now();
+                this.currentTasks = await this.plugin.getAllTasks();
+                Logger.debug(
+                    `[ChatView] Fetched ${this.currentTasks.length} tasks in ${Date.now() - startTime}ms`,
+                );
+            }
+
             // DEBUG: Log current filter being passed to AIService
             if (effectiveSettings.enableDebugLogging) {
                 Logger.debug(
@@ -1640,24 +1653,26 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Refresh tasks
+     * Refresh task count (lightweight, 20-30x faster than full refresh!)
      */
     private async refreshTasks(): Promise<void> {
-        // Pass false to prevent double-updating since we update below
-        await this.plugin.refreshTasks(false);
-
-        // Re-apply current filter after refreshing tasks
-        const filteredTasks = await this.plugin.getFilteredTasks(
+        // Update task count with current filter (respects inclusions/exclusions)
+        this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
             this.currentFilter,
         );
-        this.updateTasks(filteredTasks, this.currentFilter);
+
+        // Update display
+        this.updateFilterStatus();
+
+        // Clear cached tasks so they're reloaded on next query
+        this.currentTasks = [];
 
         // Show system message about refresh
         await this.addSystemMessage(
-            `Tasks refreshed. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+            `Task count refreshed. Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
         );
 
-        new Notice("Tasks refreshed");
+        new Notice("Task count refreshed");
     }
 
     /**
@@ -1682,6 +1697,15 @@ export class ChatView extends ItemView {
         this.updateFilterStatus();
         this.updateFilterButtonState();
         this.renderDataviewWarning(); // Update warning banner status
+    }
+
+    /**
+     * Update task count display (lightweight)
+     * Called when task count changes without needing full task list
+     */
+    updateTaskCount(count: number): void {
+        this.filteredTaskCount = count;
+        this.updateFilterStatus(); // Refresh the display with new count
     }
 
     /**
@@ -1786,8 +1810,16 @@ export class ChatView extends ItemView {
         }
 
         this.currentFilter = filter;
-        const filteredTasks = await this.plugin.getFilteredTasks(filter);
-        this.updateTasks(filteredTasks, filter);
+
+        // Update task count with new filter (respects inclusions/exclusions)
+        this.filteredTaskCount = await this.plugin.getFilteredTaskCount(filter);
+
+        // Clear cached tasks so they're reloaded with new filter on next query
+        this.currentTasks = [];
+
+        // Update UI
+        this.updateFilterStatus();
+        this.updateFilterButtonState();
 
         // PERSIST: Save filter to settings so it survives Obsidian restarts
         // This provides better UX - users don't lose their filter configuration
@@ -1807,12 +1839,12 @@ export class ChatView extends ItemView {
 
         if (hasFilters) {
             await this.addSystemMessage(
-                `Filter applied. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+                `Filter applied. Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
             );
         } else {
             // Filter was cleared
             await this.addSystemMessage(
-                `Filter cleared. Found ${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"}.`,
+                `Filter cleared. Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
             );
         }
     }

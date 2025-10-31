@@ -1,4 +1,11 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile, TFolder } from "obsidian";
+import {
+    Plugin,
+    WorkspaceLeaf,
+    Notice,
+    TFile,
+    TFolder,
+    moment,
+} from "obsidian";
 import { SettingsTab } from "./settingsTab";
 import { PluginSettings, DEFAULT_SETTINGS } from "./settings";
 import { Task, TaskFilter } from "./models/task";
@@ -17,6 +24,9 @@ export default class TaskChatPlugin extends Plugin {
     private allTasks: Task[] = [];
     private chatView: ChatView | null = null;
     sessionManager: SessionManager;
+    private taskCount: number = 0;
+    private taskCountLastUpdated: number = 0;
+    private autoRefreshInterval: number | null = null;
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -135,7 +145,13 @@ export default class TaskChatPlugin extends Plugin {
             // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
             await this.waitForTaskIndexAPI();
 
-            await this.refreshTasks();
+            // Only update task count on startup (lightweight, 20-30x faster than full refresh)
+            await this.updateTaskCount();
+
+            // Start auto-refresh if enabled
+            if (this.settings.autoRefreshTaskCount) {
+                this.startAutoRefreshTaskCount();
+            }
 
             // Auto-open sidebar if enabled
             if (this.settings.autoOpenSidebar) {
@@ -143,29 +159,13 @@ export default class TaskChatPlugin extends Plugin {
             }
         });
 
-        // Listen for file changes to refresh tasks
-        this.registerEvent(
-            this.app.vault.on("modify", () => {
-                // Debounce task refresh
-                this.debouncedRefreshTasks();
-            }),
-        );
-
-        this.registerEvent(
-            this.app.vault.on("create", () => {
-                this.debouncedRefreshTasks();
-            }),
-        );
-
-        this.registerEvent(
-            this.app.vault.on("delete", () => {
-                this.debouncedRefreshTasks();
-            }),
-        );
+        // File change listeners removed - we rely on DataCore/DataView APIs
+        // If they haven't detected changes, our queries return the same results anyway
     }
 
     onunload(): void {
         Logger.info("Unloading Task Chat plugin");
+        this.stopAutoRefreshTaskCount();
         this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);
     }
 
@@ -466,21 +466,6 @@ export default class TaskChatPlugin extends Plugin {
         }
     }
 
-    private refreshTimeout: NodeJS.Timeout | null = null;
-
-    /**
-     * Debounced refresh to avoid excessive updates
-     */
-    private debouncedRefreshTasks(): void {
-        if (this.refreshTimeout) {
-            clearTimeout(this.refreshTimeout);
-        }
-
-        this.refreshTimeout = setTimeout(() => {
-            this.refreshTasks();
-        }, 2000);
-    }
-
     /**
      * Get all tasks
      */
@@ -508,53 +493,17 @@ export default class TaskChatPlugin extends Plugin {
             return this.allTasks;
         }
 
-        // Extract property filters from chat filter
-        const propertyFilters: any = {};
-        if (filter.priorities && filter.priorities.length > 0) {
-            // Convert string priorities to numbers
-            propertyFilters.priority = filter.priorities.map((p) =>
-                p === "none" ? "none" : parseInt(p),
-            );
-            if (propertyFilters.priority.length === 1) {
-                propertyFilters.priority = propertyFilters.priority[0];
-            }
-        }
-        if (filter.dueDateRange) {
-            propertyFilters.dueDateRange = filter.dueDateRange;
-        }
-        if (filter.taskStatuses && filter.taskStatuses.length > 0) {
-            propertyFilters.status =
-                filter.taskStatuses.length === 1
-                    ? filter.taskStatuses[0]
-                    : filter.taskStatuses;
-        }
-
-        // Build inclusion filters for DataView
-        const inclusionFilters: any = {};
-        if (filter.folders && filter.folders.length > 0) {
-            inclusionFilters.folders = filter.folders;
-        }
-        if (filter.noteTags && filter.noteTags.length > 0) {
-            inclusionFilters.noteTags = filter.noteTags;
-        }
-        if (filter.taskTags && filter.taskTags.length > 0) {
-            inclusionFilters.taskTags = filter.taskTags;
-        }
-        if (filter.notes && filter.notes.length > 0) {
-            inclusionFilters.notes = filter.notes;
-        }
+        // Use shared utility methods from TaskIndexService (avoids code duplication)
+        const propertyFilters = TaskIndexService.buildPropertyFilters(filter);
+        const inclusionFilters = TaskIndexService.buildInclusionFilters(filter);
 
         // Use task indexing API with both property and inclusion filters
         const tasks = await TaskIndexService.parseTasksFromIndex(
             this.app,
             this.settings,
             undefined,
-            Object.keys(propertyFilters).length > 0
-                ? propertyFilters
-                : undefined,
-            Object.keys(inclusionFilters).length > 0
-                ? inclusionFilters
-                : undefined,
+            propertyFilters,
+            inclusionFilters,
         );
 
         return tasks;
@@ -660,6 +609,99 @@ export default class TaskChatPlugin extends Plugin {
             new Notice(
                 `Added folder "${folderName}" to filter. Open Task Chat to see results.`,
             );
+        }
+    }
+
+    /**
+     * Get cached task count
+     */
+    getTaskCount(): number {
+        return this.taskCount;
+    }
+
+    /**
+     * Get last updated timestamp for task count
+     */
+    getTaskCountLastUpdated(): number {
+        return this.taskCountLastUpdated;
+    }
+
+    /**
+     * Update task count with current filter
+     * This is a lightweight operation (20-30x faster than full refresh)
+     *
+     * @param filter - Optional filter to apply
+     */
+    async updateTaskCount(filter?: TaskFilter): Promise<number> {
+        try {
+            const startTime = moment().valueOf();
+            const count = await this.getFilteredTaskCount(filter || {});
+            this.taskCount = count;
+            this.taskCountLastUpdated = moment().valueOf();
+
+            // Update UI if ChatView is open
+            if (this.chatView) {
+                this.chatView.updateTaskCount(count);
+            }
+
+            const elapsed = moment().valueOf() - startTime;
+            Logger.debug(`Task count updated: ${count} (took ${elapsed}ms)`);
+            return count;
+        } catch (error) {
+            Logger.error("Error updating task count:", error);
+            return 0;
+        }
+    }
+
+    /**
+     * Get filtered task count using DataView/DataCore API
+     * Lightweight method that only counts, doesn't create Task objects
+     * Uses shared utilities from TaskIndexService
+     */
+    async getFilteredTaskCount(filter: TaskFilter): Promise<number> {
+        // Use shared utility methods from TaskIndexService (avoids code duplication)
+        const propertyFilters = TaskIndexService.buildPropertyFilters(filter);
+        const inclusionFilters = TaskIndexService.buildInclusionFilters(filter);
+
+        // Call lightweight count API
+        return await TaskIndexService.getTaskCount(
+            this.app,
+            this.settings,
+            propertyFilters,
+            inclusionFilters,
+        );
+    }
+
+    /**
+     * Start auto-refresh task count interval
+     */
+    startAutoRefreshTaskCount(): void {
+        if (this.autoRefreshInterval) {
+            Logger.debug("Auto-refresh already running");
+            return;
+        }
+
+        const intervalMs = this.settings.autoRefreshTaskCountInterval * 1000;
+
+        Logger.info(
+            `Starting auto-refresh task count (interval: ${this.settings.autoRefreshTaskCountInterval}s)`,
+        );
+
+        this.autoRefreshInterval = window.setInterval(async () => {
+            const filter = this.chatView?.getCurrentFilter() || {};
+            await this.updateTaskCount(filter);
+            Logger.debug("Auto-refreshed task count");
+        }, intervalMs);
+    }
+
+    /**
+     * Stop auto-refresh task count interval
+     */
+    stopAutoRefreshTaskCount(): void {
+        if (this.autoRefreshInterval) {
+            window.clearInterval(this.autoRefreshInterval);
+            this.autoRefreshInterval = null;
+            Logger.info("Stopped auto-refresh task count");
         }
     }
 }

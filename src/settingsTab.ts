@@ -889,6 +889,64 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Auto-refresh task count")
+            .setDesc(
+                "Automatically update task count at regular intervals. Note: This only queries the existing DataCore/DataView index, it does not force re-indexing.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.autoRefreshTaskCount)
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoRefreshTaskCount = value;
+                        await this.plugin.saveSettings();
+
+                        if (value) {
+                            this.plugin.startAutoRefreshTaskCount();
+                        } else {
+                            this.plugin.stopAutoRefreshTaskCount();
+                        }
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName("Auto-refresh interval")
+            .setDesc("Set interval (s) ≥ DataCore/DataView update frequency.")
+            .addSlider((slider) =>
+                slider
+                    .setLimits(10, 86400, 10)
+                    .setValue(this.plugin.settings.autoRefreshTaskCountInterval)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoRefreshTaskCountInterval =
+                            value;
+                        await this.plugin.saveSettings();
+
+                        // Restart auto-refresh with new interval if enabled
+                        if (this.plugin.settings.autoRefreshTaskCount) {
+                            this.plugin.stopAutoRefreshTaskCount();
+                            this.plugin.startAutoRefreshTaskCount();
+                        }
+                    }),
+            )
+            .then((setting) => {
+                // Add current value display
+                const valueDisplay = setting.controlEl.createDiv({
+                    cls: "setting-slider-value",
+                });
+                valueDisplay.setText(
+                    `${this.plugin.settings.autoRefreshTaskCountInterval}s`,
+                );
+
+                // Update display when slider changes
+                const slider = setting.components[0] as any;
+                const originalOnChange = slider.onChange;
+                slider.onChange = async (value: number) => {
+                    valueDisplay.setText(`${value}s`);
+                    await originalOnChange.call(slider, value);
+                };
+            });
+
+        new Setting(containerEl)
             .setName("Task properties")
             .setClass("setting-subsection-heading")
             .setDesc("Configure task property field names.");

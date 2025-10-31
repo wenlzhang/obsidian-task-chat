@@ -218,6 +218,8 @@ export interface PluginSettings {
     chatHistoryContextLength: number; // Number of recent messages to send to AI as context (affects tokens and behavior)
     showTaskCount: boolean;
     autoOpenSidebar: boolean;
+    autoRefreshTaskCount: boolean; // Auto-refresh task count at regular intervals
+    autoRefreshTaskCountInterval: number; // Auto-refresh interval in seconds (default: 60)
     systemPrompt: string;
     responseLanguage: "auto" | "english" | "chinese" | "custom";
     customLanguageInstruction: string;
@@ -476,6 +478,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     chatHistoryContextLength: 5, // Number of messages sent to AI as context (balance between context and token cost)
     showTaskCount: true,
     autoOpenSidebar: false,
+    autoRefreshTaskCount: false, // Disabled by default
+    autoRefreshTaskCountInterval: 60, // 60 seconds
     systemPrompt:
         "You are a task management assistant for Obsidian. Your role is to help users find, prioritize, and manage their EXISTING tasks.",
     responseLanguage: "auto",
