@@ -431,8 +431,12 @@ export default class TaskChatPlugin extends Plugin {
     /**
      * Refresh all tasks from Dataview
      * @param updateChatView - If true, update the chat view with refreshed tasks (default: true)
+     * @param options - Optional configuration for refresh behavior
      */
-    async refreshTasks(updateChatView: boolean = true): Promise<void> {
+    async refreshTasks(
+        updateChatView: boolean = true,
+        options?: { showSystemMessage?: boolean; context?: string },
+    ): Promise<void> {
         try {
             // Check if task indexing API is available
             if (!TaskIndexService.isAnyAPIAvailable(this.app)) {
@@ -455,6 +459,15 @@ export default class TaskChatPlugin extends Plugin {
 
                 // Update the chat view's displayed tasks
                 this.chatView.updateTasks(filteredTasks, currentFilter);
+
+                // Optionally show system message
+                if (options?.showSystemMessage) {
+                    const count = filteredTasks.length;
+                    const message = options.context
+                        ? `${options.context} Found ${count} task${count === 1 ? "" : "s"}.`
+                        : `Tasks refreshed. Found ${count} task${count === 1 ? "" : "s"}.`;
+                    await this.chatView.addSystemMessage(message);
+                }
 
                 Logger.debug(
                     `Chat view updated after task refresh: ${filteredTasks.length} tasks`,

@@ -1607,5 +1607,4 @@ export class DataviewService {
             return 0;
         }
     }
-
 }

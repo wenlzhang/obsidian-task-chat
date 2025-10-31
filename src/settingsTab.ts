@@ -872,15 +872,26 @@ export class SettingsTab extends PluginSettingTab {
                                     5000,
                                 );
                             } else {
-                                // Success
+                                // Success - determine which API is actually being used
+                                const activeAPI = newStatus.activeAPI;
+                                const apiName =
+                                    activeAPI === "datacore"
+                                        ? "Datacore"
+                                        : activeAPI === "dataview"
+                                          ? "Dataview"
+                                          : "Unknown";
+
                                 new Notice(
-                                    `✓ Switched to ${value === "auto" ? "auto mode" : value === "datacore" ? "Datacore" : "Dataview"}. Click 'Refresh' to reload tasks.`,
+                                    `✓ Switched to ${apiName}. Tasks will be reloaded.`,
                                     4000,
                                 );
-                            }
 
-                            // Refresh tasks with new API
-                            await this.plugin.refreshTasks();
+                                // Refresh tasks with new API and show system message
+                                await this.plugin.refreshTasks(true, {
+                                    showSystemMessage: true,
+                                    context: `Switched to ${apiName}.`,
+                                });
+                            }
 
                             // Update status display
                             this.display();
@@ -934,14 +945,14 @@ export class SettingsTab extends PluginSettingTab {
                     cls: "setting-slider-value",
                 });
                 valueDisplay.setText(
-                    `${this.plugin.settings.autoRefreshTaskCountInterval}s`,
+                    `${this.plugin.settings.autoRefreshTaskCountInterval} s`,
                 );
 
                 // Update display when slider changes
                 const slider = setting.components[0] as any;
                 const originalOnChange = slider.onChange;
                 slider.onChange = async (value: number) => {
-                    valueDisplay.setText(`${value}s`);
+                    valueDisplay.setText(`${value} s`);
                     await originalOnChange.call(slider, value);
                 };
             });

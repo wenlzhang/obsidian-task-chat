@@ -114,13 +114,23 @@ export class ChatView extends ItemView {
                 this.currentFilter,
             );
 
-            // If API just became ready, update task count with current filter (lightweight!)
+            // If API just became ready, update task count and show system message
             if (warning.type === "ready" && wasNotReady) {
                 wasNotReady = false;
                 this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
                     this.currentFilter,
                 );
                 this.updateFilterStatus(); // Refresh display
+
+                // Show system message about API readiness
+                const activeAPI = TaskIndexService.determineActiveAPI(
+                    this.app,
+                    this.plugin.settings,
+                );
+                const apiName = activeAPI === "datacore" ? "Datacore" : activeAPI === "dataview" ? "Dataview" : "Unknown";
+                await this.addSystemMessage(
+                    `Task indexing ready (${apiName}). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`
+                );
             }
 
             // Always update warning status to reflect current state
