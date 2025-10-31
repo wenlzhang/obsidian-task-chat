@@ -1532,6 +1532,8 @@ export class DataviewService {
                 }
 
                 // Process tasks on this page
+                // IMPORTANT: file.tasks is already flat (includes all subtasks)
+                // Just count each valid task once - NO recursion needed!
                 if (page.file.tasks && Array.isArray(page.file.tasks)) {
                     for (const dvTask of page.file.tasks) {
                         // Skip invalid tasks
@@ -1592,12 +1594,8 @@ export class DataviewService {
                         // Apply property filters if specified
                         if (taskFilter && !taskFilter(dvTask)) continue;
 
-                        // Process subtasks recursively
-                        count += this.countTasksRecursively(
-                            dvTask,
-                            settings,
-                            taskFilter,
-                        );
+                        // Count this task (file.tasks is already flat, no recursion needed)
+                        count++;
                     }
                 }
             }
@@ -1610,56 +1608,4 @@ export class DataviewService {
         }
     }
 
-    /**
-     * Recursively count tasks and subtasks
-     * Helper method for getTaskCount
-     */
-    private static countTasksRecursively(
-        dvTask: any,
-        settings: PluginSettings,
-        taskFilter: ((dvTask: any) => boolean) | null,
-    ): number {
-        let count = 1; // Count current task
-
-        // Process subtasks
-        if (dvTask.subtasks && Array.isArray(dvTask.subtasks)) {
-            for (const subtask of dvTask.subtasks) {
-                if (!this.isValidTask(subtask)) continue;
-
-                // Apply task-level exclusions
-                if (
-                    settings.exclusions.taskTags &&
-                    settings.exclusions.taskTags.length > 0
-                ) {
-                    const taskTags = subtask.tags || [];
-                    const isExcluded = settings.exclusions.taskTags.some(
-                        (excludedTag) => {
-                            const normalizedExcludedTag =
-                                TaskFilterService.normalizeTag(excludedTag);
-                            return taskTags.some((tag: string) => {
-                                const normalizedTaskTag =
-                                    TaskFilterService.normalizeTag(tag);
-                                return (
-                                    normalizedTaskTag === normalizedExcludedTag
-                                );
-                            });
-                        },
-                    );
-                    if (isExcluded) continue;
-                }
-
-                // Apply property filters
-                if (taskFilter && !taskFilter(subtask)) continue;
-
-                // Recursively count subtasks
-                count += this.countTasksRecursively(
-                    subtask,
-                    settings,
-                    taskFilter,
-                );
-            }
-        }
-
-        return count;
-    }
 }
