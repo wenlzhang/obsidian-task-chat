@@ -791,7 +791,7 @@ export class DataviewService {
      */
     private static buildTaskFilter(
         intent: {
-            priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
+            priority?: number | number[] | "all" | "any" | "none" | null; // Support multi-value and special values
             dueDate?: string | string[] | null; // Support multi-value
             dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null; // Support multi-value
@@ -807,9 +807,12 @@ export class DataviewService {
             const priorityFields =
                 TaskPropertyService.getAllPriorityFieldNames(settings);
 
+            // Handle "all" and "any" as synonyms
             if (
                 intent.priority ===
-                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all ||
+                intent.priority ===
+                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.any
             ) {
                 // Tasks with ANY priority (P1-P4)
                 filters.push((dvTask: any) => {
@@ -1025,7 +1028,7 @@ export class DataviewService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
+            priority?: number | number[] | "all" | "any" | "none" | null; // Support multi-value and special values
             dueDate?: string | string[] | null; // Single date or relative (support multi-value)
             dueDateRange?: { start?: string; end?: string } | null; // Date range (optional start/end)
             status?: string | string[] | null; // Support multi-value

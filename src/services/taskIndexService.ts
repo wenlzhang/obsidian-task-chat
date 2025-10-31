@@ -200,7 +200,7 @@ export class TaskIndexService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | number[] | "all" | "none" | null;
+            priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start: string; end: string } | null;
             status?: string | string[] | null;

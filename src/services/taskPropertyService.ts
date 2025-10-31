@@ -555,8 +555,18 @@ export class TaskPropertyService {
      * Priority filter keywords
      * Used for special priority filtering (all, none)
      */
+    /**
+     * Priority filter keywords (special filters)
+     * Used for filtering by presence/absence of priority
+     *
+     * Semantic clarification:
+     * - "all" and "any" are synonyms (tasks that HAVE a priority assigned)
+     * - A task can only have ONE priority at a time, so "all" means "has any priority value"
+     * - "none" means tasks WITHOUT a priority
+     */
     static readonly PRIORITY_FILTER_KEYWORDS = {
-        all: "all", // Has any priority (P1-P4)
+        all: "all", // Has any priority (P1-P4) - synonym for "any"
+        any: "any", // Has any priority (P1-P4) - synonym for "all"
         none: "none", // No priority
     } as const;
 

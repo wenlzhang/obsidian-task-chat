@@ -266,9 +266,9 @@ export class TaskSearchService {
     static extractPriorityFromQuery(
         query: string,
         settings: PluginSettings,
-    ): number | number[] | "all" | "none" | null {
+    ): number | number[] | "all" | "any" | "none" | null {
         const allPriorities = new Set<number>();
-        let hasSpecialValue: "all" | "none" | null = null;
+        let hasSpecialValue: "all" | "any" | "none" | null = null;
 
         // Pattern 1: p:1,2,3 or priority:1,2,3 (comma-separated within single occurrence)
         // Pattern 2: p:1 p:2 p:3 or priority:1 priority:2 (multiple occurrences)
@@ -284,8 +284,11 @@ export class TaskSearchService {
 
             for (const value of values) {
                 // Use centralized constants
+                // Handle "all" and "any" as synonyms (both mean "has a priority")
                 if (
-                    value === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+                    value ===
+                        TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all ||
+                    value === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.any
                 ) {
                     hasSpecialValue =
                         TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all;

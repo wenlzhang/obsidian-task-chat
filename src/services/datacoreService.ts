@@ -464,7 +464,7 @@ export class DatacoreService {
      */
     private static buildTaskFilter(
         propertyFilters: {
-            priority?: number | number[] | "all" | "none" | null;
+            priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
@@ -480,9 +480,12 @@ export class DatacoreService {
             const priorityFields =
                 TaskPropertyService.getAllPriorityFieldNames(settings);
 
+            // Handle "all" and "any" as synonyms
             if (
                 propertyFilters.priority ===
-                TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all
+                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all ||
+                propertyFilters.priority ===
+                    TaskPropertyService.PRIORITY_FILTER_KEYWORDS.any
             ) {
                 // Tasks with ANY priority (P1-P4)
                 filters.push((dcTask: any) => {
@@ -796,7 +799,7 @@ export class DatacoreService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | number[] | "all" | "none" | null;
+            priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
@@ -987,7 +990,7 @@ export class DatacoreService {
         app: App,
         settings: PluginSettings,
         propertyFilters?: {
-            priority?: number | number[] | "all" | "none" | null;
+            priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
             dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
