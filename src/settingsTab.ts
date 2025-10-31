@@ -815,7 +815,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Datacore & Dataview integration")
             .setHeading();
-        
+
         const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
         });
@@ -1871,8 +1871,9 @@ export class SettingsTab extends PluginSettingTab {
         // Debug Logging
         new Setting(containerEl)
             .setName("Enable debug logging")
-            .setDesc("This may impact performance and should only be enabled when debugging issues. " +
-                "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
+            .setDesc(
+                "This may impact performance and should only be enabled when debugging issues. " +
+                    "To view logs, open developer console (Ctrl/Cmd+Shift+I).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -2664,8 +2665,9 @@ export class SettingsTab extends PluginSettingTab {
         if (!this.sortByContainerEl) return;
 
         // Task sorting (tag-based UI)
-        const sortSetting = new Setting(this.sortByContainerEl)
-            .setName("Multi-criteria sorting")
+        const sortSetting = new Setting(this.sortByContainerEl).setName(
+            "Multi-criteria sorting",
+        );
         sortSetting.descEl.createSpan({ text: " " });
         sortSetting.descEl.createEl("a", {
             text: "Learn more.",

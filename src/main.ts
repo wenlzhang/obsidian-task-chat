@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice, TFile, TFolder } from "obsidian";
 import { SettingsTab } from "./settingsTab";
 import { PluginSettings, DEFAULT_SETTINGS } from "./settings";
 import { Task, TaskFilter } from "./models/task";
@@ -84,6 +84,48 @@ export default class TaskChatPlugin extends Plugin {
                 return false;
             },
         });
+
+        // Add command to add active note to filter
+        this.addCommand({
+            id: "add-active-note-to-filter",
+            name: "Add active note to filter",
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                // Only available if there's an active markdown file
+                if (activeFile && activeFile.extension === "md") {
+                    if (!checking) {
+                        this.addNoteToFilter(activeFile.path);
+                    }
+                    return true;
+                }
+                return false;
+            },
+        });
+
+        // Register file menu event for adding notes to filter (right-click context menu)
+        this.registerEvent(
+            this.app.workspace.on("file-menu", (menu, file) => {
+                if (file instanceof TFolder) {
+                    // This is a folder
+                    menu.addItem((item) => {
+                        item.setTitle("Add to Task Chat filter")
+                            .setIcon("filter")
+                            .onClick(() => {
+                                this.addFolderToFilter(file.path);
+                            });
+                    });
+                } else if (file instanceof TFile && file.extension === "md") {
+                    // This is a markdown file
+                    menu.addItem((item) => {
+                        item.setTitle("Add to Task Chat filter")
+                            .setIcon("filter")
+                            .onClick(() => {
+                                this.addNoteToFilter(file.path);
+                            });
+                    });
+                }
+            }),
+        );
 
         // Add settings tab
         this.addSettingTab(new SettingsTab(this.app, this));
@@ -533,5 +575,91 @@ export default class TaskChatPlugin extends Plugin {
             currentFilter,
             onSubmit,
         ).open();
+    }
+
+    /**
+     * Add a note to the filter and update the chat view
+     */
+    async addNoteToFilter(notePath: string): Promise<void> {
+        // Get current filter from settings
+        const currentFilter = this.settings.currentFilter || {};
+
+        // Initialize notes array if it doesn't exist
+        if (!currentFilter.notes) {
+            currentFilter.notes = [];
+        }
+
+        // Check if note is already in filter
+        if (currentFilter.notes.includes(notePath)) {
+            new Notice("Note is already in filter");
+            return;
+        }
+
+        // Add note to filter
+        currentFilter.notes.push(notePath);
+
+        // Update the filter in chat view if it exists
+        if (this.chatView) {
+            await this.chatView.setFilter(currentFilter);
+
+            // Show success message with note name
+            const fileName = notePath.split("/").pop() || notePath;
+            new Notice(`Added "${fileName}" to Task Chat filter`);
+
+            // Activate the chat view to show the updated filter
+            await this.activateView();
+        } else {
+            // If chat view doesn't exist, just save the filter to settings
+            this.settings.currentFilter = { ...currentFilter };
+            await this.saveSettings();
+
+            const fileName = notePath.split("/").pop() || notePath;
+            new Notice(
+                `Added "${fileName}" to filter. Open Task Chat to see results.`,
+            );
+        }
+    }
+
+    /**
+     * Add a folder to the filter and update the chat view
+     */
+    async addFolderToFilter(folderPath: string): Promise<void> {
+        // Get current filter from settings
+        const currentFilter = this.settings.currentFilter || {};
+
+        // Initialize folders array if it doesn't exist
+        if (!currentFilter.folders) {
+            currentFilter.folders = [];
+        }
+
+        // Check if folder is already in filter
+        if (currentFilter.folders.includes(folderPath)) {
+            new Notice("Folder is already in filter");
+            return;
+        }
+
+        // Add folder to filter
+        currentFilter.folders.push(folderPath);
+
+        // Update the filter in chat view if it exists
+        if (this.chatView) {
+            await this.chatView.setFilter(currentFilter);
+
+            // Show success message with folder name
+            const folderName = folderPath.split("/").pop() || folderPath;
+            new Notice(`Added folder "${folderName}" to Task Chat filter`);
+
+            // Activate the chat view to show the updated filter
+            await this.activateView();
+        } else {
+            // If chat view doesn't exist, just save the filter to settings
+            this.settings.currentFilter = { ...currentFilter };
+            await this.saveSettings();
+
+            const folderName = folderPath.split("/").pop() || folderPath;
+            new Notice(
+                `Added folder "${folderName}" to filter. Open Task Chat to see results.`,
+            );
+        }
     }
 }
