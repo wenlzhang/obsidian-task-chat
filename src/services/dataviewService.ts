@@ -793,7 +793,7 @@ export class DataviewService {
         intent: {
             priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
             dueDate?: string | string[] | null; // Support multi-value
-            dueDateRange?: { start: string; end: string } | null;
+            dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null; // Support multi-value
             statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
@@ -898,9 +898,14 @@ export class DataviewService {
                 TaskPropertyService.getAllDueDateFieldNames(settings);
             const { start, end } = intent.dueDateRange;
 
+            // Skip if both start and end are missing
+            if (!start && !end) {
+                return null;
+            }
+
             // Parse range keywords using centralized method from TaskPropertyService
-            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
-            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
+            const startDate = start ? TaskPropertyService.parseDateRangeKeyword(start) : null;
+            const endDate = end ? TaskPropertyService.parseDateRangeKeyword(end) : null;
 
             filters.push((dvTask: any) => {
                 return dueDateFields.some((field) => {
@@ -908,10 +913,18 @@ export class DataviewService {
                     if (!value) return false;
 
                     const taskDate = moment(this.formatDate(value));
-                    return (
-                        taskDate.isSameOrAfter(startDate, "day") &&
-                        taskDate.isSameOrBefore(endDate, "day")
-                    );
+
+                    // Check start date if provided
+                    if (startDate && !taskDate.isSameOrAfter(startDate, "day")) {
+                        return false;
+                    }
+
+                    // Check end date if provided
+                    if (endDate && !taskDate.isSameOrBefore(endDate, "day")) {
+                        return false;
+                    }
+
+                    return true;
                 });
             });
         }
@@ -1005,9 +1018,9 @@ export class DataviewService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | number[] | null; // Support multi-value
-            dueDate?: string | null; // Single date or relative
-            dueDateRange?: { start: string; end: string } | null; // Date range
+            priority?: number | number[] | "all" | "none" | null; // Support multi-value and special values
+            dueDate?: string | string[] | null; // Single date or relative (support multi-value)
+            dueDateRange?: { start?: string; end?: string } | null; // Date range (optional start/end)
             status?: string | string[] | null; // Support multi-value
             statusValues?: string[] | null; // NEW: Unified s: syntax (categories or symbols)
         },
@@ -1465,9 +1478,9 @@ export class DataviewService {
         app: App,
         settings: PluginSettings,
         propertyFilters?: {
-            priority?: number | number[] | null;
-            dueDate?: string | null;
-            dueDateRange?: { start: string; end: string } | null;
+            priority?: number | number[] | "all" | "none" | null;
+            dueDate?: string | string[] | null;
+            dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },

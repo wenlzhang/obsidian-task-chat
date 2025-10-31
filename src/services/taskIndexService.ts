@@ -353,10 +353,7 @@ export class TaskIndexService {
         }
 
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
-            propertyFilters.status =
-                filter.taskStatuses.length === 1
-                    ? filter.taskStatuses[0]
-                    : filter.taskStatuses;
+            propertyFilters.statusValues = filter.taskStatuses;
         }
 
         return Object.keys(propertyFilters).length > 0

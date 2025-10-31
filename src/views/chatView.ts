@@ -1368,19 +1368,11 @@ export class ChatView extends ItemView {
                 this.plugin.sessionManager.getCurrentMessages(),
             );
 
-            // Lazy load: Fetch full task list only when needed (on user query)
-            // This defers the expensive operation until it's actually required
-            if (this.currentTasks.length === 0) {
-                Logger.debug(
-                    "[ChatView] Fetching full task list for query processing...",
-                );
-                const startTime = moment().valueOf();
-                this.currentTasks = await this.plugin.getAllTasks();
-                const elapsed = moment().valueOf() - startTime;
-                Logger.debug(
-                    `[ChatView] Fetched ${this.currentTasks.length} tasks in ${elapsed}ms`,
-                );
-            }
+            // OPTIMIZATION: Don't pre-load tasks!
+            // AIService will query API directly with complete filter set
+            // This ensures we only load tasks that match criteria (memory efficient)
+            // Pass empty array - AIService will handle loading with filters
+            this.currentTasks = [];
 
             // DEBUG: Log current filter being passed to AIService
             if (effectiveSettings.enableDebugLogging) {

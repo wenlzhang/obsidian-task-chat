@@ -466,7 +466,7 @@ export class DatacoreService {
         propertyFilters: {
             priority?: number | number[] | "all" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start: string; end: string } | null;
+            dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -538,8 +538,14 @@ export class DatacoreService {
         // Build date range filter
         if (propertyFilters.dueDateRange) {
             const { start, end } = propertyFilters.dueDateRange;
-            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
-            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
+
+            // Skip if both start and end are missing
+            if (!start && !end) {
+                return null;
+            }
+
+            const startDate = start ? TaskPropertyService.parseDateRangeKeyword(start) : null;
+            const endDate = end ? TaskPropertyService.parseDateRangeKeyword(end) : null;
 
             filters.push((dcTask: any) => {
                 const taskText = dcTask.$text || dcTask.text || "";
@@ -552,10 +558,18 @@ export class DatacoreService {
                 if (!dueDateValue) return false;
 
                 const taskDate = moment(this.formatDate(dueDateValue));
-                return (
-                    taskDate.isSameOrAfter(startDate, "day") &&
-                    taskDate.isSameOrBefore(endDate, "day")
-                );
+
+                // Check start date if provided
+                if (startDate && !taskDate.isSameOrAfter(startDate, "day")) {
+                    return false;
+                }
+
+                // Check end date if provided
+                if (endDate && !taskDate.isSameOrBefore(endDate, "day")) {
+                    return false;
+                }
+
+                return true;
             });
         }
 
@@ -712,9 +726,9 @@ export class DatacoreService {
         settings: PluginSettings,
         dateFilter?: string,
         propertyFilters?: {
-            priority?: number | number[] | null;
-            dueDate?: string | null;
-            dueDateRange?: { start: string; end: string } | null;
+            priority?: number | number[] | "all" | "none" | null;
+            dueDate?: string | string[] | null;
+            dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -903,9 +917,9 @@ export class DatacoreService {
         app: App,
         settings: PluginSettings,
         propertyFilters?: {
-            priority?: number | number[] | null;
-            dueDate?: string | null;
-            dueDateRange?: { start: string; end: string } | null;
+            priority?: number | number[] | "all" | "none" | null;
+            dueDate?: string | string[] | null;
+            dueDateRange?: { start?: string; end?: string } | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
