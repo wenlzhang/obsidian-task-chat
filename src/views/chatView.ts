@@ -1267,8 +1267,7 @@ export class ChatView extends ItemView {
         this.inputEl.value = "";
         this.updateTokenCounter(); // Reset token counter to 0 after clearing input
         this.inputEl.disabled = false; // Keep input enabled for better UX
-        this.inputEl.placeholder =
-            "Processing...";
+        this.inputEl.placeholder = "Processing...";
         this.sendButtonEl.disabled = false; // Keep enabled so user can click to stop
         this.sendButtonEl.setText("Stop");
         this.sendButtonEl.addClass("task-chat-stop-button");

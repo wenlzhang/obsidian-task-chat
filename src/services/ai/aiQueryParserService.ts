@@ -104,6 +104,7 @@ export class QueryParserService {
     static async parseQuery(
         query: string,
         settings: PluginSettings,
+        abortSignal?: AbortSignal,
     ): Promise<ParsedQuery> {
         // Step 1: Try to extract standard property syntax via regex
         const standardProperties = this.extractStandardProperties(
@@ -129,7 +130,11 @@ export class QueryParserService {
         // - Identify stop words via prompt instructions (smarter than regex)
         // - Extract meaningful keywords only
         // - Expand semantically across configured languages
-        const aiResult = await this.parseWithAI(remainingQuery, settings);
+        const aiResult = await this.parseWithAI(
+            remainingQuery,
+            settings,
+            abortSignal,
+        );
 
         // Step 5: Merge standard properties with AI results
         // Standard properties take precedence (user was explicit)
@@ -424,6 +429,7 @@ export class QueryParserService {
     private static async parseWithAI(
         query: string,
         settings: PluginSettings,
+        abortSignal?: AbortSignal,
     ): Promise<ParsedQuery> {
         // Get configured languages for semantic search
         // Default to English if user hasn't configured any languages
@@ -1818,6 +1824,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             const { response: aiResponse, tokenUsage } = await this.callAI(
                 messages,
                 settings,
+                abortSignal,
             );
             Logger.debug("AI query parser raw response:", aiResponse);
             Logger.debug("AI query parser token usage:", tokenUsage);
@@ -2185,6 +2192,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     private static async callAI(
         messages: any[],
         settings: PluginSettings,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
@@ -2194,11 +2202,16 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         if (provider === "ollama") {
-            return this.callOllama(messages, settings);
+            return this.callOllama(messages, settings, abortSignal);
         }
 
         if (provider === "anthropic") {
-            return this.callAnthropic(messages, settings);
+            return this.callAnthropic(messages, settings, abortSignal);
+        }
+
+        // Check if aborted before making API call
+        if (abortSignal?.aborted) {
+            throw new Error("Query parsing cancelled by user");
         }
 
         // Get provider-specific API key
@@ -2221,6 +2234,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 temperature: temperature,
                 max_tokens: providerConfig.maxTokens,
             }),
+            throw: false, // Don't throw on HTTP errors, handle them manually
         });
 
         if (response.status !== 200) {
@@ -2390,6 +2404,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     private static async callAnthropic(
         messages: any[],
         settings: PluginSettings,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
@@ -2406,6 +2421,11 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         const endpoint =
             providerConfig.apiEndpoint ||
             "https://api.anthropic.com/v1/messages";
+
+        // Check if aborted before making API call
+        if (abortSignal?.aborted) {
+            throw new Error("Query parsing cancelled by user");
+        }
 
         // Separate system message from conversation messages
         const systemMessage = messages.find((m: any) => m.role === "system");
@@ -2516,6 +2536,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
     private static async callOllama(
         messages: any[],
         settings: PluginSettings,
+        abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: any }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
@@ -2526,6 +2547,11 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
         const endpoint =
             providerConfig.apiEndpoint || "http://localhost:11434/api/chat";
+
+        // Check if aborted before making API call
+        if (abortSignal?.aborted) {
+            throw new Error("Query parsing cancelled by user");
+        }
 
         try {
             const response = await requestUrl({

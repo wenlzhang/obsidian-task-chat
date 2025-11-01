@@ -174,6 +174,7 @@ export class AIService {
                     parsedQuery = await QueryParserService.parseQuery(
                         cleanedQuery, // Send cleaned query to AI
                         settings,
+                        abortSignal,
                     );
 
                     // Merge pre-extracted properties with AI-parsed properties
@@ -332,6 +333,11 @@ export class AIService {
             intent.extractedTags.length > 0 ||
             intent.keywords.length > 0
         ) {
+            // Check if user cancelled before proceeding
+            if (abortSignal?.aborted) {
+                throw new Error("Search cancelled by user");
+            }
+
             Logger.debug("Extracted intent:", {
                 priority: intent.extractedPriority,
                 dueDate: intent.extractedDueDateFilter,
@@ -563,6 +569,11 @@ export class AIService {
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
                 );
 
+                // Check if user cancelled before loading tasks
+                if (abortSignal?.aborted) {
+                    throw new Error("Search cancelled by user");
+                }
+
                 // Performance tracking
                 const reloadStartTime = performance.now();
 
@@ -584,6 +595,11 @@ export class AIService {
                 Logger.debug(
                     `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks`,
                 );
+            }
+
+            // Check if user cancelled before filtering
+            if (abortSignal?.aborted) {
+                throw new Error("Search cancelled by user");
             }
 
             // Step 2: Apply keyword filtering ONLY (all other filters already at API level)
@@ -1378,6 +1394,11 @@ export class AIService {
                 sortOrder, // Pass unified sort order to prompt
                 tasksToAnalyze.length, // Pass task count for recommendation targets
             );
+
+            // Check if user cancelled before calling AI
+            if (abortSignal?.aborted) {
+                throw new Error("Search cancelled by user");
+            }
 
             try {
                 const { response, tokenUsage } = await this.callAI(
