@@ -150,12 +150,12 @@ export default class TaskChatPlugin extends Plugin {
 
             // Try getting task count with retries for large vaults
             let retries = 0;
-            const maxRetries = 3; // Try up to 3 times
+            const maxRetries = 5; // Try up to 5 times
             let previousCount = -1;
 
             while (retries < maxRetries) {
                 await new Promise((resolve) =>
-                    setTimeout(resolve, retries === 0 ? 500 : 1000),
+                    setTimeout(resolve, retries === 0 ? 1000 : 2000),
                 );
                 await this.updateTaskCount();
 
