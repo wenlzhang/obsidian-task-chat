@@ -288,7 +288,7 @@ export class ChatView extends ItemView {
         );
 
         this.inputEl = inputWrapperEl.createEl("textarea", {
-            placeholder: "Ask about your tasks...",
+            placeholder: "Chat with your tasks...",
             attr: {
                 rows: "3",
             },
@@ -1266,7 +1266,9 @@ export class ChatView extends ItemView {
         this.isProcessing = true;
         this.inputEl.value = "";
         this.updateTokenCounter(); // Reset token counter to 0 after clearing input
-        this.inputEl.disabled = true;
+        this.inputEl.disabled = false; // Keep input enabled for better UX
+        this.inputEl.placeholder =
+            "Processing...";
         this.sendButtonEl.disabled = false; // Keep enabled so user can click to stop
         this.sendButtonEl.setText("Stop");
         this.sendButtonEl.addClass("task-chat-stop-button");
@@ -1619,6 +1621,7 @@ export class ChatView extends ItemView {
         } finally {
             this.isProcessing = false;
             this.inputEl.disabled = false;
+            this.inputEl.placeholder = "Chat with your tasks..."; // Restore original placeholder
             this.sendButtonEl.disabled = false;
             this.sendButtonEl.setText("Send");
             this.sendButtonEl.removeClass("task-chat-stop-button");
@@ -1644,6 +1647,7 @@ export class ChatView extends ItemView {
         // Reset UI state
         this.isProcessing = false;
         this.inputEl.disabled = false;
+        this.inputEl.placeholder = "Chat with your tasks..."; // Restore original placeholder
         this.sendButtonEl.disabled = false;
         this.sendButtonEl.setText("Send");
         this.sendButtonEl.removeClass("task-chat-stop-button");
