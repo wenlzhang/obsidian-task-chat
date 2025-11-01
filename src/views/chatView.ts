@@ -40,6 +40,7 @@ export class ChatView extends ItemView {
     private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
     private streamingWrapperEl: HTMLElement | null = null; // Wrapper for streaming message (includes header)
     private tokenEstimateEl: HTMLElement | null = null; // Token estimate display
+    private isStartupPolling = false; // Track if we're polling during startup for large vaults
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
         super(leaf);
@@ -107,6 +108,9 @@ export class ChatView extends ItemView {
         let pollCount = 0;
         const maxPolls = 30; // Maximum 60 seconds (30 polls × 2 seconds)
 
+        // Mark that we're in startup polling phase
+        this.isStartupPolling = true;
+
         const pollInterval = setInterval(async () => {
             pollCount++;
 
@@ -117,6 +121,7 @@ export class ChatView extends ItemView {
                 this.plugin.settings,
                 this.filteredTaskCount,
                 this.currentFilter,
+                this.isStartupPolling,
             );
 
             // If API just became ready, update task count and show system message
@@ -160,6 +165,7 @@ export class ChatView extends ItemView {
                 pollCount >= maxPolls
             ) {
                 clearInterval(pollInterval);
+                this.isStartupPolling = false; // Done with startup polling
                 if (pollCount >= maxPolls) {
                     Logger.warn(
                         "Warning polling stopped after timeout (API may still be indexing)",
@@ -568,6 +574,7 @@ export class ChatView extends ItemView {
             this.plugin.settings,
             taskCount,
             this.currentFilter,
+            this.isStartupPolling, // Pass startup polling flag for better messaging
         );
 
         // Remove existing warning if everything is ready
@@ -605,6 +612,7 @@ export class ChatView extends ItemView {
             this.plugin.settings,
             taskCount,
             this.currentFilter,
+            this.isStartupPolling, // Pass startup polling flag for better messaging
         );
 
         Logger.debug(`[Dataview Warning] ${warning.type}: ${warning.message}`);
@@ -1784,6 +1792,10 @@ export class ChatView extends ItemView {
 
         // Update display
         this.updateFilterStatus();
+
+        // CRITICAL: Update warning banner immediately after count update
+        // This ensures warning disappears when tasks are now available
+        this.renderDataviewWarning();
 
         // No cache invalidation needed - next query will fetch fresh data from API
         // Preserving cache improves performance for rapid repeated queries

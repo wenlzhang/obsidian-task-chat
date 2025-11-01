@@ -144,17 +144,47 @@ export default class TaskChatPlugin extends Plugin {
             // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
             await this.waitForTaskIndexAPI();
 
-            // Reduced delay for initial indexing (API is already ready)
-            // Most indexing happens during waitForTaskIndexAPI loop
-            Logger.info("Finalizing API initialization...");
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            // Wait for API to finish initial indexing (especially important for large vaults)
+            // Datacore/Dataview may report "ready" but still be indexing tasks
+            Logger.info("Waiting for API to complete initial indexing...");
 
-            // OPTIMIZATION: Don't load full task list on startup!
-            // Only get task count (20-30x faster, no memory waste)
-            // Full task list will be queried on-demand when user sends query
-            Logger.info("Getting task count on startup (lightweight)...");
-            await this.updateTaskCount();
-            Logger.info(
+            // Try getting task count with retries for large vaults
+            let retries = 0;
+            const maxRetries = 3; // Try up to 3 times
+            let previousCount = -1;
+
+            while (retries < maxRetries) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, retries === 0 ? 500 : 1000),
+                );
+                await this.updateTaskCount();
+
+                Logger.warn(
+                    `Attempt ${retries + 1}/${maxRetries}: Task count = ${this.taskCount}`,
+                );
+
+                // If count is stable and non-zero, we're done
+                if (this.taskCount > 0 && this.taskCount === previousCount) {
+                    Logger.warn("Task count stabilized, indexing complete");
+                    break;
+                }
+
+                // If count is increasing, continue waiting
+                if (this.taskCount > previousCount) {
+                    previousCount = this.taskCount;
+                    retries++;
+                } else if (retries >= 2) {
+                    // After 2 attempts with 0 count, likely no tasks or still indexing
+                    Logger.warn(
+                        `Task count still ${this.taskCount} after ${retries + 1} attempts`,
+                    );
+                    break;
+                } else {
+                    retries++;
+                }
+            }
+
+            Logger.warn(
                 `Startup complete. Task count: ${this.taskCount} (exclusions applied)`,
             );
 
@@ -164,7 +194,7 @@ export default class TaskChatPlugin extends Plugin {
             // Start auto-refresh if enabled
             if (this.settings.autoRefreshTaskCount) {
                 this.startAutoRefreshTaskCount();
-                Logger.info(
+                Logger.warn(
                     `Auto-refresh started (interval: ${this.settings.autoRefreshTaskCountInterval}s)`,
                 );
             }

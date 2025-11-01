@@ -123,6 +123,7 @@ export class TaskIndexWarningService {
      * @param settings - Plugin settings
      * @param taskCount - Current number of tasks loaded
      * @param currentFilter - Current active filter
+     * @param isStartupPolling - Whether we're currently polling during startup (for large vaults)
      * @returns Warning object with type, message, and suggestions
      */
     static checkAPIStatus(
@@ -130,6 +131,7 @@ export class TaskIndexWarningService {
         settings: PluginSettings,
         taskCount: number,
         currentFilter: TaskFilter,
+        isStartupPolling = false,
     ): TaskIndexWarning {
         // Get API status
         const status = TaskIndexService.getDetailedStatus(app, settings);
@@ -180,6 +182,28 @@ export class TaskIndexWarningService {
 
             // Build suggestions based on filter/exclusion state
             const suggestions: string[] = [];
+
+            // Special handling for startup polling in large vaults
+            if (isStartupPolling && !hasFilters && !hasExclusions) {
+                suggestions.push(
+                    `Wait for ${apiName} to finish indexing your vault`,
+                );
+                suggestions.push(
+                    "This is common in large vaults or right after startup",
+                );
+                suggestions.push(
+                    "Click the Refresh button to manually update the task count",
+                );
+
+                return {
+                    type: "indexing",
+                    message: `Waiting for ${apiName} indexing`,
+                    details: `${apiName} is starting up and indexing your vault. In large vaults, this may take a moment. The task count will update automatically when indexing completes.`,
+                    suggestions,
+                    apiInfo,
+                    filterInfo,
+                };
+            }
 
             if (hasFilters) {
                 suggestions.push(
@@ -240,6 +264,7 @@ export class TaskIndexWarningService {
      * @param settings - Plugin settings
      * @param taskCount - Current number of tasks
      * @param currentFilter - Current active filter
+     * @param isStartupPolling - Whether we're currently polling during startup (for large vaults)
      */
     static renderWarning(
         containerEl: HTMLElement,
@@ -247,12 +272,14 @@ export class TaskIndexWarningService {
         settings: PluginSettings,
         taskCount: number,
         currentFilter: TaskFilter,
+        isStartupPolling = false,
     ): void {
         const warning = this.checkAPIStatus(
             app,
             settings,
             taskCount,
             currentFilter,
+            isStartupPolling,
         );
 
         // Clear previous warnings
