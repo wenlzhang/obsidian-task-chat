@@ -38,6 +38,7 @@ export class ChatView extends ItemView {
     private chatModeOverride: "simple" | "smart" | "chat" | null = null; // null = use setting, otherwise override
     private abortController: AbortController | null = null; // For canceling AI requests
     private streamingMessageEl: HTMLElement | null = null; // Current streaming message element
+    private streamingWrapperEl: HTMLElement | null = null; // Wrapper for streaming message (includes header)
     private tokenEstimateEl: HTMLElement | null = null; // Token estimate display
 
     constructor(leaf: WorkspaceLeaf, plugin: TaskChatPlugin) {
@@ -1264,10 +1265,6 @@ export class ChatView extends ItemView {
         }
 
         this.isProcessing = true;
-        this.inputEl.value = "";
-        this.updateTokenCounter(); // Reset token counter to 0 after clearing input
-        this.inputEl.disabled = false; // Keep input enabled for better UX
-        this.inputEl.placeholder = "Processing...";
         this.sendButtonEl.disabled = false; // Keep enabled so user can click to stop
         this.sendButtonEl.setText("Stop");
         this.sendButtonEl.addClass("task-chat-stop-button");
@@ -1275,30 +1272,38 @@ export class ChatView extends ItemView {
         // Create abort controller for canceling request
         this.abortController = new AbortController();
 
-        // Add user message
+        // Add user message to session FIRST (sync, no await)
         const userMessage: ChatMessage = {
             role: "user",
             content: message,
             timestamp: Date.now(),
         };
-
         this.plugin.sessionManager.addMessage(userMessage);
-        await this.renderMessages();
-        await this.plugin.saveSettings();
 
-        // Show typing indicator (or create streaming element if streaming enabled)
+        // Clear input AFTER adding to session
+        this.inputEl.value = "";
+        this.updateTokenCounter();
+        this.inputEl.disabled = false; // Keep input enabled for better UX
+        this.inputEl.placeholder = "Processing...";
+
+        // Render user message directly to DOM (sync, no await)
+        // This shows the message immediately without blocking
+        await this.renderMessage(userMessage);
+        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+        // Show typing indicator IMMEDIATELY (sync, no await)
         const useStreaming = this.plugin.settings.aiEnhancement.enableStreaming;
+        const usedChatMode =
+            this.chatModeOverride || this.plugin.settings.defaultChatMode;
 
         if (useStreaming) {
             // Create streaming message element instead of typing indicator
-            const streamingWrapper = this.messagesEl.createDiv({
+            this.streamingWrapperEl = this.messagesEl.createDiv({
                 cls: "task-chat-message task-chat-message-ai",
             });
 
-            // Add header with mode name (determine from chat mode override or settings)
-            const usedChatMode =
-                this.chatModeOverride || this.plugin.settings.defaultChatMode;
-            const headerEl = streamingWrapper.createDiv(
+            // Add header with mode name
+            const headerEl = this.streamingWrapperEl.createDiv(
                 "task-chat-message-header",
             );
             let modeName: string;
@@ -1316,13 +1321,18 @@ export class ChatView extends ItemView {
             });
 
             // Create content div for streaming text
-            this.streamingMessageEl = streamingWrapper.createDiv({
+            this.streamingMessageEl = this.streamingWrapperEl.createDiv({
                 cls: "task-chat-message-content task-chat-streaming",
             });
             this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
         } else {
             this.showTypingIndicator();
         }
+
+        // Save settings in background (non-blocking)
+        this.plugin
+            .saveSettings()
+            .catch((err) => Logger.error("Failed to save settings:", err));
 
         try {
             // Apply chat mode override if user selected different mode
@@ -1397,6 +1407,13 @@ export class ChatView extends ItemView {
                 this.abortController?.signal, // Pass abort signal
             );
 
+            // CRITICAL: Check if aborted after AI call
+            // If user clicked stop, don't render any results
+            if (this.abortController?.signal.aborted) {
+                Logger.debug("Search was aborted, skipping result rendering");
+                return; // Exit early, finally block will clean up
+            }
+
             // Update total usage in settings
             if (result.tokenUsage) {
                 const tu = result.tokenUsage;
@@ -1419,7 +1436,13 @@ export class ChatView extends ItemView {
 
                 this.plugin.settings.totalTokensUsed += tu.totalTokens;
                 this.plugin.settings.totalCost += tu.estimatedCost;
-                await this.plugin.saveSettings();
+
+                // Save settings in background (non-blocking)
+                this.plugin
+                    .saveSettings()
+                    .catch((err) =>
+                        Logger.error("Failed to save settings:", err),
+                    );
 
                 Logger.debug(
                     `[Cost Accumulation] Added $${tu.estimatedCost.toFixed(6)}, ` +
@@ -1428,9 +1451,14 @@ export class ChatView extends ItemView {
             }
 
             // Clean up streaming element or hide typing indicator
-            if (useStreaming && this.streamingMessageEl) {
-                this.streamingMessageEl.remove();
-                this.streamingMessageEl = null;
+            if (useStreaming) {
+                if (this.streamingWrapperEl) {
+                    this.streamingWrapperEl.remove();
+                    this.streamingWrapperEl = null;
+                }
+                if (this.streamingMessageEl) {
+                    this.streamingMessageEl = null;
+                }
             } else {
                 this.hideTypingIndicator();
             }
@@ -1569,8 +1597,17 @@ export class ChatView extends ItemView {
                 };
 
                 this.plugin.sessionManager.addMessage(directMessage);
-                await this.renderMessages();
-                await this.plugin.saveSettings();
+
+                // Render message directly to DOM (non-blocking)
+                await this.renderMessage(directMessage);
+                this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+                // Save settings in background
+                this.plugin
+                    .saveSettings()
+                    .catch((err) =>
+                        Logger.error("Failed to save settings:", err),
+                    );
             } else {
                 // Add AI analysis response (Task Chat mode)
                 const aiMessage: ChatMessage = {
@@ -1584,22 +1621,50 @@ export class ChatView extends ItemView {
                 };
 
                 this.plugin.sessionManager.addMessage(aiMessage);
-                await this.renderMessages();
-                await this.plugin.saveSettings();
+
+                // Render message directly to DOM (non-blocking)
+                await this.renderMessage(aiMessage);
+                this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+                // Save settings in background
+                this.plugin
+                    .saveSettings()
+                    .catch((err) =>
+                        Logger.error("Failed to save settings:", err),
+                    );
             }
         } catch (error) {
             // Clean up streaming element or hide typing indicator on error
-            if (useStreaming && this.streamingMessageEl) {
-                this.streamingMessageEl.remove();
-                this.streamingMessageEl = null;
+            if (useStreaming) {
+                if (this.streamingWrapperEl) {
+                    this.streamingWrapperEl.remove();
+                    this.streamingWrapperEl = null;
+                }
+                if (this.streamingMessageEl) {
+                    this.streamingMessageEl = null;
+                }
             } else {
                 this.hideTypingIndicator();
             }
+            // Check if this was a user cancellation (not an actual error)
+            const errorMsg =
+                (error as Error)?.message || "Failed to get AI response";
+            const isCancellation =
+                errorMsg.includes("cancelled by user") ||
+                errorMsg.includes("aborted");
+
+            if (isCancellation) {
+                // User cancelled - this is expected, no error message needed
+                Logger.debug("Search cancelled by user");
+                // Don't show error message or notice
+                return; // Exit early, finally block will clean up
+            }
+
+            // Real error occurred
             Logger.error("Error sending message:", error);
 
             // Check if this is a structured AIError
             const isAIError = error instanceof AIError;
-            const errorMsg = error?.message || "Failed to get AI response";
 
             // Show brief notice
             new Notice(errorMsg);
@@ -1615,8 +1680,15 @@ export class ChatView extends ItemView {
             };
 
             this.plugin.sessionManager.addMessage(errorMessage);
-            await this.renderMessages();
-            await this.plugin.saveSettings();
+
+            // Render error message directly to DOM (non-blocking)
+            await this.renderMessage(errorMessage);
+            this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+            // Save settings in background
+            this.plugin
+                .saveSettings()
+                .catch((err) => Logger.error("Failed to save settings:", err));
         } finally {
             this.isProcessing = false;
             this.inputEl.disabled = false;
@@ -1626,6 +1698,7 @@ export class ChatView extends ItemView {
             this.sendButtonEl.removeClass("task-chat-stop-button");
             this.abortController = null;
             this.streamingMessageEl = null;
+            this.streamingWrapperEl = null;
             this.inputEl.focus();
         }
     }
@@ -1640,8 +1713,18 @@ export class ChatView extends ItemView {
             this.abortController = null;
         }
 
-        // Hide typing indicator
+        // CRITICAL: Clean up ALL visual indicators immediately
+        // Remove typing indicator (non-streaming mode)
         this.hideTypingIndicator();
+
+        // Remove streaming elements (streaming mode)
+        if (this.streamingWrapperEl) {
+            this.streamingWrapperEl.remove();
+            this.streamingWrapperEl = null;
+        }
+        if (this.streamingMessageEl) {
+            this.streamingMessageEl = null;
+        }
 
         // Reset UI state
         this.isProcessing = false;
@@ -1650,7 +1733,6 @@ export class ChatView extends ItemView {
         this.sendButtonEl.disabled = false;
         this.sendButtonEl.setText("Send");
         this.sendButtonEl.removeClass("task-chat-stop-button");
-        this.streamingMessageEl = null;
         this.inputEl.focus();
 
         new Notice("AI generation stopped");
