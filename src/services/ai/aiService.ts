@@ -445,7 +445,7 @@ export class AIService {
                 // CRITICAL FIX: Merge property filters from both query AND currentFilter
                 // Query filters take precedence, but preserve currentFilter properties not in query
                 const mergedPropertyFilters: {
-                    priority?: number | number[] | null;
+                    priority?: number | number[] | "all" | "any" | "none" | null;
                     dueDate?: string | null;
                     dueDateRange?: { start: string; end: string } | null;
                     status?: string | string[] | null;
