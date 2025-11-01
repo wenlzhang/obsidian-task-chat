@@ -144,10 +144,10 @@ export default class TaskChatPlugin extends Plugin {
             // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
             await this.waitForTaskIndexAPI();
 
-            // Give API extra time to finish initial indexing
-            // Datacore/Dataview may report "ready" but still be indexing
-            Logger.info("Waiting for API to complete initial indexing...");
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Reduced delay for initial indexing (API is already ready)
+            // Most indexing happens during waitForTaskIndexAPI loop
+            Logger.info("Finalizing API initialization...");
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             // OPTIMIZATION: Don't load full task list on startup!
             // Only get task count (20-30x faster, no memory waste)

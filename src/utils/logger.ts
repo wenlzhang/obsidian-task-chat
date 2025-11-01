@@ -40,12 +40,15 @@ export class Logger {
     }
 
     /**
-     * Log warnings (always shown, regardless of debug setting)
+     * Log warnings (only when debug logging is enabled)
+     * Most warnings are debugging information, not critical user-facing issues
      * @param message - Warning message
      * @param data - Optional data to include
      */
     static warn(message: string, ...data: unknown[]): void {
-        console.warn(`[Task Chat] ${message}`, ...data);
+        if (this.settings?.enableDebugLogging) {
+            console.warn(`[Task Chat] ${message}`, ...data);
+        }
     }
 
     /**

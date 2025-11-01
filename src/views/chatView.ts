@@ -123,8 +123,8 @@ export class ChatView extends ItemView {
             if (warning.type === "ready" && wasNotReady) {
                 wasNotReady = false;
 
-                // Wait a bit for indexing to complete
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                // Reduced delay - API is already reporting ready
+                await new Promise((resolve) => setTimeout(resolve, 100));
 
                 this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
                     this.currentFilter,
