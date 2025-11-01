@@ -131,6 +131,10 @@ export class ChatView extends ItemView {
                 );
                 this.updateFilterStatus(); // Refresh display
 
+                // CRITICAL: Force immediate warning update (don't wait for interval)
+                // This ensures warning banner disappears immediately with task count update
+                this.renderDataviewWarning();
+
                 // Show system message about API readiness
                 const activeAPI = TaskIndexService.determineActiveAPI(
                     this.app,

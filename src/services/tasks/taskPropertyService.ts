@@ -322,7 +322,7 @@ export class TaskPropertyService {
      */
     static readonly QUERY_PATTERNS = {
         // Priority patterns (unified syntax)
-        priority: /\bp[1-4]\b/gi, // Legacy: p1, p2, p3, p4
+        priority: /\bp([1-4])\b/gi, // Legacy: p1, p2, p3, p4 (with capture group for the number)
         priorityUnified: /\b(?:p|priority):([^\s&|]+)/gi, // New: p:1,2,3 or priority:1,2,3 or p:all or priority:none
 
         // Status patterns (already unified, supports multi-value)
