@@ -1233,6 +1233,26 @@ export class SettingsTab extends PluginSettingTab {
                 href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/FILTERING.md",
             });
 
+        // Hide Completed Tasks Toggle
+        new Setting(containerEl)
+            .setName("Hide completed tasks")
+            .setDesc(
+                "Automatically exclude completed tasks from all searches and filters. Provides significant performance boost in large vaults. Disable to see completed tasks in results.",
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.hideCompletedTasks)
+                    .onChange(async (value) => {
+                        this.plugin.settings.hideCompletedTasks = value;
+                        await this.plugin.saveSettings();
+                        new Notice(
+                            value
+                                ? "Completed tasks will be hidden. Refresh chat to update."
+                                : "Completed tasks will be shown. Refresh chat to update.",
+                        );
+                    }),
+            );
+
         new Setting(containerEl)
             .setName("Stop words")
             .setDesc(

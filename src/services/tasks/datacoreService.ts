@@ -385,6 +385,13 @@ export class DatacoreService {
             }
         }
 
+        // Exclude completed tasks (if hideCompletedTasks is enabled)
+        // This provides a massive performance boost in large vaults by filtering out
+        // completed tasks at the Datacore query level (before Task object creation)
+        if (settings.hideCompletedTasks) {
+            queryParts.push("!$completed");
+        }
+
         // ========================================
         // INCLUSIONS (OR logic - at least one must match)
         // ========================================

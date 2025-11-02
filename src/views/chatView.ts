@@ -1943,7 +1943,18 @@ export class ChatView extends ItemView {
         this.currentFilter = filter;
 
         // Update task count with new filter (respects inclusions/exclusions)
-        this.filteredTaskCount = await this.plugin.getFilteredTaskCount(filter);
+        // Skip count update if Datacore is still indexing to avoid performance issues
+        if (TaskIndexService.isAPIReady()) {
+            this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
+                filter,
+            );
+        } else {
+            // Datacore is still indexing, defer count update
+            Logger.debug(
+                "Filter applied but Datacore is indexing. Deferring count update.",
+            );
+            this.filteredTaskCount = 0;
+        }
 
         // Clear cached tasks so they're reloaded with new filter on next query
         this.currentTasks = [];
@@ -1968,7 +1979,14 @@ export class ChatView extends ItemView {
             (filter.taskStatuses && filter.taskStatuses.length > 0) ||
             filter.dueDateRange;
 
-        if (hasFilters) {
+        // Show appropriate message based on indexing status
+        if (!TaskIndexService.isAPIReady()) {
+            await this.addSystemMessage(
+                hasFilters
+                    ? "Filter applied. Task count will update after Datacore finishes indexing."
+                    : "Filter cleared. Task count will update after Datacore finishes indexing.",
+            );
+        } else if (hasFilters) {
             await this.addSystemMessage(
                 `Filter applied. Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
             );

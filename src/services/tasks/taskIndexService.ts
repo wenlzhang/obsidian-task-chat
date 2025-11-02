@@ -50,11 +50,19 @@ export class TaskIndexService {
     }
 
     /**
-     * Determine if API is ready
-     * @returns true if Datacore is available, false otherwise
+     * Determine if API is ready (available AND initialized)
+     * Checks both API availability and completion of indexing
+     * @returns true if Datacore is available and finished indexing, false otherwise
      */
     static isAPIReady(): boolean {
-        return this.isDatacoreAvailable();
+        if (!this.isDatacoreAvailable()) {
+            return false;
+        }
+
+        // Check if Datacore has finished indexing
+        // Per Datacore API: initialized property is true when all files are indexed
+        const dc = (window as any).datacore;
+        return dc?.initialized === true;
     }
 
     /**
@@ -65,7 +73,12 @@ export class TaskIndexService {
             return "⚠️ Datacore not available - please install Datacore plugin";
         }
 
-        return "✓ Using Datacore";
+        const dc = (window as any).datacore;
+        if (dc?.initialized === true) {
+            return "✓ Using Datacore (ready)";
+        }
+
+        return "⏳ Datacore is indexing...";
     }
 
     /**
@@ -77,10 +90,11 @@ export class TaskIndexService {
         message: string;
     } {
         const available = this.isDatacoreAvailable();
+        const ready = this.isAPIReady();
 
         return {
             datacoreAvailable: available,
-            activeAPI: available, // Datacore is the only API, so if available, it's active
+            activeAPI: ready, // Only active if initialized
             message: this.getAPIStatus(),
         };
     }
@@ -126,6 +140,15 @@ export class TaskIndexService {
     ): Promise<Task[]> {
         if (!this.isDatacoreAvailable()) {
             Logger.error("Cannot fetch tasks: Datacore not available");
+            return [];
+        }
+
+        // Check if Datacore is initialized (finished indexing)
+        // Querying while indexing can cause severe performance issues in large vaults
+        if (!this.isAPIReady()) {
+            Logger.warn(
+                "Datacore is still indexing. Skipping query to avoid performance issues.",
+            );
             return [];
         }
 
@@ -345,6 +368,15 @@ export class TaskIndexService {
     ): Promise<number> {
         if (!this.isDatacoreAvailable()) {
             Logger.error("Cannot get task count: Datacore not available");
+            return 0;
+        }
+
+        // Check if Datacore is initialized (finished indexing)
+        // Querying while indexing can cause severe performance issues in large vaults
+        if (!this.isAPIReady()) {
+            Logger.warn(
+                "Datacore is still indexing. Returning 0 count to avoid performance issues.",
+            );
             return 0;
         }
 

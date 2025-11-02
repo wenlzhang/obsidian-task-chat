@@ -267,6 +267,10 @@ export interface PluginSettings {
         notes: string[]; // Specific notes to exclude (e.g., "Daily Note Template.md")
     };
 
+    // Task Filtering Settings - Status-based Exclusions
+    // Applied at Datacore query level (before Task object creation) for maximum performance
+    hideCompletedTasks: boolean; // Hide completed tasks from all searches and filters (default: true). Provides significant performance boost in large vaults.
+
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: number; // Weight for keyword relevance (default: 20)
     dueDateCoefficient: number; // Weight for due date urgency (default: 4)
@@ -520,6 +524,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         folders: [], // No folders excluded by default
         notes: [], // No notes excluded by default
     },
+
+    // Task Filtering Settings - Status-based Exclusions
+    hideCompletedTasks: true, // Hide completed tasks by default (performance optimization for large vaults)
 
     // Scoring Coefficients - Main Weights
     relevanceCoefficient: 20, // Keyword relevance weight (relevance score × 20)
