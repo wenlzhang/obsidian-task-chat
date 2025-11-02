@@ -778,51 +778,38 @@ export class AIService {
                 `[JavaScript Level] Processing ${filteredTasks.length} tasks that passed API-level filters`,
             );
 
-            // PHASE 1: Comprehensive Scoring (for sorting - NO filtering)
-            // Calculate scores for all tasks to enable multi-criteria sorting
+            // POST-API PIPELINE: Score + Sort (streamlined single-pass)
             // All tasks that reach here have ALREADY passed API-level quality/relevance filters
-            let scoredTasks;
-            if (usingAIParsing && parsedQuery?.coreKeywords) {
-                // Smart Search / Task Chat: with semantic expansion
-                Logger.debug(
-                    `Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
-                );
-                scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                    filteredTasks,
-                    intent.keywords, // Expanded keywords
-                    parsedQuery.coreKeywords, // Core keywords
-                    queryType.hasKeywords, // Query has keywords
-                    !!intent.extractedDueDateFilter,
-                    !!intent.extractedPriority,
-                    !!intent.extractedStatus,
-                    sortOrder,
-                    settings.relevanceCoefficient,
-                    settings.dueDateCoefficient,
-                    settings.priorityCoefficient,
-                    settings.statusCoefficient,
-                    settings,
-                );
-            } else {
-                // Simple Search: no semantic expansion (keywords = coreKeywords)
-                Logger.debug(
-                    `Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
-                );
-                scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                    filteredTasks,
-                    intent.keywords, // All keywords are "core" (no expansion)
-                    intent.keywords, // Same as keywords (no distinction)
-                    queryType.hasKeywords, // Query has keywords
-                    !!intent.extractedDueDateFilter,
-                    !!intent.extractedPriority,
-                    !!intent.extractedStatus,
-                    sortOrder,
-                    settings.relevanceCoefficient,
-                    settings.dueDateCoefficient,
-                    settings.priorityCoefficient,
-                    settings.statusCoefficient,
-                    settings,
-                );
-            }
+            // This pipeline scores (reusing cached scores) and sorts in one efficient pass
+            const keywords = intent.keywords;
+            const coreKeywords =
+                usingAIParsing && parsedQuery?.coreKeywords
+                    ? parsedQuery.coreKeywords
+                    : intent.keywords;
+
+            Logger.debug(
+                usingAIParsing && parsedQuery?.coreKeywords
+                    ? `Using post-API pipeline with expansion (core: ${coreKeywords.length}, expanded: ${keywords.length})`
+                    : `Using post-API pipeline without expansion (keywords: ${keywords.length})`,
+            );
+
+            const scoredTasks = TaskSearchService.scoreAndSortTasks(
+                filteredTasks,
+                keywords,
+                coreKeywords,
+                queryType,
+                {
+                    queryHasDueDate: !!intent.extractedDueDateFilter,
+                    queryHasPriority: !!intent.extractedPriority,
+                    queryHasStatus: !!intent.extractedStatus,
+                    relevanceCoefficient: settings.relevanceCoefficient,
+                    dueDateCoefficient: settings.dueDateCoefficient,
+                    priorityCoefficient: settings.priorityCoefficient,
+                    statusCoefficient: settings.statusCoefficient,
+                    settings: settings,
+                },
+                sortOrder,
+            );
 
             // Log sample task scores for transparency
             if (scoredTasks.length > 0) {
@@ -846,29 +833,15 @@ export class AIService {
                 Logger.debug(`  Final: ${sample.score.toFixed(2)}`);
             }
 
-            // Extract tasks from scored results (no filtering - just unwrap)
-            const qualityFilteredTasks = scoredTasks.map((st) => st.task);
-
-            Logger.debug(
-                `Scored ${qualityFilteredTasks.length} tasks for sorting (no filtering applied at JS level)`,
-            );
-
-            // PHASE 2: Multi-Criteria Sorting for Display
-            // Reuse scores from Phase 1 (no redundant scoring!)
-            const comprehensiveScores: Map<string, number> = new Map(
+            // Extract sorted tasks (already scored and sorted by pipeline)
+            const sortedTasksForDisplay = scoredTasks.map((st) => st.task);
+            const comprehensiveScores = new Map(
                 scoredTasks.map((st) => [st.task.id, st.score]),
             );
 
-            Logger.debug(`Sort order: [${sortOrder.join(", ")}]`);
-
-            // Sort tasks for display using multi-criteria sorting
-            const sortedTasksForDisplay =
-                TaskSortService.sortTasksMultiCriteria(
-                    qualityFilteredTasks,
-                    sortOrder,
-                    settings,
-                    comprehensiveScores,
-                );
+            Logger.debug(
+                `Post-API pipeline complete: ${sortedTasksForDisplay.length} tasks (sorted by ${sortOrder.join(" → ")})`,
+            );
 
             // Three-mode result delivery logic
             // Mode 1 (Simple Search) & Mode 2 (Smart Search) → Direct results
@@ -1064,7 +1037,7 @@ export class AIService {
                 `Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
             );
             Logger.debug(
-                `Total filtered tasks available: ${qualityFilteredTasks.length}`,
+                `Total sorted tasks available: ${sortedTasksForDisplay.length}`,
             );
 
             // DEBUG: Log first 10 tasks with their sort criteria values
@@ -3120,48 +3093,36 @@ ${taskContext}`;
             Logger.warn("===============================");
 
             // Use relevance scoring as fallback - return top N most relevant tasks based on user settings
-            // All modes use comprehensive scoring (with or without expansion)
-            let scoredTasks;
+            // Use streamlined post-API pipeline (tasks already filtered at API level)
             const queryHasKeywords = keywords.length > 0;
-            if (usingAIParsing && coreKeywords.length > 0) {
-                Logger.debug(
-                    `Fallback: Using comprehensive scoring with expansion (core: ${coreKeywords.length})`,
-                );
-                scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                    tasks,
-                    keywords,
-                    coreKeywords,
-                    queryHasKeywords,
-                    queryHasDueDate,
-                    queryHasPriority,
-                    queryHasStatus,
-                    sortCriteria,
-                    settings.relevanceCoefficient,
-                    settings.dueDateCoefficient,
-                    settings.priorityCoefficient,
-                    settings.statusCoefficient,
-                    settings,
-                );
-            } else {
-                Logger.debug(
-                    `Fallback: Using comprehensive scoring without expansion`,
-                );
-                scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                    tasks,
-                    keywords,
-                    keywords,
-                    queryHasKeywords,
-                    queryHasDueDate,
-                    queryHasPriority,
-                    queryHasStatus,
-                    sortCriteria,
-                    settings.relevanceCoefficient,
-                    settings.dueDateCoefficient,
-                    settings.priorityCoefficient,
-                    settings.statusCoefficient,
-                    settings,
-                );
-            }
+            const fallbackCoreKeywords =
+                usingAIParsing && coreKeywords.length > 0
+                    ? coreKeywords
+                    : keywords;
+
+            Logger.debug(
+                usingAIParsing && coreKeywords.length > 0
+                    ? `Fallback: Using post-API pipeline with expansion (core: ${fallbackCoreKeywords.length})`
+                    : `Fallback: Using post-API pipeline without expansion`,
+            );
+
+            const scoredTasks = TaskSearchService.scoreAndSortTasks(
+                tasks,
+                keywords,
+                fallbackCoreKeywords,
+                { hasKeywords: queryHasKeywords, hasTaskProperties: false },
+                {
+                    queryHasDueDate: queryHasDueDate,
+                    queryHasPriority: queryHasPriority,
+                    queryHasStatus: queryHasStatus,
+                    relevanceCoefficient: settings.relevanceCoefficient,
+                    dueDateCoefficient: settings.dueDateCoefficient,
+                    priorityCoefficient: settings.priorityCoefficient,
+                    statusCoefficient: settings.statusCoefficient,
+                    settings: settings,
+                },
+                sortCriteria,
+            );
 
             const topTasks = scoredTasks
                 .slice(0, settings.maxRecommendations)

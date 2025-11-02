@@ -1441,6 +1441,102 @@ export class TaskSearchService {
     }
 
     /**
+     * POST-API PIPELINE: Score → Sort
+     * Optimized for API-first architecture where filtering already happened at API level.
+     *
+     * ARCHITECTURE:
+     * - All filtering (exclusions, properties, quality, relevance) done at API level
+     * - Tasks arrive already filtered and with cached scores
+     * - This method just scores (reusing cache) and sorts
+     * - Caller handles limiting to maxDirectResults/maxTasksForAI
+     *
+     * PERFORMANCE:
+     * - Reuses cached scores from API filtering (~50% fewer calculations)
+     * - Single comprehensive scoring pass (all components at once)
+     * - Efficient multi-criteria sorting
+     *
+     * @param tasks - Pre-filtered tasks from API level
+     * @param keywords - All keywords (including semantic expansion)
+     * @param coreKeywords - Core keywords from user query
+     * @param queryType - Query classification (hasKeywords, hasTaskProperties)
+     * @param scoringParams - Scoring configuration (coefficients, query flags, settings)
+     * @param sortOrder - Sort criteria for multi-criteria sorting
+     * @returns Sorted array of {task, score, component scores}
+     */
+    static scoreAndSortTasks(
+        tasks: Task[],
+        keywords: string[],
+        coreKeywords: string[],
+        queryType: { hasKeywords: boolean; hasTaskProperties: boolean },
+        scoringParams: {
+            queryHasDueDate: boolean;
+            queryHasPriority: boolean;
+            queryHasStatus: boolean;
+            relevanceCoefficient: number;
+            dueDateCoefficient: number;
+            priorityCoefficient: number;
+            statusCoefficient: number;
+            settings: PluginSettings;
+        },
+        sortOrder: string[],
+    ): Array<{
+        task: Task;
+        score: number;
+        relevanceScore: number;
+        dueDateScore: number;
+        priorityScore: number;
+        statusScore: number;
+    }> {
+        Logger.debug(
+            `[Post-API Pipeline] Processing ${tasks.length} pre-filtered tasks`,
+        );
+
+        // STEP 1: Comprehensive Scoring (with cache reuse)
+        const scoredTasks = this.scoreTasksComprehensive(
+            tasks,
+            keywords,
+            coreKeywords,
+            queryType.hasKeywords,
+            scoringParams.queryHasDueDate,
+            scoringParams.queryHasPriority,
+            scoringParams.queryHasStatus,
+            sortOrder,
+            scoringParams.relevanceCoefficient,
+            scoringParams.dueDateCoefficient,
+            scoringParams.priorityCoefficient,
+            scoringParams.statusCoefficient,
+            scoringParams.settings,
+        );
+
+        // STEP 2: Multi-Criteria Sorting
+        const comprehensiveScores = new Map(
+            scoredTasks.map((st) => [st.task.id, st.score]),
+        );
+
+        const sortedTaskObjects = TaskSortService.sortTasksMultiCriteria(
+            scoredTasks.map((st) => st.task),
+            sortOrder,
+            scoringParams.settings,
+            comprehensiveScores,
+        );
+
+        // STEP 3: Reconstruct sorted scored array (preserve score data)
+        const taskToScore = new Map(scoredTasks.map((st) => [st.task.id, st]));
+        const sortedScoredTasks = sortedTaskObjects
+            .map((task) => taskToScore.get(task.id))
+            .filter((st): st is NonNullable<typeof st> => st !== undefined);
+
+        Logger.debug(
+            `[Post-API Pipeline] Scored and sorted ${sortedScoredTasks.length} tasks`,
+        );
+
+        return sortedScoredTasks;
+    }
+
+    /**
+     * @deprecated Use scoreAndSortTasks() for API-first architecture.
+     * This method performs redundant JS-level filtering.
+     *
      * Single-pass pipeline for filtering, scoring, and limiting tasks
      *
      * OPTIMIZATION: Combines all processing steps into ONE pass through the task array:
