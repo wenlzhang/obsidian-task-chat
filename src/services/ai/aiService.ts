@@ -661,6 +661,7 @@ export class AIService {
                         expandedKeywords, // Keywords for relevance filtering
                         coreKeywords, // Core keywords for relevance boost
                         minimumRelevanceScore, // Minimum relevance threshold
+                        settings.maxTasksForAI, // Early limiting at API level (Smart Search/Task Chat context)
                     );
 
                 const reloadEndTime = performance.now();

@@ -9,6 +9,7 @@ import {
     processInChunks,
     PerformanceTimer,
 } from "../../utils/chunkedProcessing";
+import { CHUNK_SIZES, API_LIMITS } from "../../utils/constants";
 
 /**
  * Service for integrating with Datacore plugin to fetch tasks
@@ -479,6 +480,7 @@ export class DatacoreService {
      * @param keywords - Optional keywords for relevance filtering (expanded keywords)
      * @param coreKeywords - Optional core keywords for relevance boost
      * @param minimumRelevanceScore - Optional minimum relevance score threshold
+     * @param maxResults - Optional maximum number of tasks to return (for early limiting)
      */
     static async parseTasksFromDatacore(
         app: App,
@@ -501,6 +503,7 @@ export class DatacoreService {
         keywords?: string[],
         coreKeywords?: string[],
         minimumRelevanceScore?: number,
+        maxResults?: number,
     ): Promise<Task[]> {
         const datacoreApi = this.getAPI();
         if (!datacoreApi) {
@@ -559,6 +562,7 @@ export class DatacoreService {
                     priority?: number;
                     status?: number;
                     relevance?: number;
+                    _comprehensiveScore?: number; // Final comprehensive score (if calculated early)
                 }
             >();
 
@@ -685,7 +689,7 @@ export class DatacoreService {
                             settings,
                         );
                     },
-                    500, // Process 500 tasks per chunk before yielding
+                    CHUNK_SIZES.DEFAULT,
                 );
 
                 timer.lap("Property extraction");
@@ -713,6 +717,104 @@ export class DatacoreService {
                     );
                     return tasks;
                 }
+            }
+
+            // ========================================
+            // EARLY LIMITING OPTIMIZATION (API-level score + sort + limit)
+            // Apply comprehensive scoring at API level and limit BEFORE creating Task objects
+            //
+            // KEY INSIGHT: Do comprehensive scoring ONCE at API level, store in cache,
+            // then downstream code reuses those scores (no redundant scoring!)
+            //
+            // BENEFITS:
+            // 1. Avoid creating unnecessary Task objects (46,981 → user's limit)
+            // 2. Single scoring pass instead of multiple (score once, use everywhere)
+            // 3. Scores cached for post-API pipeline to reuse
+            //
+            // APPLIES TO:
+            // - Queries WITH keywords: After relevance filter (282 tasks → limit)
+            // - Queries WITHOUT keywords: After quality filter (46,981 tasks → limit)
+            //
+            // Threshold: Apply if results exceed reasonable limit for direct processing
+            // ========================================
+            const shouldApplyEarlyLimiting =
+                maxResults !== undefined && results.length > 500;
+
+            if (shouldApplyEarlyLimiting) {
+                const earlyLimitTimer = new PerformanceTimer(
+                    "Early Limiting (API-level)",
+                );
+
+                // Use caller's limit with generous buffer for better ranking accuracy
+                // Buffer ensures we don't miss good tasks due to approximate scoring
+                const targetLimit = Math.min(
+                    maxResults * API_LIMITS.BUFFER_MULTIPLIER,
+                    results.length, // Don't exceed available tasks
+                );
+
+                Logger.debug(
+                    `[Datacore] Applying early limiting: ${results.length} → ${targetLimit} tasks (comprehensive scoring at API level)`,
+                );
+
+                // COMPREHENSIVE SCORING AT API LEVEL (vectorized + cached)
+                // This is the ONLY comprehensive scoring - downstream reuses these scores
+                const scoredResults =
+                    VectorizedScoring.vectorizedComprehensiveScoring(
+                        results.map((dcTask: any) => {
+                            // Create minimal Task-like object for scoring
+                            const taskText = dcTask.$text || dcTask.text || "";
+                            const taskId = this.getTaskId(dcTask);
+                            return {
+                                id: taskId,
+                                text: taskText,
+                                dueDate: dcTask._dueDate,
+                                priority: dcTask._mappedPriority,
+                                statusCategory:
+                                    dcTask._mappedStatus || "incomplete",
+                                _cachedScores: scoreCache.get(taskId),
+                                _dcTask: dcTask, // Preserve original for later processing
+                            } as any;
+                        }),
+                        keywords || [],
+                        coreKeywords || keywords || [],
+                        settings,
+                        false, // queryHasDueDate
+                        false, // queryHasPriority
+                        false, // queryHasStatus
+                    );
+
+                // CACHE COMPREHENSIVE SCORES for reuse in post-API pipeline
+                // This eliminates redundant scoring downstream
+                for (const scored of scoredResults) {
+                    const taskId = scored.task.id;
+                    const existing = scoreCache.get(taskId) || {};
+                    scoreCache.set(taskId, {
+                        ...existing,
+                        // Store all component scores
+                        relevance: scored.relevanceScore,
+                        dueDate: scored.dueDateScore,
+                        priority: scored.priorityScore,
+                        status: scored.statusScore,
+                        // Store final comprehensive score for direct reuse
+                        _comprehensiveScore: scored.score,
+                    });
+                }
+
+                // Take top N scored tasks (already sorted by vectorized scoring)
+                const limitedScored = scoredResults.slice(0, targetLimit);
+
+                // Extract original Datacore tasks (already in score order)
+                results = limitedScored.map(
+                    (scored: any) => scored.task._dcTask,
+                );
+
+                earlyLimitTimer.lap(
+                    `Scored ${scoredResults.length}, limited to ${results.length} tasks`,
+                );
+
+                Logger.debug(
+                    `[Datacore] Early limiting complete: ${results.length} top-scored tasks (scores cached for reuse)`,
+                );
             }
 
             // NOTE: Page tag fetching REMOVED - it's not needed!
@@ -776,7 +878,7 @@ export class DatacoreService {
                         validationStats.invalidItems++;
                     }
                 },
-                500,
+                CHUNK_SIZES.LIGHTWEIGHT,
             );
 
             validationTimer.lap(
@@ -819,7 +921,7 @@ export class DatacoreService {
                         tasks.push(task);
                     }
                 },
-                500,
+                CHUNK_SIZES.DEFAULT,
             );
 
             processingTimer.lap(`Processed ${tasks.length} Task objects`);

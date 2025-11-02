@@ -193,6 +193,11 @@ export class TaskIndexService {
      * @param dateFilter - Optional date filter (legacy parameter)
      * @param propertyFilters - Optional property filters
      * @param inclusionFilters - Optional inclusion filters
+     * @param qualityThreshold - Optional quality threshold for filtering
+     * @param keywords - Optional keywords for relevance filtering
+     * @param coreKeywords - Optional core keywords for relevance filtering
+     * @param minimumRelevanceScore - Optional minimum relevance score
+     * @param maxResults - Optional maximum results for early limiting at API level
      * @returns Array of tasks
      */
     static async parseTasksFromIndex(
@@ -216,6 +221,7 @@ export class TaskIndexService {
         keywords?: string[],
         coreKeywords?: string[],
         minimumRelevanceScore?: number,
+        maxResults?: number,
     ): Promise<Task[]> {
         const activeAPI = this.determineActiveAPI(app, settings);
 
@@ -253,7 +259,7 @@ export class TaskIndexService {
 
             if (activeAPI === "datacore") {
                 Logger.debug(
-                    "Fetching tasks from Datacore (with API-level quality/relevance filtering)",
+                    "Fetching tasks from Datacore (with API-level quality/relevance filtering and early limiting)",
                 );
                 tasks = await DatacoreService.parseTasksFromDatacore(
                     app,
@@ -265,6 +271,7 @@ export class TaskIndexService {
                     keywords,
                     coreKeywords,
                     minimumRelevanceScore,
+                    maxResults,
                 );
             } else {
                 Logger.debug("Fetching tasks from Dataview");

@@ -11,6 +11,8 @@
  * - Best of both worlds: Fast AND responsive
  */
 
+import { CHUNK_SIZES } from "./constants";
+
 /**
  * Yield to browser event loop using requestAnimationFrame
  * More efficient and smoother than setTimeout(0)
@@ -27,14 +29,14 @@ export async function yieldToUI(): Promise<void> {
  *
  * @param items - Array to process
  * @param processor - Function to process each item
- * @param chunkSize - Number of items to process before yielding (default: 500)
+ * @param chunkSize - Number of items to process before yielding (uses CHUNK_SIZES.DEFAULT if not specified)
  * @param onProgress - Optional progress callback
  * @returns Promise that resolves when all items are processed
  */
 export async function processInChunks<T>(
     items: T[],
     processor: (item: T, index: number) => void,
-    chunkSize: number = 500,
+    chunkSize: number = CHUNK_SIZES.DEFAULT,
     onProgress?: (processed: number, total: number) => void,
 ): Promise<void> {
     const total = items.length;
