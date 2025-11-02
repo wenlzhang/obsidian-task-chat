@@ -799,52 +799,206 @@ export class AIService {
                     ? parsedQuery.coreKeywords
                     : intent.keywords;
 
-            // Determine limit based on mode:
-            // - Simple/Smart Search: maxDirectResults (show directly to user)
-            // - Task Chat: maxTasksForAI (send to AI for analysis)
-            const taskLimit =
+            // Determine result limit based on mode
+            const resultLimit =
                 chatMode === "chat"
                     ? settings.maxTasksForAI
                     : settings.maxDirectResults;
 
             Logger.debug(
                 usingAIParsing && parsedQuery?.coreKeywords
-                    ? `Using tasks from API level (core: ${coreKeywords.length}, expanded: ${keywords.length}, limit: ${taskLimit})`
-                    : `Using tasks from API level (keywords: ${keywords.length}, limit: ${taskLimit})`,
+                    ? `Using tasks from API level (core: ${coreKeywords.length}, expanded: ${keywords.length}, limit: ${resultLimit})`
+                    : `Using tasks from API level (keywords: ${keywords.length}, limit: ${resultLimit})`,
             );
 
-            // Tasks are already scored, sorted, and limited at API level!
-            // Just use them directly - no need for redundant JS-level scoring
-            const sortedTasksForDisplay = filteredTasks;
+            // ========================================
+            // JS-LEVEL SCORING & SORTING (with API fallback detection)
+            // Datacore: Has cached finalScores → Fast sort
+            // Dataview: No cached scores → Calculate, sort, cache
+            // ========================================
+            const needsScoring = filteredTasks.some(
+                (task) => task._cachedScores?.finalScore === undefined,
+            );
 
-            // Log sample task scores for transparency (from cached scores)
-            if (filteredTasks.length > 0 && filteredTasks[0]._cachedScores) {
-                const sample = filteredTasks[0];
+            let sortedTasksForDisplay: Task[];
+
+            if (needsScoring) {
+                Logger.debug(
+                    `[JS Scoring] API didn't score - calculating for ${filteredTasks.length} tasks`,
+                );
+
+                const scoredTasks = filteredTasks.map((task) => {
+                    // Check if already has finalScore
+                    if (task._cachedScores?.finalScore !== undefined) {
+                        return {
+                            task,
+                            finalScore: task._cachedScores.finalScore,
+                        };
+                    }
+
+                    // Calculate component scores
+                    const relevanceScore = queryType.hasKeywords
+                        ? TaskSearchService.calculateRelevanceScoreFromText(
+                              task.text,
+                              coreKeywords,
+                              keywords,
+                              settings,
+                          )
+                        : 0.0;
+
+                    const dueDateScore =
+                        TaskSearchService.calculateDueDateScore(
+                            task.dueDate,
+                            settings,
+                        );
+                    const priorityScore =
+                        TaskSearchService.calculatePriorityScore(
+                            task.priority,
+                            settings,
+                        );
+                    const statusScore = TaskSearchService.calculateStatusScore(
+                        task.statusCategory,
+                        settings,
+                    );
+
+                    // Coefficient activation
+                    const relevanceActive = queryType.hasKeywords ? 1.0 : 0.0;
+                    const dueDateActive = !!intent.extractedDueDateFilter
+                        ? 1.0
+                        : 0.0;
+                    const priorityActive = !!intent.extractedPriority
+                        ? 1.0
+                        : 0.0;
+                    const statusActive = !!intent.extractedStatus ? 1.0 : 0.0;
+
+                    // Final score with coefficients
+                    const finalScore =
+                        relevanceScore *
+                            settings.relevanceCoefficient *
+                            relevanceActive +
+                        dueDateScore *
+                            settings.dueDateCoefficient *
+                            dueDateActive +
+                        priorityScore *
+                            settings.priorityCoefficient *
+                            priorityActive +
+                        statusScore * settings.statusCoefficient * statusActive;
+
+                    // Cache for future use
+                    task._cachedScores = {
+                        relevance: relevanceScore,
+                        dueDate: dueDateScore,
+                        priority: priorityScore,
+                        status: statusScore,
+                        finalScore: finalScore,
+                    };
+
+                    return { task, finalScore };
+                });
+
+                // Sort DESC (highest score first)
+                scoredTasks.sort((a, b) => b.finalScore - a.finalScore);
+                sortedTasksForDisplay = scoredTasks.map((st) => st.task);
+
+                Logger.debug(
+                    `[JS Scoring] Calculated and sorted ${sortedTasksForDisplay.length} tasks`,
+                );
+            } else {
+                // Fast path: Sort by cached finalScore
+                Logger.debug(
+                    `[Fast Sort] Using cached scores for ${filteredTasks.length} tasks`,
+                );
+
+                sortedTasksForDisplay = [...filteredTasks].sort(
+                    (a, b) =>
+                        (b._cachedScores?.finalScore || 0) -
+                        (a._cachedScores?.finalScore || 0),
+                );
+            }
+
+            // Limit sorted tasks to resultLimit
+            if (sortedTasksForDisplay.length > resultLimit) {
+                Logger.debug(
+                    `[JS-Level Limiting] ${sortedTasksForDisplay.length} → ${resultLimit} tasks`,
+                );
+                sortedTasksForDisplay = sortedTasksForDisplay.slice(
+                    0,
+                    resultLimit,
+                );
+            }
+
+            // Log sample task scores for transparency (from cached scores of TOP task)
+            if (
+                sortedTasksForDisplay.length > 0 &&
+                sortedTasksForDisplay[0]._cachedScores
+            ) {
+                const sample = sortedTasksForDisplay[0];
                 const cached = sample._cachedScores;
-                Logger.debug(`Sample score breakdown (top task):`);
-                Logger.debug(`  Task: "${sample.text.substring(0, 60)}..."`);
-                if (cached.relevance !== undefined) {
+
+                if (cached) {
+                    // Calculate activation based on query (same logic as scoring)
+                    const relevanceActive = queryType.hasKeywords ? 1.0 : 0.0;
+                    const dueDateActive = !!intent.extractedDueDateFilter
+                        ? 1.0
+                        : 0.0;
+                    const priorityActive = !!intent.extractedPriority
+                        ? 1.0
+                        : 0.0;
+                    const statusActive = !!intent.extractedStatus ? 1.0 : 0.0;
+
+                    Logger.debug(`Sample score breakdown (top task):`);
                     Logger.debug(
-                        `  Relevance: ${cached.relevance.toFixed(2)} (× ${settings.relevanceCoefficient} = ${(cached.relevance * settings.relevanceCoefficient).toFixed(2)})`,
+                        `  Task: "${sample.text.substring(0, 60)}..."`,
                     );
-                }
-                if (cached.dueDate !== undefined) {
-                    Logger.debug(
-                        `  Due Date: ${cached.dueDate.toFixed(2)} (× ${settings.dueDateCoefficient} = ${(cached.dueDate * settings.dueDateCoefficient).toFixed(2)})`,
-                    );
-                }
-                if (cached.priority !== undefined) {
-                    Logger.debug(
-                        `  Priority: ${cached.priority.toFixed(2)} (× ${settings.priorityCoefficient} = ${(cached.priority * settings.priorityCoefficient).toFixed(2)})`,
-                    );
-                }
-                if (cached.status !== undefined) {
-                    Logger.debug(
-                        `  Status: ${cached.status.toFixed(2)} (× ${settings.statusCoefficient} = ${(cached.status * settings.statusCoefficient).toFixed(2)})`,
-                    );
-                }
-                if (cached.finalScore !== undefined) {
-                    Logger.debug(`  Final: ${cached.finalScore.toFixed(2)}`);
+
+                    if (cached.relevance !== undefined) {
+                        const contribution =
+                            cached.relevance *
+                            settings.relevanceCoefficient *
+                            relevanceActive;
+                        const status =
+                            relevanceActive > 0 ? "active" : "inactive";
+                        Logger.debug(
+                            `  Relevance: ${cached.relevance.toFixed(2)} × ${settings.relevanceCoefficient} × ${relevanceActive.toFixed(1)} = ${contribution.toFixed(2)} (${status})`,
+                        );
+                    }
+                    if (cached.dueDate !== undefined) {
+                        const contribution =
+                            cached.dueDate *
+                            settings.dueDateCoefficient *
+                            dueDateActive;
+                        const status =
+                            dueDateActive > 0 ? "active" : "inactive";
+                        Logger.debug(
+                            `  Due Date: ${cached.dueDate.toFixed(2)} × ${settings.dueDateCoefficient} × ${dueDateActive.toFixed(1)} = ${contribution.toFixed(2)} (${status})`,
+                        );
+                    }
+                    if (cached.priority !== undefined) {
+                        const contribution =
+                            cached.priority *
+                            settings.priorityCoefficient *
+                            priorityActive;
+                        const status =
+                            priorityActive > 0 ? "active" : "inactive";
+                        Logger.debug(
+                            `  Priority: ${cached.priority.toFixed(2)} × ${settings.priorityCoefficient} × ${priorityActive.toFixed(1)} = ${contribution.toFixed(2)} (${status})`,
+                        );
+                    }
+                    if (cached.status !== undefined) {
+                        const contribution =
+                            cached.status *
+                            settings.statusCoefficient *
+                            statusActive;
+                        const status = statusActive > 0 ? "active" : "inactive";
+                        Logger.debug(
+                            `  Status: ${cached.status.toFixed(2)} × ${settings.statusCoefficient} × ${statusActive.toFixed(1)} = ${contribution.toFixed(2)} (${status})`,
+                        );
+                    }
+                    if (cached.finalScore !== undefined) {
+                        Logger.debug(
+                            `  Final Score: ${cached.finalScore.toFixed(2)}`,
+                        );
+                    }
                 }
             }
 
@@ -3113,16 +3267,104 @@ ${taskContext}`;
                     : `Fallback: Using tasks from API level`,
             );
 
-            // Tasks are already scored and sorted at API level!
-            // Just limit to maxRecommendations and use directly
-            const topTasks = tasks.slice(0, settings.maxRecommendations);
+            // Score and sort if needed (same logic as main path)
+            const needsScoring = tasks.some(
+                (task) => task._cachedScores?.finalScore === undefined,
+            );
+
+            let sortedTasks: Task[];
+
+            if (needsScoring) {
+                Logger.debug(
+                    `[Fallback JS Scoring] Calculating for ${tasks.length} tasks`,
+                );
+
+                const scoredTasks = tasks.map((task) => {
+                    if (task._cachedScores?.finalScore !== undefined) {
+                        return {
+                            task,
+                            finalScore: task._cachedScores.finalScore,
+                        };
+                    }
+
+                    // Calculate scores
+                    const relevanceScore = queryHasKeywords
+                        ? TaskSearchService.calculateRelevanceScoreFromText(
+                              task.text,
+                              fallbackCoreKeywords,
+                              keywords,
+                              settings,
+                          )
+                        : 0.0;
+
+                    const dueDateScore =
+                        TaskSearchService.calculateDueDateScore(
+                            task.dueDate,
+                            settings,
+                        );
+                    const priorityScore =
+                        TaskSearchService.calculatePriorityScore(
+                            task.priority,
+                            settings,
+                        );
+                    const statusScore = TaskSearchService.calculateStatusScore(
+                        task.statusCategory,
+                        settings,
+                    );
+
+                    // Coefficient activation
+                    const relevanceActive = queryHasKeywords ? 1.0 : 0.0;
+                    const dueDateActive = queryHasDueDate ? 1.0 : 0.0;
+                    const priorityActive = queryHasPriority ? 1.0 : 0.0;
+                    const statusActive = queryHasStatus ? 1.0 : 0.0;
+
+                    const finalScore =
+                        relevanceScore *
+                            settings.relevanceCoefficient *
+                            relevanceActive +
+                        dueDateScore *
+                            settings.dueDateCoefficient *
+                            dueDateActive +
+                        priorityScore *
+                            settings.priorityCoefficient *
+                            priorityActive +
+                        statusScore * settings.statusCoefficient * statusActive;
+
+                    task._cachedScores = {
+                        relevance: relevanceScore,
+                        dueDate: dueDateScore,
+                        priority: priorityScore,
+                        status: statusScore,
+                        finalScore: finalScore,
+                    };
+
+                    return { task, finalScore };
+                });
+
+                scoredTasks.sort((a, b) => b.finalScore - a.finalScore);
+                sortedTasks = scoredTasks.map((st) => st.task);
+
+                Logger.debug(
+                    `[Fallback JS Scoring] Sorted ${sortedTasks.length} tasks`,
+                );
+            } else {
+                Logger.debug(`[Fallback Fast Sort] Using cached scores`);
+                sortedTasks = [...tasks].sort(
+                    (a, b) =>
+                        (b._cachedScores?.finalScore || 0) -
+                        (a._cachedScores?.finalScore || 0),
+                );
+            }
+
+            // Limit to maxRecommendations
+            const topTasks = sortedTasks.slice(0, settings.maxRecommendations);
             const topIndices = Array.from(
                 { length: topTasks.length },
                 (_, i) => i,
             );
 
             Logger.debug(
-                `Fallback: returning ${topTasks.length} tasks (already scored/sorted at API level, limited to ${settings.maxRecommendations})`,
+                `Fallback: returning ${topTasks.length} tasks (scored, sorted, limited to ${settings.maxRecommendations})`,
             );
             return {
                 tasks: topTasks,
