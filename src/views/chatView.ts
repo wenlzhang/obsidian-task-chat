@@ -1963,8 +1963,25 @@ export class ChatView extends ItemView {
         // Update task count with new filter (respects inclusions/exclusions)
         // Skip count update if Datacore is still indexing to avoid performance issues
         if (TaskIndexService.isAPIReady()) {
+            const startTime = Date.now();
+            Logger.info(
+                "[Filter Apply] Starting task count update with filter:",
+                filter,
+            );
+
             this.filteredTaskCount =
                 await this.plugin.getFilteredTaskCount(filter);
+
+            const elapsed = Date.now() - startTime;
+            Logger.info(
+                `[Filter Apply] Task count update completed: ${this.filteredTaskCount} tasks (${elapsed}ms)`,
+            );
+
+            if (elapsed > 2000) {
+                Logger.warn(
+                    `[Filter Apply] SLOW OPERATION: Task count took ${elapsed}ms (>2s). Check console for detailed timing.`,
+                );
+            }
         } else {
             // Datacore is still indexing, defer count update
             Logger.debug(

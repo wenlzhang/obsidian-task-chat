@@ -1,5 +1,5 @@
 import { App } from "obsidian";
-import { Task, TaskStatusCategory } from "../../models/task";
+import { Task, TaskStatusCategory, DateRange } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
@@ -20,6 +20,104 @@ import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
  * Architecture uses consistent patterns across the codebase
  */
 export class DatacoreService {
+    /**
+     * Valid priority values (P1-P4)
+     */
+    private static readonly VALID_PRIORITIES = [1, 2, 3, 4] as const;
+
+    /**
+     * Add date range filter to query parts
+     */
+    private static addDateRangeFilter(
+        queryParts: string[],
+        dueDateRange?: DateRange | null,
+    ): void {
+        if (!dueDateRange) return;
+
+        const { start, end } = dueDateRange;
+
+        if (start) {
+            const startDate = TaskPropertyService.parseDateRangeKeyword(start);
+            if (startDate) {
+                const startStr = startDate.format("YYYY-MM-DD");
+                queryParts.push(`$due >= date("${startStr}")`);
+                Logger.debug(`[Query Builder] Due date >= ${startStr}`);
+            }
+        }
+
+        if (end) {
+            const endDate = TaskPropertyService.parseDateRangeKeyword(end);
+            if (endDate) {
+                const endStr = endDate.format("YYYY-MM-DD");
+                queryParts.push(`$due <= date("${endStr}")`);
+                Logger.debug(`[Query Builder] Due date <= ${endStr}`);
+            }
+        }
+    }
+
+    /**
+     * Add priority filter to query parts
+     */
+    private static addPriorityFilter(
+        queryParts: string[],
+        priority?: number | number[] | "all" | "any" | "none" | null,
+    ): void {
+        if (priority === undefined || priority === null) return;
+
+        // Helper to build OR condition from priority array
+        const buildPriorityCondition = (priorities: readonly number[]) =>
+            priorities.map((p) => `$priority = ${p}`).join(" or ");
+
+        // Handle special keywords
+        if (
+            priority === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.all ||
+            priority === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.any
+        ) {
+            // Tasks with any priority (P1-P4)
+            queryParts.push(
+                `(${buildPriorityCondition(this.VALID_PRIORITIES)})`,
+            );
+        } else if (
+            priority === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
+        ) {
+            // Tasks with no priority
+            queryParts.push(`!$priority`);
+        } else if (Array.isArray(priority)) {
+            // Multiple specific priorities - filter out invalid values
+            const validPriorities = priority.filter((p) =>
+                this.VALID_PRIORITIES.includes(p as any),
+            );
+            if (validPriorities.length > 0) {
+                queryParts.push(`(${buildPriorityCondition(validPriorities)})`);
+            }
+        } else {
+            // Single specific priority
+            queryParts.push(`$priority = ${priority}`);
+        }
+
+        Logger.debug(`[Query Builder] Priority filter: ${priority}`);
+    }
+
+    /**
+     * Add status filter to query parts
+     */
+    private static addStatusFilter(
+        queryParts: string[],
+        statusValues?: string[] | null,
+    ): void {
+        if (!statusValues || statusValues.length === 0) return;
+
+        // Build OR condition from status symbols
+        const statusConditions = statusValues
+            .map((symbol) => `$status = "${symbol}"`)
+            .join(" or ");
+
+        queryParts.push(`(${statusConditions})`);
+        Logger.debug(
+            `[Query Builder] Status filter: ${statusValues.join(", ")}`,
+        );
+    }
+
     /**
      * Check if Datacore plugin is enabled and available
      */
@@ -326,7 +424,7 @@ export class DatacoreService {
      * ARCHITECTURE:
      * - SOURCE filters (folders, notes, note tags, task tags): OR logic across all
      * - EXCLUSIONS: AND logic (all exclusions applied)
-     * - TASK PROPERTIES (due, priority, status): Post-query with AND logic
+     * - TASK PROPERTIES (due, priority, status): IN QUERY with AND logic
      *
      * DATACORE SYNTAX:
      * - @task - matches all tasks
@@ -334,6 +432,7 @@ export class DatacoreService {
      * - childof(@page and path("Note")) - matches tasks in specific page (NOTES)
      * - childof(@page and #tag) - matches tasks in pages with tag (NOTE TAGS)
      * - #tag - matches tasks with tag (TASK TAGS)
+     * - $due, $priority, $status - task properties
      * - !(...) - negation for exclusions
      * - and / or - logical operators
      *
@@ -344,6 +443,9 @@ export class DatacoreService {
      * and !childof(@page and #excludedNoteTag)
      * and !#excludedTaskTag
      * and (path("folder") or childof(@page and path("note")) or childof(@page and #noteTag) or #taskTag)
+     * and $due >= date("2025-01-01") and $due <= date("2025-12-31")
+     * and $priority = 1
+     * and $status != "x"
      */
     private static buildDatacoreQuery(
         settings: PluginSettings,
@@ -352,6 +454,13 @@ export class DatacoreService {
             noteTags?: string[];
             taskTags?: string[];
             notes?: string[];
+        },
+        propertyFilters?: {
+            priority?: number | number[] | "all" | "any" | "none" | null;
+            dueDate?: string | string[] | null;
+            dueDateRange?: DateRange | null;
+            status?: string | string[] | null;
+            statusValues?: string[] | null;
         },
     ): string {
         const queryParts: string[] = ["@task"];
@@ -481,20 +590,39 @@ export class DatacoreService {
             queryParts.push(`(${inclusionQuery})`);
         }
 
+        // ========================================
+        // PROPERTY FILTERS (AND logic - all applied)
+        // Filter by task properties directly in Datacore query for performance
+        // ========================================
+
+        if (propertyFilters) {
+            // Due Date Range Filter
+            this.addDateRangeFilter(queryParts, propertyFilters.dueDateRange);
+
+            // Priority Filter
+            this.addPriorityFilter(queryParts, propertyFilters.priority);
+
+            // Status Filter
+            this.addStatusFilter(queryParts, propertyFilters.statusValues);
+        }
+
         const query = queryParts.join(" and ");
-        Logger.debug(`Datacore query (folders/tags only): ${query}`);
+        Logger.debug(`[Query Builder] Complete Datacore query: ${query}`);
         return query;
     }
 
     /**
      * Build task filter function (post-query filtering)
-     * Applies property-based filters after the initial query
+     * DEPRECATED: Property filters are now built directly into the Datacore query
+     * for much better performance (database-level filtering vs JavaScript filtering)
+     *
+     * This method is kept for backwards compatibility but should not be used.
      */
     private static buildTaskFilter(
         propertyFilters: {
             priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start?: string; end?: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -529,7 +657,7 @@ export class DatacoreService {
         propertyFilters?: {
             priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start?: string; end?: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -554,41 +682,27 @@ export class DatacoreService {
         let tasks: Task[] = [];
 
         try {
-            // Build query for folder/tag filtering (basic query level)
-            const query = this.buildDatacoreQuery(settings, inclusionFilters);
+            // Build query for folder/tag filtering AND property filtering (all in Datacore query)
+            const query = this.buildDatacoreQuery(
+                settings,
+                inclusionFilters,
+                propertyFilters,
+            );
 
-            // Build property filter function (uses existing unified filter logic)
-            // This will be applied at API level using .filter() for better performance
-            const taskFilter = propertyFilters
-                ? this.buildTaskFilter(propertyFilters, settings)
-                : null;
+            // OPTIMIZATION: Property filters now applied in Datacore query (above)
+            // No need for JavaScript post-filtering - Datacore does it all!
 
-            // Execute query to get all tasks (including subtasks)
+            // Execute query to get all tasks (already filtered by Datacore)
             let results = await datacoreApi.query(query);
 
             if (!results || results.length === 0) {
+                Logger.debug("[Datacore] Query returned no results");
                 return tasks;
             }
 
-            // ========================================
-            // API-LEVEL PROPERTY FILTERING
-            // Apply property filters (priority, due date, status) at API level
-            // This prevents filtered-out tasks from ever becoming Task objects
-            // ========================================
-            if (taskFilter) {
-                const beforeFilter = results.length;
-                results = results.filter(taskFilter);
-                Logger.debug(
-                    `[Datacore] Property filter: ${beforeFilter} → ${results.length} tasks`,
-                );
-
-                if (results.length === 0) {
-                    Logger.debug(
-                        "[Datacore] No tasks remaining after property filters",
-                    );
-                    return tasks;
-                }
-            }
+            Logger.debug(
+                `[Datacore] Query returned ${results.length} results (already filtered by Datacore)`,
+            );
 
             // ========================================
             // SCORE CACHING OPTIMIZATION
@@ -1253,7 +1367,7 @@ export class DatacoreService {
         propertyFilters?: {
             priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start?: string; end?: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -1264,6 +1378,21 @@ export class DatacoreService {
             notes?: string[];
         },
     ): Promise<number> {
+        const profiler = {
+            start: Date.now(),
+            steps: [] as Array<{ name: string; duration: number }>,
+            log(stepName: string, startTime: number) {
+                const duration = Date.now() - startTime;
+                this.steps.push({ name: stepName, duration });
+                Logger.debug(`  [Count Profiler] ${stepName}: ${duration}ms`);
+            },
+        };
+
+        Logger.info(
+            "[Task Count] Starting with property filters:",
+            propertyFilters,
+        );
+
         const datacoreApi = this.getAPI();
         if (!datacoreApi) {
             Logger.warn("Datacore API not available");
@@ -1271,27 +1400,38 @@ export class DatacoreService {
         }
 
         try {
-            // Build query for source-level filtering (reuse existing method)
-            const query = this.buildDatacoreQuery(settings, inclusionFilters);
+            // Build query for source-level filtering AND property filtering (all in Datacore query)
+            const stepStart = Date.now();
+            const query = this.buildDatacoreQuery(
+                settings,
+                inclusionFilters,
+                propertyFilters,
+            );
+            profiler.log("Build query", stepStart);
+            Logger.debug(`[Task Count] Datacore query: ${query}`);
 
-            // Build post-query filter for task properties (reuse existing method)
-            const taskFilter = propertyFilters
-                ? this.buildTaskFilter(propertyFilters, settings)
-                : null;
+            // OPTIMIZATION: Property filters now applied in Datacore query (above)
+            // No need for JavaScript post-filtering - Datacore does it all!
 
-            // Execute query to get all tasks
+            // Execute query to get all tasks (already filtered by Datacore)
+            const queryStart = Date.now();
             let results = await datacoreApi.query(query);
+            profiler.log(
+                `Datacore query execution (${results?.length || 0} results, already filtered)`,
+                queryStart,
+            );
 
             if (!results || results.length === 0) {
+                Logger.info("[Task Count] No results from Datacore query");
                 return 0;
             }
 
-            // API-LEVEL FILTERING: Apply property filters before counting
-            if (taskFilter) {
-                results = results.filter(taskFilter);
-            }
+            Logger.info(
+                `[Task Count] Datacore returned ${results.length} results (already filtered by query)`,
+            );
 
             // Count valid tasks
+            const validationStart = Date.now();
             let count = 0;
             for (const dcTask of results) {
                 // Skip invalid tasks
@@ -1317,9 +1457,27 @@ export class DatacoreService {
                 count++;
             }
 
-            Logger.debug(
-                `[Datacore] Task count: ${count} (from ${results.length} results)`,
+            profiler.log(
+                `Validation & counting (${count} valid)`,
+                validationStart,
             );
+
+            // Log total time and summary
+            const totalTime = Date.now() - profiler.start;
+            Logger.info(
+                `[Task Count] COMPLETE: ${count} tasks (total: ${totalTime}ms)`,
+            );
+
+            // Log profiling summary if operation was slow
+            if (totalTime > 1000) {
+                Logger.warn(
+                    `[Task Count] SLOW OPERATION: ${totalTime}ms. Breakdown:`,
+                );
+                profiler.steps.forEach((step) => {
+                    Logger.warn(`  - ${step.name}: ${step.duration}ms`);
+                });
+            }
+
             return count;
         } catch (error) {
             Logger.error("Error getting task count from Datacore:", error);

@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { Task, TaskStatusCategory } from "../../models/task";
+import { Task, TaskStatusCategory, DateRange } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
@@ -2086,7 +2086,7 @@ export class TaskPropertyService {
         propertyFilters: {
             priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start?: string; end?: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
         },
@@ -2201,29 +2201,66 @@ export class TaskPropertyService {
                     : null;
                 const endDate = end ? this.parseDateRangeKeyword(end) : null;
 
+                // OPTIMIZATION: Pre-compute start/end timestamps for faster comparison
+                const startTimestamp = startDate
+                    ? startDate.startOf("day").valueOf()
+                    : null;
+                const endTimestamp = endDate
+                    ? endDate.endOf("day").valueOf()
+                    : null;
+
+                // OPTIMIZATION: Cache extracted dates to avoid re-parsing
+                const dateCache = new Map<string, number | null>();
+
                 filters.push((task: any) => {
-                    const taskText = this.getTaskText(task);
-                    return dueDateFields.some((field) => {
-                        const value = this.getUnifiedFieldValue(
-                            task,
-                            field,
-                            taskText,
-                            settings,
-                        );
-                        if (!value) return false;
+                    // Generate cache key from task
+                    const taskId = `${task.$file || task.file}:${task.$line ?? task.line}`;
 
-                        const taskDate = moment(this.formatDate(value));
+                    // Check cache first
+                    let taskTimestamp: number | null;
+                    if (dateCache.has(taskId)) {
+                        taskTimestamp = dateCache.get(taskId)!;
+                    } else {
+                        // Extract and parse date (only once per task)
+                        const taskText = this.getTaskText(task);
+                        let foundDate = false;
 
-                        if (
-                            startDate &&
-                            !taskDate.isSameOrAfter(startDate, "day")
-                        )
-                            return false;
-                        if (endDate && !taskDate.isSameOrBefore(endDate, "day"))
-                            return false;
+                        for (const field of dueDateFields) {
+                            const value = this.getUnifiedFieldValue(
+                                task,
+                                field,
+                                taskText,
+                                settings,
+                            );
+                            if (value) {
+                                const taskDate = moment(this.formatDate(value));
+                                if (taskDate.isValid()) {
+                                    taskTimestamp = taskDate
+                                        .startOf("day")
+                                        .valueOf();
+                                    foundDate = true;
+                                    break;
+                                }
+                            }
+                        }
 
-                        return true;
-                    });
+                        taskTimestamp = foundDate ? taskTimestamp! : null;
+                        dateCache.set(taskId, taskTimestamp);
+                    }
+
+                    // If no date found, exclude task
+                    if (taskTimestamp === null) return false;
+
+                    // Fast timestamp comparison (no moment objects needed)
+                    if (
+                        startTimestamp !== null &&
+                        taskTimestamp < startTimestamp
+                    )
+                        return false;
+                    if (endTimestamp !== null && taskTimestamp > endTimestamp)
+                        return false;
+
+                    return true;
                 });
             }
         }

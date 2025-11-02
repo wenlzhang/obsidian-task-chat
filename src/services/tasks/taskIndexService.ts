@@ -283,31 +283,88 @@ export class TaskIndexService {
     /**
      * Build property filters from TaskFilter
      * Shared utility used by both parseTasksFromIndex() and getTaskCount()
+     *
+     * CRITICAL: This method converts UI filter values to API-level PropertyFilters:
+     * - Priority: String array ["1", "2", "none"] -> Number array [1, 2, "none"]
+     * - Status: Category keys ["open", "completed"] -> Symbols [" ", "x", "X", ...]
+     * - Date Range: Direct passthrough
+     *
+     * @param filter - TaskFilter from UI (filterModal.ts)
+     * @param settings - Plugin settings (needed for status category -> symbol mapping)
+     * @returns PropertyFilters for Datacore query or undefined if no filters
      */
-    static buildPropertyFilters(filter: any): any {
+    static buildPropertyFilters(filter: any, settings: PluginSettings): any {
         const propertyFilters: any = {};
 
+        // Priority Filter: Convert string priorities to numbers
         if (filter.priorities && filter.priorities.length > 0) {
-            // Convert string priorities to numbers
             propertyFilters.priority = filter.priorities.map((p: string) =>
                 p === "none" ? "none" : parseInt(p),
             );
+            // Simplify single-value arrays to scalar for cleaner query building
             if (propertyFilters.priority.length === 1) {
                 propertyFilters.priority = propertyFilters.priority[0];
             }
         }
 
+        // Date Range Filter: Direct passthrough (already in correct format)
         if (filter.dueDateRange) {
             propertyFilters.dueDateRange = filter.dueDateRange;
         }
 
+        // Status Filter: Convert category keys to symbols
+        // IMPORTANT: Filter UI stores category keys (e.g., "open", "completed")
+        // but Datacore query needs status symbols (e.g., " ", "x", "X")
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
-            propertyFilters.statusValues = filter.taskStatuses;
+            const statusSymbols: string[] = [];
+
+            Logger.debug(
+                `[buildPropertyFilters] Converting status categories to symbols:`,
+                filter.taskStatuses,
+            );
+
+            for (const categoryKey of filter.taskStatuses) {
+                const statusConfig = settings.taskStatusMapping[categoryKey];
+                if (statusConfig && statusConfig.symbols) {
+                    Logger.debug(
+                        `  "${categoryKey}" -> symbols: [${statusConfig.symbols.join(", ")}]`,
+                    );
+                    // Add all symbols for this category
+                    statusSymbols.push(...statusConfig.symbols);
+                } else {
+                    Logger.warn(
+                        `  "${categoryKey}" not found in taskStatusMapping!`,
+                    );
+                }
+            }
+
+            // Only add if we found symbols (avoid empty array)
+            if (statusSymbols.length > 0) {
+                propertyFilters.statusValues = statusSymbols;
+                Logger.debug(
+                    `[buildPropertyFilters] Final status symbols: [${statusSymbols.join(", ")}]`,
+                );
+            } else {
+                Logger.warn(
+                    `[buildPropertyFilters] No symbols found for categories: ${filter.taskStatuses.join(", ")}`,
+                );
+            }
         }
 
-        return Object.keys(propertyFilters).length > 0
-            ? propertyFilters
-            : undefined;
+        const hasFilters = Object.keys(propertyFilters).length > 0;
+
+        if (hasFilters) {
+            Logger.debug(
+                `[buildPropertyFilters] Built property filters:`,
+                propertyFilters,
+            );
+        } else {
+            Logger.debug(
+                `[buildPropertyFilters] No property filters (empty filter)`,
+            );
+        }
+
+        return hasFilters ? propertyFilters : undefined;
     }
 
     /**
