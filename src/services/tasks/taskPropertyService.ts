@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { Task, TaskStatusCategory, DateRange } from "../../models/task";
+import { Task, TaskStatusCategory } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
@@ -1134,253 +1134,17 @@ export class TaskPropertyService {
     }
 
     /**
-     * Convert date filter to Datacore date range query
-     * Handles: today, tomorrow, overdue, week, next-week, future, any, +Nd/+Nw/+Nm, specific dates
+     * Filter tasks by due date using moment for consistent date handling
+     * OPTIMIZED: Uses moment from Obsidian API instead of native Date objects
      *
-     * @param dateFilter - Date filter string
-     * @returns Date range or null
-     */
-    static convertDateFilterToRange(dateFilter: string): DateRange | null {
-        const today = moment().startOf("day");
-
-        switch (dateFilter) {
-            case "any":
-                return {}; // Will check for existence
-
-            case "today":
-                return {
-                    start: today.format("YYYY-MM-DD"),
-                    end: today.format("YYYY-MM-DD"),
-                };
-
-            case "tomorrow": {
-                const tomorrow = moment().add(1, "day").startOf("day");
-                return {
-                    start: tomorrow.format("YYYY-MM-DD"),
-                    end: tomorrow.format("YYYY-MM-DD"),
-                };
-            }
-
-            case "overdue":
-                return {
-                    end: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
-                };
-
-            case "future":
-                return {
-                    start: today.clone().add(1, "day").format("YYYY-MM-DD"),
-                };
-
-            case "week": {
-                const weekEnd = today.clone().add(7, "days").endOf("day");
-                return {
-                    start: today.format("YYYY-MM-DD"),
-                    end: weekEnd.format("YYYY-MM-DD"),
-                };
-            }
-
-            case "next-week": {
-                const nextWeekStart = today
-                    .clone()
-                    .add(7, "days")
-                    .startOf("day");
-                const nextWeekEnd = today.clone().add(14, "days").endOf("day");
-                return {
-                    start: nextWeekStart.format("YYYY-MM-DD"),
-                    end: nextWeekEnd.format("YYYY-MM-DD"),
-                };
-            }
-
-            default:
-                // Try relative date patterns
-                const relativeRange = this.parseRelativeDateRange(
-                    dateFilter,
-                    today,
-                );
-                if (relativeRange) return relativeRange;
-
-                // Try natural language parsing
-                const chronoParsed = chrono.parseDate(dateFilter);
-                if (chronoParsed) {
-                    const chronoDate = moment(chronoParsed).startOf("day");
-                    if (chronoDate.isValid()) {
-                        return {
-                            start: chronoDate.format("YYYY-MM-DD"),
-                            end: chronoDate.format("YYYY-MM-DD"),
-                        };
-                    }
-                }
-
-                // Try specific date (YYYY-MM-DD)
-                const parsedDate = moment(dateFilter, "YYYY-MM-DD", true);
-                if (parsedDate.isValid()) {
-                    return {
-                        start: parsedDate.format("YYYY-MM-DD"),
-                        end: parsedDate.format("YYYY-MM-DD"),
-                    };
-                }
-
-                return null;
-        }
-    }
-
-    /**
-     * Parse relative date ranges
-     * Supports: "5 days ago", "within 5 days", "next 2 weeks", "+3d", "-3d", etc.
-     *
-     * @param dateFilter - Date filter string
-     * @param today - Reference date (usually current date)
-     * @returns Date range or null
-     */
-    static parseRelativeDateRange(
-        dateFilter: string,
-        today: moment.Moment,
-    ): DateRange | null {
-        const lowerFilter = dateFilter.toLowerCase().trim();
-
-        // Pattern 1: Duration format (7d, 2w, 3mo, 1yr)
-        const durationPattern =
-            /^(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)$/;
-        const durationMatch = lowerFilter.match(durationPattern);
-        if (durationMatch) {
-            const amount = parseInt(durationMatch[1]);
-            const unit = durationMatch[2];
-            const momentUnit = unit.startsWith("d")
-                ? "days"
-                : unit.startsWith("w")
-                  ? "weeks"
-                  : unit.startsWith("mo")
-                    ? "months"
-                    : unit.startsWith("yr")
-                      ? "years"
-                      : "days";
-
-            const futureDate = today
-                .clone()
-                .add(
-                    amount,
-                    momentUnit as moment.unitOfTime.DurationConstructor,
-                );
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 2: Todoist-style "+3 days" or "-3 days"
-        const todoistMatch = lowerFilter.match(
-            /^([+-])?(\d+)\s+(day|days|week|weeks)$/,
-        );
-        if (todoistMatch) {
-            const sign = todoistMatch[1] || "+";
-            const amount = parseInt(todoistMatch[2]);
-            const unit = todoistMatch[3].startsWith("week") ? "weeks" : "days";
-
-            if (sign === "+") {
-                const futureDate = today.clone().add(amount, unit);
-                return {
-                    start: today.format("YYYY-MM-DD"),
-                    end: futureDate.format("YYYY-MM-DD"),
-                };
-            } else {
-                const pastDate = today.clone().subtract(amount, unit);
-                return {
-                    start: pastDate.format("YYYY-MM-DD"),
-                    end: today.format("YYYY-MM-DD"),
-                };
-            }
-        }
-
-        // Pattern 3: "X days/weeks/months ago"
-        const agoMatch = lowerFilter.match(
-            /(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago/,
-        );
-        if (agoMatch) {
-            const amount = parseInt(agoMatch[1]);
-            const unit = agoMatch[2].startsWith("week")
-                ? "weeks"
-                : agoMatch[2].startsWith("month")
-                  ? "months"
-                  : agoMatch[2].startsWith("year")
-                    ? "years"
-                    : "days";
-            const pastDate = today.clone().subtract(amount, unit);
-            return {
-                start: pastDate.format("YYYY-MM-DD"),
-                end: pastDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 4: "within X days/weeks"
-        const withinMatch = lowerFilter.match(
-            /within\s+(\d+)\s+(day|days|week|weeks|month|months)/,
-        );
-        if (withinMatch) {
-            const amount = parseInt(withinMatch[1]);
-            const unit = withinMatch[2].startsWith("week")
-                ? "weeks"
-                : withinMatch[2].startsWith("month")
-                  ? "months"
-                  : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 5: "next X days/weeks/months"
-        const nextMatch = lowerFilter.match(
-            /next\s+(\d+)\s+(day|days|week|weeks|month|months|year|years)/,
-        );
-        if (nextMatch) {
-            const amount = parseInt(nextMatch[1]);
-            const unit = nextMatch[2].startsWith("week")
-                ? "weeks"
-                : nextMatch[2].startsWith("month")
-                  ? "months"
-                  : nextMatch[2].startsWith("year")
-                    ? "years"
-                    : "days";
-            const futureDate = today.clone().add(amount, unit);
-            return {
-                start: today.format("YYYY-MM-DD"),
-                end: futureDate.format("YYYY-MM-DD"),
-            };
-        }
-
-        // Pattern 6: "last X days/weeks"
-        const lastMatch = lowerFilter.match(
-            /last\s+(\d+)\s+(day|days|week|weeks|month|months)/,
-        );
-        if (lastMatch) {
-            const amount = parseInt(lastMatch[1]);
-            const unit = lastMatch[2].startsWith("week")
-                ? "weeks"
-                : lastMatch[2].startsWith("month")
-                  ? "months"
-                  : "days";
-            const pastDate = today.clone().subtract(amount, unit);
-            return {
-                start: pastDate.format("YYYY-MM-DD"),
-                end: today.format("YYYY-MM-DD"),
-            };
-        }
-
-        return null;
-    }
-
-    /**
-     * Filter tasks by due date
      * Handles: any, today, tomorrow, overdue, future, week, next-week, +Nd/+Nw/+Nm, specific dates
      *
-     * @param tasks - Tasks to filter
-     * @param filter - Date filter string
-     * @returns Filtered tasks
+     * @param tasks - Array of tasks to filter
+     * @param filter - Date filter keyword or date string
+     * @returns Filtered array of tasks
      */
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const moment = (window as any).moment;
 
         // Special case: "any" means tasks WITH a due date
         if (filter === "any") {
@@ -1395,43 +1159,40 @@ export class TaskPropertyService {
         return tasks.filter((task) => {
             if (!task.dueDate) return false;
 
-            // Parse date in local timezone
-            let dueDate: Date;
-            if (task.dueDate.includes("T") || task.dueDate.includes(" ")) {
-                dueDate = new Date(task.dueDate);
-            } else {
-                const parts = task.dueDate.split("-");
-                dueDate = new Date(
-                    parseInt(parts[0]),
-                    parseInt(parts[1]) - 1,
-                    parseInt(parts[2]),
-                );
-            }
-            dueDate.setHours(0, 0, 0, 0);
+            // Parse date using moment for consistent handling
+            const dueDate = moment(task.dueDate);
+            if (!dueDate.isValid()) return false;
+
+            // Normalize to start of day for comparisons
+            const dueDateNormalized = dueDate.startOf("day");
+            const today = moment().startOf("day");
 
             switch (filter) {
                 case "overdue":
-                    return dueDate < today;
+                    return dueDateNormalized.isBefore(today);
                 case "future":
-                    return dueDate > today;
+                    return dueDateNormalized.isAfter(today);
                 case "today":
-                    return dueDate.getTime() === today.getTime();
-                case "tomorrow": {
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    return dueDate.getTime() === tomorrow.getTime();
-                }
+                    return dueDateNormalized.isSame(today, "day");
+                case "tomorrow":
+                    return dueDateNormalized.isSame(
+                        today.clone().add(1, "day"),
+                        "day",
+                    );
                 case "week": {
-                    const weekEnd = new Date(today);
-                    weekEnd.setDate(weekEnd.getDate() + 7);
-                    return dueDate >= today && dueDate <= weekEnd;
+                    const weekEnd = today.clone().add(7, "days");
+                    return (
+                        dueDateNormalized.isSameOrAfter(today, "day") &&
+                        dueDateNormalized.isSameOrBefore(weekEnd, "day")
+                    );
                 }
                 case "next-week": {
-                    const nextWeekStart = new Date(today);
-                    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-                    const nextWeekEnd = new Date(today);
-                    nextWeekEnd.setDate(nextWeekEnd.getDate() + 14);
-                    return dueDate >= nextWeekStart && dueDate <= nextWeekEnd;
+                    const nextWeekStart = today.clone().add(7, "days");
+                    const nextWeekEnd = today.clone().add(14, "days");
+                    return (
+                        dueDateNormalized.isSameOrAfter(nextWeekStart, "day") &&
+                        dueDateNormalized.isSameOrBefore(nextWeekEnd, "day")
+                    );
                 }
                 default:
                     // Handle relative dates (+Nd, +Nw, +Nm)
@@ -1440,35 +1201,29 @@ export class TaskPropertyService {
                         if (relativeMatch) {
                             const amount = parseInt(relativeMatch[1]);
                             const unit = relativeMatch[2];
-                            const targetDate = new Date(today);
+                            let targetDate = today.clone();
+
                             if (unit === "d") {
-                                targetDate.setDate(
-                                    targetDate.getDate() + amount,
-                                );
+                                targetDate = targetDate.add(amount, "days");
                             } else if (unit === "w") {
-                                targetDate.setDate(
-                                    targetDate.getDate() + amount * 7,
-                                );
+                                targetDate = targetDate.add(amount, "weeks");
                             } else if (unit === "m") {
-                                targetDate.setMonth(
-                                    targetDate.getMonth() + amount,
-                                );
+                                targetDate = targetDate.add(amount, "months");
                             }
-                            targetDate.setHours(0, 0, 0, 0);
-                            return dueDate.getTime() === targetDate.getTime();
+
+                            return dueDateNormalized.isSame(targetDate, "day");
                         }
                     }
 
-                    // Try specific date match
-                    try {
-                        const targetDate = new Date(filter);
-                        targetDate.setHours(0, 0, 0, 0);
-                        if (!isNaN(targetDate.getTime())) {
-                            return dueDate.getTime() === targetDate.getTime();
-                        }
-                    } catch (e) {
-                        // Invalid date format
+                    // Try specific date match using moment
+                    const targetDate = moment(filter);
+                    if (targetDate.isValid()) {
+                        return dueDateNormalized.isSame(
+                            targetDate.startOf("day"),
+                            "day",
+                        );
                     }
+
                     return false;
             }
         });
@@ -2490,45 +2245,35 @@ export class TaskPropertyService {
         }
 
         // Build unified status filter (s: syntax)
+        // OPTIMIZED: Pre-resolve status values once instead of for each task
         if (
             propertyFilters.statusValues &&
             propertyFilters.statusValues.length > 0
         ) {
-            filters.push((task: any) => {
-                const taskStatus = task.$status || task.status;
-                if (taskStatus === undefined) return false;
+            // Pre-resolve all status values to category keys (O(M) operation)
+            const resolvedCategories = this.resolveStatusValues(
+                propertyFilters.statusValues,
+                settings,
+            );
 
-                return propertyFilters.statusValues!.some((value) => {
-                    if (taskStatus === value) return true;
+            // If no valid categories resolved, skip this filter
+            if (resolvedCategories.length === 0) {
+                Logger.warn(
+                    "No valid status categories resolved from filter values",
+                );
+            } else {
+                filters.push((task: any) => {
+                    const taskStatus = task.$status || task.status;
+                    if (taskStatus === undefined) return false;
 
-                    const normalizedValue = value
-                        .toLowerCase()
-                        .replace(/-/g, "")
-                        .replace(/\s+/g, "");
-
-                    for (const [categoryKey, categoryConfig] of Object.entries(
-                        settings.taskStatusMapping,
-                    )) {
-                        if (
-                            categoryKey.toLowerCase() === normalizedValue ||
-                            categoryKey.toLowerCase().replace(/-/g, "") ===
-                                normalizedValue
-                        ) {
-                            return categoryConfig.symbols.includes(taskStatus);
-                        }
-
-                        const aliases = categoryConfig.aliases
-                            .toLowerCase()
-                            .split(",")
-                            .map((a) => a.trim());
-                        if (aliases.includes(value.toLowerCase())) {
-                            return categoryConfig.symbols.includes(taskStatus);
-                        }
-                    }
-
-                    return false;
+                    // Map task status to category and check if it's in resolved list (O(1) operation)
+                    const mappedCategory = this.mapStatusToCategory(
+                        taskStatus,
+                        settings,
+                    );
+                    return resolvedCategories.includes(mappedCategory);
                 });
-            });
+            }
         }
 
         if (filters.length === 0) return null;
