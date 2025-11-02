@@ -1324,9 +1324,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Relevance score")
+            .setName("Relevance filter threshold")
             .setDesc(
-                `Minimum keyword relevance score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Exclude tasks with weak keyword matches.`,
+                `Minimum keyword match score (0 = disabled). Current max: ${((this.plugin.settings.relevanceCoreWeight + 1.0) * 100).toFixed(0)}%. Only applies when query contains keywords.`,
             )
             .addSlider((slider) => {
                 // Dynamic maximum based on actual max relevance score
@@ -1346,9 +1346,9 @@ export class SettingsTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName("Quality filter")
+            .setName("Quality filter threshold")
             .setDesc(
-                `Filter strictness (0-100%). 0% = adaptive, higher = fewer but higher-quality results.`,
+                `Minimum quality score (0-100%) based on task properties: due date + priority + status. 0% = disabled (shows all), higher = stricter.`,
             )
             .addSlider((slider) =>
                 slider

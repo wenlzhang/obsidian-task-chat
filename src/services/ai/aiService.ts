@@ -16,10 +16,7 @@ import { PromptBuilderService } from "./aiPromptBuilderService";
 import { TaskIndexService } from "../tasks/taskIndexService";
 import { Logger } from "../../utils/logger";
 import { StreamingService, StreamChunk } from "./streamingService";
-import {
-    generateZeroResultsDiagnostic,
-    generateAIFormatWarning,
-} from "../warnings/warningService";
+import { generateAIFormatWarning } from "../warnings/warningService";
 
 /**
  * Service for AI chat functionality
@@ -762,419 +759,105 @@ export class AIService {
                 };
             }
 
-            // PHASE 1: Quality filtering (for ALL query types)
-            // Apply scoring and filtering to remove low-quality matches
-            // Adapts to query type: keywords-only, properties-only, or mixed
-            let qualityFilteredTasks = filteredTasks;
-            if (queryType.hasKeywords || queryType.hasTaskProperties) {
-                // All modes now use comprehensive scoring (relevance + due date + priority)
-                // Simple Search: keywords = coreKeywords (no semantic expansion)
-                // Smart Search / Task Chat: keywords ≠ coreKeywords (with semantic expansion)
-                let scoredTasks;
-                if (usingAIParsing && parsedQuery?.coreKeywords) {
-                    // Smart Search / Task Chat: with semantic expansion
-                    Logger.debug(
-                        `Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
-                    );
-                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                        filteredTasks,
-                        intent.keywords, // Expanded keywords
-                        parsedQuery.coreKeywords, // Core keywords
-                        queryType.hasKeywords, // NEW: Query has keywords
-                        !!intent.extractedDueDateFilter,
-                        !!intent.extractedPriority,
-                        !!intent.extractedStatus,
-                        sortOrder,
-                        settings.relevanceCoefficient,
-                        settings.dueDateCoefficient,
-                        settings.priorityCoefficient,
-                        settings.statusCoefficient,
-                        settings,
-                    );
-                } else {
-                    // Simple Search: no semantic expansion (keywords = coreKeywords)
-                    Logger.debug(
-                        `Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
-                    );
-                    scoredTasks = TaskSearchService.scoreTasksComprehensive(
-                        filteredTasks,
-                        intent.keywords, // All keywords are "core" (no expansion)
-                        intent.keywords, // Same as keywords (no distinction)
-                        queryType.hasKeywords, // NEW: Query has keywords
-                        !!intent.extractedDueDateFilter,
-                        !!intent.extractedPriority,
-                        !!intent.extractedStatus,
-                        sortOrder,
-                        settings.relevanceCoefficient,
-                        settings.dueDateCoefficient,
-                        settings.priorityCoefficient,
-                        settings.statusCoefficient,
-                        settings,
-                    );
-                }
+            // ARCHITECTURE NOTE: Quality and Relevance Filtering
+            // =======================================================
+            // API LEVEL (datacoreService.ts):
+            //   - Property filters (priority, due date, status)
+            //   - Quality threshold filter (due date + priority + status scores)
+            //   - Relevance threshold filter (keyword matching)
+            //   - Purpose: Remove low-quality tasks BEFORE creating Task objects (efficient)
+            //
+            // JAVASCRIPT LEVEL (here):
+            //   - Comprehensive scoring (relevance + due date + priority + status)
+            //   - Multi-criteria sorting for display order
+            //   - NO FILTERING (already done at API level - no redundant checks)
+            //   - Purpose: Calculate scores for sorting and display
+            // =======================================================
 
-                // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
-                // PROPERTIES ONLY (due date + priority + status) - NO RELEVANCE
-                // Relevance is handled separately by minimum relevance score filter
-                const maxDueDateScore = Math.max(
-                    settings.dueDateOverdueScore,
-                    settings.dueDateWithin7DaysScore,
-                    settings.dueDateWithin1MonthScore,
-                    settings.dueDateLaterScore,
-                    settings.dueDateNoneScore,
-                );
-                const maxPriorityScore = Math.max(
-                    settings.priorityP1Score,
-                    settings.priorityP2Score,
-                    settings.priorityP3Score,
-                    settings.priorityP4Score,
-                    settings.priorityNoneScore,
-                );
-                const maxStatusScore = Math.max(
-                    ...Object.values(settings.taskStatusMapping).map(
-                        (config) => config.score,
-                    ),
-                );
+            Logger.debug(
+                `[JavaScript Level] Processing ${filteredTasks.length} tasks that passed API-level filters`,
+            );
 
-                // Quality score max = properties only (always all active)
-                // Quality is INDEPENDENT of keywords - it only considers task properties
-                const maxScore =
-                    maxDueDateScore * settings.dueDateCoefficient +
-                    maxPriorityScore * settings.priorityCoefficient +
-                    maxStatusScore * settings.statusCoefficient;
-
+            // PHASE 1: Comprehensive Scoring (for sorting - NO filtering)
+            // Calculate scores for all tasks to enable multi-criteria sorting
+            // All tasks that reach here have ALREADY passed API-level quality/relevance filters
+            let scoredTasks;
+            if (usingAIParsing && parsedQuery?.coreKeywords) {
+                // Smart Search / Task Chat: with semantic expansion
                 Logger.debug(
-                    `Quality filter max score: ${maxScore.toFixed(1)} (properties only: dueDate + priority + status)`,
+                    `Using comprehensive scoring with expansion (core: ${parsedQuery.coreKeywords.length}, expanded: ${intent.keywords.length})`,
                 );
-                let baseThreshold: number;
-
-                if (settings.qualityFilterStrength === 0) {
-                    // Disabled - no quality filtering
-                    baseThreshold = 0;
-                    Logger.debug(`Quality filter: disabled (threshold = 0)`);
-                } else {
-                    // User-defined percentage - convert to actual threshold
-                    baseThreshold = settings.qualityFilterStrength * maxScore;
-                    const percentage = (
-                        settings.qualityFilterStrength * 100
-                    ).toFixed(0);
-                    Logger.debug(
-                        `Quality filter: ${percentage}% of max → ${baseThreshold.toFixed(2)} / ${maxScore.toFixed(1)} (properties only)`,
-                    );
-                }
-
-                // Use base threshold directly
-                const finalThreshold = baseThreshold;
-
-                // Apply comprehensive score quality filter
-                let qualityFilteredScored = scoredTasks.filter(
-                    (st) => st.score >= finalThreshold,
+                scoredTasks = TaskSearchService.scoreTasksComprehensive(
+                    filteredTasks,
+                    intent.keywords, // Expanded keywords
+                    parsedQuery.coreKeywords, // Core keywords
+                    queryType.hasKeywords, // Query has keywords
+                    !!intent.extractedDueDateFilter,
+                    !!intent.extractedPriority,
+                    !!intent.extractedStatus,
+                    sortOrder,
+                    settings.relevanceCoefficient,
+                    settings.dueDateCoefficient,
+                    settings.priorityCoefficient,
+                    settings.statusCoefficient,
+                    settings,
                 );
-
-                // Apply optional minimum relevance score filter (if enabled AND query has keywords)
-                // Note: Without keywords, all relevance scores = 0, so this filter would exclude everything
-                if (
-                    settings.minimumRelevanceScore > 0 &&
-                    queryType.hasKeywords
-                ) {
-                    const beforeRelevanceFilter = qualityFilteredScored.length;
-                    qualityFilteredScored = qualityFilteredScored.filter(
-                        (st) =>
-                            st.relevanceScore >= settings.minimumRelevanceScore,
-                    );
-                    Logger.debug(
-                        `Minimum relevance filter (${settings.minimumRelevanceScore.toFixed(2)}): ${beforeRelevanceFilter} → ${qualityFilteredScored.length} tasks`,
-                    );
-                }
-
-                qualityFilteredTasks = qualityFilteredScored.map(
-                    (st) => st.task,
-                );
-
+            } else {
+                // Simple Search: no semantic expansion (keywords = coreKeywords)
                 Logger.debug(
-                    `Quality filter applied: ${filteredTasks.length} → ${qualityFilteredTasks.length} tasks (threshold: ${finalThreshold.toFixed(2)})`,
+                    `Using comprehensive scoring without expansion (keywords: ${intent.keywords.length})`,
                 );
-
-                // Log sample task scores for transparency
-                if (qualityFilteredScored.length > 0) {
-                    const sample = qualityFilteredScored[0];
-                    Logger.debug(`Sample score breakdown:`);
-                    Logger.debug(
-                        `  Task: "${sample.task.text.substring(0, 60)}..."`,
-                    );
-                    Logger.debug(
-                        `  Relevance: ${sample.relevanceScore.toFixed(2)} (× ${settings.relevanceCoefficient} = ${(sample.relevanceScore * settings.relevanceCoefficient).toFixed(2)})`,
-                    );
-                    Logger.debug(
-                        `  Due Date: ${sample.dueDateScore.toFixed(2)} (× ${settings.dueDateCoefficient} = ${(sample.dueDateScore * settings.dueDateCoefficient).toFixed(2)})`,
-                    );
-                    Logger.debug(
-                        `  Priority: ${sample.priorityScore.toFixed(2)} (× ${settings.priorityCoefficient} = ${(sample.priorityScore * settings.priorityCoefficient).toFixed(2)})`,
-                    );
-                    Logger.debug(
-                        `  Status: ${sample.statusScore.toFixed(2)} (× ${settings.statusCoefficient} = ${(sample.statusScore * settings.statusCoefficient).toFixed(2)})`,
-                    );
-                    Logger.debug(
-                        `  Final: ${sample.score.toFixed(2)} (threshold: ${finalThreshold.toFixed(2)})`,
-                    );
-                }
-
-                // Safety: If threshold filtered out too many, keep a minimum
-                // This prevents overly strict filtering from returning no results
-                // Keep at least enough tasks to give AI good context
-                // ONLY apply this safety when using adaptive mode (qualityFilterStrength == 0)
-                // If user explicitly set filters, RESPECT their choice!
-                const userHasExplicitFilters =
-                    settings.qualityFilterStrength > 0 ||
-                    settings.minimumRelevanceScore > 0;
-
-                if (!userHasExplicitFilters) {
-                    const minTasksNeeded = Math.min(
-                        settings.maxTasksForAI,
-                        filteredTasks.length,
-                    );
-                    if (qualityFilteredTasks.length < minTasksNeeded) {
-                        Logger.debug(
-                            `Adaptive mode: quality filter too strict (${qualityFilteredTasks.length} tasks), keeping top ${minTasksNeeded} scored tasks`,
-                        );
-                        qualityFilteredScored = scoredTasks
-                            .sort((a, b) => b.score - a.score)
-                            .slice(0, minTasksNeeded);
-                        qualityFilteredTasks = qualityFilteredScored.map(
-                            (st) => st.task,
-                        );
-                    }
-                } else {
-                    Logger.debug(
-                        `User has explicit filters - respecting strict filtering (${qualityFilteredTasks.length} tasks)`,
-                    );
-
-                    // If quality filter resulted in zero tasks, add detailed diagnostic
-                    // This works for ALL modes (Simple, Smart, Task Chat)
-                    if (
-                        qualityFilteredTasks.length === 0 &&
-                        filteredTasks.length > 0
-                    ) {
-                        // Get top 3 task scores for analysis
-                        const topScores = scoredTasks
-                            .sort((a, b) => b.score - a.score)
-                            .slice(0, 3);
-
-                        const diagnosticMessage = generateZeroResultsDiagnostic(
-                            settings,
-                            queryType,
-                            maxScore,
-                            finalThreshold,
-                            filteredTasks.length,
-                            topScores,
-                        );
-
-                        // Create error object if parser failed (for Smart Search and Task Chat)
-                        // CRITICAL: Must create BEFORE early return
-                        let errorForEarlyReturn = undefined;
-                        if (
-                            (chatMode === "smart" || chatMode === "chat") &&
-                            !usingAIParsing &&
-                            parsedQuery &&
-                            parsedQuery._parserError
-                        ) {
-                            if ((parsedQuery as any)._structuredError) {
-                                errorForEarlyReturn = (parsedQuery as any)
-                                    ._structuredError;
-                                errorForEarlyReturn.fallbackUsed = `AI parser failed, used Simple Search fallback (0 tasks found after filtering).`;
-                            } else {
-                                const {
-                                    provider: parsingProvider,
-                                    model: parsingModel,
-                                } = getProviderForPurpose(settings, "parsing");
-                                const providerName =
-                                    parsingProvider === "openai"
-                                        ? "OpenAI"
-                                        : parsingProvider === "anthropic"
-                                          ? "Anthropic"
-                                          : parsingProvider === "openrouter"
-                                            ? "OpenRouter"
-                                            : "Ollama";
-
-                                errorForEarlyReturn =
-                                    ErrorHandler.createParserError(
-                                        new Error(parsedQuery._parserError),
-                                        `${providerName}: ${parsingModel}`,
-                                        "simple",
-                                    );
-                                errorForEarlyReturn.fallbackUsed = `AI parser failed, used Simple Search fallback (0 tasks found after filtering).`;
-                            }
-                        }
-
-                        // Create tokenUsage for error cases (for metadata display)
-                        let tokenUsageForError;
-                        if (
-                            (chatMode === "smart" || chatMode === "chat") &&
-                            errorForEarlyReturn
-                        ) {
-                            if (parsedQuery && parsedQuery._parserTokenUsage) {
-                                // Use actual parser token usage (error occurred after some processing)
-                                const parserUsage =
-                                    parsedQuery._parserTokenUsage;
-                                const parsingProvider = parserUsage.provider as
-                                    | "openai"
-                                    | "anthropic"
-                                    | "openrouter"
-                                    | "ollama";
-                                tokenUsageForError = {
-                                    promptTokens: parserUsage.promptTokens,
-                                    completionTokens:
-                                        parserUsage.completionTokens,
-                                    totalTokens: parserUsage.totalTokens,
-                                    estimatedCost: parserUsage.estimatedCost,
-                                    model: parserUsage.model,
-                                    provider: parsingProvider,
-                                    isEstimated: parserUsage.isEstimated,
-                                    directSearchReason: "0 results",
-                                    parsingModel: parserUsage.model,
-                                    parsingProvider: parsingProvider,
-                                    parsingTokens: parserUsage.totalTokens,
-                                    parsingCost: parserUsage.estimatedCost,
-                                };
-                            } else if (
-                                errorForEarlyReturn.details &&
-                                (errorForEarlyReturn.details.includes("400") ||
-                                    errorForEarlyReturn.details.includes(
-                                        "401",
-                                    ) ||
-                                    errorForEarlyReturn.details.includes(
-                                        "403",
-                                    ) ||
-                                    errorForEarlyReturn.details.includes(
-                                        "404",
-                                    ) ||
-                                    errorForEarlyReturn.message.includes(
-                                        "Bad Request",
-                                    ))
-                            ) {
-                                // Pre-request errors (400/401/403/404) - no tokens consumed
-                                const {
-                                    provider: parsingProvider,
-                                    model: parsingModel,
-                                } = getProviderForPurpose(settings, "parsing");
-                                tokenUsageForError = {
-                                    promptTokens: 0,
-                                    completionTokens: 0,
-                                    totalTokens: 0,
-                                    estimatedCost: 0,
-                                    model: parsingModel,
-                                    provider: parsingProvider,
-                                    isEstimated: false,
-                                    directSearchReason:
-                                        "0 results (error before request)",
-                                    parsingModel: parsingModel,
-                                    parsingProvider: parsingProvider,
-                                };
-                            } else {
-                                // Other errors (network, timeout, etc.) - estimate tokens
-                                const {
-                                    provider: parsingProvider,
-                                    model: parsingModel,
-                                } = getProviderForPurpose(settings, "parsing");
-                                tokenUsageForError = {
-                                    promptTokens: 200,
-                                    completionTokens: 50,
-                                    totalTokens: 250,
-                                    estimatedCost: 0.0001,
-                                    model: parsingModel,
-                                    provider: parsingProvider,
-                                    isEstimated: true,
-                                    directSearchReason: "0 results (estimated)",
-                                    parsingModel: parsingModel,
-                                    parsingProvider: parsingProvider,
-                                };
-                            }
-                        }
-
-                        // Return diagnostic message for ALL modes
-                        // Simple/Smart Search: Return as direct results with diagnostic
-                        // Task Chat: Return as response with diagnostic
-                        if (chatMode === "chat") {
-                            return {
-                                response:
-                                    diagnosticMessage +
-                                    `No tasks match your current filter settings.`,
-                                recommendedTasks: [],
-                                tokenUsage: tokenUsageForError,
-                                parsedQuery: usingAIParsing
-                                    ? parsedQuery
-                                    : undefined,
-                                error: errorForEarlyReturn, // Include error for parser failures
-                            };
-                        } else {
-                            // For Simple/Smart Search modes
-                            return {
-                                response:
-                                    diagnosticMessage +
-                                    `No tasks match your current filter settings.`,
-                                directResults: [],
-                                tokenUsage: tokenUsageForError,
-                                parsedQuery: usingAIParsing
-                                    ? parsedQuery
-                                    : undefined,
-                                error: errorForEarlyReturn, // Include error for parser failures
-                            };
-                        }
-                    }
-                }
+                scoredTasks = TaskSearchService.scoreTasksComprehensive(
+                    filteredTasks,
+                    intent.keywords, // All keywords are "core" (no expansion)
+                    intent.keywords, // Same as keywords (no distinction)
+                    queryType.hasKeywords, // Query has keywords
+                    !!intent.extractedDueDateFilter,
+                    !!intent.extractedPriority,
+                    !!intent.extractedStatus,
+                    sortOrder,
+                    settings.relevanceCoefficient,
+                    settings.dueDateCoefficient,
+                    settings.priorityCoefficient,
+                    settings.statusCoefficient,
+                    settings,
+                );
             }
 
-            // PHASE 2: Sorting for Display (multi-criteria sorting)
-            // Build comprehensive scores map if keywords present (needed for sorting)
-            // OPTIMIZATION: Reuse scores from Phase 1 instead of re-scoring
-            let comprehensiveScores: Map<string, number> | undefined;
-            if (intent.keywords && intent.keywords.length > 0) {
-                // Reuse scores from quality filtering phase (no redundant scoring!)
-                const scoredMap = new Map<string, number>();
-
-                // Re-score only qualityFilteredTasks (not all filtered tasks)
-                // This is necessary because quality filter may have removed some tasks
-                let scoredTasksForSort;
-                if (usingAIParsing && parsedQuery?.coreKeywords) {
-                    scoredTasksForSort =
-                        TaskSearchService.scoreTasksComprehensive(
-                            qualityFilteredTasks,
-                            intent.keywords,
-                            parsedQuery.coreKeywords,
-                            queryType.hasKeywords,
-                            !!intent.extractedDueDateFilter,
-                            !!intent.extractedPriority,
-                            !!intent.extractedStatus,
-                            sortOrder,
-                            settings.relevanceCoefficient,
-                            settings.dueDateCoefficient,
-                            settings.priorityCoefficient,
-                            settings.statusCoefficient,
-                            settings,
-                        );
-                } else {
-                    scoredTasksForSort =
-                        TaskSearchService.scoreTasksComprehensive(
-                            qualityFilteredTasks,
-                            intent.keywords,
-                            intent.keywords,
-                            queryType.hasKeywords,
-                            !!intent.extractedDueDateFilter,
-                            !!intent.extractedPriority,
-                            !!intent.extractedStatus,
-                            sortOrder,
-                            settings.relevanceCoefficient,
-                            settings.dueDateCoefficient,
-                            settings.priorityCoefficient,
-                            settings.statusCoefficient,
-                            settings,
-                        );
-                }
-
-                comprehensiveScores = new Map(
-                    scoredTasksForSort.map((st) => [st.task.id, st.score]),
+            // Log sample task scores for transparency
+            if (scoredTasks.length > 0) {
+                const sample = scoredTasks[0];
+                Logger.debug(`Sample score breakdown (top task):`);
+                Logger.debug(
+                    `  Task: "${sample.task.text.substring(0, 60)}..."`,
                 );
+                Logger.debug(
+                    `  Relevance: ${sample.relevanceScore.toFixed(2)} (× ${settings.relevanceCoefficient} = ${(sample.relevanceScore * settings.relevanceCoefficient).toFixed(2)})`,
+                );
+                Logger.debug(
+                    `  Due Date: ${sample.dueDateScore.toFixed(2)} (× ${settings.dueDateCoefficient} = ${(sample.dueDateScore * settings.dueDateCoefficient).toFixed(2)})`,
+                );
+                Logger.debug(
+                    `  Priority: ${sample.priorityScore.toFixed(2)} (× ${settings.priorityCoefficient} = ${(sample.priorityScore * settings.priorityCoefficient).toFixed(2)})`,
+                );
+                Logger.debug(
+                    `  Status: ${sample.statusScore.toFixed(2)} (× ${settings.statusCoefficient} = ${(sample.statusScore * settings.statusCoefficient).toFixed(2)})`,
+                );
+                Logger.debug(`  Final: ${sample.score.toFixed(2)}`);
             }
+
+            // Extract tasks from scored results (no filtering - just unwrap)
+            const qualityFilteredTasks = scoredTasks.map((st) => st.task);
+
+            Logger.debug(
+                `Scored ${qualityFilteredTasks.length} tasks for sorting (no filtering applied at JS level)`,
+            );
+
+            // PHASE 2: Multi-Criteria Sorting for Display
+            // Reuse scores from Phase 1 (no redundant scoring!)
+            const comprehensiveScores: Map<string, number> = new Map(
+                scoredTasks.map((st) => [st.task.id, st.score]),
+            );
 
             Logger.debug(`Sort order: [${sortOrder.join(", ")}]`);
 

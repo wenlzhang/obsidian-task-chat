@@ -260,8 +260,11 @@ export interface PluginSettings {
     maxDirectResults: number; // Max tasks to show directly without AI (no token cost)
     maxTasksForAI: number; // Max tasks to send to AI for analysis (more context = better response)
     maxRecommendations: number; // Max tasks AI should recommend (manageable list for user)
-    qualityFilterStrength: number; // Quality filter strength (0.0-1.0, shown as 0-100%). 0 = adaptive (auto-adjusts), higher = stricter filtering.
-    minimumRelevanceScore: number; // Minimum relevance score required (0.0-2.0, shown as 0-200%). 0 = disabled (default). Max = relevanceCoreWeight + 1.0.
+
+    // Quality and Relevance Filtering (applied at API level for efficiency)
+    // These filters remove tasks BEFORE creating Task objects, improving performance
+    qualityFilterStrength: number; // Quality filter threshold (0.0-1.0, shown as 0-100%). 0 = disabled, higher = stricter. Filters based on due date + priority + status scores (NOT relevance).
+    minimumRelevanceScore: number; // Minimum relevance score for keyword matches (0.0-2.0, shown as 0-200%). 0 = disabled (default). Only applied when query contains keywords. Max = relevanceCoreWeight + 1.0.
 
     // Task Filtering Settings - Exclusions
     exclusions: {
@@ -515,8 +518,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxDirectResults: 20, // Direct results have no token cost, can be higher
     maxTasksForAI: 100, // Increased from 30 to 100: more context = better recommendations, especially with semantic expansion (small token cost increase)
     maxRecommendations: 20, // Keep final list manageable for user
-    qualityFilterStrength: 0.0, // Quality filter (0.0-1.0, shown as 0-100%). 0 = adaptive (recommended), higher = stricter.
-    minimumRelevanceScore: 0.0, // Minimum relevance score (0.0-1.0). 0 = disabled (default), ensures keyword match quality.
+
+    // Quality and Relevance Filtering (API-level filters)
+    qualityFilterStrength: 0.0, // Quality filter threshold (0.0-1.0, shown as 0-100%). 0 = disabled (default), higher = stricter. Based on task properties only.
+    minimumRelevanceScore: 0.0, // Minimum relevance score (0.0-2.0, shown as 0-200%). 0 = disabled (default). Only applied when keywords present.
 
     // Task Filtering Settings - Exclusions
     exclusions: {
