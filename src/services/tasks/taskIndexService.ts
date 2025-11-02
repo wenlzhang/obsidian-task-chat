@@ -314,6 +314,70 @@ export class TaskIndexService {
     }
 
     /**
+     * Calculate adaptive fetch size for smart limiting
+     *
+     * OPTIMIZATION: Determines how many tasks to fetch from API to ensure
+     * we have enough results AFTER quality filtering and relevance threshold.
+     *
+     * The challenge: Quality filters reject many tasks, so if we fetch exactly
+     * maxDirectResults (e.g., 20), we might end up with only 5-10 after filtering.
+     *
+     * Solution: Fetch MORE than needed based on filter strictness:
+     * - Strict filters (high quality threshold, high min relevance) = fetch 3-5x more
+     * - Moderate filters = fetch 2x more
+     * - Lenient filters = fetch 1.5x more
+     *
+     * @param settings - Plugin settings containing quality filter config
+     * @param displayLimit - How many tasks to display (maxDirectResults)
+     * @param aiLimit - How many tasks to send to AI (maxTasksForAI)
+     * @param hasKeywords - Whether the query has keywords (affects relevance filtering)
+     * @returns Recommended fetch size (bounded between 1.5x and 5x the target)
+     */
+    static calculateAdaptiveFetchSize(
+        settings: PluginSettings,
+        displayLimit: number,
+        aiLimit: number,
+        hasKeywords: boolean,
+    ): number {
+        // Target: the larger of display limit or AI limit
+        const targetCount = Math.max(displayLimit, aiLimit);
+
+        // Base multiplier (minimum 1.5x to account for some filtering)
+        let multiplier = 1.5;
+
+        // Quality filter impact (0.0 = no impact, 1.0 = +1.0x multiplier)
+        // Higher quality threshold = more tasks rejected = need to fetch more
+        const qualityStrength = settings.qualityFilterStrength || 0;
+        if (qualityStrength > 0) {
+            multiplier += qualityStrength * 1.0;
+        }
+
+        // Minimum relevance score impact (only if query has keywords)
+        // Scale: 0-10, where 10 = maximum strictness
+        if (hasKeywords) {
+            const minRelevance = settings.minimumRelevanceScore || 0;
+            if (minRelevance > 0) {
+                const relevanceImpact = minRelevance / 10.0; // 0.0 - 1.0
+                multiplier += relevanceImpact * 0.5; // Up to +0.5x
+            }
+        }
+
+        // Safety bounds: never less than 1.5x, never more than 5x
+        multiplier = Math.max(1.5, Math.min(5.0, multiplier));
+
+        // Calculate fetch size
+        const fetchSize = Math.ceil(targetCount * multiplier);
+
+        Logger.debug(
+            `[Adaptive Fetch] Target: ${targetCount}, Quality: ${(qualityStrength * 100).toFixed(0)}%, ` +
+                `MinRelevance: ${settings.minimumRelevanceScore?.toFixed(1) || 0}, ` +
+                `Multiplier: ${multiplier.toFixed(2)}x → Fetch: ${fetchSize} tasks`,
+        );
+
+        return fetchSize;
+    }
+
+    /**
      * Wait for task indexing API to be ready
      * Checks both Datacore and Dataview with appropriate timeout
      *
