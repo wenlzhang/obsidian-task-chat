@@ -512,7 +512,7 @@ export class DatacoreService {
             return [];
         }
 
-        const tasks: Task[] = [];
+        let tasks: Task[] = [];
 
         try {
             // Build query for folder/tag filtering (basic query level)
@@ -732,27 +732,28 @@ export class DatacoreService {
             // No need for complex "comprehensive scoring" function.
             //
             // BENEFITS:
-            // 1. Avoid creating unnecessary Task objects (30,000 → user's limit)
-            // 2. Apply coefficients directly to cached scores (no redundant calculations)
+            // 1. Always sort by finalScore (ensures consistent ordering)
+            // 2. Limit early when needed to avoid unnecessary Task creation
             // 3. Use maxResults from user settings (no arbitrary buffer multiplier)
-            // 4. Extract properties lazily ONLY after limiting
+            // 4. Respect user's scoring coefficients
             //
             // APPLIES TO:
-            // - Queries WITH keywords: After relevance filter (282 tasks → user limit)
-            // - Queries WITHOUT keywords: After property filter (30,000 tasks → user limit)
-            //
-            // Threshold: Apply if results exceed user's limit
+            // - ALL queries: Always score and sort for consistent results
+            // - Limit only when results.length > maxResults
             // ========================================
-            const shouldApplyEarlyLimiting =
+            const shouldScoreAndSort = results.length > 0; // Always score/sort if we have results
+            const shouldLimit =
                 maxResults !== undefined && results.length > maxResults;
 
-            if (shouldApplyEarlyLimiting) {
+            if (shouldScoreAndSort) {
                 const earlyLimitTimer = new PerformanceTimer(
-                    "API-level Score + Sort + Limit",
+                    "API-level Score + Sort" + (shouldLimit ? " + Limit" : ""),
                 );
 
                 Logger.debug(
-                    `[Datacore] Applying API-level limiting: ${results.length} → ${maxResults} tasks`,
+                    shouldLimit
+                        ? `[Datacore] Applying API-level score + sort + limit: ${results.length} → ${maxResults} tasks`
+                        : `[Datacore] Applying API-level score + sort: ${results.length} tasks`,
                 );
 
                 // STEP 1: Extract properties if needed (for scoring)
@@ -909,19 +910,29 @@ export class DatacoreService {
                     ) => b.finalScore - a.finalScore,
                 );
 
-                // STEP 5: Limit to user's maxResults (NO buffer multiplier!)
-                const limitedTasks = scoredTasks.slice(0, maxResults);
-                results = limitedTasks.map(
-                    (item: { dcTask: any; finalScore: number }) => item.dcTask,
-                );
-
-                earlyLimitTimer.lap(
-                    `Sorted and limited to ${results.length} tasks`,
-                );
-
-                Logger.debug(
-                    `[Datacore] API-level limiting complete: ${results.length} top-scored tasks (scores cached for reuse)`,
-                );
+                // STEP 5: Limit to user's maxResults if needed (NO buffer multiplier!)
+                if (shouldLimit) {
+                    const limitedTasks = scoredTasks.slice(0, maxResults);
+                    results = limitedTasks.map(
+                        (item: { dcTask: any; finalScore: number }) =>
+                            item.dcTask,
+                    );
+                    earlyLimitTimer.lap(
+                        `Sorted and limited to ${results.length} tasks`,
+                    );
+                    Logger.debug(
+                        `[Datacore] API-level score + sort + limit complete: ${results.length} top-scored tasks (scores cached for reuse)`,
+                    );
+                } else {
+                    results = scoredTasks.map(
+                        (item: { dcTask: any; finalScore: number }) =>
+                            item.dcTask,
+                    );
+                    earlyLimitTimer.lap(`Sorted ${results.length} tasks`);
+                    Logger.debug(
+                        `[Datacore] API-level score + sort complete: ${results.length} tasks (scores cached for reuse)`,
+                    );
+                }
             }
 
             // NOTE: Page tag fetching REMOVED - it's not needed!
@@ -1032,6 +1043,18 @@ export class DatacoreService {
             );
 
             processingTimer.lap(`Processed ${tasks.length} Task objects`);
+
+            // ========================================
+            // FINAL LIMITING: Always respect maxResults
+            // This ensures we never return more tasks than requested,
+            // even if early limiting didn't apply or validation added more tasks
+            // ========================================
+            if (maxResults !== undefined && tasks.length > maxResults) {
+                Logger.debug(
+                    `[Datacore] Final limiting: ${tasks.length} → ${maxResults} tasks (respecting user setting)`,
+                );
+                tasks = tasks.slice(0, maxResults);
+            }
         } catch (error) {
             Logger.error("Error querying Datacore:", error);
         }

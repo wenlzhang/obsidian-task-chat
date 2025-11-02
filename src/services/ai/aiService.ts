@@ -650,6 +650,17 @@ export class AIService {
                 // RETRIEVE TASKS WITH API-LEVEL FILTERING
                 // Pass quality threshold, keywords, and relevance score for efficient API-level filtering
                 // ========================================
+
+                // Determine maxResults based on chat mode
+                const maxResults =
+                    chatMode === "chat"
+                        ? settings.maxTasksForAI // Task Chat: limit for AI analysis
+                        : settings.maxDirectResults; // Simple/Smart Search: limit for direct display
+
+                Logger.debug(
+                    `[AIService] Using maxResults=${maxResults} for mode: ${chatMode}`,
+                );
+
                 tasksAfterPropertyFilter =
                     await TaskIndexService.parseTasksFromIndex(
                         app,
@@ -661,7 +672,7 @@ export class AIService {
                         expandedKeywords, // Keywords for relevance filtering
                         coreKeywords, // Core keywords for relevance boost
                         minimumRelevanceScore, // Minimum relevance threshold
-                        settings.maxTasksForAI, // Early limiting at API level (Smart Search/Task Chat context)
+                        maxResults, // Respects user settings based on mode
                     );
 
                 const reloadEndTime = performance.now();
