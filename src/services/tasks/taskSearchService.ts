@@ -1476,4 +1476,210 @@ export class TaskSearchService {
 
         return limited;
     }
+
+    /**
+     * Create quality filter predicate for API-level filtering
+     *
+     * OPTIMIZATION: Calculate quality scores at the DataView/DataCore API level
+     * using .filter() or .where() predicates. This prevents low-quality tasks from
+     * ever becoming Task objects, saving memory and processing time.
+     *
+     * Quality score = (dueDateScore × dueDateCoeff) + (priorityScore × priorityCoeff) + (statusScore × statusCoeff)
+     *
+     * @param settings - Plugin settings
+     * @param qualityThreshold - Minimum quality score to pass
+     * @param source - 'datacore' or 'dataview' (affects field access)
+     * @returns Filter predicate function
+     */
+    static createQualityFilterPredicate(
+        settings: PluginSettings,
+        qualityThreshold: number,
+        source: "datacore" | "dataview",
+    ): (task: any) => boolean {
+        return (task: any) => {
+            // Skip if no threshold set
+            if (qualityThreshold <= 0) return true;
+
+            // Get task text for inline field extraction
+            const taskText =
+                source === "datacore"
+                    ? task.$text || task.text || ""
+                    : task.text || task.visual || "";
+
+            // Calculate due date score
+            let dueDateScore = 0;
+            const dueValue = TaskPropertyService.getUnifiedFieldValue(
+                task,
+                "due",
+                taskText,
+                settings,
+                source,
+            );
+            if (dueValue) {
+                dueDateScore = this.calculateTaskDueDateScore(
+                    dueValue,
+                    settings,
+                );
+            } else {
+                dueDateScore = settings.dueDateNoneScore || 0;
+            }
+
+            // Calculate priority score
+            let priorityScore = 0;
+            const priorityValue = TaskPropertyService.getUnifiedFieldValue(
+                task,
+                "priority",
+                taskText,
+                settings,
+                source,
+            );
+            if (priorityValue !== undefined && priorityValue !== null) {
+                const mapped = TaskPropertyService.mapPriority(
+                    priorityValue,
+                    settings,
+                );
+                if (mapped !== undefined) {
+                    priorityScore = this.calculateTaskPriorityScore(
+                        mapped,
+                        settings,
+                    );
+                }
+            } else {
+                priorityScore = settings.priorityNoneScore || 0;
+            }
+
+            // Calculate status score
+            let statusScore = 0;
+            const statusValue = TaskPropertyService.getUnifiedFieldValue(
+                task,
+                "status",
+                taskText,
+                settings,
+                source,
+            );
+            if (statusValue !== undefined && statusValue !== null) {
+                const mapped = TaskPropertyService.mapStatus(
+                    statusValue,
+                    settings,
+                );
+                if (mapped) {
+                    const statusConfig = settings.taskStatusMapping[mapped];
+                    statusScore = statusConfig?.score || 0;
+                }
+            }
+
+            // Calculate total quality score with coefficients
+            const totalQualityScore =
+                dueDateScore * settings.dueDateCoefficient +
+                priorityScore * settings.priorityCoefficient +
+                statusScore * settings.statusCoefficient;
+
+            return totalQualityScore >= qualityThreshold;
+        };
+    }
+
+    /**
+     * Create relevance filter predicate for API-level filtering
+     *
+     * OPTIMIZATION: Calculate relevance scores at the DataView/DataCore API level
+     * to filter out low-relevance tasks before creating Task objects.
+     *
+     * Relevance score = (coreKeywordMatches × coreWeight) + expandedKeywordMatches
+     *
+     * @param keywords - Expanded keywords (includes semantic matches)
+     * @param coreKeywords - Core keywords from user query
+     * @param minimumRelevanceScore - Minimum relevance score to pass
+     * @param settings - Plugin settings
+     * @param source - 'datacore' or 'dataview' (affects field access)
+     * @returns Filter predicate function
+     */
+    static createRelevanceFilterPredicate(
+        keywords: string[],
+        coreKeywords: string[],
+        minimumRelevanceScore: number,
+        settings: PluginSettings,
+        source: "datacore" | "dataview",
+    ): (task: any) => boolean {
+        return (task: any) => {
+            // Skip if no threshold set or no keywords
+            if (minimumRelevanceScore <= 0 || keywords.length === 0)
+                return true;
+
+            // Get task text
+            const taskText =
+                source === "datacore"
+                    ? (task.$text || task.text || "").toLowerCase()
+                    : (task.text || task.visual || "").toLowerCase();
+
+            // Count core keyword matches
+            let coreMatches = 0;
+            for (const keyword of coreKeywords) {
+                if (taskText.includes(keyword.toLowerCase())) {
+                    coreMatches++;
+                }
+            }
+
+            // Count expanded keyword matches
+            let expandedMatches = 0;
+            for (const keyword of keywords) {
+                if (taskText.includes(keyword.toLowerCase())) {
+                    expandedMatches++;
+                }
+            }
+
+            // Calculate relevance score (same logic as scoreTasksComprehensive)
+            const relevanceScore =
+                coreMatches * settings.relevanceCoreWeight + expandedMatches;
+
+            return relevanceScore >= minimumRelevanceScore;
+        };
+    }
+
+    /**
+     * Calculate due date score for a single task
+     * Extracted from scoreTasksComprehensive for reuse in quality filter
+     */
+    private static calculateTaskDueDateScore(
+        dueValue: any,
+        settings: PluginSettings,
+    ): number {
+        const moment = (window as any).moment;
+        const dueDate = moment(dueValue);
+        if (!dueDate.isValid()) return settings.dueDateNoneScore || 0;
+
+        const now = moment();
+        const daysDiff = dueDate.diff(now, "days");
+
+        if (daysDiff < 0) {
+            return settings.dueDateOverdueScore || 10; // Overdue
+        } else if (daysDiff <= 7) {
+            return settings.dueDateWithin7DaysScore || 8; // Within 7 days
+        } else if (daysDiff <= 30) {
+            return settings.dueDateWithin1MonthScore || 6; // Within 1 month
+        } else {
+            return settings.dueDateLaterScore || 2; // Later than 1 month
+        }
+    }
+
+    /**
+     * Calculate priority score for a single task
+     * Extracted from scoreTasksComprehensive for reuse in quality filter
+     */
+    private static calculateTaskPriorityScore(
+        priority: number,
+        settings: PluginSettings,
+    ): number {
+        switch (priority) {
+            case 1:
+                return settings.priorityP1Score || 10;
+            case 2:
+                return settings.priorityP2Score || 7;
+            case 3:
+                return settings.priorityP3Score || 4;
+            case 4:
+                return settings.priorityP4Score || 2;
+            default:
+                return settings.priorityNoneScore || 0;
+        }
+    }
 }

@@ -318,13 +318,6 @@ export class DatacoreService {
             taskTags?: string[];
             notes?: string[];
         },
-        propertyFilters?: {
-            priority?: number | number[] | "all" | "any" | "none" | null;
-            dueDate?: string | string[] | null;
-            dueDateRange?: { start?: string; end?: string } | null;
-            status?: string | string[] | null;
-            statusValues?: string[] | null;
-        },
     ): string {
         const queryParts: string[] = ["@task"];
 
@@ -431,88 +424,8 @@ export class DatacoreService {
             queryParts.push(`(${inclusionQuery})`);
         }
 
-        // ========================================
-        // PROPERTY FILTERS (API-level optimization)
-        // Push priority, due date, and status filtering to Datacore API
-        // This significantly reduces the number of tasks we need to process in JavaScript
-        // ========================================
-
-        if (propertyFilters) {
-            // Priority filter
-            if (propertyFilters.priority !== undefined && propertyFilters.priority !== null) {
-                const priorityFieldNames = TaskPropertyService.getAllPriorityFieldNames(settings);
-
-                if (propertyFilters.priority === "all" || propertyFilters.priority === "any") {
-                    // Tasks with ANY priority (P1-P4)
-                    // Query: (priority = 1 or priority = 2 or priority = 3 or priority = 4)
-                    const priorityConditions = [1, 2, 3, 4].flatMap(p =>
-                        priorityFieldNames.map(field => `${field} = ${p}`)
-                    );
-                    if (priorityConditions.length > 0) {
-                        queryParts.push(`(${priorityConditions.join(" or ")})`);
-                    }
-                } else if (propertyFilters.priority === "none") {
-                    // Tasks with NO priority
-                    // Query: !priority and !p (all priority fields must be absent)
-                    const noPriorityConditions = priorityFieldNames.map(field => `!${field}`);
-                    if (noPriorityConditions.length > 0) {
-                        queryParts.push(...noPriorityConditions);
-                    }
-                } else {
-                    // Specific priority values
-                    const targetPriorities = Array.isArray(propertyFilters.priority)
-                        ? propertyFilters.priority
-                        : [propertyFilters.priority];
-
-                    // Query: (priority = 1 or priority = 2 or p = 1 or p = 2)
-                    const priorityConditions = targetPriorities.flatMap(p =>
-                        priorityFieldNames.map(field => `${field} = ${p}`)
-                    );
-                    if (priorityConditions.length > 0) {
-                        queryParts.push(`(${priorityConditions.join(" or ")})`);
-                    }
-                }
-            }
-
-            // Due date filter
-            if (propertyFilters.dueDateRange) {
-                const dueDateFieldNames = TaskPropertyService.getAllDueDateFieldNames(settings);
-                const { start, end } = propertyFilters.dueDateRange;
-
-                if (start || end) {
-                    const dateConditions: string[] = [];
-
-                    for (const field of dueDateFieldNames) {
-                        if (start && end) {
-                            // Range: due >= start AND due <= end
-                            dateConditions.push(`(${field} >= date("${start}") and ${field} <= date("${end}"))`);
-                        } else if (start) {
-                            // After: due >= start
-                            dateConditions.push(`${field} >= date("${start}")`);
-                        } else if (end) {
-                            // Before: due <= end
-                            dateConditions.push(`${field} <= date("${end}")`);
-                        }
-                    }
-
-                    if (dateConditions.length > 0) {
-                        queryParts.push(`(${dateConditions.join(" or ")})`);
-                    }
-                }
-            }
-
-            // Status filter
-            if (propertyFilters.statusValues && propertyFilters.statusValues.length > 0) {
-                // Query: (status = "x" or status = " " or status = "/")
-                const statusConditions = propertyFilters.statusValues.map(
-                    s => `status = "${s}"`
-                );
-                queryParts.push(`(${statusConditions.join(" or ")})`);
-            }
-        }
-
         const query = queryParts.join(" and ");
-        Logger.debug(`Enhanced Datacore query: ${query}`);
+        Logger.debug(`Datacore query (folders/tags only): ${query}`);
         return query;
     }
 
@@ -575,22 +488,40 @@ export class DatacoreService {
         const tasks: Task[] = [];
 
         try {
-            // Build query with API-level filtering (folders, tags, priority, due date, status)
-            // OPTIMIZATION: Push property filters to Datacore API level instead of JavaScript
-            const query = this.buildDatacoreQuery(settings, inclusionFilters, propertyFilters);
+            // Build query for folder/tag filtering (basic query level)
+            const query = this.buildDatacoreQuery(settings, inclusionFilters);
 
-            // Build post-query filter for edge cases not handled by API
-            // NOTE: Most filtering now happens at API level, so this is mostly a safety net
-            // We still keep it for complex date logic (e.g., "overdue", "next week") if needed
+            // Build property filter function (uses existing unified filter logic)
+            // This will be applied at API level using .filter() for better performance
             const taskFilter = propertyFilters
                 ? this.buildTaskFilter(propertyFilters, settings)
                 : null;
 
             // Execute query to get all tasks (including subtasks)
-            const results = await datacoreApi.query(query);
+            let results = await datacoreApi.query(query);
 
             if (!results || results.length === 0) {
                 return tasks;
+            }
+
+            // ========================================
+            // API-LEVEL PROPERTY FILTERING
+            // Apply property filters (priority, due date, status) at API level
+            // This prevents filtered-out tasks from ever becoming Task objects
+            // ========================================
+            if (taskFilter) {
+                const beforeFilter = results.length;
+                results = results.filter(taskFilter);
+                Logger.debug(
+                    `[Datacore] Property filter: ${beforeFilter} → ${results.length} tasks`,
+                );
+
+                if (results.length === 0) {
+                    Logger.debug(
+                        "[Datacore] No tasks remaining after property filters",
+                    );
+                    return tasks;
+                }
             }
 
             // ========================================
@@ -713,8 +644,9 @@ export class DatacoreService {
             }
 
             // Process each task (including subtasks)
+            // NOTE: Property filters (priority, due date, status) were already applied at API level
+            // So allTasks only contains tasks that passed those filters
             let taskIndex = 0;
-            let propertyFilterRejects = 0;
 
             for (const dcTask of allTasks) {
                 // Use $file per API docs (not $path)
@@ -723,21 +655,6 @@ export class DatacoreService {
                 // NOTE: We do NOT filter out completed tasks here
                 // The scoring system handles prioritizing incomplete tasks over completed ones
                 // Users can explicitly filter by status if they want
-
-                // ========================================
-                // POST-QUERY FILTERING
-                // ========================================
-                // NOTE: All source-level filters (folders, notes, note tags, task tags)
-                // are now handled at query level with correct OR/AND logic.
-                // Only task properties (due, priority, status) need post-query filtering.
-
-                // Apply task property filters (due date, priority, status)
-                // These use AND logic - all specified properties must match
-                const shouldInclude = !taskFilter || taskFilter(dcTask);
-                if (!shouldInclude) {
-                    propertyFilterRejects++;
-                    continue;
-                }
 
                 // Process task
                 const task = this.processDatacoreTask(
@@ -806,21 +723,22 @@ export class DatacoreService {
                 : null;
 
             // Execute query to get all tasks
-            const results = await datacoreApi.query(query);
+            let results = await datacoreApi.query(query);
 
             if (!results || results.length === 0) {
                 return 0;
             }
 
-            let count = 0;
+            // API-LEVEL FILTERING: Apply property filters before counting
+            if (taskFilter) {
+                results = results.filter(taskFilter);
+            }
 
-            // Count valid tasks that pass filters
+            // Count valid tasks
+            let count = 0;
             for (const dcTask of results) {
                 // Skip invalid tasks
                 if (!this.isValidTask(dcTask)) continue;
-
-                // Apply property filters if specified
-                if (taskFilter && !taskFilter(dcTask)) continue;
 
                 // Check note-level inclusion filters if specified
                 if (
