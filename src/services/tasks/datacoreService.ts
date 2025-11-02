@@ -17,7 +17,7 @@ import { CHUNK_SIZES } from "../../utils/constants";
  * Service for integrating with Datacore plugin to fetch tasks
  * Datacore is the successor to Dataview with 2-10x better performance
  *
- * Architecture mirrors DataviewService for consistency
+ * Architecture uses consistent patterns across the codebase
  */
 export class DatacoreService {
     /**
@@ -449,7 +449,7 @@ export class DatacoreService {
 
     /**
      * Build task filter function (post-query filtering)
-     * Mirrors DataviewService.buildTaskFilter approach
+     * Applies property-based filters after the initial query
      */
     private static buildTaskFilter(
         propertyFilters: {
@@ -471,7 +471,7 @@ export class DatacoreService {
 
     /**
      * Parse all tasks from Datacore with optional filtering
-     * Main entry point - mirrors DataviewService.parseTasksFromDataview()
+     * Main entry point for fetching tasks from the Datacore API
      *
      * @param app - Obsidian app instance
      * @param settings - Plugin settings

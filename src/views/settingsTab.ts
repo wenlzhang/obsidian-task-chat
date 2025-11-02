@@ -735,7 +735,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Datacore & Dataview task properties")
+            .setName("Datacore task properties")
             .setClass("setting-subsection-heading")
             .setDesc("Configure terms to denote task properties.");
 
@@ -813,7 +813,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Dataview Settings
         new Setting(containerEl)
-            .setName("Datacore & Dataview integration")
+            .setName("Datacore integration")
             .setHeading();
 
         const dataviewInfo = containerEl.createDiv({
@@ -902,7 +902,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Auto-refresh task count")
             .setDesc(
-                "Automatically update task count at regular intervals. Note: This only queries the existing DataCore/DataView index, it does not force re-indexing.",
+                "Automatically update task count at regular intervals. Note: This only queries the existing Datacore index, it does not force re-indexing.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -921,7 +921,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Auto-refresh interval")
-            .setDesc("Set interval (s) ≥ DataCore/DataView update frequency.")
+            .setDesc("Set interval (s) ≥ Datacore update frequency.")
             .addSlider((slider) =>
                 slider
                     .setLimits(10, 86400, 10)

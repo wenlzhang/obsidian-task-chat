@@ -101,7 +101,7 @@ export class VectorizedScoring {
         keywords: string[],
         coreKeywords: string[],
         settings: PluginSettings,
-        source: "datacore" | "dataview",
+        source: string,
     ): Float32Array {
         const scores = new Float32Array(texts.length);
 
@@ -138,7 +138,7 @@ export class VectorizedScoring {
         results: any[],
         qualityThreshold: number,
         settings: PluginSettings,
-        source: "datacore" | "dataview",
+        source: string,
         scoreCache: Map<string, any>,
         getTaskId: (task: any) => string,
     ): any[] {
@@ -223,7 +223,7 @@ export class VectorizedScoring {
         coreKeywords: string[],
         minimumRelevanceScore: number,
         settings: PluginSettings,
-        source: "datacore" | "dataview",
+        source: string,
         scoreCache: Map<string, any>,
         getTaskId: (task: any) => string,
     ): any[] {
@@ -265,7 +265,7 @@ export class VectorizedScoring {
     }
 
     /**
-     * @deprecated REMOVED - Comprehensive scoring now happens at API level in datacoreService/dataviewService.
+     * @deprecated REMOVED - Comprehensive scoring now happens at API level in datacoreService.
      * Tasks returned from API are already scored, sorted, and limited with finalScore cached.
      *
      * This method was redundant because:

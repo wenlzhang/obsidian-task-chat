@@ -130,9 +130,9 @@ Result:
 
 ### How Exclusions Are Applied
 
-1. **DataView API** queries all tasks from your vault
-2. **Task Chat** processes each task through `processDataviewTask()`
-3. **Exclusion check** (`isTaskExcluded()`) filters out:
+1. **Datacore API** queries all tasks from your vault
+2. **Task Chat** processes each task
+3. **Exclusion check** filters out:
    - Tasks in excluded notes
    - Tasks in excluded folders (and subfolders)
    - Tasks with excluded tags (task-level or note-level)
@@ -378,7 +378,7 @@ Exclusions:
 ## Related Documentation
 
 - **[Task Filtering](SETTINGS_GUIDE.md#4-task-filtering)** - Other filtering options
-- **[DataView Integration](SETTINGS_GUIDE.md#5-dataview-integration)** - How Task Chat uses DataView
+- **[Task Indexing](TASK_INDEXING.md)** - How Task Chat uses Datacore
 - **[Search Syntax](README.md#-search-examples)** - Query syntax examples
 
 ## FAQ

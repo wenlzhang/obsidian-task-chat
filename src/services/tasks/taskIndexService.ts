@@ -1,20 +1,15 @@
 import { App } from "obsidian";
 import { Task } from "../../models/task";
 import { PluginSettings } from "../../settings";
-import { DataviewService } from "./dataviewService";
 import { DatacoreService } from "./datacoreService";
 import { Logger } from "../../utils/logger";
 
 /**
  * Unified Task Indexing Service
  *
- * Orchestrates between Datacore and Dataview APIs based on:
- * 1. User preference (taskIndexAPI setting)
- * 2. API availability
- * 3. Fallback strategy
+ * Provides task indexing using Datacore API.
  *
- * Provides a unified interface for the rest of the plugin,
- * abstracting away the underlying indexing implementation.
+ * Provides a unified interface for the rest of the plugin.
  *
  * Features:
  * - Query result caching (2-second TTL for rapid repeated queries)
@@ -38,154 +33,49 @@ export class TaskIndexService {
     private static readonly CACHE_TTL = 2000;
 
     /**
-     * Detect which APIs are currently available
-     * @returns Object with availability status for each API
+     * Check if Datacore is available
+     * @returns true if Datacore is enabled
      */
-    static detectAvailableAPIs(app: App): {
-        datacore: boolean;
-        dataview: boolean;
-    } {
-        return {
-            datacore: DatacoreService.isDatacoreEnabled(),
-            dataview: DataviewService.isDataviewEnabled(app),
-        };
+    static isDatacoreAvailable(): boolean {
+        return DatacoreService.isDatacoreEnabled();
     }
 
     /**
-     * Determine which API to use based on settings and availability
-     * @param app - Obsidian app instance
-     * @param settings - Plugin settings
-     * @returns The API type to use, or null if none available
+     * Determine if API is ready
+     * @returns true if Datacore is available, false otherwise
      */
-    static determineActiveAPI(
-        app: App,
-        settings: PluginSettings,
-    ): "datacore" | "dataview" | null {
-        const available = this.detectAvailableAPIs(app);
-        const preference = settings.taskIndexAPI || "auto";
-
-        // Handle user preference
-        switch (preference) {
-            case "datacore":
-                if (available.datacore) {
-                    Logger.info("Using Datacore (user preference)");
-                    return "datacore";
-                } else {
-                    Logger.warn(
-                        "Datacore requested but not available, checking fallback...",
-                    );
-                    // Fall through to auto logic
-                    if (available.dataview) {
-                        Logger.warn("Falling back to Dataview");
-                        return "dataview";
-                    }
-                    return null;
-                }
-
-            case "dataview":
-                if (available.dataview) {
-                    Logger.info("Using Dataview (user preference)");
-                    return "dataview";
-                } else {
-                    Logger.warn(
-                        "Dataview requested but not available, checking fallback...",
-                    );
-                    // Fall through to auto logic
-                    if (available.datacore) {
-                        Logger.warn("Falling back to Datacore");
-                        return "datacore";
-                    }
-                    return null;
-                }
-
-            case "auto":
-            default:
-                // Auto mode: Prefer Datacore (faster), fallback to Dataview
-                if (available.datacore) {
-                    Logger.info(
-                        "Using Datacore (auto mode - better performance)",
-                    );
-                    return "datacore";
-                } else if (available.dataview) {
-                    Logger.info(
-                        "Using Dataview (auto mode - Datacore not available)",
-                    );
-                    return "dataview";
-                } else {
-                    Logger.error("No task indexing API available");
-                    return null;
-                }
-        }
+    static isAPIReady(): boolean {
+        return this.isDatacoreAvailable();
     }
 
     /**
-     * Get human-readable status message for current API
+     * Get human-readable status message for Datacore API
      */
-    static getAPIStatus(app: App, settings: PluginSettings): string {
-        const available = this.detectAvailableAPIs(app);
-        const active = this.determineActiveAPI(app, settings);
-        const preference = settings.taskIndexAPI || "auto";
-
-        if (!active) {
-            return "⚠️ No task indexing API available";
+    static getAPIStatus(): string {
+        if (!this.isDatacoreAvailable()) {
+            return "⚠️ Datacore not available - please install Datacore plugin";
         }
 
-        let status = "";
-
-        if (active === "datacore") {
-            status = "✓ Using Datacore";
-            if (preference === "auto") {
-                status += " (recommended for performance)";
-            }
-        } else if (active === "dataview") {
-            status = "✓ Using Dataview";
-            if (available.datacore && preference === "auto") {
-                status +=
-                    " (Datacore available - consider switching for better performance)";
-            }
-        }
-
-        return status;
+        return "✓ Using Datacore";
     }
 
     /**
      * Get detailed status information for settings UI
      */
-    static getDetailedStatus(
-        app: App,
-        settings: PluginSettings,
-    ): {
-        activeAPI: "datacore" | "dataview" | null;
+    static getDetailedStatus(): {
         datacoreAvailable: boolean;
-        dataviewAvailable: boolean;
-        preference: string;
         message: string;
-        canSwitchToDatacore: boolean;
     } {
-        const available = this.detectAvailableAPIs(app);
-        const active = this.determineActiveAPI(app, settings);
-        const preference = settings.taskIndexAPI || "auto";
+        const available = this.isDatacoreAvailable();
 
         return {
-            activeAPI: active,
-            datacoreAvailable: available.datacore,
-            dataviewAvailable: available.dataview,
-            preference: preference,
-            message: this.getAPIStatus(app, settings),
-            canSwitchToDatacore: available.datacore && active !== "datacore",
+            datacoreAvailable: available,
+            message: this.getAPIStatus(),
         };
     }
 
     /**
-     * Check if any task indexing API is available
-     */
-    static isAnyAPIAvailable(app: App): boolean {
-        const available = this.detectAvailableAPIs(app);
-        return available.datacore || available.dataview;
-    }
-
-    /**
-     * Parse all tasks from the active indexing API
+     * Parse all tasks from Datacore
      * This is the main entry point used throughout the plugin
      *
      * @param app - Obsidian app instance
@@ -223,16 +113,13 @@ export class TaskIndexService {
         minimumRelevanceScore?: number,
         maxResults?: number,
     ): Promise<Task[]> {
-        const activeAPI = this.determineActiveAPI(app, settings);
-
-        if (!activeAPI) {
-            Logger.error("Cannot fetch tasks: No task indexing API available");
+        if (!this.isDatacoreAvailable()) {
+            Logger.error("Cannot fetch tasks: Datacore not available");
             return [];
         }
 
         // Generate cache key from filters (exclude settings for faster key generation)
         const cacheKey = JSON.stringify({
-            api: activeAPI,
             dateFilter,
             propertyFilters,
             inclusionFilters,
@@ -255,38 +142,21 @@ export class TaskIndexService {
         this.cleanupExpiredCache();
 
         try {
-            let tasks: Task[];
-
-            if (activeAPI === "datacore") {
-                Logger.debug(
-                    "Fetching tasks from Datacore (with API-level quality/relevance filtering and early limiting)",
-                );
-                tasks = await DatacoreService.parseTasksFromDatacore(
-                    app,
-                    settings,
-                    dateFilter,
-                    propertyFilters,
-                    inclusionFilters,
-                    qualityThreshold,
-                    keywords,
-                    coreKeywords,
-                    minimumRelevanceScore,
-                    maxResults,
-                );
-            } else {
-                Logger.debug("Fetching tasks from Dataview");
-                tasks = await DataviewService.parseTasksFromDataview(
-                    app,
-                    settings,
-                    dateFilter,
-                    propertyFilters,
-                    inclusionFilters,
-                    qualityThreshold,
-                    keywords,
-                    coreKeywords,
-                    minimumRelevanceScore,
-                );
-            }
+            Logger.debug(
+                "Fetching tasks from Datacore (with API-level quality/relevance filtering and early limiting)",
+            );
+            const tasks = await DatacoreService.parseTasksFromDatacore(
+                app,
+                settings,
+                dateFilter,
+                propertyFilters,
+                inclusionFilters,
+                qualityThreshold,
+                keywords,
+                coreKeywords,
+                minimumRelevanceScore,
+                maxResults,
+            );
 
             // Cache the results
             this.queryCache.set(cacheKey, { tasks, timestamp: now });
@@ -296,7 +166,7 @@ export class TaskIndexService {
 
             return tasks;
         } catch (error) {
-            Logger.error(`Error fetching tasks from ${activeAPI}:`, error);
+            Logger.error("Error fetching tasks from Datacore:", error);
             return [];
         }
     }
@@ -335,108 +205,44 @@ export class TaskIndexService {
     }
 
     /**
-     * Wait for task indexing API to be ready
-     * Checks both Datacore and Dataview with appropriate timeout
+     * Wait for Datacore to be ready
+     * Checks Datacore with appropriate timeout
      *
-     * @param app - Obsidian app instance
-     * @param settings - Plugin settings
      * @param maxAttempts - Maximum number of polling attempts (default: 20 = 10 seconds)
-     * @returns true if API is ready, false if timeout
+     * @returns true if Datacore is ready, false if timeout
      */
-    static async waitForAPI(
-        app: App,
-        settings: PluginSettings,
-        maxAttempts = 20,
-    ): Promise<boolean> {
+    static async waitForAPI(maxAttempts = 20): Promise<boolean> {
         for (let i = 0; i < maxAttempts; i++) {
-            const activeAPI = this.determineActiveAPI(app, settings);
-
-            if (activeAPI) {
-                Logger.info(
-                    `Task indexing API ready: ${activeAPI} (attempt ${i + 1}/${maxAttempts})`,
-                );
+            if (this.isDatacoreAvailable()) {
+                Logger.info(`Datacore ready (attempt ${i + 1}/${maxAttempts})`);
                 return true;
             }
 
             if (i === 0) {
-                Logger.debug(
-                    "Waiting for task indexing API (Datacore or Dataview)...",
-                );
+                Logger.debug("Waiting for Datacore...");
             } else {
                 Logger.debug(
-                    `Still waiting for task indexing API... (attempt ${i + 1}/${maxAttempts})`,
+                    `Still waiting for Datacore... (attempt ${i + 1}/${maxAttempts})`,
                 );
             }
 
             await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        Logger.error(
-            "Task indexing API not available after waiting 10 seconds",
-        );
+        Logger.error("Datacore not available after waiting 10 seconds");
         return false;
     }
 
     /**
      * Get recommendation message for users
-     * Helps users understand which API they should use
+     * Helps users understand they need Datacore
      */
-    static getRecommendationMessage(
-        app: App,
-        settings: PluginSettings,
-    ): string | null {
-        const available = this.detectAvailableAPIs(app);
-        const active = this.determineActiveAPI(app, settings);
-        const preference = settings.taskIndexAPI || "auto";
-
-        // User is using Dataview but Datacore is available
-        if (
-            active === "dataview" &&
-            available.datacore &&
-            preference !== "dataview"
-        ) {
-            return "💡 Datacore is installed and available. It offers 2-10x better performance than Dataview. Consider switching in Task Chat settings!";
-        }
-
-        // User has Datacore preference but it's not installed
-        if (preference === "datacore" && !available.datacore) {
-            return "⚠️ You've selected Datacore as your preferred API, but it's not installed. Please install Datacore or change your preference to Dataview.";
-        }
-
-        // User has Dataview preference but it's not installed
-        if (preference === "dataview" && !available.dataview) {
-            return "⚠️ You've selected Dataview as your preferred API, but it's not installed. Please install Dataview or change your preference to Auto/Datacore.";
+    static getRecommendationMessage(): string | null {
+        if (!this.isDatacoreAvailable()) {
+            return "⚠️ Datacore is required for Task Chat. Please install the Datacore plugin from Community Plugins.";
         }
 
         return null;
-    }
-
-    /**
-     * Parse standard query syntax (delegates to DataviewService for consistency)
-     * This ensures query parsing works the same regardless of which API is active
-     */
-    static parseStandardQuerySyntax(query: string): {
-        keywords?: string[];
-        priority?: number;
-        dueDate?: string;
-        dueDateRange?: { start?: string; end?: string };
-        project?: string;
-        statusValues?: string[];
-        specialKeywords?: string[];
-        operators?: { and?: boolean; or?: boolean; not?: boolean };
-    } {
-        // Delegate to DataviewService since query syntax is standardized
-        return DataviewService.parseStandardQuerySyntax(query);
-    }
-
-    /**
-     * Convert date filter to range (delegates to DataviewService)
-     */
-    static convertDateFilterToRange(dateFilter: string): {
-        start?: string;
-        end?: string;
-    } | null {
-        return DataviewService.convertDateFilterToRange(dateFilter);
     }
 
     /**
@@ -495,7 +301,7 @@ export class TaskIndexService {
     }
 
     /**
-     * Get task count from the active indexing API (lightweight)
+     * Get task count from Datacore (lightweight)
      * Main entry point for counting tasks throughout the plugin
      *
      * PERFORMANCE: 20-30x faster than parseTasksFromIndex because:
@@ -526,35 +332,21 @@ export class TaskIndexService {
             notes?: string[];
         },
     ): Promise<number> {
-        const activeAPI = this.determineActiveAPI(app, settings);
-
-        if (!activeAPI) {
-            Logger.error(
-                "Cannot get task count: No task indexing API available",
-            );
+        if (!this.isDatacoreAvailable()) {
+            Logger.error("Cannot get task count: Datacore not available");
             return 0;
         }
 
         try {
-            if (activeAPI === "datacore") {
-                Logger.debug("Getting task count from Datacore");
-                return await DatacoreService.getTaskCount(
-                    app,
-                    settings,
-                    propertyFilters,
-                    inclusionFilters,
-                );
-            } else {
-                Logger.debug("Getting task count from Dataview");
-                return await DataviewService.getTaskCount(
-                    app,
-                    settings,
-                    propertyFilters,
-                    inclusionFilters,
-                );
-            }
+            Logger.debug("Getting task count from Datacore");
+            return await DatacoreService.getTaskCount(
+                app,
+                settings,
+                propertyFilters,
+                inclusionFilters,
+            );
         } catch (error) {
-            Logger.error(`Error getting task count from ${activeAPI}:`, error);
+            Logger.error("Error getting task count from Datacore:", error);
             return 0;
         }
     }

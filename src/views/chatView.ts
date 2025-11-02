@@ -94,13 +94,13 @@ export class ChatView extends ItemView {
         this.renderView();
         await this.renderMessages();
 
-        // Poll for API readiness and update warning status
-        // This ensures the warning disappears once the API is ready
+        // Poll for API readiness and update status
+        // This ensures the status updates once the API is ready
         this.startWarningPolling();
     }
 
     /**
-     * Poll for task indexing API readiness and update warning status
+     * Poll for task indexing API readiness and update status
      * Continues polling until API is ready
      */
     private startWarningPolling(): void {
@@ -1484,7 +1484,7 @@ export class ChatView extends ItemView {
                 // Build informative message, especially for 0 results
                 let content = `Found ${result.directResults.length} matching task(s):`;
 
-                // For 0 results, check Dataview status and add warning if needed
+                // For 0 results, check task indexing API status and add warning if needed
                 if (result.directResults.length === 0) {
                     // IMPORTANT: Check if task indexing API might be the issue
                     // We use currentTasks.length (total tasks from API) NOT directResults.length

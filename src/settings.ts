@@ -168,13 +168,6 @@ export interface PluginSettings {
         lastUpdated: number; // timestamp
     };
 
-    // Task Indexing API Selection
-    // Choose which API to use for task indexing and querying
-    // - "auto": Prefer Datacore (faster) → fallback to Dataview (default, recommended)
-    // - "datacore": Use Datacore only (requires Datacore plugin)
-    // - "dataview": Use Dataview only (requires Dataview plugin)
-    taskIndexAPI: "auto" | "datacore" | "dataview";
-
     // Dataview Settings
     dataviewKeys: {
         dueDate: string;
@@ -249,7 +242,7 @@ export interface PluginSettings {
     // AI Enhancement Settings (Natural Language Understanding & Typo Correction)
     // AI is used for two purposes:
     // 1. Keyword semantic expansion (for better recall)
-    // 2. Property concept recognition (converting natural language to Dataview format)
+    // 2. Property concept recognition (converting natural language to structured format)
     // Standard syntax (P1, s:open, overdue) skips AI entirely
     aiEnhancement: {
         showAIUnderstanding: boolean; // Show AI understanding box in Task Chat (what AI understood and how properties were converted)
@@ -389,9 +382,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         data: {},
         lastUpdated: 0,
     },
-
-    // Task Indexing API Selection
-    taskIndexAPI: "auto", // Default: Auto-detect (prefer Datacore)
 
     // Dataview Settings
     dataviewKeys: {

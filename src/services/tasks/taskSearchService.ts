@@ -16,7 +16,7 @@ import { VectorizedScoring } from "../../utils/vectorizedScoring";
  * ARCHITECTURE: Shared Scoring Functions
  * ========================================
  * This service provides scoring functions that are used by BOTH:
- * 1. API-level filtering (datacoreService/dataviewService) - filters before Task object creation
+ * 1. API-level filtering (datacoreService) - filters before Task object creation
  * 2. JavaScript-level scoring (scoreTasksComprehensive) - scores for sorting and display
  *
  * Shared Functions (SINGLE SOURCE OF TRUTH):
@@ -1014,7 +1014,7 @@ export class TaskSearchService {
      * SHARED RELEVANCE CALCULATION - Used by both API-level filtering and JS-level scoring
      *
      * This is the SINGLE SOURCE OF TRUTH for relevance scoring to ensure consistency
-     * between API-level filtering (datacoreService/dataviewService) and JavaScript-level
+     * between API-level filtering (datacoreService) and JavaScript-level
      * sorting (scoreTasksComprehensive).
      *
      * PERFORMANCE OPTIMIZATIONS (v2):
@@ -1442,7 +1442,7 @@ export class TaskSearchService {
     }
 
     /**
-     * @deprecated REMOVED - Scoring now happens entirely at API level in datacoreService/dataviewService.
+     * @deprecated REMOVED - Scoring now happens entirely at API level in datacoreService.
      * Tasks returned from API are already scored, sorted, and limited.
      * Use Task._cachedScores to access component scores and finalScore.
      *
@@ -1592,7 +1592,7 @@ export class TaskSearchService {
     /**
      * Create relevance filter predicate for API-level filtering
      *
-     * OPTIMIZATION: Calculate relevance scores at the DataView/DataCore API level
+     * OPTIMIZATION: Calculate relevance scores at the API level
      * to filter out low-relevance tasks before creating Task objects.
      *
      * Relevance score = (coreKeywordMatches × coreWeight) + expandedKeywordMatches
@@ -1601,7 +1601,7 @@ export class TaskSearchService {
      * @param coreKeywords - Core keywords from user query
      * @param minimumRelevanceScore - Minimum relevance score to pass
      * @param settings - Plugin settings
-     * @param source - 'datacore' or 'dataview' (affects field access)
+     * @param source - Data source type (affects field access)
      * @returns Filter predicate function
      */
     /**
@@ -1624,7 +1624,7 @@ export class TaskSearchService {
      * @param coreKeywords - Core keywords only (pre-expansion)
      * @param minimumRelevanceScore - Threshold to pass filter (0 = disabled)
      * @param settings - Plugin settings with relevanceCoreWeight
-     * @param source - Data source type (datacore or dataview)
+     * @param source - Data source type
      * @param scoreCache - Optional cache to store calculated relevance scores
      * @param getTaskId - Optional function to get task ID for caching
      * @returns Filter predicate function
@@ -1634,7 +1634,7 @@ export class TaskSearchService {
         coreKeywords: string[],
         minimumRelevanceScore: number,
         settings: PluginSettings,
-        source: "datacore" | "dataview",
+        source: string,
         scoreCache?: Map<
             string,
             {

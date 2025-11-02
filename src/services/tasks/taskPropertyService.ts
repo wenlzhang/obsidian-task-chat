@@ -5,17 +5,11 @@ import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
 
 /**
- * Task source type for unified field extraction
- * Distinguishes between Dataview and Datacore APIs
- */
-export type TaskSource = "dataview" | "datacore";
-
-/**
  * Centralized Task Property Service
  *
  * This service consolidates ALL task property operations (status, priority, due date)
  * that were previously duplicated across multiple services:
- * - DataviewService
+ * - DatacoreService
  * - TaskSearchService
  * - TaskSortService
  * - PromptBuilderService
@@ -24,7 +18,7 @@ export type TaskSource = "dataview" | "datacore";
  *
  * Key Principles:
  * 1. Single source of truth for each operation
- * 2. Always respect user settings (taskStatusMapping, dataviewPriorityMapping, etc.)
+ * 2. Always respect user settings (taskStatusMapping, etc.)
  * 3. Provide both simple and advanced APIs
  * 4. Maintain backward compatibility
  *
@@ -54,7 +48,7 @@ export type TaskSource = "dataview" | "datacore";
  *    - PRIORITY concept = urgency, importance, criticality
  *    - STATUS concept = task state, progress, completion level
  *    - DUE_DATE concept = deadline, timing, target date
- * 3. AI converts concept DIRECTLY to Dataview format:
+ * 3. AI converts concept DIRECTLY to Datacore format:
  *    - PRIORITY → 1, 2, 3, or 4 (numbers)
  *    - STATUS → "open", "inProgress", "completed", etc. (category keys)
  *    - DUE_DATE → "today", "overdue", "next-week", etc. (time keywords)
@@ -149,8 +143,8 @@ export class TaskPropertyService {
     // ==========================================
 
     /**
-     * Standard date field names (Dataview compatible)
-     * Used across dataviewService, taskFilterService, propertyDetectionService, aiPropertyPromptService
+     * Standard date field names (Datacore compatible)
+     * Used across datacoreService, taskFilterService, propertyDetectionService, aiPropertyPromptService
      */
     static readonly DATE_FIELDS = {
         due: ["due", "dueDate", "deadline"],
@@ -162,7 +156,7 @@ export class TaskPropertyService {
 
     /**
      * Date field emoji patterns for extraction
-     * Used in dataviewService for extracting dates from task text
+     * Used in datacoreService for extracting dates from task text
      */
     static readonly DATE_EMOJI_PATTERNS = {
         due: /🗓️\s*(\d{4}-\d{2}-\d{2})/,
@@ -707,7 +701,7 @@ export class TaskPropertyService {
 
     /**
      * Get all priority field names to check
-     * Combines primary field + aliases + user's configured Dataview key
+     * Returns primary field and aliases
      *
      * @param settings - Plugin settings
      * @returns Array of field names to check for priority
@@ -722,7 +716,7 @@ export class TaskPropertyService {
 
     /**
      * Get all due date field names to check
-     * Returns user's configured Dataview key + standard aliases
+     * Returns standard aliases for due dates
      *
      * @param settings - Plugin settings
      * @returns Array of field names to check for due dates
@@ -732,7 +726,7 @@ export class TaskPropertyService {
     }
 
     /**
-     * Map a Dataview task status symbol to status category
+     * Map a task status symbol to status category
      * Uses user's configured taskStatusMapping
      *
      * @param symbol - Task status symbol (e.g., "x", "/", "?", " ")
@@ -933,11 +927,11 @@ export class TaskPropertyService {
     // ==========================================
 
     /**
-     * Map a Dataview priority value to internal numeric priority
-     * Uses user's configured dataviewPriorityMapping
+     * Map a priority value to internal numeric priority
+     * Supports standard Datacore priority values
      *
      * @param value - Priority value (can be string or number)
-     * @param settings - Plugin settings with dataviewPriorityMapping
+     * @param settings - Plugin settings
      * @returns Priority number: 1 (highest), 2 (high), 3 (medium), 4 (low), undefined (none)
      */
     static mapPriority(
@@ -985,7 +979,7 @@ export class TaskPropertyService {
 
     /**
      * Format date to consistent string format
-     * Handles multiple date object types (Date, moment, Dataview, string)
+     * Handles multiple date object types (Date, moment, Datacore, string)
      *
      * @param date - Date to format (various types supported)
      * @param format - Optional format string (default: YYYY-MM-DD)
@@ -1011,7 +1005,7 @@ export class TaskPropertyService {
                 return format ? date.format(format) : date.format("YYYY-MM-DD");
             }
 
-            // Handle Dataview date objects (toString() but not .format())
+            // Handle Datacore date objects (toString() but not .format())
             if (
                 date &&
                 typeof date === "object" &&
@@ -1135,7 +1129,7 @@ export class TaskPropertyService {
     }
 
     /**
-     * Convert date filter to Dataview date range query
+     * Convert date filter to Datacore date range query
      * Handles: today, tomorrow, overdue, week, next-week, future, any, +Nd/+Nw/+Nm, specific dates
      *
      * @param dateFilter - Date filter string
@@ -1239,7 +1233,7 @@ export class TaskPropertyService {
     ): DateRange | null {
         const lowerFilter = dateFilter.toLowerCase().trim();
 
-        // Pattern 1: Dataview duration (7d, 2w, 3mo, 1yr)
+        // Pattern 1: Duration format (7d, 2w, 3mo, 1yr)
         const durationPattern =
             /^(\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|month|months|yr|yrs|year|years)$/;
         const durationMatch = lowerFilter.match(durationPattern);
@@ -1643,7 +1637,7 @@ export class TaskPropertyService {
      * Check if a date value matches a due date keyword
      * Centralized date matching logic for all due date keywords
      *
-     * @param dateValue - The date value from task field (Dataview format)
+     * @param dateValue - The date value from task field (Datacore format)
      * @param keyword - The keyword to match against (today, tomorrow, overdue, etc.)
      * @param formatDate - Function to format date value to YYYY-MM-DD
      * @returns True if the date matches the keyword
@@ -1839,7 +1833,7 @@ export class TaskPropertyService {
     /**
      * Parse relative date string with enhanced syntax support
      * Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
-     * Compatible with Dataview API relative date syntax
+     * Compatible with Datacore API relative date syntax
      *
      * @param relativeDate - Relative date string (e.g., "1d", "+2w", "-3m", "1y")
      * @returns Formatted date string (YYYY-MM-DD) or null if invalid
@@ -2006,7 +2000,7 @@ export class TaskPropertyService {
 
     // ============================================================================
     // FIELD EXTRACTION UTILITIES
-    // Used by both DataviewService and DatacoreService
+    // Used by DatacoreService
     // ============================================================================
 
     /**
@@ -2084,13 +2078,12 @@ export class TaskPropertyService {
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // UNIFIED FIELD EXTRACTION (Dataview + Datacore)
+    // FIELD EXTRACTION (Datacore)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     /**
-     * Get task text based on source (Dataview vs Datacore)
-     * @param task - Task object from either Dataview or Datacore
-     * @param source - Source type ('dataview' or 'datacore')
+     * Get task text from Datacore task object
+     * @param task - Task object from Datacore
      * @returns Task text
      */
     private static getTaskText(task: any, source: TaskSource): string {
@@ -2134,77 +2127,47 @@ export class TaskPropertyService {
     }
 
     /**
-     * Get standard field mapping for a given field key and source
-     * Returns array of standard field names to check
+     * Get standard field mapping for a given field key
+     * Returns array of Datacore standard field names to check
      */
     private static getStandardFieldMapping(
         fieldKey: string,
         settings: PluginSettings,
-        source: TaskSource,
     ): string[] {
         const fieldMap: { [key: string]: string[] } = {};
 
-        if (source === "datacore") {
-            // Datacore: $ prefix for built-ins
-            fieldMap[settings.dataviewKeys.dueDate] = ["$due"];
-            fieldMap["due"] = ["$due"];
-            fieldMap["dueDate"] = ["$due"];
-            fieldMap["deadline"] = ["$due"];
-            fieldMap[settings.dataviewKeys.completedDate] = ["$completion"];
-            fieldMap["completion"] = ["$completion"];
-            fieldMap["completed"] = ["$completion"];
-            fieldMap["completedDate"] = ["$completion"];
-            fieldMap[settings.dataviewKeys.createdDate] = ["$created"];
-            fieldMap["created"] = ["$created"];
-            fieldMap["createdDate"] = ["$created"];
-            fieldMap["start"] = ["$start"];
-            fieldMap["startDate"] = ["$start"];
-            fieldMap["scheduled"] = ["$scheduled"];
-            fieldMap["scheduledDate"] = ["$scheduled"];
-            fieldMap[settings.dataviewKeys.priority] = ["$priority"];
-            fieldMap["priority"] = ["$priority"];
-            fieldMap["p"] = ["$priority"];
-            fieldMap["pri"] = ["$priority"];
-            fieldMap["prio"] = ["$priority"];
-            fieldMap["tags"] = ["$tags"];
-            fieldMap["file"] = ["$file"];
-            fieldMap["path"] = ["$file"];
-        } else {
-            // Dataview: emoji shorthand names
-            fieldMap[settings.dataviewKeys.dueDate] = ["due"];
-            fieldMap["due"] = ["due"];
-            fieldMap["dueDate"] = ["due"];
-            fieldMap["deadline"] = ["due"];
-            fieldMap[settings.dataviewKeys.completedDate] = ["completion"];
-            fieldMap["completion"] = ["completion"];
-            fieldMap["completed"] = ["completion"];
-            fieldMap["completedDate"] = ["completion"];
-            fieldMap[settings.dataviewKeys.createdDate] = ["created"];
-            fieldMap["created"] = ["created"];
-            fieldMap["createdDate"] = ["created"];
-            fieldMap["start"] = ["start"];
-            fieldMap["startDate"] = ["start"];
-            fieldMap["scheduled"] = ["scheduled"];
-            fieldMap["scheduledDate"] = ["scheduled"];
-            fieldMap[settings.dataviewKeys.priority] = ["priority"];
-            fieldMap["priority"] = ["priority"];
-            fieldMap["p"] = ["priority"];
-            fieldMap["pri"] = ["priority"];
-            fieldMap["prio"] = ["priority"];
-        }
+        // Datacore: $ prefix for built-ins
+        fieldMap["due"] = ["$due"];
+        fieldMap["dueDate"] = ["$due"];
+        fieldMap["deadline"] = ["$due"];
+        fieldMap["completion"] = ["$completion"];
+        fieldMap["completed"] = ["$completion"];
+        fieldMap["completedDate"] = ["$completion"];
+        fieldMap["created"] = ["$created"];
+        fieldMap["createdDate"] = ["$created"];
+        fieldMap["start"] = ["$start"];
+        fieldMap["startDate"] = ["$start"];
+        fieldMap["scheduled"] = ["$scheduled"];
+        fieldMap["scheduledDate"] = ["$scheduled"];
+        fieldMap["priority"] = ["$priority"];
+        fieldMap["p"] = ["$priority"];
+        fieldMap["pri"] = ["$priority"];
+        fieldMap["prio"] = ["$priority"];
+        fieldMap["tags"] = ["$tags"];
+        fieldMap["file"] = ["$file"];
+        fieldMap["path"] = ["$file"];
 
         return fieldMap[fieldKey] || [];
     }
 
     /**
-     * Unified field value extraction for both Dataview and Datacore
+     * Field value extraction for Datacore
      * Handles different task object structures transparently
      *
-     * @param task - Task object from either Dataview or Datacore
+     * @param task - Task object from Datacore
      * @param fieldKey - Field name to extract
      * @param text - Task text for fallback extraction
      * @param settings - Plugin settings
-     * @param source - Source type ('dataview' or 'datacore')
      * @returns Field value, or undefined if not found
      */
     static getUnifiedFieldValue(
@@ -2212,33 +2175,26 @@ export class TaskPropertyService {
         fieldKey: string,
         text: string,
         settings: PluginSettings,
-        source: TaskSource,
     ): any {
-        // Strategy 1: Check source-specific direct fields
-        if (source === "datacore") {
-            // Try $ prefix first for Datacore built-ins
-            const builtInKey = this.getDatacoreBuiltInKey(fieldKey);
-            if (builtInKey && task[builtInKey] !== undefined) {
-                return task[builtInKey];
-            }
+        // Strategy 1: Check Datacore built-in fields
+        // Try $ prefix first for Datacore built-ins
+        const builtInKey = this.getDatacoreBuiltInKey(fieldKey);
+        if (builtInKey && task[builtInKey] !== undefined) {
+            return task[builtInKey];
         }
 
-        // Try direct property (both sources)
+        // Try direct property
         if (task[fieldKey] !== undefined) {
             return task[fieldKey];
         }
 
-        // Strategy 2: Check fields object (same for both)
+        // Strategy 2: Check fields object
         if (task.fields && task.fields[fieldKey] !== undefined) {
             return task.fields[fieldKey];
         }
 
-        // Strategy 3: Check standard fields (source-specific mapping)
-        const standardFields = this.getStandardFieldMapping(
-            fieldKey,
-            settings,
-            source,
-        );
+        // Strategy 3: Check standard fields
+        const standardFields = this.getStandardFieldMapping(fieldKey, settings);
         for (const standardField of standardFields) {
             if (task[standardField] !== undefined) {
                 return task[standardField];
@@ -2248,13 +2204,13 @@ export class TaskPropertyService {
             }
         }
 
-        // Strategy 4: Extract emoji shorthands from text (same for both)
+        // Strategy 4: Extract emoji shorthands from text
         const emojiValue = this.extractEmojiShorthand(text, fieldKey);
         if (emojiValue !== undefined) {
             return emojiValue;
         }
 
-        // Strategy 5: Extract from inline field syntax (same for both)
+        // Strategy 5: Extract from inline field syntax
         const inlineValue = this.extractInlineField(text, fieldKey);
         if (inlineValue !== undefined) {
             return inlineValue;
@@ -2264,14 +2220,13 @@ export class TaskPropertyService {
     }
 
     /**
-     * Unified due date matching for both Dataview and Datacore
+     * Due date matching for Datacore
      * Checks if a task matches a specific due date value
      *
-     * @param task - Task object from either Dataview or Datacore
+     * @param task - Task object from Datacore
      * @param dueDateValue - Due date value to match against
      * @param dueDateFields - Array of due date field names to check
      * @param settings - Plugin settings
-     * @param source - Source type ('dataview' or 'datacore')
      * @returns True if task matches the due date value
      */
     static matchesUnifiedDueDateValue(
@@ -2279,9 +2234,8 @@ export class TaskPropertyService {
         dueDateValue: string,
         dueDateFields: string[],
         settings: PluginSettings,
-        source: TaskSource,
     ): boolean {
-        const taskText = this.getTaskText(task, source);
+        const taskText = this.getTaskText(task);
 
         // Check for "all"/"any" - has any due date
         if (
@@ -2294,7 +2248,6 @@ export class TaskPropertyService {
                     field,
                     taskText,
                     settings,
-                    source,
                 );
                 return value !== undefined && value !== null;
             });
@@ -2308,7 +2261,6 @@ export class TaskPropertyService {
                     field,
                     taskText,
                     settings,
-                    source,
                 );
                 return value !== undefined && value !== null;
             });
@@ -2325,7 +2277,6 @@ export class TaskPropertyService {
                     field,
                     taskText,
                     settings,
-                    source,
                 );
                 return this.matchesDueDateKeyword(
                     value,
@@ -2344,7 +2295,6 @@ export class TaskPropertyService {
                     field,
                     taskText,
                     settings,
-                    source,
                 );
                 const formatted = this.formatDate(value);
                 return formatted === parsedRelativeDate;
@@ -2358,7 +2308,6 @@ export class TaskPropertyService {
                 field,
                 taskText,
                 settings,
-                source,
             );
             const formatted = this.formatDate(value);
             return formatted === dueDateValue;
@@ -2366,12 +2315,11 @@ export class TaskPropertyService {
     }
 
     /**
-     * Unified filter building for both Dataview and Datacore
-     * Creates a filter function that can be applied to tasks from either source
+     * Filter building for Datacore
+     * Creates a filter function that can be applied to tasks from Datacore
      *
      * @param propertyFilters - Property filters to apply
      * @param settings - Plugin settings
-     * @param source - Source type ('dataview' or 'datacore')
      * @returns Filter function, or null if no filters
      */
     static buildUnifiedTaskFilter(
@@ -2383,7 +2331,6 @@ export class TaskPropertyService {
             statusValues?: string[] | null;
         },
         settings: PluginSettings,
-        source: TaskSource,
     ): ((task: any) => boolean) | null {
         const filters: ((task: any) => boolean)[] = [];
 
@@ -2398,14 +2345,13 @@ export class TaskPropertyService {
             ) {
                 // Tasks with ANY priority (P1-P4)
                 filters.push((task: any) => {
-                    const taskText = this.getTaskText(task, source);
+                    const taskText = this.getTaskText(task);
                     return priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
                             task,
                             field,
                             taskText,
                             settings,
-                            source,
                         );
                         if (value === undefined || value === null) return false;
                         const mapped = this.mapPriority(value, settings);
@@ -2419,14 +2365,13 @@ export class TaskPropertyService {
             ) {
                 // Tasks with NO priority
                 filters.push((task: any) => {
-                    const taskText = this.getTaskText(task, source);
+                    const taskText = this.getTaskText(task);
                     return !priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
                             task,
                             field,
                             taskText,
                             settings,
-                            source,
                         );
                         if (value === undefined || value === null) return false;
                         const mapped = this.mapPriority(value, settings);
@@ -2440,14 +2385,13 @@ export class TaskPropertyService {
                     : [propertyFilters.priority];
 
                 filters.push((task: any) => {
-                    const taskText = this.getTaskText(task, source);
+                    const taskText = this.getTaskText(task);
                     return priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
                             task,
                             field,
                             taskText,
                             settings,
-                            source,
                         );
                         if (value !== undefined && value !== null) {
                             const mapped = this.mapPriority(value, settings);
@@ -2477,7 +2421,6 @@ export class TaskPropertyService {
                             dueDateValue,
                             dueDateFields,
                             settings,
-                            source,
                         )
                     ) {
                         return true;
@@ -2499,14 +2442,13 @@ export class TaskPropertyService {
                 const endDate = end ? this.parseDateRangeKeyword(end) : null;
 
                 filters.push((task: any) => {
-                    const taskText = this.getTaskText(task, source);
+                    const taskText = this.getTaskText(task);
                     return dueDateFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
                             task,
                             field,
                             taskText,
                             settings,
-                            source,
                         );
                         if (!value) return false;
 
@@ -2533,10 +2475,7 @@ export class TaskPropertyService {
                 : [propertyFilters.status];
 
             filters.push((task: any) => {
-                const status =
-                    source === "datacore"
-                        ? task.$status || task.status
-                        : task.status;
+                const status = task.$status || task.status;
                 if (status !== undefined) {
                     const mapped = this.mapStatusToCategory(status, settings);
                     return targetStatuses.includes(mapped);
@@ -2551,10 +2490,7 @@ export class TaskPropertyService {
             propertyFilters.statusValues.length > 0
         ) {
             filters.push((task: any) => {
-                const taskStatus =
-                    source === "datacore"
-                        ? task.$status || task.status
-                        : task.status;
+                const taskStatus = task.$status || task.status;
                 if (taskStatus === undefined) return false;
 
                 return propertyFilters.statusValues!.some((value) => {

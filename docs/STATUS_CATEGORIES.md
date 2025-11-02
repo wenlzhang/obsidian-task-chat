@@ -482,9 +482,9 @@ Sort order: Current effective order: 2
 - Proper status symbol display
 - Recommended for best appearance
 
-**DataView:**
-- Status categories work with DataView queries
-- Can filter by status in DataView
+**Datacore:**
+- Status categories work with Datacore queries
+- Can filter by status in queries
 
 ## Examples
 

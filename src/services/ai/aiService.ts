@@ -51,7 +51,7 @@ export class AIService {
     /**
      * Send a message to AI and get a response with recommended tasks
      *
-     * @param app Obsidian app instance (for Dataview API access)
+     * @param app Obsidian app instance (for API access)
      * @param message User's query message
      * @param tasks Initial task list (may be reloaded with property filters)
      * @param chatHistory Chat conversation history
@@ -321,7 +321,7 @@ export class AIService {
             }
         }
 
-        // Apply filters: Use Dataview API for properties, JavaScript for keywords
+        // Apply filters: Use Datacore API for properties, JavaScript for keywords
         if (
             intent.extractedPriority ||
             intent.extractedDueDateFilter ||
@@ -350,7 +350,7 @@ export class AIService {
                 );
             }
 
-            // Step 1: Filter by properties at Dataview API level (if any property filters OR currentFilter)
+            // Step 1: Filter by properties at API level (if any property filters OR currentFilter)
             let tasksAfterPropertyFilter = tasks;
 
             // Check if query has property filters (including folder and tags)
@@ -406,7 +406,7 @@ export class AIService {
             });
 
             if (shouldReloadWithFilters) {
-                // Reload tasks from Dataview API with property filters
+                // Reload tasks from Datacore API with property filters
                 // Multi-value support: priority and status can be arrays
 
                 // CRITICAL FIX: Merge inclusion filters from BOTH currentFilter AND query
@@ -740,11 +740,11 @@ export class AIService {
                 // Build helpful message based on total task count
                 let responseMessage = `No tasks found matching ${filterDesc}.`;
 
-                // If we have 0 initial tasks, it might be a Dataview indexing issue
+                // If we have 0 initial tasks, it might be a Datacore indexing issue
                 if (tasks.length === 0) {
                     responseMessage += `\n\n💡 **Tip**: If you have tasks in your vault, this might mean:\n`;
-                    responseMessage += `• Dataview is still indexing (wait 10-30 seconds)\n`;
-                    responseMessage += `• Dataview index delay is too long (try reducing index delay in Dataview settings)\n`;
+                    responseMessage += `• Datacore is still indexing (wait 10-30 seconds)\n`;
+                    responseMessage += `• Datacore index delay is too long (try reducing index delay in Datacore settings)\n`;
                     responseMessage += `• Tasks don't use the expected syntax (e.g., \`- [ ] Task\`)\n\n`;
                     responseMessage += `Try clicking the **Refresh tasks** button and waiting a moment.`;
                 } else {
@@ -814,7 +814,7 @@ export class AIService {
             // ========================================
             // JS-LEVEL SCORING & SORTING (with API fallback detection)
             // Datacore: Has cached finalScores → Fast sort
-            // Dataview: No cached scores → Calculate, sort, cache
+            // No cached scores → Calculate, sort, cache
             // ========================================
             const needsScoring = filteredTasks.some(
                 (task) => task._cachedScores?.finalScore === undefined,
@@ -823,7 +823,7 @@ export class AIService {
             let sortedTasksForDisplay: Task[];
 
             if (needsScoring) {
-                // API didn't score (Dataview case) - calculate scores and sort
+                // API didn't score - calculate scores and sort
                 Logger.debug(
                     `[JS Scoring] API didn't score - calculating for ${filteredTasks.length} tasks`,
                 );

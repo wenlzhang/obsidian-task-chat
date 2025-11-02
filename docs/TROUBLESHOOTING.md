@@ -277,7 +277,7 @@ Tasks were found matching your query, but they were all filtered out by quality 
 ```
 Query: "urgent tasks due today"
     ↓
-Step 1: DataView Filter (keyword + property matching)
+Step 1: Datacore Filter (keyword + property matching)
     → Found 50 matching tasks ✅
     ↓
 Step 2: Quality Filter (score threshold)
@@ -532,7 +532,7 @@ Why Tasks Were Filtered:
 
 **What each part means:**
 
-- **Found X matching tasks**: DataView found these tasks with your keywords/properties
+- **Found X matching tasks**: Datacore found these tasks with your keywords/properties
 - **Top Task Score**: The highest-scoring task (still wasn't enough)
 - **Why Tasks Were Filtered**: Lists specific reasons based on YOUR settings
 - **Quick Fixes**: Actionable solutions with your current values shown
@@ -747,8 +747,8 @@ Showing 28 tasks (scored by relevance) instead.
 **Solutions:**
 1. Lower quality filter: Settings → Task Filtering → Quality filter strength (try 10-20%)
 2. Disable minimum relevance: Settings → Task Filtering → Set to 0%
-3. Check if DataView is enabled in Obsidian settings
-4. Verify task properties exist (try: `dataview` code block in a note)
+3. Check if Datacore is enabled in Obsidian settings
+4. Verify task properties are being indexed by Datacore
 
 ### Results Not Relevant
 
@@ -913,39 +913,6 @@ Don't use Task Chat! Instead:
 1. Fix the filtering settings first
 2. Verify results in Smart Search mode
 3. Once Smart Search results are good, Task Chat will work well
-
----
-
-## DataView Integration Issues
-
-### "No tasks found" but tasks exist in vault
-
-**Cause:** DataView not properly configured
-
-**Solutions:**
-1. Enable DataView plugin in Obsidian
-2. Verify task properties exist: Try this in a note:
-   ```dataview
-   TASK
-   WHERE file.path
-   ```
-3. Check property names: Settings → DataView Integration
-   - Default due date fields: `due, dueDate`
-   - Default priority fields: `priority, p`
-4. Restart Obsidian after enabling DataView
-
-### Tasks missing due dates or priorities
-
-**Cause:** Property names don't match configuration
-
-**Solutions:**
-1. Check your task format in notes:
-   ```markdown
-   - [ ] Task #p1 📅 2025-01-30
-   ```
-2. Verify DataView extracts properties: Try dataview code block
-3. Adjust property names: Settings → DataView Integration
-4. See your task manager plugin's documentation (e.g., Task Marker)
 
 ---
 

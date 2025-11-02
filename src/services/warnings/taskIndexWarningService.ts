@@ -12,10 +12,8 @@ export interface TaskIndexWarning {
     details?: string;
     suggestions?: string[];
     apiInfo?: {
-        activeAPI: "datacore" | "dataview" | null;
+        activeAPI: boolean;
         datacoreAvailable: boolean;
-        dataviewAvailable: boolean;
-        canSwitchToDatacore: boolean;
     };
     filterInfo?: {
         hasActiveFilters: boolean;
@@ -27,7 +25,7 @@ export interface TaskIndexWarning {
 
 /**
  * Service for handling task indexing API warnings and status checks
- * Supports both Datacore and Dataview
+ * Supports Datacore
  *
  * Centralizes API state detection and warning message generation.
  * Similar to ErrorMessageService, this provides dedicated warning handling
@@ -134,7 +132,7 @@ export class TaskIndexWarningService {
         isStartupPolling = false,
     ): TaskIndexWarning {
         // Get API status
-        const status = TaskIndexService.getDetailedStatus(app, settings);
+        const status = TaskIndexService.getDetailedStatus();
         const hasFilters = this.hasActiveFilters(currentFilter);
         const hasExclusions = this.hasActiveExclusions(settings);
 
@@ -154,8 +152,6 @@ export class TaskIndexWarningService {
         const apiInfo = {
             activeAPI: status.activeAPI,
             datacoreAvailable: status.datacoreAvailable,
-            dataviewAvailable: status.dataviewAvailable,
-            canSwitchToDatacore: status.canSwitchToDatacore,
         };
 
         // Case 1: No API available
@@ -163,11 +159,9 @@ export class TaskIndexWarningService {
             return {
                 type: "not-enabled",
                 message: "Task indexing API not available",
-                details:
-                    "Please install Datacore or Dataview plugin to use Task Chat.",
+                details: "Please install Datacore plugin to use Task Chat.",
                 suggestions: [
-                    "Install Datacore (recommended) from Community Plugins",
-                    "Or install Dataview from Community Plugins",
+                    "Install Datacore from Community Plugins",
                     "Restart Obsidian after installation",
                 ],
                 apiInfo,
@@ -177,16 +171,13 @@ export class TaskIndexWarningService {
 
         // Case 2: API ready but no tasks
         if (taskCount === 0) {
-            const apiName =
-                status.activeAPI === "datacore" ? "Datacore" : "Dataview";
-
             // Build suggestions based on filter/exclusion state
             const suggestions: string[] = [];
 
             // Special handling for startup polling in large vaults
             if (isStartupPolling && !hasFilters && !hasExclusions) {
                 suggestions.push(
-                    `Wait for ${apiName} to finish indexing your vault`,
+                    "Wait for Datacore to finish indexing your vault",
                 );
                 suggestions.push(
                     "This is common in large vaults or right after startup",
@@ -197,8 +188,9 @@ export class TaskIndexWarningService {
 
                 return {
                     type: "indexing",
-                    message: `Waiting for ${apiName} indexing`,
-                    details: `${apiName} is starting up and indexing your vault. In large vaults, this may take a moment. The task count will update automatically when indexing completes.`,
+                    message: "Waiting for Datacore indexing",
+                    details:
+                        "Datacore is starting up and indexing your vault. In large vaults, this may take a moment. The task count will update automatically when indexing completes.",
                     suggestions,
                     apiInfo,
                     filterInfo,
@@ -222,7 +214,7 @@ export class TaskIndexWarningService {
                     "Create some tasks with checkboxes in your notes",
                 );
                 suggestions.push(
-                    `Verify ${apiName} is indexing your vault correctly`,
+                    "Verify Datacore is indexing your vault correctly",
                 );
             }
 
@@ -232,7 +224,7 @@ export class TaskIndexWarningService {
                 details:
                     hasFilters || hasExclusions
                         ? "Your filters or exclusions may be too restrictive."
-                        : `${apiName} is active, but no tasks were found in your vault.`,
+                        : "Datacore is active, but no tasks were found in your vault.",
                 suggestions,
                 apiInfo,
                 filterInfo,
@@ -240,17 +232,9 @@ export class TaskIndexWarningService {
         }
 
         // Case 3: Everything is ready
-        let message = status.message;
-
-        // Add performance recommendation if using Dataview but Datacore is available
-        if (status.canSwitchToDatacore) {
-            message +=
-                " 💡 Datacore is available and offers 2-10x better performance.";
-        }
-
         return {
             type: "ready",
-            message: message,
+            message: status.message,
             apiInfo,
             filterInfo,
         };
@@ -323,26 +307,12 @@ export class TaskIndexWarningService {
             const statusList = apiStatusEl.createEl("ul");
 
             if (warning.apiInfo.activeAPI) {
-                const apiName =
-                    warning.apiInfo.activeAPI === "datacore"
-                        ? "Datacore"
-                        : "Dataview";
                 statusList.createEl("li", {
-                    text: `✓ Using: ${apiName}`,
+                    text: "✓ Using: Datacore",
                 });
             } else {
                 statusList.createEl("li", {
                     text: `✗ Datacore: ${warning.apiInfo.datacoreAvailable ? "Available" : "Not installed"}`,
-                });
-                statusList.createEl("li", {
-                    text: `✗ Dataview: ${warning.apiInfo.dataviewAvailable ? "Available" : "Not installed"}`,
-                });
-            }
-
-            if (warning.apiInfo.canSwitchToDatacore) {
-                statusList.createEl("li", {
-                    text: "💡 Datacore available for better performance",
-                    cls: "recommendation",
                 });
             }
         }
@@ -395,25 +365,16 @@ export class TaskIndexWarningService {
         settings: PluginSettings,
         taskCount: number,
     ): string {
-        const status = TaskIndexService.getDetailedStatus(app, settings);
+        const status = TaskIndexService.getDetailedStatus();
 
         if (!status.activeAPI) {
             return "⚠️ No task indexing API";
         }
 
-        const apiName =
-            status.activeAPI === "datacore" ? "Datacore" : "Dataview";
-
         if (taskCount === 0) {
-            return `${apiName} • No tasks`;
+            return "Datacore • No tasks";
         }
 
-        let statusText = `${apiName} • ${taskCount} task${taskCount === 1 ? "" : "s"}`;
-
-        if (status.canSwitchToDatacore) {
-            statusText += " • 💡 Datacore available";
-        }
-
-        return statusText;
+        return `Datacore • ${taskCount} task${taskCount === 1 ? "" : "s"}`;
     }
 }
