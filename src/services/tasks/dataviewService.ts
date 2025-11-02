@@ -295,7 +295,6 @@ export class DataviewService {
         settings: PluginSettings,
         index: number,
         filePath: string = "",
-        pageTags: string[] = [],
     ): Task | null {
         if (!this.isValidTask(dvTask)) {
             return null;
@@ -417,7 +416,7 @@ export class DataviewService {
             dueDate: dueDate,
             priority: priority, // undefined = no priority
             tags: tags, // Task-level tags (from task line itself)
-            noteTags: pageTags, // Note-level tags (from page frontmatter/inline)
+            // noteTags removed - not needed (filtering happens at Dataview query level, not displayed in UI)
             sourcePath: path,
             lineNumber: line,
             originalText: text,
@@ -900,7 +899,6 @@ export class DataviewService {
                                 settings,
                                 taskIndex++,
                                 pagePath,
-                                pageTags, // Pass note-level tags from page
                             );
 
                             // Apply task-level filter if provided

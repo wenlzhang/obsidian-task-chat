@@ -575,65 +575,60 @@ export class AIService {
                 }
 
                 // ========================================
-                // CALCULATE QUALITY THRESHOLD (for API-level filtering)
-                // Move this calculation BEFORE task retrieval to filter at API level
+                // CALCULATE QUALITY THRESHOLD (Properties ONLY - NO RELEVANCE)
+                // For API-level filtering (more efficient than JavaScript filtering)
                 // ========================================
-                let qualityThreshold: number | undefined = undefined;
 
-                // Determine query type (has keywords)
-                const hasKeywords =
-                    intent.keywords && intent.keywords.length > 0;
+                // Calculate max possible scores from user settings
+                const maxDueDateScore = Math.max(
+                    settings.dueDateOverdueScore,
+                    settings.dueDateWithin7DaysScore,
+                    settings.dueDateWithin1MonthScore,
+                    settings.dueDateLaterScore,
+                    settings.dueDateNoneScore,
+                );
+                const maxPriorityScore = Math.max(
+                    settings.priorityP1Score,
+                    settings.priorityP2Score,
+                    settings.priorityP3Score,
+                    settings.priorityP4Score,
+                    settings.priorityNoneScore,
+                );
+                const maxStatusScore = Math.max(
+                    ...Object.values(settings.taskStatusMapping).map(
+                        (config) => config.score,
+                    ),
+                );
 
-                // Calculate quality threshold if quality filter is enabled (strength > 0 or adaptive mode enabled)
-                if (settings.qualityFilterStrength >= 0) {
-                    const activeComponents: string[] = [];
-                    let maxScore = 0;
+                // SIMPLIFIED: Always include all properties, coefficients control contribution
+                // No complex activation logic needed - if coefficient is 0, contribution is 0
+                const maxQualityScore =
+                    maxDueDateScore * settings.dueDateCoefficient +
+                    maxPriorityScore * settings.priorityCoefficient +
+                    maxStatusScore * settings.statusCoefficient;
 
-                    // Relevance (always active if keywords present)
-                    if (hasKeywords) {
-                        maxScore += 10 * settings.relevanceCoefficient;
-                        activeComponents.push("relevance");
-                    }
-
-                    // Due date (always active)
-                    maxScore += 10 * settings.dueDateCoefficient;
-                    activeComponents.push("dueDate");
-
-                    // Priority (always active)
-                    maxScore += 10 * settings.priorityCoefficient;
-                    activeComponents.push("priority");
-
-                    // Status (always active)
-                    maxScore += 10 * settings.statusCoefficient;
-                    activeComponents.push("status");
-
-                    if (settings.qualityFilterStrength === 0) {
-                        // Adaptive mode - auto-adjust based on query complexity
-                        if (intent.keywords.length >= 20) {
-                            qualityThreshold = maxScore * 0.1; // Very permissive
-                        } else if (intent.keywords.length >= 4) {
-                            qualityThreshold = maxScore * 0.16; // Permissive
-                        } else if (intent.keywords.length >= 2) {
-                            qualityThreshold = maxScore * 0.26; // Balanced
-                        } else {
-                            qualityThreshold = maxScore * 0.32; // Moderate
-                        }
-                        Logger.debug(
-                            `[API-Level Quality Filter] Adaptive mode: ${qualityThreshold.toFixed(2)}/${maxScore.toFixed(1)} (${intent.keywords.length} keywords)`,
-                        );
-                    } else {
-                        // User-defined percentage
-                        qualityThreshold =
-                            settings.qualityFilterStrength * maxScore;
-                        Logger.debug(
-                            `[API-Level Quality Filter] User-defined: ${(settings.qualityFilterStrength * 100).toFixed(0)}% → ${qualityThreshold.toFixed(2)}/${maxScore.toFixed(1)}`,
-                        );
-                    }
+                let qualityThreshold: number | undefined;
+                if (settings.qualityFilterStrength === 0) {
+                    // Disabled - no quality filtering
+                    qualityThreshold = undefined;
+                    Logger.debug(`[Quality Filter] Disabled`);
+                } else {
+                    // User-defined percentage - convert to actual threshold
+                    qualityThreshold =
+                        settings.qualityFilterStrength * maxQualityScore;
+                    const percentage = (
+                        settings.qualityFilterStrength * 100
+                    ).toFixed(0);
+                    Logger.debug(
+                        `[API-Level Quality Filter] ${percentage}% → threshold: ${qualityThreshold.toFixed(2)} / ${maxQualityScore.toFixed(1)} (properties: due date + priority + status)`,
+                    );
                 }
 
                 // ========================================
-                // PREPARE KEYWORDS FOR RELEVANCE FILTERING (API-level)
+                // PREPARE KEYWORDS FOR API-LEVEL RELEVANCE FILTERING
                 // ========================================
+                const hasKeywords =
+                    intent.keywords && intent.keywords.length > 0;
                 const expandedKeywords = intent.keywords;
                 const coreKeywords =
                     usingAIParsing && parsedQuery?.coreKeywords
@@ -656,8 +651,7 @@ export class AIService {
 
                 // ========================================
                 // RETRIEVE TASKS WITH API-LEVEL FILTERING
-                // Pass quality threshold, keywords, and relevance score to API
-                // This filters at DataCore/DataView level BEFORE creating Task objects
+                // Pass quality threshold, keywords, and relevance score for efficient API-level filtering
                 // ========================================
                 tasksAfterPropertyFilter =
                     await TaskIndexService.parseTasksFromIndex(
@@ -666,20 +660,20 @@ export class AIService {
                         undefined, // No legacy date filter
                         mergedPropertyFilters,
                         inclusionFilters, // Pass chat interface inclusion filters!
-                        qualityThreshold, // NEW: Quality filter at API level
-                        expandedKeywords, // NEW: Keywords for relevance filtering
-                        coreKeywords, // NEW: Core keywords for relevance boost
-                        minimumRelevanceScore, // NEW: Minimum relevance threshold
+                        qualityThreshold, // Quality filtering at API level (properties only)
+                        expandedKeywords, // Keywords for relevance filtering
+                        coreKeywords, // Core keywords for relevance boost
+                        minimumRelevanceScore, // Minimum relevance threshold
                     );
 
                 const reloadEndTime = performance.now();
                 const reloadDuration = reloadEndTime - reloadStartTime;
 
                 Logger.debug(
-                    `[AIService] ⚡ API reload completed in ${reloadDuration.toFixed(2)}ms (with API-level quality/relevance filtering)`,
+                    `[AIService] ⚡ API reload completed in ${reloadDuration.toFixed(2)}ms (with API-level quality + relevance filtering)`,
                 );
                 Logger.debug(
-                    `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks (already filtered by quality and relevance)`,
+                    `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks (property + quality + relevance filtered at API level)`,
                 );
             }
 
@@ -820,9 +814,8 @@ export class AIService {
                 }
 
                 // Quality filter: Convert percentage (0.0-1.0) to actual score threshold
-                // Max score calculated dynamically based on query type and user settings
-                // Adapts to include only relevant components
-                const maxRelevanceScore = settings.relevanceCoreWeight + 1.0;
+                // PROPERTIES ONLY (due date + priority + status) - NO RELEVANCE
+                // Relevance is handled separately by minimum relevance score filter
                 const maxDueDateScore = Math.max(
                     settings.dueDateOverdueScore,
                     settings.dueDateWithin7DaysScore,
@@ -843,94 +836,34 @@ export class AIService {
                     ),
                 );
 
-                // Dynamic max score based on what will ACTUALLY be scored
-                // Must mirror the activation logic in scoreTasksComprehensive:
-                // - relevance active ONLY if: queryHasKeywords (not sort order!)
-                // - dueDate active if: queryHasDueDate || dueDateInSort
-                // - priority active if: queryHasPriority || priorityInSort
-                // - status active if: queryHasStatus || statusInSort
-                // Note: Sort order should NOT activate relevance because without keywords,
-                // all relevance scores = 0 but maxScore inflates → threshold too high → filters all tasks
-                const dueDateInSort =
-                    settings.taskSortOrder.includes("dueDate");
-                const priorityInSort =
-                    settings.taskSortOrder.includes("priority");
-                const statusInSort = settings.taskSortOrder.includes("status");
-
-                const relevanceActive = queryType.hasKeywords; // Fixed: removed || relevanceInSort
-                const dueDateActive =
-                    !!intent.extractedDueDateFilter || dueDateInSort;
-                const priorityActive =
-                    !!intent.extractedPriority || priorityInSort;
-                const statusActive = !!intent.extractedStatus || statusInSort;
-
-                let maxScore = 0;
-                const activeComponents: string[] = [];
-
-                if (relevanceActive) {
-                    maxScore +=
-                        maxRelevanceScore * settings.relevanceCoefficient;
-                    activeComponents.push("relevance");
-                }
-                if (dueDateActive) {
-                    maxScore += maxDueDateScore * settings.dueDateCoefficient;
-                    activeComponents.push("dueDate");
-                }
-                if (priorityActive) {
-                    maxScore += maxPriorityScore * settings.priorityCoefficient;
-                    activeComponents.push("priority");
-                }
-                if (statusActive) {
-                    maxScore += maxStatusScore * settings.statusCoefficient;
-                    activeComponents.push("status");
-                }
+                // Quality score max = properties only (always all active)
+                // Quality is INDEPENDENT of keywords - it only considers task properties
+                const maxScore =
+                    maxDueDateScore * settings.dueDateCoefficient +
+                    maxPriorityScore * settings.priorityCoefficient +
+                    maxStatusScore * settings.statusCoefficient;
 
                 Logger.debug(
-                    `Query type: ${queryType.queryType}, Active components: [${activeComponents.join(", ")}], maxScore = ${maxScore.toFixed(1)}`,
+                    `Quality filter max score: ${maxScore.toFixed(1)} (properties only: dueDate + priority + status)`,
                 );
                 let baseThreshold: number;
 
                 if (settings.qualityFilterStrength === 0) {
-                    // Adaptive mode - auto-adjust based on query complexity
-                    // Scale thresholds to appropriate range
-                    if (intent.keywords.length >= 20) {
-                        // Semantic expansion - very permissive (10%)
-                        baseThreshold = maxScore * 0.1;
-                    } else if (intent.keywords.length >= 4) {
-                        // Several keywords - permissive (16%)
-                        baseThreshold = maxScore * 0.16;
-                    } else if (intent.keywords.length >= 2) {
-                        // Few keywords - balanced (26%)
-                        baseThreshold = maxScore * 0.26;
-                    } else {
-                        // Single keyword - moderate (32%)
-                        baseThreshold = maxScore * 0.32;
-                    }
-                    const hasExpansion =
-                        usingAIParsing && parsedQuery?.coreKeywords;
-                    const mode = hasExpansion
-                        ? "with expansion"
-                        : "no expansion";
-                    Logger.debug(
-                        `Quality filter: 0% (adaptive) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}] (${intent.keywords.length} keywords)`,
-                    );
+                    // Disabled - no quality filtering
+                    baseThreshold = 0;
+                    Logger.debug(`Quality filter: disabled (threshold = 0)`);
                 } else {
                     // User-defined percentage - convert to actual threshold
                     baseThreshold = settings.qualityFilterStrength * maxScore;
                     const percentage = (
                         settings.qualityFilterStrength * 100
                     ).toFixed(0);
-                    const hasExpansion =
-                        usingAIParsing && parsedQuery?.coreKeywords;
-                    const mode = hasExpansion
-                        ? "with expansion"
-                        : "no expansion";
                     Logger.debug(
-                        `Quality filter: ${percentage}% (user-defined) → ${baseThreshold.toFixed(2)}/${maxScore.toFixed(1)} [${mode}]`,
+                        `Quality filter: ${percentage}% of max → ${baseThreshold.toFixed(2)} / ${maxScore.toFixed(1)} (properties only)`,
                     );
                 }
 
-                // Use base threshold directly (already adjusted for keyword count in adaptive mode)
+                // Use base threshold directly
                 const finalThreshold = baseThreshold;
 
                 // Apply comprehensive score quality filter

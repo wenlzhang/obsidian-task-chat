@@ -142,7 +142,6 @@ export class DatacoreService {
         settings: PluginSettings,
         index: number,
         filePath: string = "",
-        pageTags: string[] = [],
     ): Task | null {
         if (!this.isValidTask(dcTask)) {
             return null;
@@ -275,7 +274,7 @@ export class DatacoreService {
             dueDate: dueDate,
             priority: priority,
             tags: tags, // Task-level tags
-            noteTags: pageTags, // Note-level tags
+            // noteTags removed - not needed (filtering happens at DataCore query level, not displayed in UI)
             sourcePath: path,
             lineNumber: line,
             originalText: text,
@@ -537,15 +536,76 @@ export class DatacoreService {
             // API-LEVEL QUALITY FILTERING
             // Apply quality filter (due date + priority + status scores) at API level
             // This prevents low-quality tasks from ever becoming Task objects
+            // Uses existing score calculation functions (no duplication)
             // ========================================
             if (qualityThreshold !== undefined && qualityThreshold > 0) {
                 const beforeQuality = results.length;
-                const qualityFilter =
-                    TaskSearchService.createQualityFilterPredicate(
+
+                // Create inline quality filter using existing score functions
+                const qualityFilter = (task: any): boolean => {
+                    const taskText = task.$text || task.text || "";
+
+                    // Calculate due date score using existing function
+                    const dueValue = TaskPropertyService.getUnifiedFieldValue(
+                        task,
+                        "due",
+                        taskText,
                         settings,
-                        qualityThreshold,
                         "datacore",
                     );
+                    const dueDateStr = dueValue
+                        ? typeof dueValue === "string"
+                            ? dueValue
+                            : dueValue.toString()
+                        : undefined;
+                    const dueDateScore =
+                        TaskSearchService.calculateDueDateScore(
+                            dueDateStr,
+                            settings,
+                        );
+
+                    // Calculate priority score using existing function
+                    const priorityValue =
+                        TaskPropertyService.getUnifiedFieldValue(
+                            task,
+                            "priority",
+                            taskText,
+                            settings,
+                            "datacore",
+                        );
+                    const mappedPriority =
+                        priorityValue !== undefined && priorityValue !== null
+                            ? TaskPropertyService.mapPriority(
+                                  priorityValue,
+                                  settings,
+                              )
+                            : undefined;
+                    const priorityScore =
+                        TaskSearchService.calculatePriorityScore(
+                            mappedPriority,
+                            settings,
+                        );
+
+                    // Calculate status score using existing function
+                    const statusValue = task.$status || task.status || "";
+                    const mappedStatus = this.mapStatusToCategory(
+                        statusValue,
+                        settings,
+                    );
+                    const statusScore = TaskSearchService.calculateStatusScore(
+                        mappedStatus,
+                        settings,
+                    );
+
+                    // Calculate total quality score with coefficients (properties only - no relevance)
+                    const totalQualityScore =
+                        dueDateScore * settings.dueDateCoefficient +
+                        priorityScore * settings.priorityCoefficient +
+                        statusScore * settings.statusCoefficient;
+
+                    return totalQualityScore >= qualityThreshold;
+                };
+
                 results = results.filter(qualityFilter);
                 Logger.debug(
                     `[Datacore] Quality filter (threshold: ${qualityThreshold.toFixed(2)}): ${beforeQuality} → ${results.length} tasks`,
@@ -592,80 +652,11 @@ export class DatacoreService {
                 }
             }
 
-            // ========================================
-            // CONDITIONAL PAGE TAG LOADING
-            // OPTIMIZATION: Only fetch page tags when actually needed
-            // This is a MAJOR performance boost for large vaults (2-3 second savings!)
-            // ========================================
-
-            const pageTagsMap = new Map<string, string[]>();
-
-            // Determine if we need page tags
-            const needsPageTags =
-                (inclusionFilters?.noteTags &&
-                    inclusionFilters.noteTags.length > 0) ||
-                (settings.exclusions.noteTags &&
-                    settings.exclusions.noteTags.length > 0) ||
-                settings.alwaysDisplayNoteTags; // User setting (if it exists)
-
-            if (needsPageTags) {
-                Logger.debug(
-                    "[Datacore] Fetching page tags (needed for note tag filters)",
-                );
-
-                // Get unique page paths from task results
-                const uniquePaths = new Set<string>(
-                    results
-                        .map((t: any) => (t.$file || t.file || "") as string)
-                        .filter((p) => p),
-                );
-
-                if (uniquePaths.size > 0) {
-                    try {
-                        // OPTIMIZATION: Query only pages with matching tasks instead of ALL pages
-                        // Old: "@page" → queries ALL pages in vault (10,000+ pages in large vaults!)
-                        // New: "@page and ($file = "path1" or $file = "path2")" → queries only needed pages
-
-                        const pathConditions = Array.from(uniquePaths)
-                            .slice(0, 500) // Safety limit to prevent query string explosion
-                            .map((path) => `$file = "${path}"`)
-                            .join(" or ");
-
-                        const pagesQuery =
-                            pathConditions.length > 0
-                                ? `@page and (${pathConditions})`
-                                : "@page";
-
-                        Logger.debug(
-                            `[Datacore] Querying ${uniquePaths.size} pages for tags (was: all pages)`,
-                        );
-                        const pages = await datacoreApi.query(pagesQuery);
-
-                        if (pages && Array.isArray(pages)) {
-                            for (const page of pages) {
-                                const pagePath = page.$file || page.file || "";
-                                if (!pagePath) continue;
-
-                                // Get tags from page using Datacore's native $tags property
-                                const pageTags = page.$tags || page.tags || [];
-                                if (pageTags.length > 0) {
-                                    pageTagsMap.set(pagePath, pageTags);
-                                }
-                            }
-                        }
-                        Logger.debug(
-                            `[Datacore] Loaded tags for ${pageTagsMap.size} pages`,
-                        );
-                    } catch (error) {
-                        Logger.warn(
-                            "Failed to fetch page tags from Datacore:",
-                            error,
-                        );
-                    }
-                }
-            } else {
-                Logger.debug("[Datacore] Skipping page tag fetch (not needed)");
-            }
+            // NOTE: Page tag fetching REMOVED - it's not needed!
+            // Reason 1: Note tag filtering already happens at DataCore query level (lines 350-409: childof(@page and #tag))
+            // Reason 2: Task.noteTags field is not displayed in UI
+            // Reason 3: TaskFilterService.filterTasks() is never called (JavaScript-level filtering is dead code)
+            // Performance gain: Saves 2-3 seconds in large vaults!
 
             // IMPORTANT: @task query returns ALL tasks (including subtasks) as a FLAT list
             // Similar to Dataview's file.tasks, Datacore already flattens the hierarchy
@@ -744,7 +735,6 @@ export class DatacoreService {
                     settings,
                     taskIndex++,
                     taskPath,
-                    pageTagsMap.get(taskPath) || [], // Pass note-level tags from page
                 );
 
                 if (task) {

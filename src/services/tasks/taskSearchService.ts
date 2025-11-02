@@ -1034,7 +1034,13 @@ export class TaskSearchService {
      * @param settings - Plugin settings with user-configurable coefficients
      * @returns Score: User-configurable (defaults: 1.5 overdue, 1.0 within 7 days, 0.5 within month, 0.2 later, 0.1 none)
      */
-    private static calculateDueDateScore(
+    /**
+     * Calculate due date score (PUBLIC - reused in API-level filtering)
+     * @param dueDate - Due date string
+     * @param settings - Plugin settings with user-configurable scores
+     * @returns Score based on date ranges
+     */
+    static calculateDueDateScore(
         dueDate: string | undefined,
         settings: import("../../settings").PluginSettings,
     ): number {
@@ -1069,12 +1075,12 @@ export class TaskSearchService {
     }
 
     /**
-     * Calculate priority score
+     * Calculate priority score (PUBLIC - reused in API-level filtering)
      * @param priority - Task priority (1=highest, 2=high, 3=medium, 4=low)
      * @param settings - Plugin settings with user-configurable coefficients
      * @returns Score: User-configurable (defaults: 1.0 for P1, 0.75 P2, 0.5 P3, 0.2 P4, 0.1 none)
      */
-    private static calculatePriorityScore(
+    static calculatePriorityScore(
         priority: number | undefined,
         settings: import("../../settings").PluginSettings,
     ): number {
@@ -1095,12 +1101,13 @@ export class TaskSearchService {
     }
 
     /**
-     * Calculate status score (dynamic - supports custom categories)
+     * Calculate status score (PUBLIC - reused in API-level filtering)
+     * Dynamic - supports custom categories
      * @param statusCategory - Task status category (any custom category name)
      * @param settings - Plugin settings with user-configurable coefficients
      * @returns Score from taskStatusMapping (0.0-1.0), defaults to 0.5 for unknown categories
      */
-    private static calculateStatusScore(
+    static calculateStatusScore(
         statusCategory: string | undefined,
         settings: import("../../settings").PluginSettings,
     ): number {
@@ -1478,107 +1485,6 @@ export class TaskSearchService {
     }
 
     /**
-     * Create quality filter predicate for API-level filtering
-     *
-     * OPTIMIZATION: Calculate quality scores at the DataView/DataCore API level
-     * using .filter() or .where() predicates. This prevents low-quality tasks from
-     * ever becoming Task objects, saving memory and processing time.
-     *
-     * Quality score = (dueDateScore × dueDateCoeff) + (priorityScore × priorityCoeff) + (statusScore × statusCoeff)
-     *
-     * @param settings - Plugin settings
-     * @param qualityThreshold - Minimum quality score to pass
-     * @param source - 'datacore' or 'dataview' (affects field access)
-     * @returns Filter predicate function
-     */
-    static createQualityFilterPredicate(
-        settings: PluginSettings,
-        qualityThreshold: number,
-        source: "datacore" | "dataview",
-    ): (task: any) => boolean {
-        return (task: any) => {
-            // Skip if no threshold set
-            if (qualityThreshold <= 0) return true;
-
-            // Get task text for inline field extraction
-            const taskText =
-                source === "datacore"
-                    ? task.$text || task.text || ""
-                    : task.text || task.visual || "";
-
-            // Calculate due date score
-            let dueDateScore = 0;
-            const dueValue = TaskPropertyService.getUnifiedFieldValue(
-                task,
-                "due",
-                taskText,
-                settings,
-                source,
-            );
-            if (dueValue) {
-                dueDateScore = this.calculateTaskDueDateScore(
-                    dueValue,
-                    settings,
-                );
-            } else {
-                dueDateScore = settings.dueDateNoneScore;
-            }
-
-            // Calculate priority score
-            let priorityScore = 0;
-            const priorityValue = TaskPropertyService.getUnifiedFieldValue(
-                task,
-                "priority",
-                taskText,
-                settings,
-                source,
-            );
-            if (priorityValue !== undefined && priorityValue !== null) {
-                const mapped = TaskPropertyService.mapPriority(
-                    priorityValue,
-                    settings,
-                );
-                if (mapped !== undefined) {
-                    priorityScore = this.calculateTaskPriorityScore(
-                        mapped,
-                        settings,
-                    );
-                }
-            } else {
-                priorityScore = settings.priorityNoneScore;
-            }
-
-            // Calculate status score
-            let statusScore = 0;
-            const statusValue = TaskPropertyService.getUnifiedFieldValue(
-                task,
-                "status",
-                taskText,
-                settings,
-                source,
-            );
-            if (statusValue !== undefined && statusValue !== null) {
-                const mapped = TaskPropertyService.mapStatus(
-                    statusValue,
-                    settings,
-                );
-                if (mapped) {
-                    const statusConfig = settings.taskStatusMapping[mapped];
-                    statusScore = statusConfig?.score || 0;
-                }
-            }
-
-            // Calculate total quality score with coefficients
-            const totalQualityScore =
-                dueDateScore * settings.dueDateCoefficient +
-                priorityScore * settings.priorityCoefficient +
-                statusScore * settings.statusCoefficient;
-
-            return totalQualityScore >= qualityThreshold;
-        };
-    }
-
-    /**
      * Create relevance filter predicate for API-level filtering
      *
      * OPTIMIZATION: Calculate relevance scores at the DataView/DataCore API level
@@ -1633,55 +1539,5 @@ export class TaskSearchService {
 
             return relevanceScore >= minimumRelevanceScore;
         };
-    }
-
-    /**
-     * Calculate due date score for a single task
-     * Extracted from scoreTasksComprehensive for reuse in quality filter
-     * Uses user-configured scores from settings (no hard-coded fallbacks)
-     */
-    private static calculateTaskDueDateScore(
-        dueValue: any,
-        settings: PluginSettings,
-    ): number {
-        const moment = (window as any).moment;
-        const dueDate = moment(dueValue);
-        if (!dueDate.isValid()) return settings.dueDateNoneScore;
-
-        const now = moment();
-        const daysDiff = dueDate.diff(now, "days");
-
-        if (daysDiff < 0) {
-            return settings.dueDateOverdueScore; // Overdue
-        } else if (daysDiff <= 7) {
-            return settings.dueDateWithin7DaysScore; // Within 7 days
-        } else if (daysDiff <= 30) {
-            return settings.dueDateWithin1MonthScore; // Within 1 month
-        } else {
-            return settings.dueDateLaterScore; // Later than 1 month
-        }
-    }
-
-    /**
-     * Calculate priority score for a single task
-     * Extracted from scoreTasksComprehensive for reuse in quality filter
-     * Uses user-configured scores from settings (no hard-coded fallbacks)
-     */
-    private static calculateTaskPriorityScore(
-        priority: number,
-        settings: PluginSettings,
-    ): number {
-        switch (priority) {
-            case 1:
-                return settings.priorityP1Score;
-            case 2:
-                return settings.priorityP2Score;
-            case 3:
-                return settings.priorityP3Score;
-            case 4:
-                return settings.priorityP4Score;
-            default:
-                return settings.priorityNoneScore;
-        }
     }
 }
