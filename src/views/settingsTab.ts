@@ -494,7 +494,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Max direct results")
-            .setDesc("Maximum tasks to show in Simple Search mode.")
+            .setDesc("Maximum tasks to show in Simple & Smart Search modes.")
             .addSlider((slider) =>
                 slider
                     .setLimits(5, 100, 5)

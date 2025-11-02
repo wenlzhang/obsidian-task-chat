@@ -778,19 +778,27 @@ export class AIService {
                 `[JavaScript Level] Processing ${filteredTasks.length} tasks that passed API-level filters`,
             );
 
-            // POST-API PIPELINE: Score + Sort (streamlined single-pass)
+            // POST-API PIPELINE: Score + Sort + Limit (streamlined single-pass)
             // All tasks that reach here have ALREADY passed API-level quality/relevance filters
-            // This pipeline scores (reusing cached scores) and sorts in one efficient pass
+            // This pipeline scores (reusing cached scores), sorts, and limits in one efficient pass
             const keywords = intent.keywords;
             const coreKeywords =
                 usingAIParsing && parsedQuery?.coreKeywords
                     ? parsedQuery.coreKeywords
                     : intent.keywords;
 
+            // Determine limit based on mode:
+            // - Simple/Smart Search: maxDirectResults (show directly to user)
+            // - Task Chat: maxTasksForAI (send to AI for analysis)
+            const taskLimit =
+                chatMode === "chat"
+                    ? settings.maxTasksForAI
+                    : settings.maxDirectResults;
+
             Logger.debug(
                 usingAIParsing && parsedQuery?.coreKeywords
-                    ? `Using post-API pipeline with expansion (core: ${coreKeywords.length}, expanded: ${keywords.length})`
-                    : `Using post-API pipeline without expansion (keywords: ${keywords.length})`,
+                    ? `Using post-API pipeline with expansion (core: ${coreKeywords.length}, expanded: ${keywords.length}, limit: ${taskLimit})`
+                    : `Using post-API pipeline without expansion (keywords: ${keywords.length}, limit: ${taskLimit})`,
             );
 
             const scoredTasks = TaskSearchService.scoreAndSortTasks(
@@ -809,6 +817,7 @@ export class AIService {
                     settings: settings,
                 },
                 sortOrder,
+                taskLimit, // Pass mode-specific limit
             );
 
             // Log sample task scores for transparency
@@ -840,7 +849,7 @@ export class AIService {
             );
 
             Logger.debug(
-                `Post-API pipeline complete: ${sortedTasksForDisplay.length} tasks (sorted by ${sortOrder.join(" → ")})`,
+                `Post-API pipeline complete: ${sortedTasksForDisplay.length} tasks (scored, sorted, and limited by ${sortOrder.join(" → ")})`,
             );
 
             // Three-mode result delivery logic
@@ -977,10 +986,7 @@ export class AIService {
 
                 return {
                     response: "",
-                    directResults: sortedTasksForDisplay.slice(
-                        0,
-                        settings.maxDirectResults,
-                    ),
+                    directResults: sortedTasksForDisplay, // Already limited by pipeline
                     tokenUsage,
                     parsedQuery: finalParsedQuery,
                     error, // Include error info for UI display
@@ -1023,18 +1029,11 @@ export class AIService {
                 }
             }
 
-            // Use same sort order for AI context
-            // Coefficients already determine importance, order is just for tiebreaking
-            const sortedTasksForAI = sortedTasksForDisplay; // Same as display
-
-            // Select top tasks for AI analysis
-            const tasksToAnalyze = sortedTasksForAI.slice(
-                0,
-                settings.maxTasksForAI,
-            );
+            // Tasks already limited by pipeline to maxTasksForAI for chat mode
+            const tasksToAnalyze = sortedTasksForDisplay;
 
             Logger.debug(
-                `Sending top ${tasksToAnalyze.length} tasks to AI (max: ${settings.maxTasksForAI})`,
+                `Sending ${tasksToAnalyze.length} tasks to AI (already limited by pipeline)`,
             );
             Logger.debug(
                 `Total sorted tasks available: ${sortedTasksForDisplay.length}`,
@@ -3122,18 +3121,17 @@ ${taskContext}`;
                     settings: settings,
                 },
                 sortCriteria,
+                settings.maxRecommendations, // Limit in pipeline
             );
 
-            const topTasks = scoredTasks
-                .slice(0, settings.maxRecommendations)
-                .map((st) => st.task);
+            const topTasks = scoredTasks.map((st) => st.task); // Already limited
             const topIndices = Array.from(
                 { length: topTasks.length },
                 (_, i) => i,
             );
 
             Logger.debug(
-                `Fallback: returning top ${topTasks.length} tasks by relevance (user limit: ${settings.maxRecommendations})`,
+                `Fallback: returning ${topTasks.length} tasks (already limited by pipeline)`,
             );
             return {
                 tasks: topTasks,

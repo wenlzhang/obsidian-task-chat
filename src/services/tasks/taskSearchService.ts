@@ -1441,19 +1441,19 @@ export class TaskSearchService {
     }
 
     /**
-     * POST-API PIPELINE: Score → Sort
+     * POST-API PIPELINE: Score → Sort → Limit
      * Optimized for API-first architecture where filtering already happened at API level.
      *
      * ARCHITECTURE:
      * - All filtering (exclusions, properties, quality, relevance) done at API level
      * - Tasks arrive already filtered and with cached scores
-     * - This method just scores (reusing cache) and sorts
-     * - Caller handles limiting to maxDirectResults/maxTasksForAI
+     * - This method scores (reusing cache), sorts, and optionally limits results
      *
      * PERFORMANCE:
      * - Reuses cached scores from API filtering (~50% fewer calculations)
      * - Single comprehensive scoring pass (all components at once)
      * - Efficient multi-criteria sorting
+     * - Optional limiting reduces memory allocation and return size
      *
      * @param tasks - Pre-filtered tasks from API level
      * @param keywords - All keywords (including semantic expansion)
@@ -1461,7 +1461,8 @@ export class TaskSearchService {
      * @param queryType - Query classification (hasKeywords, hasTaskProperties)
      * @param scoringParams - Scoring configuration (coefficients, query flags, settings)
      * @param sortOrder - Sort criteria for multi-criteria sorting
-     * @returns Sorted array of {task, score, component scores}
+     * @param limit - Optional: Maximum number of tasks to return (e.g., maxDirectResults, maxTasksForAI)
+     * @returns Sorted (and optionally limited) array of {task, score, component scores}
      */
     static scoreAndSortTasks(
         tasks: Task[],
@@ -1479,6 +1480,7 @@ export class TaskSearchService {
             settings: PluginSettings;
         },
         sortOrder: string[],
+        limit?: number,
     ): Array<{
         task: Task;
         score: number;
@@ -1526,11 +1528,17 @@ export class TaskSearchService {
             .map((task) => taskToScore.get(task.id))
             .filter((st): st is NonNullable<typeof st> => st !== undefined);
 
+        // STEP 4: Optional limiting (reduces memory and simplifies caller)
+        const finalTasks =
+            limit !== undefined && limit > 0
+                ? sortedScoredTasks.slice(0, limit)
+                : sortedScoredTasks;
+
         Logger.debug(
-            `[Post-API Pipeline] Scored and sorted ${sortedScoredTasks.length} tasks`,
+            `[Post-API Pipeline] Scored and sorted ${sortedScoredTasks.length} tasks${limit ? `, limited to ${finalTasks.length}` : ""}`,
         );
 
-        return sortedScoredTasks;
+        return finalTasks;
     }
 
     /**
