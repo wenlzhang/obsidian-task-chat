@@ -991,11 +991,25 @@ export class TaskSearchService {
 
     /**
      * Calculate relevance score based on keyword matching
+     *
+     * IMPORTANT: This calculation is shared with API-level filtering (createRelevanceFilterPredicate)!
+     * Both must use IDENTICAL logic to ensure consistency between filtering and scoring.
+     *
+     * Formula:
+     * - coreMatchRatio = coreMatches / totalCoreKeywords
+     * - allMatchRatio = allMatches / totalCoreKeywords
+     * - score = coreMatchRatio × relevanceCoreWeight + allMatchRatio × 1.0
+     *
+     * Example:
+     * - Core: ["task", "urgent"] (2 keywords), All: ["task", "urgent", "todo"] (3 keywords)
+     * - Task: "urgent task" → 2 core matches, 2 all matches
+     * - Score: (2/2) × 0.2 + (2/2) × 1.0 = 0.2 + 1.0 = 1.2
+     *
      * @param taskText - Lowercase task text
      * @param coreKeywords - Core keywords from query (pre-expansion, deduplicated)
      * @param allKeywords - All keywords including core + semantic equivalents (deduplicated)
      * @param settings - Plugin settings with user-configurable coefficients
-     * @returns Score: 0-1.4 typical (0.2 × coreWeight + 1.0 × allWeight, adjustable by user)
+     * @returns Score: 0-2+ typical (can exceed 2.0 with many expanded matches)
      */
     private static calculateRelevanceScore(
         taskText: string,
@@ -1499,6 +1513,25 @@ export class TaskSearchService {
      * @param source - 'datacore' or 'dataview' (affects field access)
      * @returns Filter predicate function
      */
+    /**
+     * Create relevance filter predicate for API-level filtering
+     *
+     * IMPORTANT: Uses EXACT same calculation as calculateRelevanceScore() to ensure consistency!
+     * API-level filter must produce same scores as JavaScript-level scoring, otherwise
+     * tasks filtered at API level might have different scores in JavaScript, causing confusion.
+     *
+     * Formula (matching calculateRelevanceScore):
+     * - coreMatchRatio = coreMatches / totalCoreKeywords
+     * - allMatchRatio = allMatches / totalCoreKeywords
+     * - score = coreMatchRatio × relevanceCoreWeight + allMatchRatio × 1.0
+     *
+     * @param keywords - All keywords (core + expanded)
+     * @param coreKeywords - Core keywords only (pre-expansion)
+     * @param minimumRelevanceScore - Threshold to pass filter
+     * @param settings - Plugin settings with relevanceCoreWeight
+     * @param source - Data source type (datacore or dataview)
+     * @returns Filter predicate function
+     */
     static createRelevanceFilterPredicate(
         keywords: string[],
         coreKeywords: string[],
@@ -1525,17 +1558,24 @@ export class TaskSearchService {
                 }
             }
 
-            // Count expanded keyword matches
-            let expandedMatches = 0;
+            // Count ALL keyword matches (including core + expanded)
+            let allMatches = 0;
             for (const keyword of keywords) {
                 if (taskText.includes(keyword.toLowerCase())) {
-                    expandedMatches++;
+                    allMatches++;
                 }
             }
 
-            // Calculate relevance score (same logic as scoreTasksComprehensive)
+            // Calculate relevance score using SAME LOGIC as calculateRelevanceScore()
+            // CRITICAL: Both ratios divided by totalCore (not total keywords!)
+            const totalCore = Math.max(coreKeywords.length, 1); // Avoid division by zero
+            const coreMatchRatio = coreMatches / totalCore;
+            const allMatchRatio = allMatches / totalCore;
+
+            // Apply same formula as JS-level scoring: core bonus + all matches
             const relevanceScore =
-                coreMatches * settings.relevanceCoreWeight + expandedMatches;
+                coreMatchRatio * settings.relevanceCoreWeight +
+                allMatchRatio * 1.0;
 
             return relevanceScore >= minimumRelevanceScore;
         };
