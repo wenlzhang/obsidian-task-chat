@@ -5,6 +5,11 @@ import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
 
 /**
+ * Task source type for distinguishing between different task indexing APIs
+ */
+export type TaskSource = "datacore";
+
+/**
  * Centralized Task Property Service
  *
  * This service consolidates ALL task property operations (status, priority, due date)
@@ -708,7 +713,7 @@ export class TaskPropertyService {
      */
     static getAllPriorityFieldNames(settings: PluginSettings): string[] {
         return [
-            settings.dataviewKeys.priority,
+            settings.datacoreKeys.priority,
             this.PRIORITY_FIELDS.primary,
             ...this.PRIORITY_FIELDS.aliases,
         ];
@@ -722,7 +727,7 @@ export class TaskPropertyService {
      * @returns Array of field names to check for due dates
      */
     static getAllDueDateFieldNames(settings: PluginSettings): string[] {
-        return [settings.dataviewKeys.dueDate, ...this.DATE_FIELDS.due];
+        return [settings.datacoreKeys.dueDate, ...this.DATE_FIELDS.due];
     }
 
     /**
@@ -946,7 +951,7 @@ export class TaskPropertyService {
 
         // Check user's configured priority mapping
         for (const [priority, values] of Object.entries(
-            settings.dataviewPriorityMapping,
+            settings.datacorePriorityMapping,
         )) {
             if (values.some((v) => v.toLowerCase() === strValue)) {
                 return parseInt(priority);
@@ -2086,12 +2091,12 @@ export class TaskPropertyService {
      * @param task - Task object from Datacore
      * @returns Task text
      */
-    private static getTaskText(task: any, source: TaskSource): string {
-        if (source === "datacore") {
-            return task.$text || task.text || "";
-        } else {
-            return task.visual || task.text || task.content || "";
-        }
+    private static getTaskText(
+        task: any,
+        source: TaskSource = "datacore",
+    ): string {
+        // Always use Datacore format (source parameter kept for compatibility)
+        return task.$text || task.text || "";
     }
 
     /**

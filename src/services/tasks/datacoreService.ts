@@ -107,7 +107,6 @@ export class DatacoreService {
             fieldKey,
             text,
             settings,
-            "datacore",
         );
     }
 
@@ -243,7 +242,7 @@ export class DatacoreService {
         if (createdDateValue === undefined) {
             createdDateValue = this.getFieldValue(
                 dcTask,
-                settings.dataviewKeys.createdDate,
+                settings.datacoreKeys.createdDate,
                 text,
                 settings,
             );
@@ -260,7 +259,7 @@ export class DatacoreService {
         if (completedDateValue === undefined) {
             completedDateValue = this.getFieldValue(
                 dcTask,
-                settings.dataviewKeys.completedDate,
+                settings.datacoreKeys.completedDate,
                 text,
                 settings,
             );
@@ -465,7 +464,6 @@ export class DatacoreService {
         return TaskPropertyService.buildUnifiedTaskFilter(
             propertyFilters,
             settings,
-            "datacore",
         );
     }
 
@@ -609,7 +607,6 @@ export class DatacoreService {
                     coreKeywords || keywords,
                     minimumRelevanceScore,
                     settings,
-                    "datacore",
                     scoreCache,
                     this.getTaskId.bind(this),
                 );
@@ -662,7 +659,6 @@ export class DatacoreService {
                                 "due",
                                 taskText,
                                 settings,
-                                "datacore",
                             );
                         task._dueDate = dueValue
                             ? typeof dueValue === "string"
@@ -677,7 +673,6 @@ export class DatacoreService {
                                 "priority",
                                 taskText,
                                 settings,
-                                "datacore",
                             );
                         task._mappedPriority =
                             priorityValue !== undefined &&
@@ -706,7 +701,6 @@ export class DatacoreService {
                     results,
                     qualityThreshold,
                     settings,
-                    "datacore",
                     scoreCache,
                     this.getTaskId.bind(this),
                 );
@@ -781,7 +775,6 @@ export class DatacoreService {
                                     "due",
                                     taskText,
                                     settings,
-                                    "datacore",
                                 );
                             task._dueDate = dueValue
                                 ? typeof dueValue === "string"
@@ -796,7 +789,6 @@ export class DatacoreService {
                                     "priority",
                                     taskText,
                                     settings,
-                                    "datacore",
                                 );
                             task._mappedPriority =
                                 priorityValue !== undefined &&

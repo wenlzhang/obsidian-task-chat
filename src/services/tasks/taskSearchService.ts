@@ -1094,7 +1094,7 @@ export class TaskSearchService {
      * @param settings - Plugin settings with user-configurable coefficients
      * @returns Score: 0-2+ typical (can exceed 2.0 with many expanded matches)
      */
-    private static calculateRelevanceScore(
+    public static calculateRelevanceScore(
         taskText: string,
         coreKeywords: string[],
         allKeywords: string[],

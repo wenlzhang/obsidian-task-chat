@@ -1836,7 +1836,7 @@ export class AIService {
                 // Find the user's configured value for this priority level
                 const priorityKey = task.priority as 1 | 2 | 3 | 4;
                 const priorityValues =
-                    settings.dataviewPriorityMapping[priorityKey];
+                    settings.datacorePriorityMapping[priorityKey];
                 const userLabel =
                     priorityValues && priorityValues[0]
                         ? priorityValues[0]

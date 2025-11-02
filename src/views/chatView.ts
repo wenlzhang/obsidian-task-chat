@@ -141,19 +141,17 @@ export class ChatView extends ItemView {
                 this.renderDataviewWarning();
 
                 // Show system message about API readiness
-                const activeAPI = TaskIndexService.determineActiveAPI(
-                    this.app,
-                    this.plugin.settings,
-                );
-                const apiName =
-                    activeAPI === "datacore"
-                        ? "Datacore"
-                        : activeAPI === "dataview"
-                          ? "Dataview"
-                          : "Unknown";
-                await this.addSystemMessage(
-                    `Task indexing ready (${apiName}). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
-                );
+                const isDatacoreAvailable =
+                    TaskIndexService.isDatacoreAvailable();
+                if (isDatacoreAvailable) {
+                    await this.addSystemMessage(
+                        `Task indexing ready (Datacore). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
+                    );
+                } else {
+                    await this.addSystemMessage(
+                        `Task indexing not available - please install Datacore`,
+                    );
+                }
             }
 
             // Always update warning status to reflect current state

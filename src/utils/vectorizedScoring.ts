@@ -101,7 +101,6 @@ export class VectorizedScoring {
         keywords: string[],
         coreKeywords: string[],
         settings: PluginSettings,
-        source: string,
     ): Float32Array {
         const scores = new Float32Array(texts.length);
 
@@ -112,10 +111,9 @@ export class VectorizedScoring {
         for (let i = 0; i < texts.length; i++) {
             scores[i] = TaskSearchService.calculateRelevanceScore(
                 texts[i],
-                lowerKeywords,
                 lowerCoreKeywords,
+                lowerKeywords,
                 settings,
-                source,
             );
         }
 
@@ -138,7 +136,6 @@ export class VectorizedScoring {
         results: any[],
         qualityThreshold: number,
         settings: PluginSettings,
-        source: string,
         scoreCache: Map<string, any>,
         getTaskId: (task: any) => string,
     ): any[] {
@@ -154,11 +151,8 @@ export class VectorizedScoring {
             const task = results[i];
             const taskText = task.$text || task.text || "";
 
-            // Extract due date
-            const dueValue =
-                source === "datacore"
-                    ? task.due || task.$due
-                    : task.due?.toString();
+            // Extract due date (Datacore format)
+            const dueValue = task.due || task.$due;
             dueDates[i] =
                 dueValue && typeof dueValue === "string"
                     ? dueValue
@@ -223,7 +217,6 @@ export class VectorizedScoring {
         coreKeywords: string[],
         minimumRelevanceScore: number,
         settings: PluginSettings,
-        source: string,
         scoreCache: Map<string, any>,
         getTaskId: (task: any) => string,
     ): any[] {
@@ -244,7 +237,6 @@ export class VectorizedScoring {
             keywords,
             coreKeywords,
             settings,
-            source,
         );
 
         // Step 3: Filter by threshold and cache (vectorized)

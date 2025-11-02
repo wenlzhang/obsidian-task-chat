@@ -2,6 +2,7 @@ import { App } from "obsidian";
 import { Task } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { DatacoreService } from "./datacoreService";
+import { TaskPropertyService } from "./taskPropertyService";
 import { Logger } from "../../utils/logger";
 
 /**
@@ -41,6 +42,14 @@ export class TaskIndexService {
     }
 
     /**
+     * Check if any task indexing API is available
+     * @returns true if Datacore is available, false otherwise
+     */
+    static isAnyAPIAvailable(): boolean {
+        return this.isDatacoreAvailable();
+    }
+
+    /**
      * Determine if API is ready
      * @returns true if Datacore is available, false otherwise
      */
@@ -64,12 +73,14 @@ export class TaskIndexService {
      */
     static getDetailedStatus(): {
         datacoreAvailable: boolean;
+        activeAPI: boolean;
         message: string;
     } {
         const available = this.isDatacoreAvailable();
 
         return {
             datacoreAvailable: available,
+            activeAPI: available, // Datacore is the only API, so if available, it's active
             message: this.getAPIStatus(),
         };
     }
@@ -349,5 +360,171 @@ export class TaskIndexService {
             Logger.error("Error getting task count from Datacore:", error);
             return 0;
         }
+    }
+
+    /**
+     * Parse standard query syntax for task searches
+     *
+     * This is a general query parsing utility used across all search modes
+     * (Simple Search, Smart Search, Task Chat) for extracting explicitly-specified
+     * task properties from queries.
+     *
+     * Supports:
+     * - Keywords: search: "phrase"
+     * - Projects: #ProjectName
+     * - Priority: p1, p2, p3, p4
+     * - Status: s:value or status:value (supports categories and symbols)
+     * - Date ranges: due before:, due after:
+     * - Special keywords: overdue, recurring, subtask, no date, no priority
+     * - Operators: &, |, !
+     *
+     * @param query Query string with standard syntax
+     * @returns Parsed query components compatible with our system
+     */
+    static parseStandardQuerySyntax(query: string): {
+        keywords?: string[];
+        priority?: number;
+        dueDate?: string;
+        dueDateRange?: { start?: string; end?: string };
+        project?: string;
+        statusValues?: string[]; // Unified: can be categories or symbols
+        specialKeywords?: string[];
+        operators?: { and?: boolean; or?: boolean; not?: boolean };
+    } {
+        const result: any = {
+            specialKeywords: [],
+            operators: {},
+        };
+
+        // Detect operators
+        if (query.includes("&")) result.operators.and = true;
+        if (query.includes("|")) result.operators.or = true;
+        if (query.includes("!")) result.operators.not = true;
+
+        // Pattern 1: "search: keyword" or "search: 'phrase with spaces'"
+        const searchMatch = query.match(/search:\s*["']?([^"'&|]+)["']?/i);
+        if (searchMatch) {
+            const searchTerm = searchMatch[1].trim();
+            result.keywords = [searchTerm];
+        }
+
+        // Pattern 2: Projects "#ProjectName" or "##SubProject"
+        const projectMatch = query.match(/##+([A-Za-z0-9_-]+)/);
+        if (projectMatch) {
+            result.project = projectMatch[1];
+        }
+
+        // Pattern 3: Priority "p1", "p2", "p3", "p4"
+        const priorityMatch = query.match(/\bp([1-4])\b/i);
+        if (priorityMatch) {
+            result.priority = parseInt(priorityMatch[1]);
+        }
+
+        // Pattern 4: Unified Status Syntax "s:value" or "status:value" or "s:value1,value2"
+        // Supports:
+        // - Category names (internal or alias): s:open, s:completed, s:done, s:in-progress
+        // - Symbols: s:x, s:/, s:?
+        // - Multiple values: s:x,/, s:open,wip
+        // Use centralized pattern from TaskPropertyService
+        const statusMatch = query.match(
+            TaskPropertyService.QUERY_PATTERNS.status,
+        );
+        if (statusMatch && statusMatch[1]) {
+            const rawValues = statusMatch[1];
+            // Split by comma (no spaces allowed per user request)
+            result.statusValues = rawValues
+                .split(",")
+                .map((v) => v.trim())
+                .filter((v) => v.length > 0);
+        }
+
+        // Pattern 5: Special keywords
+        const moment = (window as any).moment;
+
+        // "overdue" or "over due" or "od"
+        if (
+            /\b(overdue|over\s+due|od)\b/i.test(query) &&
+            !query.includes("!overdue")
+        ) {
+            result.specialKeywords.push("overdue");
+            // Set date range to show overdue tasks
+            const today = moment().startOf("day");
+            result.dueDateRange = { end: today.format("YYYY-MM-DD") };
+        }
+
+        // "recurring"
+        if (/\brecurring\b/i.test(query) && !query.includes("!recurring")) {
+            result.specialKeywords.push("recurring");
+        }
+
+        // "subtask"
+        if (/\bsubtask\b/i.test(query) && !query.includes("!subtask")) {
+            result.specialKeywords.push("subtask");
+        }
+
+        // "no date" or "!no date"
+        if (/\bno\s+date\b/i.test(query)) {
+            if (query.includes("!no date")) {
+                result.specialKeywords.push("has_date");
+            } else {
+                result.specialKeywords.push("no_date");
+            }
+        }
+
+        // "no priority"
+        if (/\bno\s+priority\b/i.test(query)) {
+            result.specialKeywords.push("no_priority");
+            result.priority = 4; // In Todoist, no priority = p4
+        }
+
+        // Pattern 6: "due before: <date>" vs "date before: <date>" (distinguished)
+        const dueBeforeMatch = query.match(
+            /due\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dueBeforeMatch) {
+            const dateStr = dueBeforeMatch[1].trim();
+            const parsedDate = TaskPropertyService.parseDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { end: parsedDate };
+            }
+        }
+
+        // Pattern 7: "date before: <date>" (for tasks with date property)
+        const dateBeforeMatch = query.match(
+            /(?<!due\s)date\s+before:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateBeforeMatch && !dueBeforeMatch) {
+            const dateStr = dateBeforeMatch[1].trim();
+            const parsedDate = TaskPropertyService.parseDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { end: parsedDate };
+            }
+        }
+
+        // Pattern 8: "due after: <date>" vs "date after: <date>" (distinguished)
+        const dueAfterMatch = query.match(
+            /due\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dueAfterMatch) {
+            const dateStr = dueAfterMatch[1].trim();
+            const parsedDate = TaskPropertyService.parseDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { start: parsedDate };
+            }
+        }
+
+        // Pattern 9: "date after: <date>"
+        const dateAfterMatch = query.match(
+            /(?<!due\s)date\s+after:\s*([^&|]+?)(?:\s+&|\s+\||$)/i,
+        );
+        if (dateAfterMatch && !dueAfterMatch) {
+            const dateStr = dateAfterMatch[1].trim();
+            const parsedDate = TaskPropertyService.parseDate(dateStr);
+            if (parsedDate) {
+                result.dueDateRange = { start: parsedDate };
+            }
+        }
+
+        return result;
     }
 }

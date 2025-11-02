@@ -812,9 +812,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Dataview Settings
-        new Setting(containerEl)
-            .setName("Datacore integration")
-            .setHeading();
+        new Setting(containerEl).setName("Datacore integration").setHeading();
 
         const dataviewInfo = containerEl.createDiv({
             cls: "setting-item-description",
@@ -828,75 +826,13 @@ export class SettingsTab extends PluginSettingTab {
 
         const TaskIndexService =
             require("../services/tasks/taskIndexService").TaskIndexService;
-        const status = TaskIndexService.getDetailedStatus(
-            this.app,
-            this.plugin.settings,
-        );
+        const status = TaskIndexService.getDetailedStatus();
         new Setting(containerEl)
             .setName("Task indexing API")
             .setDesc(
-                "Datacore offers 2-10x better performance than Dataview. Click 'Refresh' after changing to reload tasks.",
-            )
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOption("auto", "Auto (prefer Datacore)")
-                    .addOption("datacore", "Datacore only")
-                    .addOption("dataview", "Dataview only")
-                    .setValue(this.plugin.settings.taskIndexAPI || "auto")
-                    .onChange(
-                        async (value: "auto" | "datacore" | "dataview") => {
-                            this.plugin.settings.taskIndexAPI = value;
-                            await this.plugin.saveSettings();
-
-                            // Show warning if selected API is not available
-                            const newStatus =
-                                TaskIndexService.getDetailedStatus(
-                                    this.app,
-                                    this.plugin.settings,
-                                );
-
-                            if (!newStatus.activeAPI) {
-                                // Selected API not available
-                                new Notice(
-                                    `⚠️ ${value === "datacore" ? "Datacore" : "Dataview"} is not installed or enabled. Please install it to use this mode.`,
-                                    8000,
-                                );
-                            } else if (
-                                value === "auto" &&
-                                newStatus.activeAPI === "dataview" &&
-                                !newStatus.datacoreAvailable
-                            ) {
-                                // Auto mode but Datacore not available
-                                new Notice(
-                                    "ℹ️ Datacore not installed. Using Dataview as fallback.",
-                                    5000,
-                                );
-                            } else {
-                                // Success - determine which API is actually being used
-                                const activeAPI = newStatus.activeAPI;
-                                const apiName =
-                                    activeAPI === "datacore"
-                                        ? "Datacore"
-                                        : activeAPI === "dataview"
-                                          ? "Dataview"
-                                          : "Unknown";
-
-                                new Notice(
-                                    `✓ Switched to ${apiName}. Tasks will be reloaded.`,
-                                    4000,
-                                );
-
-                                // Refresh task count with new API and show system message
-                                await this.plugin.refreshTaskCount(true, {
-                                    showSystemMessage: true,
-                                    context: `Switched to ${apiName}.`,
-                                });
-                            }
-
-                            // Update status display
-                            this.display();
-                        },
-                    ),
+                status.activeAPI
+                    ? "✓ Datacore is installed and active. This plugin requires Datacore for task indexing."
+                    : "⚠️ Datacore not found. Please install the Datacore plugin from Community Plugins to use Task Chat.",
             );
 
         new Setting(containerEl)
@@ -968,9 +904,9 @@ export class SettingsTab extends PluginSettingTab {
             .addText((text) =>
                 text
                     .setPlaceholder("due")
-                    .setValue(this.plugin.settings.dataviewKeys.dueDate)
+                    .setValue(this.plugin.settings.datacoreKeys.dueDate)
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.dueDate = value;
+                        this.plugin.settings.datacoreKeys.dueDate = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -981,9 +917,9 @@ export class SettingsTab extends PluginSettingTab {
             .addText((text) =>
                 text
                     .setPlaceholder("created")
-                    .setValue(this.plugin.settings.dataviewKeys.createdDate)
+                    .setValue(this.plugin.settings.datacoreKeys.createdDate)
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.createdDate = value;
+                        this.plugin.settings.datacoreKeys.createdDate = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -994,9 +930,9 @@ export class SettingsTab extends PluginSettingTab {
             .addText((text) =>
                 text
                     .setPlaceholder("completed")
-                    .setValue(this.plugin.settings.dataviewKeys.completedDate)
+                    .setValue(this.plugin.settings.datacoreKeys.completedDate)
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.completedDate = value;
+                        this.plugin.settings.datacoreKeys.completedDate = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -1007,9 +943,9 @@ export class SettingsTab extends PluginSettingTab {
             .addText((text) =>
                 text
                     .setPlaceholder("p")
-                    .setValue(this.plugin.settings.dataviewKeys.priority)
+                    .setValue(this.plugin.settings.datacoreKeys.priority)
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewKeys.priority = value;
+                        this.plugin.settings.datacoreKeys.priority = value;
                         await this.plugin.saveSettings();
                     }),
             );
@@ -1028,12 +964,12 @@ export class SettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("1, p1, high")
                     .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[1].join(
+                        this.plugin.settings.datacorePriorityMapping[1].join(
                             ", ",
                         ),
                     )
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[1] = value
+                        this.plugin.settings.datacorePriorityMapping[1] = value
                             .split(",")
                             .map((v) => v.trim())
                             .filter((v) => v);
@@ -1051,12 +987,12 @@ export class SettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("2, p2, medium")
                     .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[2].join(
+                        this.plugin.settings.datacorePriorityMapping[2].join(
                             ", ",
                         ),
                     )
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[2] = value
+                        this.plugin.settings.datacorePriorityMapping[2] = value
                             .split(",")
                             .map((v) => v.trim())
                             .filter((v) => v);
@@ -1074,12 +1010,12 @@ export class SettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("3, p3, low")
                     .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[3].join(
+                        this.plugin.settings.datacorePriorityMapping[3].join(
                             ", ",
                         ),
                     )
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[3] = value
+                        this.plugin.settings.datacorePriorityMapping[3] = value
                             .split(",")
                             .map((v) => v.trim())
                             .filter((v) => v);
@@ -1097,12 +1033,12 @@ export class SettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("4, p4, none")
                     .setValue(
-                        this.plugin.settings.dataviewPriorityMapping[4].join(
+                        this.plugin.settings.datacorePriorityMapping[4].join(
                             ", ",
                         ),
                     )
                     .onChange(async (value) => {
-                        this.plugin.settings.dataviewPriorityMapping[4] = value
+                        this.plugin.settings.datacorePriorityMapping[4] = value
                             .split(",")
                             .map((v) => v.trim())
                             .filter((v) => v);

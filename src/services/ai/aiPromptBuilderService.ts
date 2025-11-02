@@ -38,7 +38,7 @@ export class PromptBuilderService {
      * Used in both query parsing and task analysis prompts
      */
     static buildPriorityMapping(settings: PluginSettings): string {
-        const mapping = settings.dataviewPriorityMapping;
+        const mapping = settings.datacorePriorityMapping;
         const lines = [];
 
         if (mapping[1] && mapping[1].length > 0) {
@@ -58,7 +58,7 @@ export class PromptBuilderService {
             return "";
         }
 
-        return `\nPRIORITY MAPPING (Dataview format [${settings.dataviewKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
+        return `\nPRIORITY MAPPING (Dataview format [${settings.datacoreKeys.priority}::value]):\n${lines.join("\n")}\n\nWhen users ask for tasks by priority, search using these values.`;
     }
 
     /**
@@ -70,7 +70,7 @@ export class PromptBuilderService {
         queryLanguages: string[],
     ): string {
         const languageList = queryLanguages.join(", ");
-        const mapping = settings.dataviewPriorityMapping;
+        const mapping = settings.datacorePriorityMapping;
         const lines: string[] = [];
 
         if (mapping[1] && mapping[1].length > 0) {
@@ -117,7 +117,7 @@ EXAMPLES:
      * Used in task analysis prompts
      */
     static buildDateFormats(settings: PluginSettings): string {
-        const keys = settings.dataviewKeys;
+        const keys = settings.datacoreKeys;
         return `
 DATE FORMATS (Dataview):
 - Due date: [${keys.dueDate}::YYYY-MM-DD] - Users may ask for "due today", "overdue", "this week", etc.
@@ -132,7 +132,7 @@ Users may reference tasks by any of these dates.`;
      * Uses centralized field names from TaskPropertyService
      */
     static buildDateFieldNamesForParser(settings: PluginSettings): string {
-        const keys = settings.dataviewKeys;
+        const keys = settings.datacoreKeys;
         // Use centralized date field names from TaskPropertyService
         const dueDateFields = TaskPropertyService.DATE_FIELDS.due.join('", "');
         const createdFields =
@@ -385,7 +385,7 @@ ${criteriaDetails.map((detail) => `  * ${detail}`).join("\n")}
             .map((config) => config.displayName)
             .join(", ");
         const priorityMappings = Object.entries(
-            settings.dataviewPriorityMapping,
+            settings.datacorePriorityMapping,
         )
             .map(([k, v]) => `${v[0] || k}=${k}`)
             .join(", ");
@@ -416,7 +416,7 @@ WHAT YOU MUST DO:
 → The raw syntax is already processed - you don't need to interpret it
 
 Common raw inline field formats you might see in text (already extracted for you):
-- Inline fields: [${settings.dataviewKeys.dueDate}::2025-10-20], [${settings.dataviewKeys.priority}::1]
+- Inline fields: [${settings.datacoreKeys.dueDate}::2025-10-20], [${settings.datacoreKeys.priority}::1]
 - Emoji dates: 🗓️ 2025-10-20 (due), ✅ 2025-10-15 (completed), ➕ 2025-10-10 (created)
 - Priority emojis: ⏫ (high), 🔼 (medium), 🔽 (low)
 
@@ -428,16 +428,16 @@ METADATA FIELD REFERENCE (User's Configuration):
 - **Priority**: Values = (${priorityMappings})
   * Appears as: "Priority: 1" or "Priority: high" (user's first configured value)
   * Lower numbers = higher priority (1=highest, 4=lowest)
-  * Vault field: "${settings.dataviewKeys.priority}"
+  * Vault field: "${settings.datacoreKeys.priority}"
 
-- **Due date**: Vault field = "${settings.dataviewKeys.dueDate}"
+- **Due date**: Vault field = "${settings.datacoreKeys.dueDate}"
   * Appears as: "Due: 2025-10-20" (clean date format)
   * If NO "Due:" in metadata → task has NO due date
 
-- **Created date**: Vault field = "${settings.dataviewKeys.createdDate}"
+- **Created date**: Vault field = "${settings.datacoreKeys.createdDate}"
   * Appears as: "Created: 2025-10-15" (when task was created)
 
-- **Completed date**: Vault field = "${settings.dataviewKeys.completedDate}"
+- **Completed date**: Vault field = "${settings.datacoreKeys.completedDate}"
   * Appears as: "Completed: 2025-10-18" (when task was finished)
 
 - **Folder**: Task's vault location (e.g., "Projects/Work")

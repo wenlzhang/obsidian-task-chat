@@ -9,7 +9,7 @@ import { PromptBuilderService } from "./aiPromptBuilderService";
 import { AIPropertyPromptService } from "./aiPropertyPromptService";
 import { TaskPropertyService } from "../tasks/taskPropertyService";
 import { StopWords } from "../../utils/stopWords";
-import { DataviewService } from "../tasks/dataviewService";
+import { TaskIndexService } from "../tasks/taskIndexService";
 import { PricingService } from "./pricingService";
 import { Logger } from "../../utils/logger";
 import { ErrorHandler, AIError } from "../warnings/errorHandler";
@@ -275,10 +275,10 @@ export class QueryParserService {
 
     /**
      * Extract standard property syntax from query
-     * Uses existing DataviewService.parseStandardQuerySyntax() to avoid code duplication
+     * Uses existing TaskIndexService.parseStandardQuerySyntax() to avoid code duplication
      *
      * This is a lightweight wrapper that delegates to the comprehensive standard parser
-     * which handles: Todoist patterns, chrono-node dates, Dataview compatibility, and more.
+     * which handles: Todoist patterns, chrono-node dates, and more.
      */
     private static extractStandardProperties(
         query: string,
@@ -291,7 +291,7 @@ export class QueryParserService {
         // - Special keywords: no date, recurring, etc.
         // - Projects: ##project
         // - Date ranges: due before:, due after:
-        const standardParsed = DataviewService.parseStandardQuerySyntax(query);
+        const standardParsed = TaskIndexService.parseStandardQuerySyntax(query);
 
         const result: Partial<ParsedQuery> = {};
 
@@ -642,9 +642,9 @@ You have native understanding of ALL human languages. Use this to:
      * "${TaskPropertyService.DUE_DATE_KEYWORDS.any}" = user wants tasks WITH due dates (not a specific date)
 
 3. **Respect User Settings**:
-   - Priority mappings: ${JSON.stringify(settings.dataviewPriorityMapping)}
-   - Status mappings: ${JSON.stringify(settings.dataviewStatusMapping)}
-   - Due date field name: "${settings.dataviewKeys.dueDate}"
+   - Priority mappings: ${JSON.stringify(settings.datacorePriorityMapping)}
+   - Status mappings: ${JSON.stringify(settings.datacoreStatusMapping)}
+   - Due date field name: "${settings.datacoreKeys.dueDate}"
    - User's due date terms: ${JSON.stringify(settings.userPropertyTerms.dueDate)}
    - See detailed mappings below (PRIORITY VALUE MAPPING, STATUS MAPPING, DUE DATE VALUE MAPPING)
    - These provide complete property recognition rules and normalization values

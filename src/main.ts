@@ -39,10 +39,8 @@ export default class TaskChatPlugin extends Plugin {
         this.sessionManager.loadFromData(this.settings.sessionData);
 
         // Check if task indexing API is available
-        if (!TaskIndexService.isAnyAPIAvailable(this.app)) {
-            Logger.warn(
-                "No task indexing API available (Datacore or Dataview required)",
-            );
+        if (!TaskIndexService.isAnyAPIAvailable()) {
+            Logger.warn("No task indexing API available (Datacore required)");
         }
 
         // Register the chat view
@@ -457,11 +455,7 @@ export default class TaskChatPlugin extends Plugin {
      * Polls every 500ms for up to 10 seconds
      */
     private async waitForTaskIndexAPI(maxAttempts = 20): Promise<void> {
-        const success = await TaskIndexService.waitForAPI(
-            this.app,
-            this.settings,
-            maxAttempts,
-        );
+        const success = await TaskIndexService.waitForAPI(maxAttempts);
 
         if (!success) {
             Logger.warn(
@@ -493,7 +487,7 @@ export default class TaskChatPlugin extends Plugin {
     ): Promise<void> {
         try {
             // Check if task indexing API is available
-            if (!TaskIndexService.isAnyAPIAvailable(this.app)) {
+            if (!TaskIndexService.isAnyAPIAvailable()) {
                 Logger.warn("No task indexing API available");
                 return;
             }

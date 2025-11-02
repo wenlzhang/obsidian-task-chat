@@ -168,8 +168,8 @@ export interface PluginSettings {
         lastUpdated: number; // timestamp
     };
 
-    // Dataview Settings
-    dataviewKeys: {
+    // Datacore Settings
+    datacoreKeys: {
         dueDate: string;
         createdDate: string;
         completedDate: string;
@@ -193,11 +193,11 @@ export interface PluginSettings {
     >;
 
     // Priority Mapping (numeric keys 1-4, customizable string values)
-    dataviewPriorityMapping: PriorityMapping;
+    datacorePriorityMapping: PriorityMapping;
 
     // Status Value Mapping (fixed status categories, customizable string values)
     // Maps natural language terms to status categories for query recognition
-    dataviewStatusMapping: StatusMapping;
+    datacoreStatusMapping: StatusMapping;
 
     // Date Formats
     dateFormats: {
@@ -383,8 +383,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         lastUpdated: 0,
     },
 
-    // Dataview Settings
-    dataviewKeys: {
+    // Datacore Settings
+    datacoreKeys: {
         dueDate: "due",
         createdDate: "created",
         completedDate: "completion",
@@ -439,7 +439,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Values: CUSTOMIZABLE strings that map to each level
     // Example: User can add "高" to level 1, then [p::高] will be treated as priority 1
     // System always uses numbers (1-4) internally for comparisons and filtering
-    dataviewPriorityMapping: {
+    datacorePriorityMapping: {
         1: ["1", "p1", "high"],
         2: ["2", "p2", "medium"],
         3: ["3", "p3", "low"],
@@ -452,7 +452,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // Example: User can add "待办" to open, then "待办" in query will filter for open tasks
     // This is separate from taskStatusMapping which maps checkbox symbols
     // This maps natural language terms to status categories for query recognition
-    dataviewStatusMapping: {
+    datacoreStatusMapping: {
         open: ["open", "pending", "todo"],
         inProgress: ["progress", "doing", "wip", "active"],
         completed: ["done", "finished", "complete", "closed"],
