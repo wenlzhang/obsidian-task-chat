@@ -27,21 +27,27 @@ export class DatacoreService {
 
     /**
      * Add date range filter to query parts
+     * Uses configured due date field name from settings.datacoreKeys.dueDate
      */
     private static addDateRangeFilter(
         queryParts: string[],
+        settings: PluginSettings,
         dueDateRange?: DateRange | null,
     ): void {
         if (!dueDateRange) return;
 
         const { start, end } = dueDateRange;
+        // Use configured due date field name (e.g., "due", "dueDate", etc.)
+        const dueDateField = settings.datacoreKeys.dueDate;
 
         if (start) {
             const startDate = TaskPropertyService.parseDateRangeKeyword(start);
             if (startDate) {
                 const startStr = startDate.format("YYYY-MM-DD");
-                queryParts.push(`$due >= date("${startStr}")`);
-                Logger.debug(`[Query Builder] Due date >= ${startStr}`);
+                queryParts.push(`${dueDateField} >= date("${startStr}")`);
+                Logger.debug(
+                    `[Query Builder] Due date (${dueDateField}) >= ${startStr}`,
+                );
             }
         }
 
@@ -49,24 +55,31 @@ export class DatacoreService {
             const endDate = TaskPropertyService.parseDateRangeKeyword(end);
             if (endDate) {
                 const endStr = endDate.format("YYYY-MM-DD");
-                queryParts.push(`$due <= date("${endStr}")`);
-                Logger.debug(`[Query Builder] Due date <= ${endStr}`);
+                queryParts.push(`${dueDateField} <= date("${endStr}")`);
+                Logger.debug(
+                    `[Query Builder] Due date (${dueDateField}) <= ${endStr}`,
+                );
             }
         }
     }
 
     /**
      * Add priority filter to query parts
+     * Uses configured priority field name from settings.datacoreKeys.priority
      */
     private static addPriorityFilter(
         queryParts: string[],
+        settings: PluginSettings,
         priority?: number | number[] | "all" | "any" | "none" | null,
     ): void {
         if (priority === undefined || priority === null) return;
 
+        // Use configured priority field name (e.g., "p", "priority", etc.)
+        const priorityField = settings.datacoreKeys.priority;
+
         // Helper to build OR condition from priority array
         const buildPriorityCondition = (priorities: readonly number[]) =>
-            priorities.map((p) => `$priority = ${p}`).join(" or ");
+            priorities.map((p) => `${priorityField} = ${p}`).join(" or ");
 
         // Handle special keywords
         if (
@@ -81,7 +94,7 @@ export class DatacoreService {
             priority === TaskPropertyService.PRIORITY_FILTER_KEYWORDS.none
         ) {
             // Tasks with no priority
-            queryParts.push(`!$priority`);
+            queryParts.push(`!${priorityField}`);
         } else if (Array.isArray(priority)) {
             // Multiple specific priorities - filter out invalid values
             const validPriorities = priority.filter((p) =>
@@ -92,10 +105,12 @@ export class DatacoreService {
             }
         } else {
             // Single specific priority
-            queryParts.push(`$priority = ${priority}`);
+            queryParts.push(`${priorityField} = ${priority}`);
         }
 
-        Logger.debug(`[Query Builder] Priority filter: ${priority}`);
+        Logger.debug(
+            `[Query Builder] Priority filter (${priorityField}): ${priority}`,
+        );
     }
 
     /**
@@ -614,10 +629,18 @@ export class DatacoreService {
 
         if (propertyFilters) {
             // Due Date Range Filter
-            this.addDateRangeFilter(queryParts, propertyFilters.dueDateRange);
+            this.addDateRangeFilter(
+                queryParts,
+                settings,
+                propertyFilters.dueDateRange,
+            );
 
             // Priority Filter
-            this.addPriorityFilter(queryParts, propertyFilters.priority);
+            this.addPriorityFilter(
+                queryParts,
+                settings,
+                propertyFilters.priority,
+            );
 
             // Status Filter (supports both inclusion and exclusion)
             this.addStatusFilter(
