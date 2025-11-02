@@ -3,13 +3,14 @@ import { Task, TaskStatusCategory } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
+import { TaskSearchService } from "./taskSearchService";
 import { Logger } from "../../utils/logger";
 import { VectorizedScoring } from "../../utils/vectorizedScoring";
 import {
     processInChunks,
     PerformanceTimer,
 } from "../../utils/chunkedProcessing";
-import { CHUNK_SIZES, API_LIMITS } from "../../utils/constants";
+import { CHUNK_SIZES } from "../../utils/constants";
 
 /**
  * Service for integrating with Datacore plugin to fetch tasks
@@ -562,6 +563,7 @@ export class DatacoreService {
                     priority?: number;
                     status?: number;
                     relevance?: number;
+                    finalScore?: number;
                     _comprehensiveScore?: number; // Final comprehensive score (if calculated early)
                 }
             >();
@@ -630,7 +632,10 @@ export class DatacoreService {
             // ========================================
             // API-LEVEL QUALITY FILTERING (VECTORIZED + CHUNKED - High Performance)
             // Apply quality filter (due date + priority + status scores) at API level
-            // This prevents low-quality tasks from ever becoming Task objects
+            // This is a PRE-FILTER that reduces tasks before scoring
+            //
+            // PURPOSE: Filter out low-quality tasks early to reduce scoring work
+            // Example: 30,000 tasks → quality filter → 5,000 high-quality tasks → score only 5,000
             //
             // IMPORTANT: This runs AFTER relevance filter to minimize expensive property extraction
             //
@@ -720,100 +725,202 @@ export class DatacoreService {
             }
 
             // ========================================
-            // EARLY LIMITING OPTIMIZATION (API-level score + sort + limit)
-            // Apply comprehensive scoring at API level and limit BEFORE creating Task objects
+            // API-LEVEL SCORING, SORTING & LIMITING (Simplified Architecture)
+            // Apply coefficients to cached component scores, sort, and limit BEFORE creating Task objects
             //
-            // KEY INSIGHT: Do comprehensive scoring ONCE at API level, store in cache,
-            // then downstream code reuses those scores (no redundant scoring!)
+            // KEY INSIGHT: Scoring is just weighted sum of cached component scores!
+            // No need for complex "comprehensive scoring" function.
             //
             // BENEFITS:
-            // 1. Avoid creating unnecessary Task objects (46,981 → user's limit)
-            // 2. Single scoring pass instead of multiple (score once, use everywhere)
-            // 3. Scores cached for post-API pipeline to reuse
+            // 1. Avoid creating unnecessary Task objects (30,000 → user's limit)
+            // 2. Apply coefficients directly to cached scores (no redundant calculations)
+            // 3. Use maxResults from user settings (no arbitrary buffer multiplier)
+            // 4. Extract properties lazily ONLY after limiting
             //
             // APPLIES TO:
-            // - Queries WITH keywords: After relevance filter (282 tasks → limit)
-            // - Queries WITHOUT keywords: After quality filter (46,981 tasks → limit)
+            // - Queries WITH keywords: After relevance filter (282 tasks → user limit)
+            // - Queries WITHOUT keywords: After property filter (30,000 tasks → user limit)
             //
-            // Threshold: Apply if results exceed reasonable limit for direct processing
+            // Threshold: Apply if results exceed user's limit
             // ========================================
             const shouldApplyEarlyLimiting =
-                maxResults !== undefined && results.length > 500;
+                maxResults !== undefined && results.length > maxResults;
 
             if (shouldApplyEarlyLimiting) {
                 const earlyLimitTimer = new PerformanceTimer(
-                    "Early Limiting (API-level)",
-                );
-
-                // Use caller's limit with generous buffer for better ranking accuracy
-                // Buffer ensures we don't miss good tasks due to approximate scoring
-                const targetLimit = Math.min(
-                    maxResults * API_LIMITS.BUFFER_MULTIPLIER,
-                    results.length, // Don't exceed available tasks
+                    "API-level Score + Sort + Limit",
                 );
 
                 Logger.debug(
-                    `[Datacore] Applying early limiting: ${results.length} → ${targetLimit} tasks (comprehensive scoring at API level)`,
+                    `[Datacore] Applying API-level limiting: ${results.length} → ${maxResults} tasks`,
                 );
 
-                // COMPREHENSIVE SCORING AT API LEVEL (vectorized + cached)
-                // This is the ONLY comprehensive scoring - downstream reuses these scores
-                const scoredResults =
-                    VectorizedScoring.vectorizedComprehensiveScoring(
-                        results.map((dcTask: any) => {
-                            // Create minimal Task-like object for scoring
-                            const taskText = dcTask.$text || dcTask.text || "";
-                            const taskId = this.getTaskId(dcTask);
-                            return {
-                                id: taskId,
-                                text: taskText,
-                                dueDate: dcTask._dueDate,
-                                priority: dcTask._mappedPriority,
-                                statusCategory:
-                                    dcTask._mappedStatus || "incomplete",
-                                _cachedScores: scoreCache.get(taskId),
-                                _dcTask: dcTask, // Preserve original for later processing
-                            } as any;
-                        }),
-                        keywords || [],
-                        coreKeywords || keywords || [],
-                        settings,
-                        false, // queryHasDueDate
-                        false, // queryHasPriority
-                        false, // queryHasStatus
-                    );
+                // STEP 1: Extract properties if needed (for scoring)
+                const needsPropertyExtraction = results.some(
+                    (dcTask: any) =>
+                        dcTask._dueDate === undefined &&
+                        dcTask._mappedPriority === undefined &&
+                        dcTask._mappedStatus === undefined,
+                );
 
-                // CACHE COMPREHENSIVE SCORES for reuse in post-API pipeline
-                // This eliminates redundant scoring downstream
-                for (const scored of scoredResults) {
-                    const taskId = scored.task.id;
-                    const existing = scoreCache.get(taskId) || {};
-                    scoreCache.set(taskId, {
-                        ...existing,
-                        // Store all component scores
-                        relevance: scored.relevanceScore,
-                        dueDate: scored.dueDateScore,
-                        priority: scored.priorityScore,
-                        status: scored.statusScore,
-                        // Store final comprehensive score for direct reuse
-                        _comprehensiveScore: scored.score,
-                    });
+                if (needsPropertyExtraction) {
+                    Logger.debug(
+                        `[Datacore] Extracting properties for scoring (${results.length} tasks)`,
+                    );
+                    await processInChunks(
+                        results,
+                        (task: any) => {
+                            const taskText = task.$text || task.text || "";
+
+                            // Extract and store due date
+                            const dueValue =
+                                TaskPropertyService.getUnifiedFieldValue(
+                                    task,
+                                    "due",
+                                    taskText,
+                                    settings,
+                                    "datacore",
+                                );
+                            task._dueDate = dueValue
+                                ? typeof dueValue === "string"
+                                    ? dueValue
+                                    : dueValue.toString()
+                                : undefined;
+
+                            // Extract and map priority
+                            const priorityValue =
+                                TaskPropertyService.getUnifiedFieldValue(
+                                    task,
+                                    "priority",
+                                    taskText,
+                                    settings,
+                                    "datacore",
+                                );
+                            task._mappedPriority =
+                                priorityValue !== undefined &&
+                                priorityValue !== null
+                                    ? TaskPropertyService.mapPriority(
+                                          priorityValue,
+                                          settings,
+                                      )
+                                    : undefined;
+
+                            // Extract and map status
+                            const statusValue =
+                                task.$status || task.status || "";
+                            task._mappedStatus = this.mapStatusToCategory(
+                                statusValue,
+                                settings,
+                            );
+                        },
+                        CHUNK_SIZES.DEFAULT,
+                    );
+                    earlyLimitTimer.lap(
+                        `Property extraction for ${results.length} tasks`,
+                    );
                 }
 
-                // Take top N scored tasks (already sorted by vectorized scoring)
-                const limitedScored = scoredResults.slice(0, targetLimit);
+                // STEP 2: Calculate component scores (if not already cached) and cache them
+                const hasKeywords = keywords && keywords.length > 0;
+                const queryHasDueDate =
+                    propertyFilters?.dueDate !== undefined ||
+                    propertyFilters?.dueDateRange !== undefined;
+                const queryHasPriority =
+                    propertyFilters?.priority !== undefined;
+                const queryHasStatus = propertyFilters?.status !== undefined;
 
-                // Extract original Datacore tasks (already in score order)
-                results = limitedScored.map(
-                    (scored: any) => scored.task._dcTask,
+                // Get user's coefficient settings
+                const relevCoeff = settings.relevanceCoefficient; // Default: 20
+                const dateCoeff = settings.dueDateCoefficient; // Default: 4
+                const priorCoeff = settings.priorityCoefficient; // Default: 1
+                const statusCoeff = settings.statusCoefficient; // Default: 1
+
+                // Determine which coefficients to activate (0.0 = disabled, 1.0 = enabled)
+                const relevanceActive = hasKeywords ? 1.0 : 0.0;
+                const dueDateActive = queryHasDueDate ? 1.0 : 0.0;
+                const priorityActive = queryHasPriority ? 1.0 : 0.0;
+                const statusActive = queryHasStatus ? 1.0 : 0.0;
+
+                Logger.debug(
+                    `[Datacore] Scoring with coefficients: relevance=${relevCoeff * relevanceActive}, dueDate=${dateCoeff * dueDateActive}, priority=${priorCoeff * priorityActive}, status=${statusCoeff * statusActive}`,
+                );
+
+                // STEP 3: Score all tasks by applying coefficients to component scores
+                // Scoring is just: finalScore = sum of (componentScore × coefficient × activationFlag)
+                const scoredTasks = results.map((dcTask: any) => {
+                    const taskId = this.getTaskId(dcTask);
+                    const taskText = dcTask.$text || dcTask.text || "";
+                    let cached = scoreCache.get(taskId);
+
+                    // Calculate component scores if not cached
+                    if (!cached) {
+                        cached = {};
+
+                        // Relevance score (already calculated in relevance filter if keywords present)
+                        cached.relevance = hasKeywords
+                            ? TaskSearchService.calculateRelevanceScoreFromText(
+                                  taskText,
+                                  coreKeywords || keywords || [],
+                                  keywords || [],
+                                  settings,
+                              )
+                            : 0.0;
+
+                        // Property scores
+                        cached.dueDate =
+                            TaskSearchService.calculateDueDateScore(
+                                dcTask._dueDate,
+                                settings,
+                            );
+                        cached.priority =
+                            TaskSearchService.calculatePriorityScore(
+                                dcTask._mappedPriority,
+                                settings,
+                            );
+                        cached.status = TaskSearchService.calculateStatusScore(
+                            dcTask._mappedStatus || "incomplete",
+                            settings,
+                        );
+
+                        scoreCache.set(taskId, cached);
+                    }
+
+                    // Apply coefficients to component scores
+                    const finalScore =
+                        (cached.relevance || 0) * relevCoeff * relevanceActive +
+                        (cached.dueDate || 0) * dateCoeff * dueDateActive +
+                        (cached.priority || 0) * priorCoeff * priorityActive +
+                        (cached.status || 0) * statusCoeff * statusActive;
+
+                    // Cache finalScore for Task objects to use
+                    cached.finalScore = finalScore;
+                    scoreCache.set(taskId, cached);
+
+                    return { dcTask, finalScore };
+                });
+
+                earlyLimitTimer.lap(`Scored ${scoredTasks.length} tasks`);
+
+                // STEP 4: Sort by final score (highest first)
+                scoredTasks.sort(
+                    (
+                        a: { dcTask: any; finalScore: number },
+                        b: { dcTask: any; finalScore: number },
+                    ) => b.finalScore - a.finalScore,
+                );
+
+                // STEP 5: Limit to user's maxResults (NO buffer multiplier!)
+                const limitedTasks = scoredTasks.slice(0, maxResults);
+                results = limitedTasks.map(
+                    (item: { dcTask: any; finalScore: number }) => item.dcTask,
                 );
 
                 earlyLimitTimer.lap(
-                    `Scored ${scoredResults.length}, limited to ${results.length} tasks`,
+                    `Sorted and limited to ${results.length} tasks`,
                 );
 
                 Logger.debug(
-                    `[Datacore] Early limiting complete: ${results.length} top-scored tasks (scores cached for reuse)`,
+                    `[Datacore] API-level limiting complete: ${results.length} top-scored tasks (scores cached for reuse)`,
                 );
             }
 

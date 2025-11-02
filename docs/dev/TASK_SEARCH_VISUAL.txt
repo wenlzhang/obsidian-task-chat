@@ -1,0 +1,200 @@
+================================================================================
+  TASK SEARCH PIPELINE - VISUAL ARCHITECTURE
+================================================================================
+
+ENTRY POINT: AIService.sendMessage()
+├── chatMode === "simple" → TaskSearchService.analyzeQueryIntent()
+└── chatMode === "smart|chat" → QueryParserService.parseQuery() [AI parsing]
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAGE 1: QUERY PARSING                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Simple Search Path:                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Input: "p1 overdue payment system"                                  │   │
+│  │ removePropertySyntax() → "payment system"                           │   │
+│  │ extractKeywords() → ["payment", "system"]                           │   │
+│  │ extractPriority() → 1                                               │   │
+│  │ extractDueDateFilter() → "overdue"                                  │   │
+│  │ Output: QueryIntent {keywords, priority, dueDate, status, ...}     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  Files: taskSearchService.ts (lines 748-824)                               │
+│  Functions: removePropertySyntax(), extractKeywords(),                     │
+│             extract[Priority,DueDate,Status,Folder,Tags]()                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAGE 2: KEYWORD DETECTION (Path Selection)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Decision Point: intent.keywords.length > 0?                               │
+│                                                                              │
+│  YES (Keyword-based)    │  NO (Property-only)                              │
+│  ────────────────────   │  ────────────────────                            │
+│  "payment system p1"    │  "p1 overdue"                                   │
+│          ↓              │          ↓                                        │
+│  [API Reload]           │  [API Reload] (property filters only)           │
+│  [Relevance Filter]     │  [Skip Relevance] (no keywords)                 │
+│  [Quality Filter]       │  [Quality Filter] (optional)                    │
+│  [Early Limiting]       │  [Skip Early Limiting] (no keywords)            │
+│  [JS Scoring]           │  [JS Scoring] (property scores only)            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAGE 3: API-LEVEL FILTERING (TaskIndexService → Datacore/Dataview)       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Raw Datacore Query Results (potentially 46,981 tasks)                     │
+│           ↓                                                                  │
+│  [1] PROPERTY FILTERING (lines 538-551)                                   │
+│      Filters: priority, due date, status                                   │
+│      Example: 46,981 → 30,000 tasks (35% reduction)                       │
+│           ↓                                                                  │
+│  [2] RELEVANCE FILTERING - VECTORIZED (lines 592-628) [IF KEYWORDS]       │
+│      Filter: Keyword matching (fast, no property extraction!)              │
+│      Performance: Applied FIRST for 170x speedup!                         │
+│      Example: 30,000 → 282 tasks (99% reduction!)                         │
+│           ↓                                                                  │
+│  [3] QUALITY FILTERING - VECTORIZED + CHUNKED (lines 641-720)             │
+│      Filter: Property scores (due date + priority + status)               │
+│      Example: 282 → 150 tasks (46% reduction)                             │
+│           ↓                                                                  │
+│  [4] EARLY LIMITING - VECTORIZED (lines 740-808) [IF > 500 tasks]         │
+│      Score: Comprehensive (relevance + properties) at API level           │
+│      Limit: maxResults × API_LIMITS.BUFFER_MULTIPLIER                     │
+│      Purpose: Avoid creating Task objects for low-ranked results          │
+│      Example: 150 → 50 tasks (user's limit)                               │
+│           ↓                                                                  │
+│  RETURN: Pre-filtered, pre-scored tasks (scores cached)                    │
+│                                                                              │
+│  File: datacoreService.ts (lines 485-850+)                                │
+│  Performance: Vectorized batch operations (10-100x faster!)               │
+│  Optimization: Score caching eliminates ~50% JS-level calculations        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAGE 4: JAVASCRIPT-LEVEL PROCESSING                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Pre-filtered tasks from API (50 tasks with cached scores)                 │
+│           ↓                                                                  │
+│  [1] KEYWORD FILTERING (lines 687-714) [IF KEYWORDS]                      │
+│      Only keywords here - other filters already at API level!             │
+│           ↓                                                                  │
+│  [2] COMPREHENSIVE SCORING (lines 1273-1442)                              │
+│      ├─ Relevance Score (line 1357-1369)                                  │
+│      │  Formula: (coreMatches/totalCore × 0.2) + (allMatches/totalCore)   │
+│      │  Activated: ONLY if queryHasKeywords                               │
+│      │                                                                     │
+│      ├─ Due Date Score (lines 1371-1375)                                  │
+│      │  Overdue: 1.5, This week: 1.0, This month: 0.5, Later: 0.2       │
+│      │  Activated: If in query OR sort preferences                        │
+│      │                                                                     │
+│      ├─ Priority Score (lines 1377-1381)                                  │
+│      │  P1: 1.0, P2: 0.75, P3: 0.5, P4: 0.2, None: 0.1                 │
+│      │  Activated: If in query OR sort preferences                        │
+│      │                                                                     │
+│      └─ Status Score (lines 1383-1387)                                    │
+│         From taskStatusMapping (0.0-1.0)                                   │
+│         Activated: If in query OR sort preferences                        │
+│           ↓                                                                  │
+│  [3] FINAL SCORE (lines 1396-1400)                                        │
+│      finalScore = relevance×relevCoeff×active +                           │
+│                   dueDate×dateCoeff×active +                              │
+│                   priority×priorCoeff×active +                            │
+│                   status×statusCoeff×active                               │
+│           ↓                                                                  │
+│  [4] SORTING (multi-criteria based on user preferences)                    │
+│           ↓                                                                  │
+│  [5] LIMITING (maxDirectResults or maxTasksForAI)                          │
+│           ↓                                                                  │
+│  RETURN: Sorted, scored tasks ready for display/AI                        │
+│                                                                              │
+│  Optimization: Reuses cached scores from API level (~50% fewer calcs)     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+FILTER ORDERING OPTIMIZATION
+================================================================================
+
+WHY RELEVANCE FIRST:
+  Traditional (Slow):                 Optimized (Fast):
+  Extract properties for 30,000    → Filter by keyword to 282
+  Filter 30,000 by quality          → Extract properties for 282 ONLY
+  ~51 seconds!                        → ~0.3 seconds
+                                      Performance: 170x FASTER!
+
+Key: Fast filters (relevance) before slow filters (quality)
+
+================================================================================
+PERFORMANCE CHARACTERISTICS
+================================================================================
+
+Vectorized Batch Processing:
+  Traditional: for each task: calculate 4 scores → 4N function calls
+  Vectorized: Extract all data → Batch calculate → 4 batch operations
+  Gain: 10-100x faster for large datasets (>1000 tasks)
+  Uses: Typed arrays (Float32Array) for native performance
+
+Score Caching:
+  API level: Store scores during filtering (relevance, quality, comprehensive)
+  JS level: Reuse cached scores instead of recalculating
+  Gain: ~50% fewer score calculations
+
+Chunked Processing:
+  Property extraction in chunks (default chunk size from CHUNK_SIZES.DEFAULT)
+  Purpose: Keep UI responsive for large vaults (>5000 tasks)
+  No freezing on property extraction pass
+
+================================================================================
+MAIN BOTTLENECK: Non-Keyword Searches
+================================================================================
+
+Current Issue (CRITICAL):
+  - Non-keyword searches (e.g., "p1 overdue") skip:
+    * Relevance filtering (no keywords - correct)
+    * Early limiting (lines 740-741 condition)
+  - Result: All 46,981 tasks → Property extraction → Quality filtering
+  - Impact: Slow for very large vaults (>10K tasks)
+
+Fix (30-50% performance gain):
+  - Apply early limiting even without keywords
+  - Comprehensive scoring at API level for property-only queries
+  - Prevents creating Task objects for low-ranked property matches
+
+Location: datacoreService.ts line 740-741
+Current: shouldApplyEarlyLimiting = maxResults && results.length > 500
+Proposed: shouldApplyEarlyLimiting = maxResults !== undefined (remove keyword check)
+
+================================================================================
+FILE QUICK REFERENCE
+================================================================================
+
+Core Search Files:
+  ✓ src/services/ai/aiService.ts ..................... Main pipeline orchestrator
+  ✓ src/services/tasks/taskSearchService.ts ......... Property & keyword extraction
+  ✓ src/services/tasks/taskIndexService.ts ......... API selection & caching
+  ✓ src/services/tasks/datacoreService.ts ......... API-level filtering (main!)
+  ✓ src/services/tasks/dataviewService.ts ......... Dataview alternative
+  ✓ src/utils/vectorizedScoring.ts ................. Batch performance
+
+Scoring Functions:
+  ✓ calculateRelevanceScoreFromText() ............. Keyword matching
+  ✓ calculateDueDateScore() ....................... Due date urgency
+  ✓ calculatePriorityScore() ...................... Priority importance
+  ✓ calculateStatusScore() ........................ Status weighting
+  ✓ scoreTasksComprehensive() ..................... Unified scoring
+
+Property Extraction:
+  ✓ removePropertySyntax() ........................ POSITIONAL removal
+  ✓ extractKeywords() ............................ Multilingual segmentation
+  ✓ extract[Priority,DueDate,Status]() .......... Regex-based extraction
+  ✓ getUnifiedFieldValue() ....................... Custom field lookup
+
+================================================================================

@@ -265,128 +265,13 @@ export class VectorizedScoring {
     }
 
     /**
-     * Comprehensive vectorized scoring for Task objects
-     * Used in post-API pipeline for final scoring and sorting
+     * @deprecated REMOVED - Comprehensive scoring now happens at API level in datacoreService/dataviewService.
+     * Tasks returned from API are already scored, sorted, and limited with finalScore cached.
      *
-     * @returns Array of {task, score, breakdown} sorted by score
+     * This method was redundant because:
+     * - API level already calculates all component scores
+     * - API level already applies coefficients to get finalScore
+     * - API level already sorts by finalScore
+     * - Re-scoring at JS level was just duplicating work with no benefit
      */
-    static vectorizedComprehensiveScoring(
-        tasks: Task[],
-        keywords: string[],
-        coreKeywords: string[],
-        settings: PluginSettings,
-        queryHasDueDate: boolean,
-        queryHasPriority: boolean,
-        queryHasStatus: boolean,
-    ): Array<{
-        task: Task;
-        score: number;
-        relevanceScore: number;
-        dueDateScore: number;
-        priorityScore: number;
-        statusScore: number;
-    }> {
-        const n = tasks.length;
-
-        // Step 1: Extract data and check for cached scores
-        const texts: string[] = new Array(n);
-        const dueDates: (string | undefined)[] = new Array(n);
-        const priorities: (number | undefined)[] = new Array(n);
-        const statuses: TaskStatusCategory[] = new Array(n);
-
-        // Track which scores are already cached
-        const cachedMask = new Uint8Array(n); // 1 = has cache, 0 = needs calculation
-
-        for (let i = 0; i < n; i++) {
-            const task = tasks[i];
-            texts[i] = task.text;
-
-            // Check if we have cached scores
-            if (task._cachedScores) {
-                cachedMask[i] = 1;
-            } else {
-                // Need to extract data for calculation
-                dueDates[i] = task.dueDate;
-                priorities[i] = task.priority;
-                statuses[i] = task.statusCategory;
-            }
-        }
-
-        // Step 2: Vectorized score calculation (only for uncached)
-        const relevanceScores = this.batchCalculateRelevanceScores(
-            texts,
-            keywords,
-            coreKeywords,
-            settings,
-            "datacore", // Source doesn't matter for Task objects
-        );
-
-        // Calculate property scores only for uncached tasks
-        const dueDateScores = new Float32Array(n);
-        const priorityScores = new Float32Array(n);
-        const statusScores = new Float32Array(n);
-
-        for (let i = 0; i < n; i++) {
-            if (cachedMask[i]) {
-                // Use cached scores
-                const cached = tasks[i]._cachedScores!;
-                dueDateScores[i] = cached.dueDate ?? 0;
-                priorityScores[i] = cached.priority ?? 0;
-                statusScores[i] = cached.status ?? 0;
-            } else {
-                // Calculate scores
-                dueDateScores[i] = TaskSearchService.calculateDueDateScore(
-                    dueDates[i],
-                    settings,
-                );
-                priorityScores[i] = TaskSearchService.calculatePriorityScore(
-                    priorities[i],
-                    settings,
-                );
-                statusScores[i] = TaskSearchService.calculateStatusScore(
-                    statuses[i],
-                    settings,
-                );
-            }
-        }
-
-        // Step 3: Calculate final scores (vectorized with coefficients)
-        const results: Array<{
-            task: Task;
-            score: number;
-            relevanceScore: number;
-            dueDateScore: number;
-            priorityScore: number;
-            statusScore: number;
-        }> = new Array(n);
-
-        const {
-            relevanceCoefficient,
-            dueDateCoefficient,
-            priorityCoefficient,
-            statusCoefficient,
-        } = settings;
-
-        for (let i = 0; i < n; i++) {
-            const finalScore =
-                relevanceScores[i] * relevanceCoefficient +
-                dueDateScores[i] * dueDateCoefficient +
-                priorityScores[i] * priorityCoefficient +
-                statusScores[i] * statusCoefficient;
-
-            results[i] = {
-                task: tasks[i],
-                score: finalScore,
-                relevanceScore: relevanceScores[i],
-                dueDateScore: dueDateScores[i],
-                priorityScore: priorityScores[i],
-                statusScore: statusScores[i],
-            };
-        }
-
-        // Step 4: Sort by score (native array sort is highly optimized)
-        results.sort((a, b) => b.score - a.score);
-
-        return results;
-    }
 }

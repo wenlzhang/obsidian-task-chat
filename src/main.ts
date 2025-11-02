@@ -575,10 +575,6 @@ export default class TaskChatPlugin extends Plugin {
             undefined,
             propertyFilters,
             inclusionFilters,
-            undefined, // No quality threshold for Simple Search
-            undefined, // No keywords for Simple Search
-            undefined, // No core keywords for Simple Search
-            undefined, // No minimum relevance score for Simple Search
             this.settings.maxDirectResults, // Early limiting at API level (Simple Search context)
         );
 

@@ -23,6 +23,7 @@ export interface Task {
         dueDate?: number; // Due date score (0-1.5) from urgency
         priority?: number; // Priority score (0-1.0) from importance
         status?: number; // Status score (0-1.0) from workflow state
+        finalScore?: number; // Final weighted score (sum of all components with coefficients applied)
     };
 }
 

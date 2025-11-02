@@ -1442,91 +1442,11 @@ export class TaskSearchService {
     }
 
     /**
-     * POST-API PIPELINE: Score → Sort → Limit
-     * Optimized for API-first architecture where filtering already happened at API level.
+     * @deprecated REMOVED - Scoring now happens entirely at API level in datacoreService/dataviewService.
+     * Tasks returned from API are already scored, sorted, and limited.
+     * Use Task._cachedScores to access component scores and finalScore.
      *
-     * ARCHITECTURE:
-     * - All filtering (exclusions, properties, quality, relevance) done at API level
-     * - Tasks arrive already filtered and with cached scores
-     * - This method scores (reusing cache), sorts, and optionally limits results
-     *
-     * PERFORMANCE:
-     * - Reuses cached scores from API filtering (~50% fewer calculations)
-     * - Single comprehensive scoring pass (all components at once)
-     * - Efficient multi-criteria sorting
-     * - Optional limiting reduces memory allocation and return size
-     *
-     * @param tasks - Pre-filtered tasks from API level
-     * @param keywords - All keywords (including semantic expansion)
-     * @param coreKeywords - Core keywords from user query
-     * @param queryType - Query classification (hasKeywords, hasTaskProperties)
-     * @param scoringParams - Scoring configuration (coefficients, query flags, settings)
-     * @param sortOrder - Sort criteria for multi-criteria sorting
-     * @param limit - Optional: Maximum number of tasks to return (e.g., maxDirectResults, maxTasksForAI)
-     * @returns Sorted (and optionally limited) array of {task, score, component scores}
-     */
-    static scoreAndSortTasks(
-        tasks: Task[],
-        keywords: string[],
-        coreKeywords: string[],
-        queryType: { hasKeywords: boolean; hasTaskProperties: boolean },
-        scoringParams: {
-            queryHasDueDate: boolean;
-            queryHasPriority: boolean;
-            queryHasStatus: boolean;
-            relevanceCoefficient: number;
-            dueDateCoefficient: number;
-            priorityCoefficient: number;
-            statusCoefficient: number;
-            settings: PluginSettings;
-        },
-        sortOrder: SortCriterion[],
-        limit?: number,
-    ): Array<{
-        task: Task;
-        score: number;
-        relevanceScore: number;
-        dueDateScore: number;
-        priorityScore: number;
-        statusScore: number;
-    }> {
-        Logger.debug(
-            `[Post-API Pipeline] Processing ${tasks.length} pre-filtered tasks (VECTORIZED)`,
-        );
-
-        // STEP 1: VECTORIZED Comprehensive Scoring (10-100x faster than traditional)
-        // Uses batch processing with typed arrays for optimal performance
-        // Reuses cached scores from API-level filtering (~50% fewer calculations)
-        const scoredTasks = VectorizedScoring.vectorizedComprehensiveScoring(
-            tasks,
-            keywords,
-            coreKeywords,
-            scoringParams.settings,
-            scoringParams.queryHasDueDate,
-            scoringParams.queryHasPriority,
-            scoringParams.queryHasStatus,
-        );
-
-        Logger.debug(
-            `[Post-API Pipeline] Vectorized scoring complete: ${scoredTasks.length} tasks scored`,
-        );
-
-        // STEP 2: Optional limiting (applied after sorting by vectorized method)
-        const finalTasks =
-            limit !== undefined && limit > 0
-                ? scoredTasks.slice(0, limit)
-                : scoredTasks;
-
-        Logger.debug(
-            `[Post-API Pipeline] Scored and sorted ${scoredTasks.length} tasks${limit ? `, limited to ${finalTasks.length}` : ""}`,
-        );
-
-        return finalTasks;
-    }
-
-    /**
-     * @deprecated Use scoreAndSortTasks() for API-first architecture.
-     * This method performs redundant JS-level filtering.
+     * This method was redundant because:
      *
      * Single-pass pipeline for filtering, scoring, and limiting tasks
      *
