@@ -678,6 +678,10 @@ export class FilterModal extends Modal {
             cls: "task-chat-filter-button-apply mod-cta",
         });
         applyBtn.addEventListener("click", () => {
+            console.log(
+                "[FilterModal] Applying filter:",
+                JSON.stringify(this.filter, null, 2),
+            );
             this.onSubmit(this.filter);
             this.close();
         });

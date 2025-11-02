@@ -424,6 +424,14 @@ export class TaskIndexService {
             notes?: string[];
         },
     ): Promise<number> {
+        console.log(
+            "[TaskIndexService.getTaskCount] propertyFilters:",
+            propertyFilters,
+        );
+        console.log(
+            "[TaskIndexService.getTaskCount] inclusionFilters:",
+            inclusionFilters,
+        );
         if (!this.isDatacoreAvailable()) {
             Logger.error("Cannot get task count: Datacore not available");
             return 0;

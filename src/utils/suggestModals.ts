@@ -80,10 +80,13 @@ export class TagSuggestModal extends FuzzySuggestModal<string> {
                 const fmTags = cache.frontmatter.tags;
                 if (Array.isArray(fmTags)) {
                     fmTags.forEach((tag) => {
-                        const normalizedTag = tag.startsWith("#")
-                            ? tag
-                            : `#${tag}`;
-                        tagSet.add(normalizedTag);
+                        // Ensure tag is a string before processing
+                        if (typeof tag === "string") {
+                            const normalizedTag = tag.startsWith("#")
+                                ? tag
+                                : `#${tag}`;
+                            tagSet.add(normalizedTag);
+                        }
                     });
                 } else if (typeof fmTags === "string") {
                     const normalizedTag = fmTags.startsWith("#")

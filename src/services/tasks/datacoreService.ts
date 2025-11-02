@@ -1378,6 +1378,15 @@ export class DatacoreService {
             notes?: string[];
         },
     ): Promise<number> {
+        console.log(
+            "[DatacoreService.getTaskCount] Received propertyFilters:",
+            propertyFilters,
+        );
+        console.log(
+            "[DatacoreService.getTaskCount] Received inclusionFilters:",
+            inclusionFilters,
+        );
+
         const profiler = {
             start: Date.now(),
             steps: [] as Array<{ name: string; duration: number }>,

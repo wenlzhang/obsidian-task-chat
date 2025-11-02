@@ -761,6 +761,8 @@ export default class TaskChatPlugin extends Plugin {
      * Uses shared utilities from TaskIndexService
      */
     async getFilteredTaskCount(filter: TaskFilter): Promise<number> {
+        console.log("[Main] getFilteredTaskCount - Input filter:", filter);
+
         // Use shared utility methods from TaskIndexService (avoids code duplication)
         const propertyFilters = TaskIndexService.buildPropertyFilters(
             filter,
@@ -768,13 +770,19 @@ export default class TaskChatPlugin extends Plugin {
         );
         const inclusionFilters = TaskIndexService.buildInclusionFilters(filter);
 
+        console.log("[Main] Converted propertyFilters:", propertyFilters);
+        console.log("[Main] Converted inclusionFilters:", inclusionFilters);
+
         // Call lightweight count API
-        return await TaskIndexService.getTaskCount(
+        const count = await TaskIndexService.getTaskCount(
             this.app,
             this.settings,
             propertyFilters,
             inclusionFilters,
         );
+
+        console.log("[Main] Task count result:", count);
+        return count;
     }
 
     /**
