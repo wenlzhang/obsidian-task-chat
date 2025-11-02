@@ -22,6 +22,17 @@ export class DatacoreService {
     }
 
     /**
+     * Generate a stable identifier for a Datacore task.
+     * Used for score caching so we can reuse quality/relevance calculations between passes.
+     */
+    private static getTaskId(dcTask: any): string {
+        const path = dcTask?.$file || dcTask?.file || "";
+        const line = dcTask?.$line ?? dcTask?.line ?? 0;
+        const textSnippet = dcTask?.$text || dcTask?.text || "";
+        return `${path}:${line}:${textSnippet}`;
+    }
+
+    /**
      * Get Datacore API
      */
     static getAPI(): any {
