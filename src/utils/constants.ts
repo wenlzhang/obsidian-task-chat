@@ -72,6 +72,67 @@ export const API_LIMITS = {
 } as const;
 
 /**
+ * Smart early limiting configuration
+ * Applies quality-based pre-filtering for large result sets
+ * to avoid scoring tens of thousands of tasks
+ *
+ * STRATEGY:
+ * 1. Calculate quality scores for all tasks (fast, vectorized)
+ * 2. Sort by quality score, take top N tasks
+ * 3. Do full scoring on that reduced set
+ *
+ * GUARANTEES: We get the highest quality tasks from the full set
+ */
+export const SMART_EARLY_LIMIT = {
+    /**
+     * Apply early limiting if result set exceeds this threshold
+     * Only kicks in for very large result sets (property-only searches)
+     */
+    THRESHOLD: 5000,
+
+    /**
+     * Take (user's maxResults × MULTIPLIER) tasks after quality sorting
+     * Example: If user wants 50 results, we score top 500 (50 × 10)
+     */
+    MULTIPLIER: 10,
+
+    /**
+     * Maximum tasks to score after early limiting
+     * Never score more than this, regardless of user's limit
+     */
+    MAX: 5000,
+} as const;
+
+/**
+ * Datacore initialization polling configuration
+ * Controls how the plugin waits for Datacore to finish indexing
+ * at startup before querying tasks
+ *
+ * IMPORTANT: Datacore needs time to index large vaults (50,000+ tasks)
+ * We poll until datacore.initialized === true or timeout
+ */
+export const DATACORE_POLLING = {
+    /**
+     * Polling interval in milliseconds
+     * Check Datacore initialization status every 2 seconds
+     */
+    INTERVAL_MS: 2000,
+
+    /**
+     * Maximum number of polling attempts
+     * 60 polls × 2 seconds = 2 minutes timeout
+     * Sufficient for large vaults with 50,000+ tasks
+     */
+    MAX_POLLS: 60,
+
+    /**
+     * Log progress every N polls
+     * 10 polls × 2 seconds = log every 20 seconds
+     */
+    LOG_INTERVAL: 10,
+} as const;
+
+/**
  * @deprecated Use CHUNK_SIZES instead
  * Kept for backwards compatibility
  */

@@ -18,6 +18,7 @@ import { ErrorMessageService } from "../services/warnings/errorMessageService";
 import { MetadataService } from "./metadataService";
 import { TaskIndexWarningService } from "../services/warnings/taskIndexWarningService";
 import { TaskIndexService } from "../services/tasks/taskIndexService";
+import { DATACORE_POLLING } from "../utils/constants";
 
 export const CHAT_VIEW_TYPE = "task-chat-view";
 
@@ -100,77 +101,94 @@ export class ChatView extends ItemView {
     }
 
     /**
-     * Poll for task indexing API readiness and update status
-     * Continues polling until API is ready
+     * Poll for Datacore initialization and update status
+     * Continues polling until Datacore.initialized === true or timeout
+     *
+     * IMPROVED LOGIC:
+     * - Polls until datacore.initialized === true (not just API available)
+     * - Longer timeout (2 minutes) for large vaults with 50,000+ tasks
+     * - Updates count immediately when initialized
+     * - Stops polling once initialized (regardless of task count)
      */
     private startWarningPolling(): void {
-        let wasNotReady = true;
         let pollCount = 0;
-        const maxPolls = 30; // Maximum 60 seconds (30 polls × 2 seconds)
 
         // Mark that we're in startup polling phase
         this.isStartupPolling = true;
 
+        Logger.debug(
+            `Starting Datacore initialization polling (max ${(DATACORE_POLLING.MAX_POLLS * DATACORE_POLLING.INTERVAL_MS) / 1000}s)...`,
+        );
+
         const pollInterval = setInterval(async () => {
             pollCount++;
 
-            // Check current API status using filteredTaskCount
-            // (currentTasks is empty until user sends a query)
-            const warning = TaskIndexWarningService.checkAPIStatus(
-                this.app,
-                this.plugin.settings,
-                this.filteredTaskCount,
-                this.currentFilter,
-                this.isStartupPolling,
-            );
-
-            // If API just became ready, update task count and show system message
-            if (warning.type === "ready" && wasNotReady) {
-                wasNotReady = false;
-
-                // Reduced delay - API is already reporting ready
-                await new Promise((resolve) => setTimeout(resolve, 100));
-
-                this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
-                    this.currentFilter,
-                );
-                this.updateFilterStatus(); // Refresh display
-
-                // CRITICAL: Force immediate warning update (don't wait for interval)
-                // This ensures warning banner disappears immediately with task count update
-                this.renderDataviewWarning();
-
-                // Show system message about API readiness
-                const isDatacoreAvailable =
-                    TaskIndexService.isDatacoreAvailable();
-                if (isDatacoreAvailable) {
-                    await this.addSystemMessage(
-                        `Task indexing ready (Datacore). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
-                    );
-                } else {
-                    await this.addSystemMessage(
-                        `Task indexing not available - please install Datacore`,
-                    );
-                }
-            }
+            // Check if Datacore is initialized (finished indexing)
+            const isReady = TaskIndexService.isAPIReady();
+            const isAvailable = TaskIndexService.isDatacoreAvailable();
 
             // Always update warning status to reflect current state
             this.renderDataviewWarning();
 
-            // Stop polling if: API ready AND tasks found, OR timeout reached
-            if (
-                (warning.type === "ready" && this.filteredTaskCount > 0) ||
-                pollCount >= maxPolls
-            ) {
+            // If Datacore just became initialized, update task count
+            if (isReady && this.isStartupPolling) {
+                Logger.debug(
+                    `Datacore initialized after ${pollCount} polls (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s)`,
+                );
+
+                // Update task count now that indexing is complete
+                this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
+                    this.currentFilter,
+                );
+                this.updateFilterStatus();
+
+                // Force immediate warning update
+                this.renderDataviewWarning();
+
+                // Show success message
+                await this.addSystemMessage(
+                    `Task indexing ready (Datacore). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
+                );
+
+                // Stop polling - we're done!
                 clearInterval(pollInterval);
-                this.isStartupPolling = false; // Done with startup polling
-                if (pollCount >= maxPolls) {
-                    Logger.warn(
-                        "Warning polling stopped after timeout (API may still be indexing)",
-                    );
-                }
+                this.isStartupPolling = false;
+                return;
             }
-        }, 2000); // Poll every 2 seconds
+
+            // Stop polling if not available (user needs to install Datacore)
+            if (!isAvailable) {
+                Logger.warn(
+                    "Datacore not available. Stopping polling. Please install Datacore plugin.",
+                );
+                await this.addSystemMessage(
+                    `Task indexing not available - please install Datacore`,
+                );
+                clearInterval(pollInterval);
+                this.isStartupPolling = false;
+                return;
+            }
+
+            // Stop polling if timeout reached
+            if (pollCount >= DATACORE_POLLING.MAX_POLLS) {
+                Logger.warn(
+                    `Datacore still indexing after ${(DATACORE_POLLING.MAX_POLLS * DATACORE_POLLING.INTERVAL_MS) / 1000}s timeout. Large vault may need more time. Stopping polling.`,
+                );
+                await this.addSystemMessage(
+                    `Datacore is still indexing (large vault detected). Task count will update when ready.`,
+                );
+                clearInterval(pollInterval);
+                this.isStartupPolling = false;
+                return;
+            }
+
+            // Log progress every N polls
+            if (pollCount % DATACORE_POLLING.LOG_INTERVAL === 0) {
+                Logger.debug(
+                    `Still waiting for Datacore initialization... (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s elapsed)`,
+                );
+            }
+        }, DATACORE_POLLING.INTERVAL_MS);
     }
 
     async onClose(): Promise<void> {
@@ -1945,9 +1963,8 @@ export class ChatView extends ItemView {
         // Update task count with new filter (respects inclusions/exclusions)
         // Skip count update if Datacore is still indexing to avoid performance issues
         if (TaskIndexService.isAPIReady()) {
-            this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
-                filter,
-            );
+            this.filteredTaskCount =
+                await this.plugin.getFilteredTaskCount(filter);
         } else {
             // Datacore is still indexing, defer count update
             Logger.debug(

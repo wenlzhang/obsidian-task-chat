@@ -60,9 +60,10 @@ export class TaskIndexService {
         }
 
         // Check if Datacore has finished indexing
-        // Per Datacore API: initialized property is true when all files are indexed
+        // Per Datacore API structure: window.datacore.core.initialized
+        // The initialized property is on the core object, not on datacore directly
         const dc = (window as any).datacore;
-        return dc?.initialized === true;
+        return dc?.core?.initialized === true;
     }
 
     /**
@@ -74,7 +75,7 @@ export class TaskIndexService {
         }
 
         const dc = (window as any).datacore;
-        if (dc?.initialized === true) {
+        if (dc?.core?.initialized === true) {
             return "✓ Using Datacore (ready)";
         }
 

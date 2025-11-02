@@ -11,7 +11,7 @@ import {
     processInChunks,
     PerformanceTimer,
 } from "../../utils/chunkedProcessing";
-import { CHUNK_SIZES } from "../../utils/constants";
+import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
 
 /**
  * Service for integrating with Datacore plugin to fetch tasks
@@ -25,7 +25,25 @@ export class DatacoreService {
      */
     static isDatacoreEnabled(): boolean {
         const dc = (window as any).datacore;
-        return dc !== undefined && typeof dc.query === "function";
+
+        // Debug logging to help diagnose issues
+        if (dc === undefined) {
+            Logger.debug(
+                "[Datacore] window.datacore is undefined - Datacore plugin not loaded",
+            );
+            return false;
+        }
+
+        if (typeof dc.query !== "function") {
+            Logger.warn(
+                `[Datacore] window.datacore exists but query is not a function. Type: ${typeof dc.query}`,
+            );
+            Logger.debug("[Datacore] Available properties:", Object.keys(dc));
+            return false;
+        }
+
+        Logger.debug("[Datacore] Plugin detected and available");
+        return true;
     }
 
     /**
@@ -388,8 +406,23 @@ export class DatacoreService {
         // Exclude completed tasks (if hideCompletedTasks is enabled)
         // This provides a massive performance boost in large vaults by filtering out
         // completed tasks at the Datacore query level (before Task object creation)
+        // Excludes ALL symbols mapped to the "completed" category, not just $completed
         if (settings.hideCompletedTasks) {
-            queryParts.push("!$completed");
+            const completedCategory = settings.taskStatusMapping?.completed;
+            if (completedCategory && completedCategory.symbols.length > 0) {
+                // Build exclusion for all completed symbols
+                // Example: !($status = "x" or $status = "X")
+                const completedExclusions = completedCategory.symbols
+                    .map((symbol) => `$status = "${symbol}"`)
+                    .join(" or ");
+                queryParts.push(`!(${completedExclusions})`);
+                Logger.debug(
+                    `Excluding completed category symbols: ${completedCategory.symbols.join(", ")}`,
+                );
+            } else {
+                // Fallback to $completed if category not configured
+                queryParts.push("!$completed");
+            }
         }
 
         // ========================================
@@ -724,6 +757,142 @@ export class DatacoreService {
                     );
                     return tasks;
                 }
+            }
+
+            // ========================================
+            // SMART EARLY LIMITING (Quality-based Pre-filtering)
+            // When we have a large result set without quality filtering, apply automatic
+            // quality-based limiting to avoid scoring tens of thousands of tasks
+            //
+            // STRATEGY:
+            // 1. Calculate quality scores for all tasks (fast, vectorized)
+            // 2. Sort by quality score
+            // 3. Take top N tasks (where N = 10× maxResults, or 5000 max)
+            // 4. Then do full scoring on that reduced set
+            //
+            // GUARANTEES: We get the highest quality tasks from the full set
+            // ========================================
+            const hasKeywords = keywords && keywords.length > 0;
+            const qualityFilterWasApplied =
+                qualityThreshold !== undefined && qualityThreshold > 0;
+
+            // Apply early limiting if:
+            // - Result set is large (> THRESHOLD tasks)
+            // - No quality filter was applied (so quality scores not yet calculated)
+            // - No keywords (property-only search, so relevance won't help)
+            const shouldApplyEarlyLimit =
+                results.length > SMART_EARLY_LIMIT.THRESHOLD &&
+                !qualityFilterWasApplied &&
+                !hasKeywords &&
+                maxResults !== undefined;
+
+            if (shouldApplyEarlyLimit) {
+                const earlyLimitTimer = new PerformanceTimer(
+                    "Smart Early Limiting",
+                );
+
+                Logger.debug(
+                    `[Datacore] Large result set (${results.length} tasks) without quality filter. Applying smart early limiting...`,
+                );
+
+                // STEP 1: Extract properties if not already extracted
+                const needsPropertyExtraction = results.some(
+                    (dcTask: any) =>
+                        dcTask._dueDate === undefined &&
+                        dcTask._mappedPriority === undefined &&
+                        dcTask._mappedStatus === undefined,
+                );
+
+                if (needsPropertyExtraction) {
+                    await processInChunks(
+                        results,
+                        (task: any) => {
+                            const taskText = task.$text || task.text || "";
+
+                            task._dueDate =
+                                TaskPropertyService.getUnifiedFieldValue(
+                                    task,
+                                    "due",
+                                    taskText,
+                                    settings,
+                                );
+                            const priorityValue =
+                                TaskPropertyService.getUnifiedFieldValue(
+                                    task,
+                                    "priority",
+                                    taskText,
+                                    settings,
+                                );
+                            task._mappedPriority =
+                                priorityValue !== undefined &&
+                                priorityValue !== null
+                                    ? TaskPropertyService.mapPriority(
+                                          priorityValue,
+                                          settings,
+                                      )
+                                    : undefined;
+                            const statusValue =
+                                task.$status || task.status || "";
+                            task._mappedStatus = this.mapStatusToCategory(
+                                statusValue,
+                                settings,
+                            );
+                        },
+                        CHUNK_SIZES.DEFAULT,
+                    );
+                }
+
+                earlyLimitTimer.lap("Property extraction");
+
+                // STEP 2: Calculate quality scores (vectorized, fast)
+                results = VectorizedScoring.vectorizedQualityFilter(
+                    results,
+                    0.0, // No threshold - we want all tasks with their quality scores
+                    settings,
+                    scoreCache,
+                    this.getTaskId.bind(this),
+                );
+
+                earlyLimitTimer.lap("Quality score calculation");
+
+                // STEP 3: Sort by quality score and take top N
+                const earlyLimit = Math.min(
+                    maxResults * SMART_EARLY_LIMIT.MULTIPLIER,
+                    SMART_EARLY_LIMIT.MAX,
+                );
+
+                // Sort by quality score (highest first)
+                const qualitySortedTasks = results
+                    .map((dcTask: any) => {
+                        const taskId = this.getTaskId(dcTask);
+                        const cached = scoreCache.get(taskId);
+                        const qualityScore =
+                            (cached?.dueDate || 0) +
+                            (cached?.priority || 0) +
+                            (cached?.status || 0);
+                        return { dcTask, qualityScore };
+                    })
+                    .sort(
+                        (
+                            a: { dcTask: any; qualityScore: number },
+                            b: { dcTask: any; qualityScore: number },
+                        ) => b.qualityScore - a.qualityScore,
+                    );
+
+                results = qualitySortedTasks
+                    .slice(0, earlyLimit)
+                    .map(
+                        (item: { dcTask: any; qualityScore: number }) =>
+                            item.dcTask,
+                    );
+
+                earlyLimitTimer.lap(
+                    `Sorted and limited to top ${results.length} quality tasks`,
+                );
+
+                Logger.debug(
+                    `[Datacore] Smart early limiting applied: ${qualitySortedTasks.length} → ${results.length} tasks (top ${results.length} by quality score)`,
+                );
             }
 
             // ========================================

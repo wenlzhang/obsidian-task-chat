@@ -134,6 +134,39 @@ export default class TaskChatPlugin extends Plugin {
             }),
         );
 
+        // Add debug command to check Datacore status
+        this.addCommand({
+            id: "debug-datacore-status",
+            name: "Debug: Check Datacore status",
+            callback: () => {
+                const dc = (window as any).datacore;
+                const isAvailable = TaskIndexService.isDatacoreAvailable();
+                const isReady = TaskIndexService.isAPIReady();
+                const status = TaskIndexService.getAPIStatus();
+
+                const message = [
+                    "=== Datacore Debug Info ===",
+                    `window.datacore exists: ${dc !== undefined}`,
+                    `window.datacore type: ${typeof dc}`,
+                    `window.datacore.query exists: ${dc?.query !== undefined}`,
+                    `window.datacore.query type: ${typeof dc?.query}`,
+                    `window.datacore.core.initialized: ${dc?.core?.initialized}`,
+                    `isDatacoreAvailable(): ${isAvailable}`,
+                    `isAPIReady(): ${isReady}`,
+                    `getAPIStatus(): ${status}`,
+                    "",
+                    "Datacore structure: window.datacore.core.initialized",
+                    "Check console for full Datacore object details.",
+                ].join("\n");
+
+                console.log(message);
+                console.log("Full window.datacore object:", dc);
+
+                new Notice(message, 10000);
+                Logger.info(message);
+            },
+        });
+
         // Add settings tab
         this.addSettingTab(new SettingsTab(this.app, this));
 
