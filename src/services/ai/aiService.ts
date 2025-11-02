@@ -574,9 +574,91 @@ export class AIService {
                     throw new Error("Search cancelled by user");
                 }
 
+                // ========================================
+                // CALCULATE QUALITY THRESHOLD (for API-level filtering)
+                // Move this calculation BEFORE task retrieval to filter at API level
+                // ========================================
+                let qualityThreshold: number | undefined = undefined;
+
+                // Determine query type (has keywords)
+                const hasKeywords =
+                    intent.keywords && intent.keywords.length > 0;
+
+                // Calculate quality threshold if quality filter is enabled (strength > 0 or adaptive mode enabled)
+                if (settings.qualityFilterStrength >= 0) {
+                    const activeComponents: string[] = [];
+                    let maxScore = 0;
+
+                    // Relevance (always active if keywords present)
+                    if (hasKeywords) {
+                        maxScore += 10 * settings.relevanceCoefficient;
+                        activeComponents.push("relevance");
+                    }
+
+                    // Due date (always active)
+                    maxScore += 10 * settings.dueDateCoefficient;
+                    activeComponents.push("dueDate");
+
+                    // Priority (always active)
+                    maxScore += 10 * settings.priorityCoefficient;
+                    activeComponents.push("priority");
+
+                    // Status (always active)
+                    maxScore += 10 * settings.statusCoefficient;
+                    activeComponents.push("status");
+
+                    if (settings.qualityFilterStrength === 0) {
+                        // Adaptive mode - auto-adjust based on query complexity
+                        if (intent.keywords.length >= 20) {
+                            qualityThreshold = maxScore * 0.1; // Very permissive
+                        } else if (intent.keywords.length >= 4) {
+                            qualityThreshold = maxScore * 0.16; // Permissive
+                        } else if (intent.keywords.length >= 2) {
+                            qualityThreshold = maxScore * 0.26; // Balanced
+                        } else {
+                            qualityThreshold = maxScore * 0.32; // Moderate
+                        }
+                        Logger.debug(
+                            `[API-Level Quality Filter] Adaptive mode: ${qualityThreshold.toFixed(2)}/${maxScore.toFixed(1)} (${intent.keywords.length} keywords)`,
+                        );
+                    } else {
+                        // User-defined percentage
+                        qualityThreshold =
+                            settings.qualityFilterStrength * maxScore;
+                        Logger.debug(
+                            `[API-Level Quality Filter] User-defined: ${(settings.qualityFilterStrength * 100).toFixed(0)}% → ${qualityThreshold.toFixed(2)}/${maxScore.toFixed(1)}`,
+                        );
+                    }
+                }
+
+                // ========================================
+                // PREPARE KEYWORDS FOR RELEVANCE FILTERING (API-level)
+                // ========================================
+                const expandedKeywords = intent.keywords;
+                const coreKeywords =
+                    usingAIParsing && parsedQuery?.coreKeywords
+                        ? parsedQuery.coreKeywords
+                        : intent.keywords;
+
+                const minimumRelevanceScore =
+                    hasKeywords && settings.minimumRelevanceScore > 0
+                        ? settings.minimumRelevanceScore
+                        : undefined;
+
+                if (minimumRelevanceScore !== undefined) {
+                    Logger.debug(
+                        `[API-Level Relevance Filter] Minimum score: ${minimumRelevanceScore.toFixed(2)} (core: ${coreKeywords.length}, expanded: ${expandedKeywords.length})`,
+                    );
+                }
+
                 // Performance tracking
                 const reloadStartTime = performance.now();
 
+                // ========================================
+                // RETRIEVE TASKS WITH API-LEVEL FILTERING
+                // Pass quality threshold, keywords, and relevance score to API
+                // This filters at DataCore/DataView level BEFORE creating Task objects
+                // ========================================
                 tasksAfterPropertyFilter =
                     await TaskIndexService.parseTasksFromIndex(
                         app,
@@ -584,16 +666,20 @@ export class AIService {
                         undefined, // No legacy date filter
                         mergedPropertyFilters,
                         inclusionFilters, // Pass chat interface inclusion filters!
+                        qualityThreshold, // NEW: Quality filter at API level
+                        expandedKeywords, // NEW: Keywords for relevance filtering
+                        coreKeywords, // NEW: Core keywords for relevance boost
+                        minimumRelevanceScore, // NEW: Minimum relevance threshold
                     );
 
                 const reloadEndTime = performance.now();
                 const reloadDuration = reloadEndTime - reloadStartTime;
 
                 Logger.debug(
-                    `[AIService] ⚡ API reload completed in ${reloadDuration.toFixed(2)}ms`,
+                    `[AIService] ⚡ API reload completed in ${reloadDuration.toFixed(2)}ms (with API-level quality/relevance filtering)`,
                 );
                 Logger.debug(
-                    `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks`,
+                    `[AIService] 📊 Results: ${tasksAfterPropertyFilter.length} tasks (already filtered by quality and relevance)`,
                 );
             }
 

@@ -1521,7 +1521,7 @@ export class TaskSearchService {
                     settings,
                 );
             } else {
-                dueDateScore = settings.dueDateNoneScore || 0;
+                dueDateScore = settings.dueDateNoneScore;
             }
 
             // Calculate priority score
@@ -1545,7 +1545,7 @@ export class TaskSearchService {
                     );
                 }
             } else {
-                priorityScore = settings.priorityNoneScore || 0;
+                priorityScore = settings.priorityNoneScore;
             }
 
             // Calculate status score
@@ -1638,6 +1638,7 @@ export class TaskSearchService {
     /**
      * Calculate due date score for a single task
      * Extracted from scoreTasksComprehensive for reuse in quality filter
+     * Uses user-configured scores from settings (no hard-coded fallbacks)
      */
     private static calculateTaskDueDateScore(
         dueValue: any,
@@ -1645,25 +1646,26 @@ export class TaskSearchService {
     ): number {
         const moment = (window as any).moment;
         const dueDate = moment(dueValue);
-        if (!dueDate.isValid()) return settings.dueDateNoneScore || 0;
+        if (!dueDate.isValid()) return settings.dueDateNoneScore;
 
         const now = moment();
         const daysDiff = dueDate.diff(now, "days");
 
         if (daysDiff < 0) {
-            return settings.dueDateOverdueScore || 10; // Overdue
+            return settings.dueDateOverdueScore; // Overdue
         } else if (daysDiff <= 7) {
-            return settings.dueDateWithin7DaysScore || 8; // Within 7 days
+            return settings.dueDateWithin7DaysScore; // Within 7 days
         } else if (daysDiff <= 30) {
-            return settings.dueDateWithin1MonthScore || 6; // Within 1 month
+            return settings.dueDateWithin1MonthScore; // Within 1 month
         } else {
-            return settings.dueDateLaterScore || 2; // Later than 1 month
+            return settings.dueDateLaterScore; // Later than 1 month
         }
     }
 
     /**
      * Calculate priority score for a single task
      * Extracted from scoreTasksComprehensive for reuse in quality filter
+     * Uses user-configured scores from settings (no hard-coded fallbacks)
      */
     private static calculateTaskPriorityScore(
         priority: number,
@@ -1671,15 +1673,15 @@ export class TaskSearchService {
     ): number {
         switch (priority) {
             case 1:
-                return settings.priorityP1Score || 10;
+                return settings.priorityP1Score;
             case 2:
-                return settings.priorityP2Score || 7;
+                return settings.priorityP2Score;
             case 3:
-                return settings.priorityP3Score || 4;
+                return settings.priorityP3Score;
             case 4:
-                return settings.priorityP4Score || 2;
+                return settings.priorityP4Score;
             default:
-                return settings.priorityNoneScore || 0;
+                return settings.priorityNoneScore;
         }
     }
 }

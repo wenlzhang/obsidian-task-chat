@@ -3,6 +3,7 @@ import { Task, TaskStatusCategory } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
+import { TaskSearchService } from "./taskSearchService";
 import { Logger } from "../../utils/logger";
 
 /**
@@ -712,6 +713,11 @@ export class DataviewService {
      * @param settings - Plugin settings
      * @param dateFilter - Optional date filter: "any", "today", "overdue", "future", "week", "next-week", "tomorrow", or specific date (YYYY-MM-DD)
      * @param propertyFilters Optional property filters (priority, dueDate, status, statusValues)
+     * @param inclusionFilters - Optional inclusion filters (folders, tags, notes)
+     * @param qualityThreshold - Optional quality score threshold for API-level filtering
+     * @param keywords - Optional keywords for relevance filtering (expanded keywords)
+     * @param coreKeywords - Optional core keywords for relevance boost
+     * @param minimumRelevanceScore - Optional minimum relevance score threshold
      *
      * When dateFilter is provided, tasks are filtered AT LOAD TIME (before adding to array),
      * which is more efficient than loading all tasks and filtering afterward.
@@ -734,13 +740,17 @@ export class DataviewService {
             taskTags?: string[]; // Include only tasks with these tags
             notes?: string[]; // Include only these specific notes
         },
+        qualityThreshold?: number,
+        keywords?: string[],
+        coreKeywords?: string[],
+        minimumRelevanceScore?: number,
     ): Promise<Task[]> {
         const dataviewApi = this.getAPI(app);
         if (!dataviewApi) {
             return [];
         }
 
-        const tasks: Task[] = [];
+        let tasks: Task[] = [];
         let foundTasks = false;
 
         // Build task-level filter from property filters
@@ -1159,6 +1169,22 @@ export class DataviewService {
                     );
                 }
             }
+        }
+
+        // ========================================
+        // NOTE: Quality and Relevance filtering not implemented for DataView
+        // DataView converts tasks to Task objects during collection, so filtering
+        // would happen AFTER conversion (less efficient than DataCore)
+        // Recommendation: Use DataCore for best performance (2-10x faster)
+        // For DataView users: Quality/relevance filtering happens in AIService
+        // ========================================
+        if (
+            (qualityThreshold !== undefined && qualityThreshold > 0) ||
+            (minimumRelevanceScore !== undefined && minimumRelevanceScore > 0)
+        ) {
+            Logger.debug(
+                `[Dataview] Quality/relevance filtering not implemented - use DataCore for API-level filtering`,
+            );
         }
 
         return tasks;

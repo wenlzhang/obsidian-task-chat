@@ -212,6 +212,10 @@ export class TaskIndexService {
             taskTags?: string[];
             notes?: string[];
         },
+        qualityThreshold?: number,
+        keywords?: string[],
+        coreKeywords?: string[],
+        minimumRelevanceScore?: number,
     ): Promise<Task[]> {
         const activeAPI = this.determineActiveAPI(app, settings);
 
@@ -248,13 +252,19 @@ export class TaskIndexService {
             let tasks: Task[];
 
             if (activeAPI === "datacore") {
-                Logger.debug("Fetching tasks from Datacore");
+                Logger.debug(
+                    "Fetching tasks from Datacore (with API-level quality/relevance filtering)",
+                );
                 tasks = await DatacoreService.parseTasksFromDatacore(
                     app,
                     settings,
                     dateFilter,
                     propertyFilters,
                     inclusionFilters,
+                    qualityThreshold,
+                    keywords,
+                    coreKeywords,
+                    minimumRelevanceScore,
                 );
             } else {
                 Logger.debug("Fetching tasks from Dataview");
@@ -264,6 +274,10 @@ export class TaskIndexService {
                     dateFilter,
                     propertyFilters,
                     inclusionFilters,
+                    qualityThreshold,
+                    keywords,
+                    coreKeywords,
+                    minimumRelevanceScore,
                 );
             }
 

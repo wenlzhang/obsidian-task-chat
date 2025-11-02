@@ -3,6 +3,7 @@ import { Task, TaskStatusCategory } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
+import { TaskSearchService } from "./taskSearchService";
 import { Logger } from "../../utils/logger";
 
 /**
@@ -460,6 +461,10 @@ export class DatacoreService {
      * @param dateFilter - Optional date filter (legacy parameter for compatibility)
      * @param propertyFilters - Optional property filters (priority, dueDate, status)
      * @param inclusionFilters - Optional inclusion filters (folders, tags, notes)
+     * @param qualityThreshold - Optional quality score threshold for API-level filtering
+     * @param keywords - Optional keywords for relevance filtering (expanded keywords)
+     * @param coreKeywords - Optional core keywords for relevance boost
+     * @param minimumRelevanceScore - Optional minimum relevance score threshold
      */
     static async parseTasksFromDatacore(
         app: App,
@@ -478,6 +483,10 @@ export class DatacoreService {
             taskTags?: string[];
             notes?: string[];
         },
+        qualityThreshold?: number,
+        keywords?: string[],
+        coreKeywords?: string[],
+        minimumRelevanceScore?: number,
     ): Promise<Task[]> {
         const datacoreApi = this.getAPI();
         if (!datacoreApi) {
@@ -525,6 +534,65 @@ export class DatacoreService {
             }
 
             // ========================================
+            // API-LEVEL QUALITY FILTERING
+            // Apply quality filter (due date + priority + status scores) at API level
+            // This prevents low-quality tasks from ever becoming Task objects
+            // ========================================
+            if (qualityThreshold !== undefined && qualityThreshold > 0) {
+                const beforeQuality = results.length;
+                const qualityFilter =
+                    TaskSearchService.createQualityFilterPredicate(
+                        settings,
+                        qualityThreshold,
+                        "datacore",
+                    );
+                results = results.filter(qualityFilter);
+                Logger.debug(
+                    `[Datacore] Quality filter (threshold: ${qualityThreshold.toFixed(2)}): ${beforeQuality} → ${results.length} tasks`,
+                );
+
+                if (results.length === 0) {
+                    Logger.debug(
+                        "[Datacore] No tasks remaining after quality filter",
+                    );
+                    return tasks;
+                }
+            }
+
+            // ========================================
+            // API-LEVEL RELEVANCE FILTERING
+            // Apply relevance filter (keyword matching) at API level
+            // This prevents low-relevance tasks from ever becoming Task objects
+            // ========================================
+            if (
+                keywords &&
+                keywords.length > 0 &&
+                minimumRelevanceScore !== undefined &&
+                minimumRelevanceScore > 0
+            ) {
+                const beforeRelevance = results.length;
+                const relevanceFilter =
+                    TaskSearchService.createRelevanceFilterPredicate(
+                        keywords,
+                        coreKeywords || keywords,
+                        minimumRelevanceScore,
+                        settings,
+                        "datacore",
+                    );
+                results = results.filter(relevanceFilter);
+                Logger.debug(
+                    `[Datacore] Relevance filter (min score: ${minimumRelevanceScore.toFixed(2)}): ${beforeRelevance} → ${results.length} tasks`,
+                );
+
+                if (results.length === 0) {
+                    Logger.debug(
+                        "[Datacore] No tasks remaining after relevance filter",
+                    );
+                    return tasks;
+                }
+            }
+
+            // ========================================
             // CONDITIONAL PAGE TAG LOADING
             // OPTIMIZATION: Only fetch page tags when actually needed
             // This is a MAJOR performance boost for large vaults (2-3 second savings!)
@@ -534,16 +602,22 @@ export class DatacoreService {
 
             // Determine if we need page tags
             const needsPageTags =
-                (inclusionFilters?.noteTags && inclusionFilters.noteTags.length > 0) ||
-                (settings.exclusions.noteTags && settings.exclusions.noteTags.length > 0) ||
+                (inclusionFilters?.noteTags &&
+                    inclusionFilters.noteTags.length > 0) ||
+                (settings.exclusions.noteTags &&
+                    settings.exclusions.noteTags.length > 0) ||
                 settings.alwaysDisplayNoteTags; // User setting (if it exists)
 
             if (needsPageTags) {
-                Logger.debug("[Datacore] Fetching page tags (needed for note tag filters)");
+                Logger.debug(
+                    "[Datacore] Fetching page tags (needed for note tag filters)",
+                );
 
                 // Get unique page paths from task results
                 const uniquePaths = new Set<string>(
-                    results.map((t: any) => (t.$file || t.file || "") as string).filter(p => p),
+                    results
+                        .map((t: any) => (t.$file || t.file || "") as string)
+                        .filter((p) => p),
                 );
 
                 if (uniquePaths.size > 0) {
@@ -554,14 +628,17 @@ export class DatacoreService {
 
                         const pathConditions = Array.from(uniquePaths)
                             .slice(0, 500) // Safety limit to prevent query string explosion
-                            .map(path => `$file = "${path}"`)
+                            .map((path) => `$file = "${path}"`)
                             .join(" or ");
 
-                        const pagesQuery = pathConditions.length > 0
-                            ? `@page and (${pathConditions})`
-                            : "@page";
+                        const pagesQuery =
+                            pathConditions.length > 0
+                                ? `@page and (${pathConditions})`
+                                : "@page";
 
-                        Logger.debug(`[Datacore] Querying ${uniquePaths.size} pages for tags (was: all pages)`);
+                        Logger.debug(
+                            `[Datacore] Querying ${uniquePaths.size} pages for tags (was: all pages)`,
+                        );
                         const pages = await datacoreApi.query(pagesQuery);
 
                         if (pages && Array.isArray(pages)) {
@@ -576,9 +653,14 @@ export class DatacoreService {
                                 }
                             }
                         }
-                        Logger.debug(`[Datacore] Loaded tags for ${pageTagsMap.size} pages`);
+                        Logger.debug(
+                            `[Datacore] Loaded tags for ${pageTagsMap.size} pages`,
+                        );
                     } catch (error) {
-                        Logger.warn("Failed to fetch page tags from Datacore:", error);
+                        Logger.warn(
+                            "Failed to fetch page tags from Datacore:",
+                            error,
+                        );
                     }
                 }
             } else {
