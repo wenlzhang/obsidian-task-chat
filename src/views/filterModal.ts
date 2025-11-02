@@ -597,7 +597,12 @@ export class FilterModal extends Modal {
     private renderStatusCategories(container: HTMLElement): void {
         // Get all configured status categories from settings
         const statusMapping = this.plugin.settings.taskStatusMapping;
-        const allStatuses = Object.keys(statusMapping);
+        let allStatuses = Object.keys(statusMapping);
+
+        // Filter out "completed" if hideCompletedTasks is enabled
+        if (this.plugin.settings.hideCompletedTasks) {
+            allStatuses = allStatuses.filter((key) => key !== "completed");
+        }
 
         if (allStatuses.length === 0) {
             return; // No status categories configured

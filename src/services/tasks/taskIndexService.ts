@@ -317,13 +317,44 @@ export class TaskIndexService {
         // but Datacore query needs status symbols (e.g., " ", "x", "X")
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
             const statusSymbols: string[] = [];
+            const hasOtherCategory = filter.taskStatuses.includes("other");
 
             Logger.debug(
                 `[buildPropertyFilters] Converting status categories to symbols:`,
                 filter.taskStatuses,
             );
 
-            for (const categoryKey of filter.taskStatuses) {
+            // Special handling for "other" category
+            // "other" should EXCLUDE all symbols defined in other categories
+            if (hasOtherCategory) {
+                // Collect all defined symbols from ALL categories EXCEPT "other"
+                const allDefinedSymbols: string[] = [];
+                for (const [categoryKey, statusConfig] of Object.entries(
+                    settings.taskStatusMapping,
+                )) {
+                    if (
+                        categoryKey !== "other" &&
+                        statusConfig &&
+                        statusConfig.symbols &&
+                        statusConfig.symbols.length > 0
+                    ) {
+                        allDefinedSymbols.push(...statusConfig.symbols);
+                    }
+                }
+
+                Logger.debug(
+                    `[buildPropertyFilters] "other" category: excluding symbols [${allDefinedSymbols.join(", ")}]`,
+                );
+
+                // Store exclusion symbols with special flag
+                propertyFilters.statusExclusions = allDefinedSymbols;
+            }
+
+            // Handle regular categories (not "other")
+            const regularCategories = filter.taskStatuses.filter(
+                (cat) => cat !== "other",
+            );
+            for (const categoryKey of regularCategories) {
                 const statusConfig = settings.taskStatusMapping[categoryKey];
                 if (statusConfig && statusConfig.symbols) {
                     Logger.debug(
@@ -344,7 +375,8 @@ export class TaskIndexService {
                 Logger.debug(
                     `[buildPropertyFilters] Final status symbols: [${statusSymbols.join(", ")}]`,
                 );
-            } else {
+            } else if (!hasOtherCategory) {
+                // Only warn if no symbols AND no "other" category
                 Logger.warn(
                     `[buildPropertyFilters] No symbols found for categories: ${filter.taskStatuses.join(", ")}`,
                 );

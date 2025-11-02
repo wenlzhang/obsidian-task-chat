@@ -100,22 +100,38 @@ export class DatacoreService {
 
     /**
      * Add status filter to query parts
+     * Supports both inclusion (statusValues) and exclusion (statusExclusions) filters
      */
     private static addStatusFilter(
         queryParts: string[],
         statusValues?: string[] | null,
+        statusExclusions?: string[] | null,
     ): void {
-        if (!statusValues || statusValues.length === 0) return;
+        // Handle inclusion filter (include specific symbols)
+        if (statusValues && statusValues.length > 0) {
+            // Build OR condition from status symbols
+            const statusConditions = statusValues
+                .map((symbol) => `$status = "${symbol}"`)
+                .join(" or ");
 
-        // Build OR condition from status symbols
-        const statusConditions = statusValues
-            .map((symbol) => `$status = "${symbol}"`)
-            .join(" or ");
+            queryParts.push(`(${statusConditions})`);
+            Logger.debug(
+                `[Query Builder] Status filter (include): ${statusValues.join(", ")}`,
+            );
+        }
 
-        queryParts.push(`(${statusConditions})`);
-        Logger.debug(
-            `[Query Builder] Status filter: ${statusValues.join(", ")}`,
-        );
+        // Handle exclusion filter (exclude defined symbols - for "other" category)
+        if (statusExclusions && statusExclusions.length > 0) {
+            // Build exclusion condition: NOT (symbol1 OR symbol2 OR ...)
+            const exclusionConditions = statusExclusions
+                .map((symbol) => `$status = "${symbol}"`)
+                .join(" or ");
+
+            queryParts.push(`!(${exclusionConditions})`);
+            Logger.debug(
+                `[Query Builder] Status filter (exclude): ${statusExclusions.join(", ")}`,
+            );
+        }
     }
 
     /**
@@ -461,6 +477,7 @@ export class DatacoreService {
             dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
+            statusExclusions?: string[] | null; // For "other" category - excludes defined symbols
         },
     ): string {
         const queryParts: string[] = ["@task"];
@@ -602,8 +619,12 @@ export class DatacoreService {
             // Priority Filter
             this.addPriorityFilter(queryParts, propertyFilters.priority);
 
-            // Status Filter
-            this.addStatusFilter(queryParts, propertyFilters.statusValues);
+            // Status Filter (supports both inclusion and exclusion)
+            this.addStatusFilter(
+                queryParts,
+                propertyFilters.statusValues,
+                propertyFilters.statusExclusions,
+            );
         }
 
         const query = queryParts.join(" and ");
@@ -625,6 +646,7 @@ export class DatacoreService {
             dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
+            statusExclusions?: string[] | null; // For "other" category - excludes defined symbols
         },
         settings: PluginSettings,
     ): ((dcTask: any) => boolean) | null {
@@ -1430,8 +1452,66 @@ export class DatacoreService {
                 queryStart,
             );
 
+            // DEBUG: Log sample tasks to inspect field names and values
+            if (results && results.length > 0) {
+                console.log(
+                    "[DEBUG] Sample Datacore task object (first result):",
+                    JSON.stringify(
+                        {
+                            $status: results[0].$status,
+                            status: results[0].status,
+                            $due: results[0].$due,
+                            due: results[0].due,
+                            dueDate: results[0].dueDate,
+                            $priority: results[0].$priority,
+                            priority: results[0].priority,
+                            $text: results[0].$text,
+                            text: results[0].text,
+                            $path: results[0].$path,
+                            path: results[0].path,
+                        },
+                        null,
+                        2,
+                    ),
+                );
+            }
+
             if (!results || results.length === 0) {
                 Logger.info("[Task Count] No results from Datacore query");
+                // DEBUG: Test simpler query without property filters
+                console.log(
+                    "[DEBUG] Testing simpler query without property filters...",
+                );
+                const simpleQuery = this.buildDatacoreQuery(
+                    settings,
+                    inclusionFilters,
+                    undefined, // No property filters
+                );
+                console.log("[DEBUG] Simple query:", simpleQuery);
+                const simpleResults = await datacoreApi.query(simpleQuery);
+                console.log(
+                    `[DEBUG] Simple query returned ${simpleResults?.length || 0} results`,
+                );
+                if (simpleResults && simpleResults.length > 0) {
+                    console.log(
+                        "[DEBUG] Sample task from simple query:",
+                        JSON.stringify(
+                            {
+                                $status: simpleResults[0].$status,
+                                status: simpleResults[0].status,
+                                $due: simpleResults[0].$due,
+                                due: simpleResults[0].due,
+                                dueDate: simpleResults[0].dueDate,
+                                $priority: simpleResults[0].$priority,
+                                priority: simpleResults[0].priority,
+                                $text: simpleResults[0].$text,
+                                text: simpleResults[0].text,
+                            },
+                            null,
+                            2,
+                        ),
+                    );
+                }
                 return 0;
             }
 
