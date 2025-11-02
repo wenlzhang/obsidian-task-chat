@@ -4,6 +4,7 @@ import { PluginSettings } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 import { TaskFilterService } from "./taskFilterService";
 import { TaskSearchService } from "./taskSearchService";
+import { TaskSortService } from "./taskSortService";
 import { Logger } from "../../utils/logger";
 import { VectorizedScoring } from "../../utils/vectorizedScoring";
 import {
@@ -902,12 +903,14 @@ export class DatacoreService {
 
                 earlyLimitTimer.lap(`Scored ${scoredTasks.length} tasks`);
 
-                // STEP 4: Sort by final score (highest first)
-                scoredTasks.sort(
-                    (
-                        a: { dcTask: any; finalScore: number },
-                        b: { dcTask: any; finalScore: number },
-                    ) => b.finalScore - a.finalScore,
+                // STEP 4: Sort by final score (highest first) + multi-criteria tiebreaker
+                // Uses existing TaskSortService.sortScoredDcTasks method
+                TaskSortService.sortScoredDcTasks(
+                    scoredTasks,
+                    settings.taskSortOrder,
+                    settings,
+                    this.getTaskId.bind(this),
+                    scoreCache,
                 );
 
                 // STEP 5: Limit to user's maxResults if needed (NO buffer multiplier!)

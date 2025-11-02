@@ -823,17 +823,22 @@ export class AIService {
             let sortedTasksForDisplay: Task[];
 
             if (needsScoring) {
+                // API didn't score (Dataview case) - calculate scores and sort
                 Logger.debug(
                     `[JS Scoring] API didn't score - calculating for ${filteredTasks.length} tasks`,
                 );
 
-                const scoredTasks = filteredTasks.map((task) => {
-                    // Check if already has finalScore
+                // Build relevance scores map for sortTasksMultiCriteria
+                const relevanceScoresMap = new Map<string, number>();
+
+                filteredTasks.forEach((task) => {
+                    // Skip if already has finalScore
                     if (task._cachedScores?.finalScore !== undefined) {
-                        return {
-                            task,
-                            finalScore: task._cachedScores.finalScore,
-                        };
+                        relevanceScoresMap.set(
+                            task.id,
+                            task._cachedScores.relevance || 0,
+                        );
+                        return;
                     }
 
                     // Calculate component scores
@@ -893,27 +898,27 @@ export class AIService {
                         finalScore: finalScore,
                     };
 
-                    return { task, finalScore };
+                    // Store relevance for sorting
+                    relevanceScoresMap.set(task.id, relevanceScore);
                 });
 
-                // Sort DESC (highest score first)
-                scoredTasks.sort((a, b) => b.finalScore - a.finalScore);
-                sortedTasksForDisplay = scoredTasks.map((st) => st.task);
+                // Use existing sortTasksMultiCriteria function
+                sortedTasksForDisplay = TaskSortService.sortTasksMultiCriteria(
+                    filteredTasks,
+                    settings.taskSortOrder,
+                    settings,
+                    relevanceScoresMap,
+                );
 
                 Logger.debug(
-                    `[JS Scoring] Calculated and sorted ${sortedTasksForDisplay.length} tasks`,
+                    `[JS Scoring] Sorted ${sortedTasksForDisplay.length} tasks using sortTasksMultiCriteria`,
                 );
             } else {
-                // Fast path: Sort by cached finalScore
+                // API already scored and sorted - use as-is!
                 Logger.debug(
-                    `[Fast Sort] Using cached scores for ${filteredTasks.length} tasks`,
+                    `[Fast Path] Using ${filteredTasks.length} pre-sorted tasks from API (no re-sorting needed)`,
                 );
-
-                sortedTasksForDisplay = [...filteredTasks].sort(
-                    (a, b) =>
-                        (b._cachedScores?.finalScore || 0) -
-                        (a._cachedScores?.finalScore || 0),
-                );
+                sortedTasksForDisplay = filteredTasks;
             }
 
             // Limit sorted tasks to resultLimit
@@ -3279,12 +3284,15 @@ ${taskContext}`;
                     `[Fallback JS Scoring] Calculating for ${tasks.length} tasks`,
                 );
 
-                const scoredTasks = tasks.map((task) => {
+                const relevanceScoresMap = new Map<string, number>();
+
+                tasks.forEach((task) => {
                     if (task._cachedScores?.finalScore !== undefined) {
-                        return {
-                            task,
-                            finalScore: task._cachedScores.finalScore,
-                        };
+                        relevanceScoresMap.set(
+                            task.id,
+                            task._cachedScores.relevance || 0,
+                        );
+                        return;
                     }
 
                     // Calculate scores
@@ -3338,21 +3346,42 @@ ${taskContext}`;
                         finalScore: finalScore,
                     };
 
-                    return { task, finalScore };
+                    relevanceScoresMap.set(task.id, relevanceScore);
                 });
 
-                scoredTasks.sort((a, b) => b.finalScore - a.finalScore);
-                sortedTasks = scoredTasks.map((st) => st.task);
+                // Use existing sortTasksMultiCriteria function
+                sortedTasks = TaskSortService.sortTasksMultiCriteria(
+                    tasks,
+                    settings.taskSortOrder,
+                    settings,
+                    relevanceScoresMap,
+                );
 
                 Logger.debug(
-                    `[Fallback JS Scoring] Sorted ${sortedTasks.length} tasks`,
+                    `[Fallback JS Scoring] Sorted ${sortedTasks.length} tasks using sortTasksMultiCriteria`,
                 );
             } else {
                 Logger.debug(`[Fallback Fast Sort] Using cached scores`);
-                sortedTasks = [...tasks].sort(
-                    (a, b) =>
-                        (b._cachedScores?.finalScore || 0) -
-                        (a._cachedScores?.finalScore || 0),
+
+                // Build relevance scores map from cached scores
+                const relevanceScoresMap = new Map<string, number>();
+                tasks.forEach((task) => {
+                    relevanceScoresMap.set(
+                        task.id,
+                        task._cachedScores?.relevance || 0,
+                    );
+                });
+
+                // Use existing sortTasksMultiCriteria function
+                sortedTasks = TaskSortService.sortTasksMultiCriteria(
+                    tasks,
+                    settings.taskSortOrder,
+                    settings,
+                    relevanceScoresMap,
+                );
+
+                Logger.debug(
+                    `[Fallback Fast Sort] Sorted ${sortedTasks.length} tasks using sortTasksMultiCriteria`,
                 );
             }
 

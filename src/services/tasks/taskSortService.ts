@@ -34,94 +34,171 @@ export class TaskSortService {
         }
 
         const sorted = [...tasks].sort((a, b) => {
-            // Try each criterion in order until we find a difference
-            for (const criterion of sortOrder) {
-                let comparison = 0;
-
-                switch (criterion) {
-                    case "relevance":
-                        // RELEVANCE: Higher scores = more relevant
-                        // Direction: DESC (100 before 50)
-                        // Rationale: Best matches should appear first
-                        if (relevanceScores) {
-                            const scoreA = relevanceScores.get(a.id) || 0;
-                            const scoreB = relevanceScores.get(b.id) || 0;
-                            comparison = scoreB - scoreA; // DESC
-                        }
-                        break;
-
-                    case "dueDate":
-                        // DUE DATE: Earlier dates = more urgent
-                        // Direction: ASC (2025-10-15 before 2025-10-20)
-                        // Rationale: Overdue and soon-due tasks should appear first
-                        // Special: Tasks without due dates appear last
-                        comparison = TaskPropertyService.compareDates(
-                            a.dueDate,
-                            b.dueDate,
-                        ); // ASC
-                        break;
-
-                    case "priority":
-                        // PRIORITY: Internal values 1-4 (1=highest, 4=lowest/none)
-                        // Direction: ASC (1 before 2 before 3 before 4)
-                        // Rationale: Highest priority (1) should appear first
-                        // Note: Priority values map to user-defined strings (e.g., "high", "medium", "low")
-                        // Uses TaskPropertyService to respect user's dataviewPriorityMapping
-                        comparison = TaskPropertyService.comparePriority(
-                            a.priority,
-                            b.priority,
-                        ); // ASC
-                        break;
-
-                    case "status":
-                        // STATUS: Smart ordering for task workflow
-                        // Direction: Active work (open/inProgress) > finished work (completed/cancelled)
-                        // Rationale: Active tasks should appear before finished tasks
-                        // Uses TaskPropertyService to respect user's custom status categories
-                        const aOrder = TaskPropertyService.getStatusOrder(
-                            a.statusCategory,
-                            settings,
-                        );
-                        const bOrder = TaskPropertyService.getStatusOrder(
-                            b.statusCategory,
-                            settings,
-                        );
-                        comparison = aOrder - bOrder;
-                        break;
-
-                    case "created":
-                        // CREATED DATE: Newer = more relevant
-                        // Direction: DESC (2025-10-20 before 2025-10-15)
-                        // Rationale: Recently created tasks are usually more relevant
-                        comparison = TaskPropertyService.compareDates(
-                            a.createdDate,
-                            b.createdDate,
-                        );
-                        comparison = -comparison; // DESC (reverse ASC)
-                        break;
-
-                    case "alphabetical":
-                        // ALPHABETICAL: Natural A-Z order
-                        // Direction: ASC (A before Z)
-                        // Rationale: Standard alphabetical ordering
-                        comparison = a.text.localeCompare(b.text); // ASC
-                        break;
-                }
-
-                // If this criterion produced a difference, return it
-                if (comparison !== 0) {
-                    return comparison;
-                }
-                // Otherwise, continue to next criterion
-            }
-
-            // All criteria resulted in ties
-            return 0;
+            return this.applyCriteriaComparison(
+                a,
+                b,
+                sortOrder,
+                settings,
+                (task) => relevanceScores?.get(task.id) || 0,
+                (task) => task.dueDate,
+                (task) => task.priority,
+                (task) => task.statusCategory,
+                (task) => task.createdDate,
+                (task) => task.text,
+            );
         });
 
         return sorted;
     }
 
-    // Note: All comparison methods have been moved to TaskPropertyService
-    // This eliminates duplication and ensures user settings are respected consistently
+    /**
+     * Sort scored dcTask objects using multi-criteria sorting
+     * Used by datacoreService for API-level sorting before Task object creation
+     *
+     * @param scoredTasks - Array of {dcTask, finalScore} objects to sort
+     * @param sortOrder - Ordered array of sort criteria (same as sortTasksMultiCriteria)
+     * @param settings - Plugin settings for status/priority configuration
+     * @param getTaskId - Function to extract task ID from dcTask
+     * @param scoreCache - Map of taskId to cached component scores
+     * @returns Sorted array (mutates in place, but also returns for convenience)
+     */
+    static sortScoredDcTasks(
+        scoredTasks: Array<{ dcTask: any; finalScore: number }>,
+        sortOrder: SortCriterion[],
+        settings: PluginSettings,
+        getTaskId: (dcTask: any) => string,
+        scoreCache: Map<string, any>,
+    ): Array<{ dcTask: any; finalScore: number }> {
+        scoredTasks.sort((a, b) => {
+            // Primary sort: finalScore DESC (highest first)
+            const scoreDiff = b.finalScore - a.finalScore;
+            if (Math.abs(scoreDiff) > 0.0001) {
+                return scoreDiff;
+            }
+
+            // Scores equal - apply multi-criteria tiebreaker
+            // Skip "relevance" since it's already included in finalScore
+            const tiebreakOrder = sortOrder.filter((c) => c !== "relevance");
+
+            return this.applyCriteriaComparison(
+                a,
+                b,
+                tiebreakOrder,
+                settings,
+                (item) => {
+                    const taskId = getTaskId(item.dcTask);
+                    return scoreCache.get(taskId)?.relevance || 0;
+                },
+                (item) => item.dcTask._dueDate,
+                (item) => item.dcTask._mappedPriority,
+                (item) => item.dcTask._mappedStatus || "incomplete",
+                (item) => undefined, // createdDate not available at API level
+                (item) => item.dcTask.$text || item.dcTask.text || "",
+            );
+        });
+
+        return scoredTasks;
+    }
+
+    /**
+     * Generic multi-criteria comparison helper
+     * Applies sort criteria in order using property getters
+     * This is the single source of truth for multi-criteria sorting logic
+     *
+     * @param itemA - First item to compare
+     * @param itemB - Second item to compare
+     * @param sortOrder - Ordered array of sort criteria
+     * @param settings - Plugin settings
+     * @param getRelevance - Function to get relevance score
+     * @param getDueDate - Function to get due date
+     * @param getPriority - Function to get priority
+     * @param getStatusCategory - Function to get status category
+     * @param getCreatedDate - Function to get created date
+     * @param getText - Function to get text
+     * @returns Comparison result: < 0 if A before B, > 0 if B before A, 0 if equal
+     */
+    private static applyCriteriaComparison<T>(
+        itemA: T,
+        itemB: T,
+        sortOrder: SortCriterion[],
+        settings: PluginSettings,
+        getRelevance: (item: T) => number,
+        getDueDate: (item: T) => string | undefined,
+        getPriority: (item: T) => number | undefined,
+        getStatusCategory: (item: T) => string | undefined,
+        getCreatedDate: (item: T) => string | undefined,
+        getText: (item: T) => string,
+    ): number {
+        // Try each criterion in order until we find a difference
+        for (const criterion of sortOrder) {
+            let comparison = 0;
+
+            switch (criterion) {
+                case "relevance":
+                    // RELEVANCE: Higher scores = more relevant
+                    // Direction: DESC (100 before 50)
+                    const scoreA = getRelevance(itemA);
+                    const scoreB = getRelevance(itemB);
+                    comparison = scoreB - scoreA; // DESC
+                    break;
+
+                case "dueDate":
+                    // DUE DATE: Earlier dates = more urgent
+                    // Direction: ASC (overdue → today → future)
+                    comparison = TaskPropertyService.compareDates(
+                        getDueDate(itemA),
+                        getDueDate(itemB),
+                    ); // ASC
+                    break;
+
+                case "priority":
+                    // PRIORITY: Lower numbers = higher priority
+                    // Direction: ASC (1 → 2 → 3 → 4)
+                    comparison = TaskPropertyService.comparePriority(
+                        getPriority(itemA),
+                        getPriority(itemB),
+                    ); // ASC
+                    break;
+
+                case "status":
+                    // STATUS: User-configured status category order
+                    // Direction: Active work (open/inProgress) > finished work (completed/cancelled)
+                    const aOrder = TaskPropertyService.getStatusOrder(
+                        getStatusCategory(itemA),
+                        settings,
+                    );
+                    const bOrder = TaskPropertyService.getStatusOrder(
+                        getStatusCategory(itemB),
+                        settings,
+                    );
+                    comparison = aOrder - bOrder;
+                    break;
+
+                case "created":
+                    // CREATED DATE: Newer = more relevant
+                    // Direction: DESC (newer tasks first)
+                    comparison = TaskPropertyService.compareDates(
+                        getCreatedDate(itemA),
+                        getCreatedDate(itemB),
+                    );
+                    comparison = -comparison; // DESC (reverse ASC)
+                    break;
+
+                case "alphabetical":
+                    // ALPHABETICAL: Natural A-Z order
+                    // Direction: ASC (A before Z)
+                    comparison = getText(itemA).localeCompare(getText(itemB)); // ASC
+                    break;
+            }
+
+            // If this criterion produced a difference, return it
+            if (comparison !== 0) {
+                return comparison;
+            }
+            // Otherwise, continue to next criterion
+        }
+
+        // All criteria resulted in ties
+        return 0;
+    }
 }
