@@ -13,6 +13,17 @@ export interface Task {
     lineNumber: number;
     originalText: string;
     folder?: string;
+
+    // PERFORMANCE OPTIMIZATION: Cached scores from API-level filtering
+    // These are populated during API-level quality/relevance filtering to avoid
+    // redundant calculation at JS-level scoring. Optional - only present when
+    // API-level filtering was performed with thresholds enabled.
+    _cachedScores?: {
+        relevance?: number; // Relevance score (0-2+) from keyword matching
+        dueDate?: number; // Due date score (0-1.5) from urgency
+        priority?: number; // Priority score (0-1.0) from importance
+        status?: number; // Status score (0-1.0) from workflow state
+    };
 }
 
 export interface TaskFilter {

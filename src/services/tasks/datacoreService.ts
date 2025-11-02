@@ -533,7 +533,22 @@ export class DatacoreService {
             }
 
             // ========================================
-            // API-LEVEL QUALITY FILTERING
+            // SCORE CACHING OPTIMIZATION
+            // Cache scores during API-level filtering to avoid redundant calculations
+            // at JS-level scoring. This eliminates ~50% of score calculations for large vaults.
+            // ========================================
+            const scoreCache = new Map<
+                string,
+                {
+                    dueDate?: number;
+                    priority?: number;
+                    status?: number;
+                    relevance?: number;
+                }
+            >();
+
+            // ========================================
+            // API-LEVEL QUALITY FILTERING (with score caching)
             // Apply quality filter (due date + priority + status scores) at API level
             // This prevents low-quality tasks from ever becoming Task objects
             // Uses existing score calculation functions (no duplication)
@@ -541,9 +556,10 @@ export class DatacoreService {
             if (qualityThreshold !== undefined && qualityThreshold > 0) {
                 const beforeQuality = results.length;
 
-                // Create inline quality filter using existing score functions
+                // Create inline quality filter with score caching
                 const qualityFilter = (task: any): boolean => {
                     const taskText = task.$text || task.text || "";
+                    const taskId = this.getTaskId(task); // Unique ID for caching
 
                     // Calculate due date score using existing function
                     const dueValue = TaskPropertyService.getUnifiedFieldValue(
@@ -597,6 +613,13 @@ export class DatacoreService {
                         settings,
                     );
 
+                    // CACHE SCORES: Store for reuse in JS-level scoring
+                    scoreCache.set(taskId, {
+                        dueDate: dueDateScore,
+                        priority: priorityScore,
+                        status: statusScore,
+                    });
+
                     // Calculate total quality score with coefficients (properties only - no relevance)
                     const totalQualityScore =
                         dueDateScore * settings.dueDateCoefficient +
@@ -608,7 +631,7 @@ export class DatacoreService {
 
                 results = results.filter(qualityFilter);
                 Logger.debug(
-                    `[Datacore] Quality filter (threshold: ${qualityThreshold.toFixed(2)}): ${beforeQuality} → ${results.length} tasks`,
+                    `[Datacore] Quality filter (threshold: ${qualityThreshold.toFixed(2)}): ${beforeQuality} → ${results.length} tasks (scores cached for ${scoreCache.size} tasks)`,
                 );
 
                 if (results.length === 0) {
@@ -620,7 +643,7 @@ export class DatacoreService {
             }
 
             // ========================================
-            // API-LEVEL RELEVANCE FILTERING
+            // API-LEVEL RELEVANCE FILTERING (with score caching)
             // Apply relevance filter (keyword matching) at API level
             // This prevents low-relevance tasks from ever becoming Task objects
             // ========================================
@@ -638,10 +661,12 @@ export class DatacoreService {
                         minimumRelevanceScore,
                         settings,
                         "datacore",
+                        scoreCache, // Pass cache to store relevance scores
+                        this.getTaskId.bind(this), // Pass getTaskId function
                     );
                 results = results.filter(relevanceFilter);
                 Logger.debug(
-                    `[Datacore] Relevance filter (min score: ${minimumRelevanceScore.toFixed(2)}): ${beforeRelevance} → ${results.length} tasks`,
+                    `[Datacore] Relevance filter (min score: ${minimumRelevanceScore.toFixed(2)}): ${beforeRelevance} → ${results.length} tasks (scores cached for ${scoreCache.size} tasks)`,
                 );
 
                 if (results.length === 0) {
@@ -738,6 +763,13 @@ export class DatacoreService {
                 );
 
                 if (task) {
+                    // ATTACH CACHED SCORES: Retrieve scores calculated during API-level filtering
+                    // This eliminates redundant calculations at JS-level scoring (~50% reduction)
+                    const cached = scoreCache.get(task.id);
+                    if (cached) {
+                        task._cachedScores = cached;
+                    }
+
                     tasks.push(task);
                 }
             }

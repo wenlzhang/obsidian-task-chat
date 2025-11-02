@@ -1016,6 +1016,11 @@ export class TaskSearchService {
      * between API-level filtering (datacoreService/dataviewService) and JavaScript-level
      * sorting (scoreTasksComprehensive).
      *
+     * PERFORMANCE OPTIMIZATIONS (v2):
+     * - Single-pass matching (avoids double-matching core keywords)
+     * - Uses Set for O(1) core keyword lookup
+     * - Expects pre-lowercased keywords (caller should lowercase ONCE before loop)
+     *
      * Formula:
      * - coreMatchRatio = coreMatches / totalCoreKeywords
      * - allMatchRatio = allMatches / totalCoreKeywords
@@ -1031,8 +1036,8 @@ export class TaskSearchService {
      * - Score: (2/2) × 0.2 + (2/2) × 1.0 = 0.2 + 1.0 = 1.2
      *
      * @param taskText - Lowercase task text to search in
-     * @param coreKeywords - Core keywords from query (pre-expansion, deduplicated)
-     * @param allKeywords - All keywords including core + semantic equivalents (deduplicated)
+     * @param coreKeywords - Core keywords from query (pre-expansion, deduplicated, ALREADY LOWERCASED)
+     * @param allKeywords - All keywords including core + semantic equivalents (deduplicated, ALREADY LOWERCASED)
      * @param settings - Plugin settings with user-configurable relevanceCoreWeight
      * @returns Score: 0-2+ typical (0 if no keywords, can exceed 2.0 with many expanded matches)
      */
@@ -1047,27 +1052,35 @@ export class TaskSearchService {
             return 0.0;
         }
 
-        // Count core keyword matches
-        const coreKeywordsMatched = coreKeywords.filter((coreKw) =>
-            taskText.includes(coreKw.toLowerCase()),
-        ).length;
+        // OPTIMIZATION 1: Create Set for fast core keyword lookup (O(1) instead of O(n))
+        // Note: This is still done per-call because Set creation is fast and avoids memory issues
+        const coreKeywordsSet = new Set(coreKeywords);
 
-        // Count ALL keyword matches (including core keywords)
-        const allKeywordsMatched = allKeywords.filter((kw) =>
-            taskText.includes(kw.toLowerCase()),
-        ).length;
+        // OPTIMIZATION 2: Single-pass matching to avoid double-checking core keywords
+        // OLD: Matched coreKeywords separately, then matched allKeywords (double matching!)
+        // NEW: Match allKeywords once, check if each is core (single pass!)
+        let coreMatches = 0;
+        let allMatches = 0;
+
+        for (const keyword of allKeywords) {
+            if (taskText.includes(keyword)) {
+                allMatches++; // This keyword matched
+                if (coreKeywordsSet.has(keyword)) {
+                    coreMatches++; // This is a core keyword match
+                }
+            }
+        }
 
         // Calculate ratios - BOTH relative to totalCore
         const totalCore = Math.max(coreKeywords.length, 1); // Avoid division by zero
 
-        const coreMatchRatio = coreKeywordsMatched / totalCore;
-        const allKeywordsRatio = allKeywordsMatched / totalCore; // Also divided by totalCore!
+        const coreMatchRatio = coreMatches / totalCore;
+        const allMatchRatio = allMatches / totalCore; // Also divided by totalCore!
 
         // Apply user-configurable core bonus + hardcoded base weight (1.0)
         // Core bonus is configurable (default: 0.2), base weight is always 1.0
         return (
-            coreMatchRatio * settings.relevanceCoreWeight +
-            allKeywordsRatio * 1.0 // Hardcoded: all keywords base weight is always 1.0
+            coreMatchRatio * settings.relevanceCoreWeight + allMatchRatio * 1.0 // Hardcoded: all keywords base weight is always 1.0
         );
     }
 
@@ -1326,34 +1339,51 @@ export class TaskSearchService {
             `============================================================`,
         );
 
+        // PERFORMANCE: Pre-lowercase keywords ONCE before scoring loop
+        // Avoid calling toLowerCase() for every task (N tasks × M keywords calls reduced to M calls)
+        const coreKeywordsLower = deduplicatedCoreKeywords.map((kw) =>
+            kw.toLowerCase(),
+        );
+        const allKeywordsLower = deduplicatedKeywords.map((kw) =>
+            kw.toLowerCase(),
+        );
+
         const scored = tasks.map((task) => {
-            const taskText = task.text.toLowerCase();
+            // PERFORMANCE OPTIMIZATION: Reuse cached scores from API-level filtering
+            // If scores were calculated during filtering, reuse them instead of recalculating
+            // This eliminates ~50% of score calculations for large vaults with quality/relevance filters enabled
 
             // ========== COMPONENT 1: KEYWORD RELEVANCE ==========
-            const relevanceScore = this.calculateRelevanceScore(
-                taskText,
-                deduplicatedCoreKeywords,
-                deduplicatedKeywords,
-                settings,
-            );
+            // Check cache first, calculate only if not cached
+            const relevanceScore =
+                task._cachedScores?.relevance ??
+                (() => {
+                    const taskText = task.text.toLowerCase();
+                    return this.calculateRelevanceScoreFromText(
+                        taskText,
+                        coreKeywordsLower, // Pre-lowercased
+                        allKeywordsLower, // Pre-lowercased
+                        settings,
+                    );
+                })();
 
             // ========== COMPONENT 2: DUE DATE SCORE ==========
-            const dueDateScore = this.calculateDueDateScore(
-                task.dueDate,
-                settings,
-            );
+            // Check cache first, calculate only if not cached
+            const dueDateScore =
+                task._cachedScores?.dueDate ??
+                this.calculateDueDateScore(task.dueDate, settings);
 
             // ========== COMPONENT 3: PRIORITY SCORE ==========
-            const priorityScore = this.calculatePriorityScore(
-                task.priority,
-                settings,
-            );
+            // Check cache first, calculate only if not cached
+            const priorityScore =
+                task._cachedScores?.priority ??
+                this.calculatePriorityScore(task.priority, settings);
 
             // ========== COMPONENT 4: STATUS SCORE ==========
-            const statusScore = this.calculateStatusScore(
-                task.statusCategory,
-                settings,
-            );
+            // Check cache first, calculate only if not cached
+            const statusScore =
+                task._cachedScores?.status ??
+                this.calculateStatusScore(task.statusCategory, settings);
 
             // ========== WEIGHTED FINAL SCORE ==========
             // Use user-configurable coefficients (defaults: 20, 4, 1, 1)
@@ -1574,6 +1604,11 @@ export class TaskSearchService {
      * with JavaScript-level scoring. This eliminates code duplication and guarantees that
      * API filtering and JS sorting produce identical relevance scores.
      *
+     * PERFORMANCE OPTIMIZATIONS:
+     * - Pre-computes lowercased keywords ONCE in closure (not per task!)
+     * - Reused for all tasks in the filter predicate
+     * - Optionally caches scores for reuse in JS-level scoring
+     *
      * Handles property-only queries (no keywords):
      * - Returns true (passes filter) if no keywords provided
      * - Returns true if threshold is 0 or negative (filter disabled)
@@ -1583,6 +1618,8 @@ export class TaskSearchService {
      * @param minimumRelevanceScore - Threshold to pass filter (0 = disabled)
      * @param settings - Plugin settings with relevanceCoreWeight
      * @param source - Data source type (datacore or dataview)
+     * @param scoreCache - Optional cache to store calculated relevance scores
+     * @param getTaskId - Optional function to get task ID for caching
      * @returns Filter predicate function
      */
     static createRelevanceFilterPredicate(
@@ -1591,11 +1628,26 @@ export class TaskSearchService {
         minimumRelevanceScore: number,
         settings: PluginSettings,
         source: "datacore" | "dataview",
+        scoreCache?: Map<
+            string,
+            {
+                dueDate?: number;
+                priority?: number;
+                status?: number;
+                relevance?: number;
+            }
+        >,
+        getTaskId?: (task: any) => string,
     ): (task: any) => boolean {
+        // PERFORMANCE: Pre-compute lowercased keywords ONCE before creating predicate
+        // These are captured in the closure and reused for all tasks (avoiding repeated toLowerCase calls)
+        const keywordsLower = keywords.map((kw) => kw.toLowerCase());
+        const coreKeywordsLower = coreKeywords.map((kw) => kw.toLowerCase());
+
         return (task: any) => {
             // Skip relevance filtering for property-only queries (no keywords)
             // This allows "p1 overdue" queries to work without keyword matching
-            if (keywords.length === 0 || coreKeywords.length === 0) {
+            if (keywordsLower.length === 0 || coreKeywordsLower.length === 0) {
                 return true; // Pass all tasks (no relevance filter)
             }
 
@@ -1611,12 +1663,21 @@ export class TaskSearchService {
                     : (task.text || task.visual || "").toLowerCase();
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
+            // Pass pre-lowercased keywords from closure
             const relevanceScore = this.calculateRelevanceScoreFromText(
                 taskText,
-                coreKeywords,
-                keywords, // allKeywords parameter
+                coreKeywordsLower, // Pre-lowercased in closure
+                keywordsLower, // Pre-lowercased in closure
                 settings,
             );
+
+            // CACHE SCORE: Store for reuse in JS-level scoring (if cache provided)
+            if (scoreCache && getTaskId) {
+                const taskId = getTaskId(task);
+                const cached = scoreCache.get(taskId) || {};
+                cached.relevance = relevanceScore;
+                scoreCache.set(taskId, cached);
+            }
 
             return relevanceScore >= minimumRelevanceScore;
         };
