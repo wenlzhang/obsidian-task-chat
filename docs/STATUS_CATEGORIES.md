@@ -128,7 +128,6 @@ completed: { score: 0.3, order: 1 }
 
 **Default symbols:** All unassigned symbols
 **Default score:** 0.5
-**Default order:** 999
 **Description:** Catches all unassigned symbols automatically
 
 **Locked:** Cannot be deleted
@@ -158,10 +157,10 @@ You can add custom categories for your workflow!
 ```typescript
 {
     review: {
-        symbols: ["R", "r"],
+        symbols: ["r"],
         score: 0.7,  // Moderate relevance
         order: 4,    // After blocked
-        displayName: "In review",
+        displayName: "Review",
         aliases: "review,reviewing,qa"
     }
 }
@@ -191,7 +190,7 @@ You can add custom categories for your workflow!
 **Examples:**
 - `important`
 - `blocked`
-- `inReview`
+- `review`
 - `tendency`
 
 **Editable:** Yes (for custom categories)
@@ -205,8 +204,7 @@ You can add custom categories for your workflow!
 **Examples:**
 - "Important"
 - "Blocked"
-- "In review"
-- "Tendency"
+- "Review"
 
 **Editable:** Yes (even for built-in categories except Open/Other)
 
@@ -260,12 +258,6 @@ x,X             → Both x and X map to completed
 
 **Range:** 0.0-1.0
 
-**Guidelines:**
-- **1.0:** High relevance (open, important, blocked)
-- **0.7-0.9:** Moderate relevance (in-progress, review)
-- **0.3-0.5:** Low relevance (completed, archived)
-- **0.1:** Very low relevance (cancelled, deleted)
-
 **Effect:** Controls how tasks appear in search results
 
 ### Order
@@ -273,12 +265,6 @@ x,X             → Both x and X map to completed
 **What it is:** Display position when sorting by status
 
 **Range:** 1, 2, 3... (positive integers)
-
-**Guidelines:**
-- **1-2:** Active work (open, in-progress)
-- **3-5:** Blocked/waiting states
-- **6-7:** Finished work (completed, cancelled)
-- **8+:** Custom categories
 
 **Effect:** Controls task order when sorting by status criterion
 
@@ -313,8 +299,6 @@ x,X             → Both x and X map to completed
 "blocked, waiting, stuck, on-hold, paused, pending"
 "review, reviewing, testing, qa, checking, validating"
 ```
-
-**Multilingual support:** Add terms in multiple languages!
 
 ## Query Syntax
 
@@ -371,28 +355,6 @@ s:blocked priority:1            → Blocked high-priority tasks
 
 ## Tips
 
-### Designing Your Categories
-
-**Keep it simple:**
-- 5-7 categories is usually enough
-- Too many categories = harder to manage
-
-**Use meaningful symbols:**
-- `/` for in-progress (half-done)
-- `?` for blocked (questioning)
-- `!` for important (emphasis)
-- `R` for review (first letter)
-
-**Set appropriate scores:**
-- Active work: 0.8-1.0
-- Waiting states: 0.6-0.8
-- Finished work: 0.1-0.3
-
-**Set logical order:**
-- Active work first (1-2)
-- Waiting states middle (3-5)
-- Finished work last (6-7)
-
 ### For Better Searches
 
 **Use status filters:**
@@ -420,39 +382,6 @@ review s:blocked        → Blocked reviews
 - Development: `open`, `inProgress`, `review`, `testing`, `done`
 - Research: `open`, `researching`, `analyzing`, `writing`, `done`
 - Personal: `open`, `doing`, `waiting`, `done`, `someday`
-
-**Set scores based on priority:**
-- High-priority categories: 0.9-1.0
-- Normal categories: 0.7-0.8
-- Low-priority categories: 0.3-0.5
-
-**Set order based on workflow:**
-- Current work: 1-3
-- Waiting/blocked: 4-5
-- Finished: 6-7
-- Archive/someday: 8+
-
-## Validation & Auto-Fix
-
-### Duplicate Order Detection
-
-**What it checks:** Multiple categories with same order number
-
-**Warning shown:**
-```
-⚠️ Duplicate Sort Orders Detected
-
-Order 2 is used by multiple categories: Blocked, In Progress, Review.
-This may cause unpredictable sorting behavior.
-
-[Auto-Fix Now]
-```
-
-**Auto-fix:**
-- Renumbers all categories
-- Assigns gaps: 10, 20, 30...
-- Preserves relative order
-- One-click solution!
 
 ### Effective Order Display
 
@@ -485,45 +414,6 @@ Sort order: Current effective order: 2
 **Datacore:**
 - Status categories work with Datacore queries
 - Can filter by status in queries
-
-## Examples
-
-### Development Workflow
-
-```typescript
-{
-    open: { symbols: [" "], score: 1.0, order: 1 },
-    inProgress: { symbols: ["/"], score: 0.9, order: 2 },
-    review: { symbols: ["R"], score: 0.8, order: 3 },
-    testing: { symbols: ["T"], score: 0.7, order: 4 },
-    completed: { symbols: ["x"], score: 0.3, order: 5 },
-    cancelled: { symbols: ["-"], score: 0.1, order: 6 }
-}
-```
-
-### Personal Tasks
-
-```typescript
-{
-    open: { symbols: [" "], score: 1.0, order: 1 },
-    doing: { symbols: ["/"], score: 0.9, order: 2 },
-    waiting: { symbols: ["?"], score: 0.7, order: 3 },
-    done: { symbols: ["x"], score: 0.3, order: 4 },
-    someday: { symbols: ["~"], score: 0.2, order: 5 }
-}
-```
-
-### Priority-Based
-
-```typescript
-{
-    urgent: { symbols: ["!"], score: 1.0, order: 1 },
-    important: { symbols: ["I"], score: 0.9, order: 2 },
-    open: { symbols: [" "], score: 0.8, order: 3 },
-    inProgress: { symbols: ["/"], score: 0.7, order: 4 },
-    completed: { symbols: ["x"], score: 0.3, order: 5 }
-}
-```
 
 ## See Also
 
