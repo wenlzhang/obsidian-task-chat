@@ -8,8 +8,8 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 |---------|--------------|--------------|-----------|
 | **Keyword matching** | Regex-based (stop words removed) | AI-expanded multilingual synonyms | AI-expanded multilingual synonyms |
 | **AI usage** | None | Keyword expansion only | Keyword expansion + Analysis + Recommendations |
-| **Sorting** | By user preference | By user preference | By user preference + Auto mode available (AI-driven) |
-| **Cost** | Free (no AI used) | Very low (AI expands search keywords) | Higher (AI analyzes tasks and provides insights) |
+| **Sorting** | By user preference | By user preference | By user preference + AI-driven |
+| **Cost** | Free (no AI used) | Low (AI expands search keywords) | Higher (AI analyzes tasks and provides insights) |
 | **Best for** | Quick searches, simple filters, cost-free operation | Multilingual searches, broader results, semantic matching | Complex queries, task prioritization, AI insights |
 
 ## Simple Search
@@ -21,12 +21,12 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **Best for:**
 - Quick searches with exact keywords
-- Simple property filters (priority, status, due date)
+- Simple property filters (due date, priority, status)
 - Cost-free operation
 - When you know exactly what you're looking for
 
 **Example queries:**
-- `fix bug priority:1`
+- `fix bug p:1`
 - `s:open due:today`
 
 ## Smart Search
@@ -45,15 +45,9 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **Example queries:**
 
-*English:*
 - `fix` → Finds "repair", "solve", "correct", "resolve"
 - `urgent` → Finds "critical", "high-priority"
 - "tasks I need to finish today"
-
-*中文:*
-- `修复` → Finds "修理", "解决", "修正", "纠正"
-- `紧急` → Finds "关键", "高优先级"
-- "我今天需要完成的任务"
 
 **AI features:**
 - Keyword semantic expansion
@@ -66,7 +60,6 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 - AI expands keywords (like Smart Search)
 - AI analyzes all matching tasks
 - Provides insights, patterns, and recommendations
-- Can use "Auto" sorting mode (AI-driven prioritization)
 
 **Best for:**
 - Complex queries requiring analysis
@@ -76,22 +69,13 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **Example queries:**
 
-*English:*
-- "What should I work on next?"
 - "Show me urgent tasks that are overdue"
-- "Analyze my high-priority tasks"
-
-*中文:*
-- "我接下来应该做什么？"
-- "显示过期的紧急任务"
-- "分析我的高优先级任务"
 
 **AI features:**
 - Keyword semantic expansion
 - Property concept recognition
 - Task analysis and insights
 - Actionable recommendations
-- AI-driven sorting (Auto mode)
 
 ## Choosing the Right Mode
 
@@ -117,17 +101,11 @@ Task Chat offers three chat modes, each optimized for different use cases and AI
 
 **Simple Search:** Free (no AI)
 
-**Smart Search:** Very low cost
+**Smart Search:** Low cost
 - Only expands keywords (small prompt)
-- Example: ~100-200 tokens per query (depending on query length)
-- Estimated: $0.0001-0.0002 per query (depending on query length and model selection)
 
 **Task Chat:** Higher cost
 - Expands keywords + analyzes tasks + generates recommendations
-- Example: ~1000-5000 tokens per query (depending on query length and task count)
-- Estimated: $0.001-0.01 per query (depending on query length, task count, and model selection)
-
-**Tip:** Use Smart Search for most queries, Task Chat for complex analysis.
 
 ## Related Settings
 

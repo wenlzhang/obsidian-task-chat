@@ -1,28 +1,22 @@
 # Task Chat
 
-An AI-powered Obsidian plugin for intelligent task management. Chat with your tasks naturally, get AI insights, and manage your work with powerful filters and smart search.
+An AI-powered Obsidian plugin for intelligent task management. Chat with your tasks naturally, and get AI insights.
 
 ## ✨ Key Features
 
-- **🤖 Three Chat Modes** - Free simple search, smart semantic matching, or full AI analysis
-- **🌐 Multilingual Support** - Search in English, 中文, and other languages
-- **🎯 Smart Filtering** - Priority, due date, status, tags, folders
-- **🚫 Task Exclusions** - Exclude tasks by tags, folders, or notes
+- **🤖 Three Chat Modes** - Full AI analysis, smart semantic matching, or free simple search
+- **💬 Natural Language** - Ask questions in plain languages
+- **🎯 Smart Filtering** - Due date, priority, status, folders, tags
 - **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
-- **💬 Natural Language** - Ask questions in plain language
 - **🔄 Task Indexing** - Uses Datacore for fast performance
-- **⚙️ Dual-Model System** - Separate models for parsing and analysis
-- **💾 Session Management** - Persistent chat history with auto-pruning
 
 ## 🎯 Three Chat Modes
 
 | Mode | AI Usage | Cost | Best For |
 |------|----------|------|----------|
 | **🚀 Simple Search** | None | None | Quick searches, free operation |
-| **🧠 Smart Search** | Keyword expansion | Very low | Multilingual, broader results |
+| **🧠 Smart Search** | Keyword expansion | Low | Multilingual, broader results |
 | **💬 Task Chat** | Full AI assistant | Higher | AI insights, prioritization |
-
-**Default**: Simple Search (free). Switch anytime using the dropdown in chat interface.
 
 → [Learn more about chat modes](docs/CHAT_MODES.md)
 
@@ -32,49 +26,31 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 
 ```
 # Priority and status
-s:open priority:1
-status:done p:1,2,3
+s:open p:1,2,3
+status:done p1 p2
 p1 p2 & overdue
 
 # Due dates
+due
 due:today
-next week
 overdue
-
-# Combined filters
-s:open p1 due:today
 ```
 
 ### Smart Search (AI Expansion)
 
 ```
-# English
 fix → finds "repair", "solve", "correct", "resolve"
-urgent → finds "critical", "important", "high-priority"
-
-# 中文
-修复 → finds "修理", "解决", "修正", "纠正"
-紧急 → finds "关键", "重要", "高优先级"
 
 # Natural language
-tasks I need to finish today
-show me incomplete high priority items
 fix bug p1 due:today s:open,?
 ```
 
 ### Task Chat (AI Analysis)
 
 ```
-# English
-What should I work on next?
 Show me urgent tasks that are overdue
 Analyze my high-priority tasks
 fix bug p:1 p:2 due s:open,?
-
-# 中文
-我接下来应该做什么？
-显示过期的紧急任务
-分析我的高优先级任务
 ```
 
 ## 📊 Query Syntax
@@ -95,7 +71,6 @@ s:/             → In-progress (by symbol)
 ```
 p1, p2, p3, p4            → Priority levels
 priority:1                → High priority
-urgent, critical          → Natural language (Smart Search/Task Chat)
 ```
 
 ### Due Date Filters
@@ -103,9 +78,6 @@ urgent, critical          → Natural language (Smart Search/Task Chat)
 ```
 due:today, due:tomorrow   → Specific days
 overdue                   → Past due
-next week, this month     → Relative dates
-7d, -2w, 3m               → Relative dates
-due before: Friday        → Before specific date
 ```
 
 ### Combined Filters
@@ -114,7 +86,6 @@ due before: Friday        → Before specific date
 s:open p1 overdue
 fix bug s:inprogress due:today
 s:blocked priority:1
-urgent s:open
 ```
 
 ## Quick Start
@@ -132,22 +103,6 @@ urgent s:open
 2. **Choose a Mode** - Select your preferred chat mode from the dropdown
 3. **Start Chatting** - Type your query and press Enter
 
-**Example queries:**
-```
-# Simple Search
-s:open priority:1 due:today
-fix bug
-
-# Smart Search (with AI expansion)
-fix bug (finds "fix", "repair", "solve" in multiple languages)
-urgent open tasks
-
-# Task Chat (with AI analysis)
-What should I work on today?
-Show me overdue high-priority tasks
-Analyze my tasks for this week
-```
-
 ## 🔒 Privacy & Network Use
 
 This plugin connects to external AI services for Smart Search and Task Chat modes. Network usage details:
@@ -155,10 +110,10 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 ### Network Services Used
 
 **Required for Smart Search & Task Chat modes:**
-- **OpenAI API** (gpt-4o, gpt-4o-mini, etc.) - Task analysis and natural language processing
-- **Anthropic API** (Claude models) - Alternative AI provider
+- **OpenAI API** - Task analysis and natural language processing
+- **Anthropic API** - Alternative AI provider
 - **OpenRouter** - Multi-model AI gateway
-- **Ollama** (Optional) - Local AI models (no network required)
+- **Ollama** - Local AI models (no network required)
 
 ### Data Transmitted
 
@@ -168,8 +123,6 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 - Previous chat messages (for context, configurable)
 
 **What is NOT sent:**
-- Note content outside of tasks
-- Vault names or file paths
 - Obsidian settings
 - Personal identifiers
 
@@ -182,7 +135,6 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 
 ### Data Security
 
-- All API communications use HTTPS encryption
 - Your API keys are stored securely in Obsidian's local settings
 - No telemetry or analytics collected by this plugin
 - You control which tasks are processed via filters
@@ -191,53 +143,6 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 
 ## ⚙️ Configuration
 
-### Quick Setup
-
-1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
-2. **API Key** - Enter your API key (not needed for Ollama)
-3. **Test Connection** - Verify setup works with real-time validation
-4. **Model Configuration** - Select models for parsing and analysis
-5. **Session Settings** - Configure max sessions and chat history context
-
-### Model Purpose Configuration
-
-**Dual-model system**: Use different models for different purposes to optimize cost and performance!
-
-**Query Parsing** (Smart Search & Task Chat query understanding):
-- **Purpose**: Extract filters and understand queries
-- **Recommended**: Fast, cost-effective models
-- **Temperature**: 0.1 (for consistent JSON output)
-- **Provider**: Can differ from analysis provider
-
-**Task Analysis** (Task Chat AI responses):
-- **Purpose**: Analyze tasks and provide insights
-- **Recommended**: Quality models for better recommendations
-- **Temperature**: 0.1-2.0 (adjustable for creativity)
-- **Provider**: Independent selection
-
-**Per-provider model storage:**
-- Switch providers without losing model selections
-- Each provider remembers its last selected model
-- Seamless transitions between cloud and local AI
-
-> **⚠️ Note:** Model performance varies between users based on hardware, query complexity, and use cases. Test different models to find what works best for you.
-
-### Session Management ⭐ IMPROVED
-
-**Chat sessions**: Each conversation is a separate session with full history
-
-**Max sessions**: Configurable limit (10-1000, default: 50)
-- **Auto-pruning**: Oldest sessions automatically deleted when limit reached
-- **Persistence**: Sessions survive Obsidian restarts
-- **Unlimited messages**: Each session can have unlimited messages
-
-**Chat history context**: Configurable context length (1-100 messages, default: 5)
-- **Higher values**: Better AI understanding, more token usage
-- **Lower values**: Less context, lower cost
-- **Auto-cleanup**: Warnings and task references automatically removed
-
-**Session switching**: Easily switch between different chat contexts with session modal
-
 → [Model selection guide](docs/MODEL_SELECTION_GUIDE.md) - Choose the right model
 → [Model purpose configuration](docs/MODEL_CONFIGURATION.md) - Optimize cost/performance
 → [Complete settings guide](docs/SETTINGS_GUIDE.md) - Every setting explained
@@ -245,23 +150,21 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 ### Common Adjustments
 
 **Too many results?**
-- Increase quality filter (Settings → Task Filtering)
-- Raise minimum relevance score
+- Raise minimum relevance score (Settings → Task Filtering)
+- Increase quality filter
 - Adjust max results limit
 
 **Too few results?**
-- Lower quality filter (Settings → Task Filtering)
-- Disable minimum relevance score
-- Check if DataView is enabled
+- Lower minimum relevance score (Settings → Task Filtering)
+- Lower quality filter
 
 **Results not relevant?**
 - Adjust scoring coefficients (Settings → Task Scoring)
-- Customize priority/due date weights
+- Customize task property weights
 
 **AI responses not using context?**
 - Adjust chat history context length (Settings → Task Chat)
 - Default: 5 messages, increase for longer conversations
-- Warnings and task references automatically cleaned
 
 **Seeing unwanted tasks?**
 - Use exclusions to hide tasks by tags, folders, or notes (Settings → Task Filtering → Manage exclusions)
@@ -279,79 +182,46 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 ### Core Concepts
 
 - **[Chat Modes](docs/CHAT_MODES.md)** - Choose the right mode for your needs
-  - Simple Search - Free, fast, regex-based
-  - Smart Search - AI keyword expansion (~$0.0001/query, depending on query length and model selection)
-  - Task Chat - Full AI analysis (~$0.0021/query, depending on query length and model selection)
-
 - **[Settings Guide](docs/SETTINGS_GUIDE.md)** - Complete configuration reference
   - AI Provider setup
-  - Chat mode configuration
   - Semantic expansion
   - Task filtering and scoring
-  - Display and sorting
+  - Task sorting
 
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
   - Built-in categories (Open, In Progress, Completed, Cancelled)
   - Custom categories (Blocked, Review, Important, etc.)
-  - Symbols, scores, and display order
-  - Query syntax and examples
 
 ### Advanced Features
 
 - **[Task Filtering](docs/FILTERING.md)** - Control which tasks appear
   - Filter interface (inclusions) - Focus on specific tasks
-  - Settings (exclusions) - Hide tasks permanently
-  - Task tags vs note tags explained
-  - Priority rules and examples
 - **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
   - Exclude by tags (task-level or note-level)
   - Exclude by folders (including subfolders)
   - Exclude by specific notes
-  - Fuzzy search for easy selection
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
   - Main coefficients (Relevance, Due Date, Priority, Status)
   - Sub-coefficients for fine-tuning
-  - Quality filter and minimum relevance
-  - Examples and best practices
-
+  - Minimum relevance and quality filters
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual keyword matching
   - How AI expands keywords
   - Property concept recognition
   - Typo correction
-  - Custom property terms
-
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
   - Sort criteria (relevance, due date, priority, status, created, alphabetical)
-  - Performance considerations
-
-- **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context ⭐ NEW
-  - User-configurable context length (1-100 messages, default: 5)
-  - Automatic message cleaning (warnings and task references removed)
-  - Token usage optimization
+- **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
+  - User-configurable context length
   - Balance between context quality and cost
-
-- **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior ⭐
-  - Temperature (recommended 0.1 for JSON output)
-  - Max response tokens (default 8000)
-  - Context window (critical for Ollama)
-  - Configuration examples and troubleshooting
-
-- **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model ⭐
+- **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior
+  - Temperature
+  - Max response tokens
+  - Context window
+- **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model
   - Cloud vs local comparison
-  - Default models by provider
-  - Hardware requirements
-  - Cost analysis
-  - Provider-specific differences
-  - **Performance tuning & model selection**
-  - When to use Ollama vs cloud providers
-  - Troubleshooting guide
-
-- **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide ⭐ NEW
+- **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide
   - Installation and CORS configuration
-  - Recommended models by use case
   - Parameter configuration for different model sizes
-  - Performance comparison
-  - Troubleshooting common issues
 
 ## 🎚️ Customization
 
@@ -380,13 +250,12 @@ Balanced:        R:10, D:10, P:10 → Equal weight to all
 
 ### Task Properties
 
-Configure DataView field names:
+Configure inline field names:
 
 - Due date fields: `due, deadline`
 - Priority fields: `priority, p`
-- Status fields: `status`
 
-→ [DataView integration settings](docs/SETTINGS_GUIDE.md#5-dataview-integration)
+→ [Datacore integration settings](docs/SETTINGS_GUIDE.md#5-datacore-integration)
 
 ## 🌐 Multilingual Support
 
@@ -400,14 +269,6 @@ Search and manage tasks in multiple languages:
 - Default: 5 variations per keyword
 - Works in Smart Search and Task Chat modes
 
-**Examples:**
-
-*English:*
-```
-urgent tasks → finds "critical", "important", "high-priority"
-fix bug → finds "repair error", "solve issue", "correct problem"
-```
-
 → [Semantic expansion guide](docs/SEMANTIC_EXPANSION.md)
 
 ## 💰 Cost Management
@@ -417,50 +278,12 @@ fix bug → finds "repair error", "solve issue", "correct problem"
 - **Simple Search** - $0 (no AI used)
 - **Ollama** - $0 (local models)
 
-### Paid Options
-
-- **Smart Search** - ~$0.0001 per query (depending on query length and model selection)
-- **Task Chat** - ~$0.0021 per query (depending on query length and model selection)
-
-**Cost optimization tips:**
-1. Use Simple Search for exact keyword matches
-2. Use Smart Search for most queries (very cheap)
-3. Reserve Task Chat for complex analysis
-4. Use Ollama for unlimited local processing (free, but slower)
-
 → [More cost details in chat modes](docs/CHAT_MODES.md#cost-considerations)
 → [Cost tracking and transparency](docs/COST_TRACKING.md)
 
 ## 🔧 Troubleshooting
 
-### No Results Found
-
-**Check:**
-- Quality filter too strict → Decrease to 0-20%
-- Minimum relevance too high → Disable or decrease
-- Stop words too aggressive → Remove domain terms
-
-### Wrong Tasks Appearing
-
-**Fix:**
-- Add custom stop words for generic terms
-- Increase quality filter (20-30%)
-- Add minimum relevance score (30-40%)
-
-### AI Not Working
-
-**Verify:**
-- API key is valid
-- Model is selected
-- Internet connection works
-- Credits available (for paid providers)
-- Test connection in settings
-
 → [Complete troubleshooting](docs/SETTINGS_GUIDE.md#troubleshooting)
-
-## 🤝 Contributing
-
-Contributions welcome!
 
 ## 📜 License
 
@@ -469,23 +292,10 @@ See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - Built for [Obsidian](https://obsidian.md/)
-- Powered by [Datacore](https://github.com/blacksmithgu/datacore) (recommended) or [Dataview](https://github.com/blacksmithgu/obsidian-dataview) for vault-wide task indexing
+- Powered by [Datacore](https://github.com/blacksmithgu/datacore) for vault-wide task indexing
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
 - Exclusions UI pattern inspired by [Obsidian Copilot](https://github.com/logancyang/obsidian-copilot) by Logan Yang
-
-## 📚 Additional Resources
-
-- **[Task Indexing](docs/TASK_INDEXING.md)** - Datacore vs Dataview setup and performance
-- **[Task Filtering](docs/FILTERING.md)** - Inclusions, exclusions, and filter logic
-- **[Chat Modes](docs/CHAT_MODES.md)** - Detailed mode comparison
-- **[Cost Tracking](docs/COST_TRACKING.md)** - Token and cost transparency
-- **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
-- **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
-- **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual search
-- **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
-- **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria ordering
-- **[Complete Settings Guide](docs/SETTINGS_GUIDE.md)** - Every setting explained
 
 ## 🆘 Support
 
