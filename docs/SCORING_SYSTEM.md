@@ -76,15 +76,6 @@ Task: "Fix the critical bug in payment"
 
 Based on urgency and proximity to deadline.
 
-**Score ranges:**
-- **Overdue:** 1.5 (highest urgency)
-- **Today:** 1.4
-- **Tomorrow:** 1.3
-- **This week:** 1.2
-- **This month:** 1.0
-- **Future:** 0.8
-- **No due date:** 0.5 (lowest)
-
 **Sub-coefficients:**
 
 **Overdue Weight** (default: 1.5)
@@ -205,20 +196,6 @@ Score = (0.15 × 20) + (1.2 × 4) + (0.5 × 1) + (1.0 × 1)
 - Task state weight
 - Usually kept at 1× (same as priority)
 
-### Why These Defaults?
-
-**Relevance (20×) is highest:**
-- You searched for specific keywords
-- Most important to find what you're looking for
-
-**Due Date (4×) is second:**
-- Urgency matters
-- Overdue/today tasks should rank high
-
-**Priority (1×) and Status (1×) are equal:**
-- Both important but secondary
-- Fine-tune relevance ranking
-
 ### Customizing Coefficients
 
 **Make due dates more important:**
@@ -245,36 +222,11 @@ Priority: 10
 Status: 10
 ```
 
-## Quality Filter
-
-**Purpose:** Remove low-scoring tasks from results
-
-**How it works:**
-```
-Threshold = Max Possible Score × Quality Filter Percentage
-
-Max Score = (Max Relevance × R) + (Max Due Date × D) + (Max Priority × P) + (Max Status × S)
-          = (1.2 × 20) + (1.5 × 4) + (1.0 × 1) + (1.0 × 1)
-          = 24 + 6 + 1 + 1
-          = 32
-
-With 30% quality filter:
-Threshold = 32 × 0.30 = 9.6
-
-Tasks with score < 9.6 are filtered out
-```
-
-**Adjusting:**
-- **Higher percentage** (40-50%) = Stricter filter, fewer results
-- **Lower percentage** (20-30%) = Looser filter, more results
-- **0%** = No filtering (show all tasks)
-
 ## Minimum Relevance Score
 
 **Purpose:** Ensure keyword match quality
 
 **How it works:**
-- Applied AFTER quality filter
 - Filters tasks with weak keyword matches
 - Even if overall score is high
 
@@ -293,80 +245,6 @@ Reason: High urgency but weak keyword match
 ```
 
 **Use case:** Prevent urgent tasks with weak relevance from appearing
-
-**Adjusting:**
-- **0%** = Disabled (default)
-- **20-30%** = Moderate filter
-- **40-60%** = Strict filter
-- **70%+** = Very strict (near-perfect match required)
-
-## Advanced Sub-Coefficients
-
-Fine-tune specific score components.
-
-### Relevance Sub-Coefficients
-
-**Core Keyword Match Bonus** (default: 0.2)
-- Extra weight for exact core keyword matches
-- Range: 0.0-1.0
-- Higher = Prioritize exact matches more
-
-### Due Date Sub-Coefficients
-
-**Overdue Weight** (default: 1.5)
-**Today Weight** (default: 1.4)
-**This Week Weight** (default: 1.2)
-**This Month Weight** (default: 1.0)
-**Future Weight** (default: 0.8)
-**No Due Date Weight** (default: 0.5)
-
-### Priority Sub-Coefficients
-
-**P1 Weight** (default: 1.0)
-**P2 Weight** (default: 0.75)
-**P3 Weight** (default: 0.5)
-**P4 Weight** (default: 0.25)
-
-## Tips
-
-### For Better Search Results
-
-1. **Use specific keywords**
-   - Better relevance scores
-   - More accurate results
-
-2. **Adjust quality filter**
-   - Too many results? Increase filter
-   - Too few results? Decrease filter
-
-3. **Use minimum relevance**
-   - Prevent weak matches
-   - Ensure keyword quality
-
-### For Task Prioritization
-
-1. **Increase due date coefficient**
-   - Emphasize urgency
-   - Good for deadline-driven work
-
-2. **Increase priority coefficient**
-   - Emphasize importance
-   - Good for goal-driven work
-
-3. **Balance coefficients**
-   - Equal weight to all factors
-   - Good for general use
-
-### For Performance
-
-1. **Use quality filter**
-   - Reduces tasks sent to AI (Task Chat)
-   - Faster processing
-   - Lower costs
-
-2. **Use minimum relevance**
-   - Filters weak matches early
-   - Better quality results
 
 ## See Also
 

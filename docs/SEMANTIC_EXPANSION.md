@@ -24,8 +24,7 @@ This happens in **multiple languages** based on your configured query languages.
 Your query: "fix bug"
 
 AI expands to:
-- English: fix, repair, solve, correct, resolve, debug, patch
-- 中文: 修复, 解决, 修正, 纠正, 修理
+- fix, repair, solve, correct, resolve, debug, patch
 
 Result: Finds tasks with any of these terms!
 ```
@@ -37,7 +36,7 @@ Result: Finds tasks with any of these terms!
 
 ### 2. Property Concept Recognition
 
-**Purpose:** Convert natural language to DataView format
+**Purpose:** Convert natural language to inline format
 
 **Examples:**
 
@@ -68,19 +67,10 @@ You type: "tasks due this week"
 AI understands: dueDate:week
 ```
 
-**Multilingual:**
-```
-You type: "紧急未完成任务" (Chinese: urgent incomplete tasks)
-AI understands: priority:1, status:open
-
-You type: "过期任务" (Chinese: overdue tasks)
-AI understands: dueDate:overdue
-```
-
 **How it works:**
 - AI recognizes **concepts**, not phrases
 - Works in **any language** (not limited to configured languages!)
-- Converts to standard DataView format
+- Converts to standard inline format
 - No pre-programmed translations needed
 
 ### 3. Automatic Typo Correction
@@ -104,16 +94,13 @@ AI corrects: "completed items"
 
 **Format:** Comma-separated list
 ```
-English, 中文
+English, Spanish
 ```
 
 **How it works:**
 - AI generates synonyms in each language
 - Each keyword expanded in all languages
 - Example with 1 language: "fix" → 3 variations (repair, solve, correct)
-- Example with 2 languages: "fix" → 3 English + 3 中文 = 6 variations
-
-**Tip:** Most users need only 1 language (English). Add more if your tasks use multiple languages.
 
 ### Expansions Per Language
 
@@ -129,11 +116,6 @@ languages = 1 (English)
 "fix" expands to:
 - 5 English variations (repair, solve, correct)
 = 5 total variations per keyword
-
-With 2 languages (English, 中文):
-- 5 English variations
-- 5 中文 variations
-= 10 total variations per keyword
 ```
 
 ### Enable Semantic Expansion
@@ -149,34 +131,6 @@ With 2 languages (English, 中文):
 - Keywords expanded to synonyms
 - Better recall, more comprehensive results
 
-### Enable Natural Language Queries
-
-**What it is:** Allow conversational queries
-
-**Examples when enabled:**
-```
-"What should I work on today?"
-"Show me urgent tasks that are overdue"
-"Find tasks I need to finish this week"
-```
-
-**When disabled:**
-- Only standard syntax works (priority:1, s:open)
-- More predictable behavior
-
-### Enable Typo Correction
-
-**What it is:** Automatically fix typing mistakes
-
-**When enabled:**
-- "urgnt" → "urgent"
-- "complted" → "completed"
-- "taks" → "tasks"
-
-**When disabled:**
-- Exact spelling required
-- Faster processing
-
 ## Custom Property Terms
 
 Teach AI to recognize your custom terminology for task properties.
@@ -185,7 +139,7 @@ Teach AI to recognize your custom terminology for task properties.
 
 **Default terms:**
 ```
-urgent, critical, important, high-priority, asap, now
+urgent, critical, high-priority, asap, now
 low, minor, trivial, someday, backlog
 ```
 
@@ -198,7 +152,6 @@ nice-to-have, optional, future
 **How it works:**
 - AI learns your terminology
 - Maps to priority levels (1-4)
-- Works in any language
 
 ### Status Terms
 
@@ -231,52 +184,25 @@ week, month, year
 ```
 asap, urgent-deadline
 this-sprint, next-sprint
-q1, q2, q3, q4
 ```
 
-## Performance Considerations
-
-### Token Usage
-
-**Per query (Smart Search):**
-- Base prompt: ~100 tokens
-- Keyword expansion: ~50-100 tokens per keyword
-- Property recognition: ~50 tokens
-- Total: ~200-500 tokens per query
-
-**Example cost (GPT-4o-mini):**
-- Input: $0.00015 per 1K tokens
-- 500 tokens = $0.000075 per query
-- Very affordable!
-
-### Speed
-
-**Typical response time:**
-- Simple Search: Instant (no AI)
-- Smart Search: 0.5-2 seconds (keyword expansion)
-- Task Chat: 2-10 seconds (expansion + analysis)
-
-### Optimization Tips
+## Optimization Tips
 
 1. **Use Simple Search for exact matches**
    - No AI needed
    - Instant results
    - Best for queries with specific keywords
-
 2. **Start with default settings (5 expansions, 1 language)**
    - Only increase if you notice missing results
    - Test before increasing permanently
-
 3. **Add languages only if needed**
    - Default: English only
    - Add more only if your tasks use multiple languages
    - Each language multiplies token usage
-
 4. **Adjust expansions based on vocabulary**
    - Technical tasks (code, API names)
    - General tasks (broad terminology)
    - Creative tasks (diverse vocabulary)
-
 5. **Monitor token usage**
    - Check costs in metadata after queries
    - If costs too high, reduce expansions
@@ -303,7 +229,7 @@ q1, q2, q3, q4
 
 **Fix:**
 - Add custom property terms
-- Use explicit syntax (priority:1 instead of "urgent")
+- Use explicit syntax (p:1 instead of "urgent")
 - Check query language configuration
 
 ### High token usage
@@ -326,26 +252,6 @@ q1, q2, q3, q4
 **With expansion:**
 - Finds: fix, repair, solve, correct, resolve, debug, patch
 - In multiple languages!
-
-### Natural Language
-
-**Query:** `urgent tasks I need to finish today`
-
-**AI understands:**
-- Keywords: urgent, finish
-- Property: priority:1 (from "urgent")
-- Property: dueDate:today (from "today")
-- Expands: urgent → critical, important, high-priority
-- Expands: finish → complete, done, finalize
-
-### Multilingual
-
-**Query:** `修复错误` (Chinese: fix bug)
-
-**AI expands:**
-- 修复 → 修复, 解决, 修正, 纠正, 修理
-- 错误 → 错误, bug, 问题, 故障, 缺陷
-- Also adds English: fix, repair, solve, bug, error, issue
 
 ### Custom Terms
 
