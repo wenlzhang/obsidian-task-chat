@@ -1300,12 +1300,18 @@ export class TaskPropertyService {
         );
 
         // Check each category in the status mapping
+        const allCategories = Object.keys(settings.taskStatusMapping);
         Logger.debug(
-            `[resolveStatusValue] Checking user taskStatusMapping (${Object.keys(settings.taskStatusMapping).length} categories)`,
+            `[resolveStatusValue] Checking user taskStatusMapping (${allCategories.length} categories): [${allCategories.join(", ")}]`,
         );
+
         for (const [categoryKey, config] of Object.entries(
             settings.taskStatusMapping,
         )) {
+            Logger.debug(
+                `[resolveStatusValue]   Checking category "${categoryKey}": symbols=[${config.symbols?.join(", ") || "none"}], aliases="${config.aliases || "none"}"`,
+            );
+
             // Check if value matches category key
             if (categoryKey.toLowerCase() === lowerValue) {
                 Logger.debug(
@@ -1319,9 +1325,12 @@ export class TaskPropertyService {
                 const aliases = config.aliases
                     .split(",")
                     .map((a) => a.trim().toLowerCase());
+                Logger.debug(
+                    `[resolveStatusValue]     Parsed aliases: [${aliases.join(", ")}]`,
+                );
                 if (aliases.includes(lowerValue)) {
                     Logger.debug(
-                        `[resolveStatusValue] ✓ Matched alias in category: "${categoryKey}"`,
+                        `[resolveStatusValue] ✓ Matched alias "${value}" in category: "${categoryKey}"`,
                     );
                     return categoryKey;
                 }
@@ -1330,9 +1339,12 @@ export class TaskPropertyService {
             // Check if value matches any symbol
             if (config.symbols && Array.isArray(config.symbols)) {
                 const symbols = config.symbols.map((s) => s.toLowerCase());
+                Logger.debug(
+                    `[resolveStatusValue]     Checking symbols: [${symbols.join(", ")}]`,
+                );
                 if (symbols.includes(lowerValue)) {
                     Logger.debug(
-                        `[resolveStatusValue] ✓ Matched symbol in category: "${categoryKey}"`,
+                        `[resolveStatusValue] ✓ Matched symbol "${value}" in category: "${categoryKey}"`,
                     );
                     return categoryKey;
                 }
@@ -1370,6 +1382,19 @@ export class TaskPropertyService {
         Logger.warn(
             `[resolveStatusValue] ✗ No match found for "${value}" in user settings or defaults`,
         );
+        Logger.warn(
+            `[resolveStatusValue] Checked ${allCategories.length} user categories: [${allCategories.join(", ")}]`,
+        );
+        Logger.warn(
+            `[resolveStatusValue] If "${value}" is a custom category, please verify:`,
+        );
+        Logger.warn(
+            `[resolveStatusValue]   1. Category key matches "${value}"`,
+        );
+        Logger.warn(
+            `[resolveStatusValue]   2. Aliases include "${value}" (comma-separated, no quotes)`,
+        );
+        Logger.warn(`[resolveStatusValue]   3. Symbols array is not empty`);
         return null;
     }
 
@@ -1413,8 +1438,10 @@ export class TaskPropertyService {
         const hasOtherCategory = statusCategories.includes("other");
 
         Logger.debug(
-            `[convertStatusCategoriesToSymbols] Converting categories:`,
-            statusCategories,
+            `[convertStatusCategoriesToSymbols] Converting ${statusCategories.length} categories: [${statusCategories.join(", ")}]`,
+        );
+        Logger.debug(
+            `[convertStatusCategoriesToSymbols] Available in settings: [${Object.keys(settings.taskStatusMapping).join(", ")}]`,
         );
 
         // Special handling for "other" category
@@ -1454,9 +1481,25 @@ export class TaskPropertyService {
                 );
                 // Add all symbols for this category (handles multiple symbols per category)
                 statusSymbols.push(...statusConfig.symbols);
+            } else if (
+                statusConfig &&
+                (!statusConfig.symbols || statusConfig.symbols.length === 0)
+            ) {
+                Logger.warn(
+                    `[convertStatusCategoriesToSymbols] ⚠️ Category "${categoryKey}" exists but has NO symbols configured!`,
+                );
+                Logger.warn(
+                    `[convertStatusCategoriesToSymbols]    Please add symbols in Settings > Task Chat > Task Status Categories`,
+                );
             } else {
                 Logger.warn(
-                    `[convertStatusCategoriesToSymbols]   "${categoryKey}" not found in taskStatusMapping!`,
+                    `[convertStatusCategoriesToSymbols] ⚠️ Category "${categoryKey}" not found in taskStatusMapping!`,
+                );
+                Logger.warn(
+                    `[convertStatusCategoriesToSymbols]    Available categories: [${Object.keys(settings.taskStatusMapping).join(", ")}]`,
+                );
+                Logger.warn(
+                    `[convertStatusCategoriesToSymbols]    This may have been resolved via alias - check resolveStatusValue logs above`,
                 );
             }
         }

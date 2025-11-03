@@ -114,20 +114,20 @@ export const SMART_EARLY_LIMIT = {
 export const DATACORE_POLLING = {
     /**
      * Polling interval in milliseconds
-     * Check Datacore initialization status every 2 seconds
+     * Check Datacore initialization status every 5 seconds
      */
-    INTERVAL_MS: 2000,
+    INTERVAL_MS: 5000,
 
     /**
      * Maximum number of polling attempts
-     * 60 polls × 2 seconds = 2 minutes timeout
+     * 60 polls × 5 seconds = 3 minutes timeout
      * Sufficient for large vaults with 50,000+ tasks
      */
     MAX_POLLS: 60,
 
     /**
      * Log progress every N polls
-     * 10 polls × 2 seconds = log every 20 seconds
+     * 10 polls × 5 seconds = log every 50 seconds
      */
     LOG_INTERVAL: 10,
 } as const;
