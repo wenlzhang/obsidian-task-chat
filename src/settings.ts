@@ -410,7 +410,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             symbols: [" "],
             score: 1.0,
             displayName: "Open",
-            aliases: "open,todo,pending",
+            aliases: "open,todo",
         },
         completed: {
             symbols: ["x", "X"],
@@ -422,7 +422,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             symbols: ["/"],
             score: 0.75,
             displayName: "In Progress",
-            aliases: "inprogress,in-progress,wip,doing,active",
+            aliases: "inprogress,in-progress,wip,doing",
         },
         cancelled: {
             symbols: ["-"],
@@ -457,9 +457,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // This is separate from taskStatusMapping which maps checkbox symbols
     // This maps natural language terms to status categories for query recognition
     datacoreStatusMapping: {
-        open: ["open", "pending", "todo"],
-        inProgress: ["progress", "doing", "wip", "active"],
-        completed: ["done", "finished", "complete", "closed"],
+        open: ["open", "todo"],
+        inProgress: ["inprogress", "doing", "wip"],
+        completed: ["done", "finished", "completed", "closed"],
         cancelled: ["cancelled", "canceled", "abandoned", "dropped"],
     },
 

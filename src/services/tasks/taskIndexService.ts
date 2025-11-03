@@ -315,71 +315,20 @@ export class TaskIndexService {
         // Status Filter: Convert category keys to symbols
         // IMPORTANT: Filter UI stores category keys (e.g., "open", "completed")
         // but Datacore query needs status symbols (e.g., " ", "x", "X")
+        // Uses centralized conversion method from TaskPropertyService
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
-            const statusSymbols: string[] = [];
-            const hasOtherCategory = filter.taskStatuses.includes("other");
-
-            Logger.debug(
-                `[buildPropertyFilters] Converting status categories to symbols:`,
-                filter.taskStatuses,
-            );
-
-            // Special handling for "other" category
-            // "other" should EXCLUDE all symbols defined in other categories
-            if (hasOtherCategory) {
-                // Collect all defined symbols from ALL categories EXCEPT "other"
-                const allDefinedSymbols: string[] = [];
-                for (const [categoryKey, statusConfig] of Object.entries(
-                    settings.taskStatusMapping,
-                )) {
-                    if (
-                        categoryKey !== "other" &&
-                        statusConfig &&
-                        statusConfig.symbols &&
-                        statusConfig.symbols.length > 0
-                    ) {
-                        allDefinedSymbols.push(...statusConfig.symbols);
-                    }
-                }
-
-                Logger.debug(
-                    `[buildPropertyFilters] "other" category: excluding symbols [${allDefinedSymbols.join(", ")}]`,
+            const converted =
+                TaskPropertyService.convertStatusCategoriesToSymbols(
+                    filter.taskStatuses,
+                    settings,
                 );
 
-                // Store exclusion symbols with special flag
-                propertyFilters.statusExclusions = allDefinedSymbols;
+            // Apply converted symbols and exclusions
+            if (converted.statusValues) {
+                propertyFilters.statusValues = converted.statusValues;
             }
-
-            // Handle regular categories (not "other")
-            const regularCategories = filter.taskStatuses.filter(
-                (cat: string) => cat !== "other",
-            );
-            for (const categoryKey of regularCategories) {
-                const statusConfig = settings.taskStatusMapping[categoryKey];
-                if (statusConfig && statusConfig.symbols) {
-                    Logger.debug(
-                        `  "${categoryKey}" -> symbols: [${statusConfig.symbols.join(", ")}]`,
-                    );
-                    // Add all symbols for this category
-                    statusSymbols.push(...statusConfig.symbols);
-                } else {
-                    Logger.warn(
-                        `  "${categoryKey}" not found in taskStatusMapping!`,
-                    );
-                }
-            }
-
-            // Only add if we found symbols (avoid empty array)
-            if (statusSymbols.length > 0) {
-                propertyFilters.statusValues = statusSymbols;
-                Logger.debug(
-                    `[buildPropertyFilters] Final status symbols: [${statusSymbols.join(", ")}]`,
-                );
-            } else if (!hasOtherCategory) {
-                // Only warn if no symbols AND no "other" category
-                Logger.warn(
-                    `[buildPropertyFilters] No symbols found for categories: ${filter.taskStatuses.join(", ")}`,
-                );
+            if (converted.statusExclusions) {
+                propertyFilters.statusExclusions = converted.statusExclusions;
             }
         }
 

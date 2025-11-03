@@ -660,7 +660,7 @@ export class DatacoreService {
         // ========================================
         // STATUS CATEGORY TO SYMBOL CONVERSION
         // Convert status category keys to symbols if needed
-        // Uses existing user settings (taskStatusMapping)
+        // Uses centralized TaskPropertyService.convertStatusCategoriesToSymbols()
         // ========================================
         let resolvedPropertyFilters = propertyFilters;
         if (
@@ -668,60 +668,22 @@ export class DatacoreService {
             !propertyFilters?.statusValues &&
             !propertyFilters?.statusExclusions
         ) {
-            // Convert status categories to symbols using existing settings
+            // Convert status categories to symbols using centralized method
             const statusCategories = Array.isArray(propertyFilters.status)
                 ? propertyFilters.status
                 : [propertyFilters.status];
 
-            const statusSymbols: string[] = [];
-            const hasOtherCategory = statusCategories.includes("other");
-
-            for (const categoryKey of statusCategories) {
-                if (categoryKey === "other") continue; // Handle "other" separately
-
-                // Use existing user settings to get symbols for each category
-                const statusConfig =
-                    settings.taskStatusMapping[categoryKey as string];
-                if (statusConfig && statusConfig.symbols) {
-                    statusSymbols.push(...statusConfig.symbols);
-                    Logger.debug(
-                        `[Query Builder] Converted status category "${categoryKey}" -> symbols: [${statusConfig.symbols.join(", ")}]`,
-                    );
-                } else {
-                    Logger.warn(
-                        `[Query Builder] Status category "${categoryKey}" not found in settings`,
-                    );
-                }
-            }
-
-            // Handle "other" category (exclude all defined symbols)
-            let statusExclusions: string[] | undefined;
-            if (hasOtherCategory) {
-                const allDefinedSymbols: string[] = [];
-                for (const [catKey, config] of Object.entries(
-                    settings.taskStatusMapping,
-                )) {
-                    if (
-                        catKey !== "other" &&
-                        config &&
-                        config.symbols &&
-                        config.symbols.length > 0
-                    ) {
-                        allDefinedSymbols.push(...config.symbols);
-                    }
-                }
-                statusExclusions = allDefinedSymbols;
-                Logger.debug(
-                    `[Query Builder] "other" category: excluding symbols [${allDefinedSymbols.join(", ")}]`,
+            const converted =
+                TaskPropertyService.convertStatusCategoriesToSymbols(
+                    statusCategories,
+                    settings,
                 );
-            }
 
             // Create new propertyFilters with converted symbols
             resolvedPropertyFilters = {
                 ...propertyFilters,
-                statusValues:
-                    statusSymbols.length > 0 ? statusSymbols : undefined,
-                statusExclusions,
+                statusValues: converted.statusValues,
+                statusExclusions: converted.statusExclusions,
             };
         }
 

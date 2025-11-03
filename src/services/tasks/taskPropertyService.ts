@@ -1394,6 +1394,98 @@ export class TaskPropertyService {
     }
 
     /**
+     * Convert status category keys to status symbols
+     * Handles all cases: standard categories, custom categories, "other" category
+     * Used by both Filter UI and Search/Chat workflows
+     *
+     * @param statusCategories - Array of category keys (e.g., ["open", "inProgress"])
+     * @param settings - Plugin settings with taskStatusMapping
+     * @returns Object with statusValues (symbols) and statusExclusions (for "other")
+     */
+    static convertStatusCategoriesToSymbols(
+        statusCategories: string[],
+        settings: PluginSettings,
+    ): {
+        statusValues?: string[];
+        statusExclusions?: string[];
+    } {
+        const statusSymbols: string[] = [];
+        const hasOtherCategory = statusCategories.includes("other");
+
+        Logger.debug(
+            `[convertStatusCategoriesToSymbols] Converting categories:`,
+            statusCategories,
+        );
+
+        // Special handling for "other" category
+        // "other" should EXCLUDE all symbols defined in other categories
+        let statusExclusions: string[] | undefined;
+        if (hasOtherCategory) {
+            const allDefinedSymbols: string[] = [];
+            for (const [categoryKey, statusConfig] of Object.entries(
+                settings.taskStatusMapping,
+            )) {
+                if (
+                    categoryKey !== "other" &&
+                    statusConfig &&
+                    statusConfig.symbols &&
+                    statusConfig.symbols.length > 0
+                ) {
+                    allDefinedSymbols.push(...statusConfig.symbols);
+                }
+            }
+
+            statusExclusions = allDefinedSymbols;
+            Logger.debug(
+                `[convertStatusCategoriesToSymbols] "other" category: excluding symbols [${allDefinedSymbols.join(", ")}]`,
+            );
+        }
+
+        // Handle regular categories (not "other")
+        const regularCategories = statusCategories.filter(
+            (cat) => cat !== "other",
+        );
+
+        for (const categoryKey of regularCategories) {
+            const statusConfig = settings.taskStatusMapping[categoryKey];
+            if (statusConfig && statusConfig.symbols) {
+                Logger.debug(
+                    `[convertStatusCategoriesToSymbols]   "${categoryKey}" -> symbols: [${statusConfig.symbols.join(", ")}]`,
+                );
+                // Add all symbols for this category (handles multiple symbols per category)
+                statusSymbols.push(...statusConfig.symbols);
+            } else {
+                Logger.warn(
+                    `[convertStatusCategoriesToSymbols]   "${categoryKey}" not found in taskStatusMapping!`,
+                );
+            }
+        }
+
+        const result: {
+            statusValues?: string[];
+            statusExclusions?: string[];
+        } = {};
+
+        // Only add if we found symbols (avoid empty array)
+        if (statusSymbols.length > 0) {
+            result.statusValues = statusSymbols;
+            Logger.debug(
+                `[convertStatusCategoriesToSymbols] Final status symbols: [${statusSymbols.join(", ")}]`,
+            );
+        } else if (!hasOtherCategory) {
+            Logger.warn(
+                `[convertStatusCategoriesToSymbols] No symbols found for categories: ${statusCategories.join(", ")}`,
+            );
+        }
+
+        if (statusExclusions && statusExclusions.length > 0) {
+            result.statusExclusions = statusExclusions;
+        }
+
+        return result;
+    }
+
+    /**
      * Check if a date value matches a due date keyword
      * Centralized date matching logic for all due date keywords
      *
