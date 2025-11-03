@@ -10,7 +10,9 @@ An AI-powered Obsidian plugin for intelligent task management. Chat with your ta
 - **🚫 Task Exclusions** - Exclude tasks by tags, folders, or notes
 - **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
 - **💬 Natural Language** - Ask questions in plain language
-- **🔄 Task Indexing** - Supports Datacore (2-10x faster) and Dataview
+- **🔄 Task Indexing** - Uses Datacore for fast performance
+- **⚙️ Dual-Model System** - Separate models for parsing and analysis
+- **💾 Session Management** - Persistent chat history with auto-pruning
 
 ## 🎯 Three Chat Modes
 
@@ -193,43 +195,52 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 
 1. **AI Provider** - Choose OpenAI, Anthropic, OpenRouter, or Ollama
 2. **API Key** - Enter your API key (not needed for Ollama)
-3. **Test Connection** - Verify setup works
+3. **Test Connection** - Verify setup works with real-time validation
+4. **Model Configuration** - Select models for parsing and analysis
+5. **Session Settings** - Configure max sessions and chat history context
 
 ### Model Purpose Configuration
 
-**NEW**: Use different models for different purposes to optimize cost and performance!
+**Dual-model system**: Use different models for different purposes to optimize cost and performance!
 
 **Query Parsing** (Smart Search & Task Chat query understanding):
+- **Purpose**: Extract filters and understand queries
 - **Recommended**: Fast, cost-effective models
-- GPT-4o-mini, Claude Sonnet 4, or Qwen3:14b
-- Lower temperature (0.1) for consistent results
+- **Temperature**: 0.1 (for consistent JSON output)
+- **Provider**: Can differ from analysis provider
 
 **Task Analysis** (Task Chat AI responses):
-- **Recommended**: Quality models for better insights
-- GPT-4o-mini, Claude Sonnet 4, or Qwen3:14b
-- Adjustable temperature (0.1-2.0) based on needs
+- **Purpose**: Analyze tasks and provide insights
+- **Recommended**: Quality models for better recommendations
+- **Temperature**: 0.1-2.0 (adjustable for creativity)
+- **Provider**: Independent selection
 
-**Example configurations:**
-```
-Cost-Optimized:
-  Parsing: OpenAI gpt-4o-mini
-  Analysis: OpenAI gpt-4o-mini
-
-Quality-Focused:
-  Parsing: OpenAI gpt-4o-mini (fast)
-  Analysis: Anthropic claude-sonnet-4 (quality)
-
-Privacy-First:
-  Parsing: OpenAI gpt-4o-mini (cloud)
-  Analysis: Ollama qwen3:14b (local)
-  Analysis stays local, only queries sent to cloud
-```
+**Per-provider model storage:**
+- Switch providers without losing model selections
+- Each provider remembers its last selected model
+- Seamless transitions between cloud and local AI
 
 > **⚠️ Note:** Model performance varies between users based on hardware, query complexity, and use cases. Test different models to find what works best for you.
 
-→ [Model selection guide](docs/MODEL_SELECTION_GUIDE.md)
-→ [Model purpose configuration](docs/MODEL_CONFIGURATION.md)
-→ [Complete settings guide](docs/SETTINGS_GUIDE.md)
+### Session Management ⭐ IMPROVED
+
+**Chat sessions**: Each conversation is a separate session with full history
+
+**Max sessions**: Configurable limit (10-1000, default: 50)
+- **Auto-pruning**: Oldest sessions automatically deleted when limit reached
+- **Persistence**: Sessions survive Obsidian restarts
+- **Unlimited messages**: Each session can have unlimited messages
+
+**Chat history context**: Configurable context length (1-100 messages, default: 5)
+- **Higher values**: Better AI understanding, more token usage
+- **Lower values**: Less context, lower cost
+- **Auto-cleanup**: Warnings and task references automatically removed
+
+**Session switching**: Easily switch between different chat contexts with session modal
+
+→ [Model selection guide](docs/MODEL_SELECTION_GUIDE.md) - Choose the right model
+→ [Model purpose configuration](docs/MODEL_CONFIGURATION.md) - Optimize cost/performance
+→ [Complete settings guide](docs/SETTINGS_GUIDE.md) - Every setting explained
 
 ### Common Adjustments
 

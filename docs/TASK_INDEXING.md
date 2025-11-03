@@ -1,80 +1,146 @@
-# Task Indexing API
+# Task Indexing with Datacore
 
-**Learn how Task Chat indexes and queries tasks using Datacore.**
+**Learn how Task Chat indexes and queries tasks using the Datacore API.**
 
 ## Overview
 
-Task Chat requires a task indexing API to discover and query tasks in your Obsidian vault. Task Chat uses the **Datacore** plugin for high-performance task indexing.
+Task Chat uses the **Datacore** plugin as its primary and only supported task indexing API. Datacore provides high-performance task indexing that is 2-10x faster than alternatives, with advanced query capabilities and efficient caching.
+
+**Why Datacore?**
+- ⚡ **2-10x faster** than Dataview
+- 🔍 **Advanced filtering** at API level
+- 💾 **Efficient caching** for repeated queries
+- 🎯 **Native indexing** optimized for performance
+- 📊 **API-level filtering** reduces memory usage
 
 ## Quick Start
 
-1. **Install the Datacore plugin:**
-   - Install [Datacore](https://github.com/blacksmithgu/datacore) from the Obsidian Community Plugins
+### 1. Install Datacore
 
-2. **Task Chat will automatically detect and use Datacore**
-   - No additional configuration needed
+**Required:** Datacore must be installed for Task Chat to function.
 
-3. **Verify it's working:**
-   - Open Task Chat view
-   - Check the status line at the top showing active API and task count
+1. Open Obsidian Settings → Community Plugins
+2. Browse and search for "Datacore"
+3. Install [Datacore](https://github.com/blacksmithgu/datacore)
+4. Enable the Datacore plugin
+5. **Restart Obsidian** (important for first-time setup)
+
+### 2. Verify Installation
+
+Task Chat automatically detects and uses Datacore:
+
+1. Open Task Chat view (click chat icon in left sidebar)
+2. Check the status indicator at top of chat:
+   - ✓ **"Using Datacore (ready)"** - Working correctly
+   - ⚠️ **"Datacore is indexing..."** - Wait a few seconds
+   - ❌ **"Datacore not available"** - Install and enable Datacore
 
 ## Configuration
 
-Task Chat automatically detects and uses Datacore when it's installed and enabled. No manual configuration is required.
+### Automatic Detection
 
-If Datacore is not available, Task Chat will show a warning message prompting you to install it.
+Task Chat automatically detects and uses Datacore when it's installed and enabled. **No manual configuration needed!**
+
+**Startup process:**
+1. Task Chat loads and waits for Datacore to initialize
+2. Datacore indexes your vault (first time only)
+3. Task Chat detects Datacore is ready
+4. Chat interface becomes available
+
+### Field Name Configuration
+
+Configure task property field names in Settings → Datacore Integration:
+
+- **Due date field**: Default `due`
+- **Created date field**: Default `created`
+- **Completed date field**: Default `completion`
+- **Priority field**: Default `p`
+
+**These fields map to your Datacore inline field syntax:**
+```markdown
+- [ ] Task text [due::2025-11-10] [p::1]
+```
 
 ## Performance Benefits
-
-### Why Datacore?
-
-Datacore provides high-performance task indexing:
-
-| Vault Size | Typical Performance |
-|------------|---------------------|
-| Small (100-500 tasks) | ~50ms |
-| Medium (500-2000 tasks) | ~100ms |
-| Large (2000+ tasks) | ~200ms |
-
-**Why Datacore is fast:**
-- Native indexing optimized for performance
-- Efficient query execution
-- Better caching mechanisms
-- Optimized for large vaults
 
 ### When Performance Matters
 
 Fast task indexing improves:
-- **Chat response time** - AI gets task context faster
-- **Filter changes** - Instant updates when changing filters
-- **View switching** - Faster loading when opening Task Chat
-- **Startup time** - Quicker initial task loading
+
+**Chat response time:**
+- Faster task retrieval
+- AI gets context quicker
+- More responsive interface
+
+**Filter changes:**
+- Instant updates
+- No lag when adjusting filters
+- Smooth user experience
+
+**View switching:**
+- Faster loading
+- Quick task count updates
+- Seamless transitions
+
+**Large vaults:**
+- Handles 5000+ tasks easily
+- No performance degradation
+- Consistent response times
 
 ## Troubleshooting
 
-### No Tasks Found Warning
+### Datacore Not Available
 
-**Symptom:** Warning message says "Task indexing API not available" or "Datacore is active, but no tasks were found in your vault"
+**Symptom:** Warning message says "Task indexing API not available" or "Datacore not available"
 
 **Solutions:**
 
-1. **Install the Datacore plugin:**
-   - Install [Datacore](https://github.com/blacksmithgu/datacore) from Community Plugins
-   - Restart Obsidian after installation
+1. **Install Datacore:**
+   - Open **Settings → Community plugins → Browse**
+   - Search for "Datacore"
+   - Install and enable
+   - **Restart Obsidian** (required!)
 
-2. **Enable the plugin:**
+2. **Verify installation:**
    - Go to **Settings → Community plugins**
-   - Ensure Datacore is enabled
-   - Click the refresh button in Task Chat
+   - Ensure Datacore appears in the list
+   - Ensure the toggle is enabled (blue)
 
-3. **Wait for indexing:**
-   - First-time indexing can take a few seconds for large vaults
-   - The warning will auto-disappear once indexing completes
+3. **Check for conflicts:**
+   - Disable other task plugins temporarily
+   - Test if Datacore works alone
+   - Re-enable plugins one by one
 
-4. **Check your task syntax:**
-   - Tasks must use Obsidian checkbox syntax: `- [ ] Task`
-   - Ensure proper spacing after the checkbox
-   - Example: `- [ ] My task` (correct) vs `- []Task` (wrong)
+### No Tasks Found
+
+**Symptom:** "Datacore is active, but no tasks were found in your vault"
+
+**Solutions:**
+
+1. **Wait for indexing:**
+   - First-time indexing takes a few seconds
+   - Status shows ⚠️ "Datacore is indexing..."
+   - Warning auto-disappears when complete
+
+2. **Check task syntax:**
+   - Tasks must use checkbox syntax: `- [ ] Task`
+   - Ensure proper spacing after checkbox
+   - Examples:
+     ```markdown
+     - [ ] My task (✓ correct)
+     - []Task (✗ wrong - no space)
+     - [ ]Task (✗ wrong - no space after bracket)
+     ```
+
+3. **Verify you have tasks:**
+   - Create a test task in any note
+   - Click refresh button in Task Chat
+   - Check if task appears
+
+4. **Check exclusions:**
+   - Go to **Settings → Task Filtering → Manage exclusions**
+   - Ensure you haven't excluded all folders/notes
+   - Remove unnecessary exclusions
 
 ### API Not Detecting After Installation
 
@@ -129,23 +195,6 @@ Datacore uses native query syntax:
 - Status filters
 
 **Performance tip:** Use folder and note-level tag filters when possible, as they're much faster than task-level filters.
-
-### Caching Behavior
-
-Datacore caches task data for optimal performance:
-
-- **Native caching** with automatic invalidation
-- **File watching** for real-time updates
-
-**When cache is invalidated:**
-- When you modify a note with tasks
-- When you create/delete notes
-- When you change file metadata (frontmatter)
-
-**Manual cache refresh:**
-- Click the Refresh button in Task Chat view
-- Restart Obsidian
-- Disable and re-enable Datacore
 
 ## Related Documentation
 

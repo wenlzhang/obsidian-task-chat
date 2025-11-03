@@ -7,26 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-11-03
 
 ### Added
-- **Session Limit Management**: Renamed `maxChatHistory` to `maxSessions` for clarity
+- **Dual-Model Configuration System**: Use different models for different purposes ⭐ NEW
+  - **Query Parsing Models**: Fast models for understanding queries (GPT-4o-mini, Claude Haiku, Qwen3:14b)
+  - **Task Analysis Models**: Quality models for AI recommendations (GPT-4o, Claude Sonnet 4)
+  - **Per-Provider Model Storage**: Switch providers without losing model selections
+  - **Independent Provider Selection**: Parsing and analysis can use different providers
+  - **Temperature Control**: Separate temperature settings for each purpose
+  - **Auto-Refresh**: Fetch latest available models from each provider
+  - **Model Validation**: Warns if selected model isn't available
+  - **Example configurations**: Cost-optimized, Quality-focused, Privacy-first, Hybrid
+  - Optimize cost/performance by using cheap models for parsing, quality models for analysis
+  - Settings → Model Configuration section
+
+- **Session Limit Management**: Renamed `maxChatHistory` to `maxSessions` for clarity ⭐ IMPROVED
   - Controls maximum number of **chat sessions** to keep (not messages per session)
-  - Default: 50 sessions, Range: 10-100
+  - Default: 50 sessions, Range: 10-1000 (expanded from 10-100)
   - **Automatically prunes oldest sessions** when limit is exceeded
   - Maintains the most recent N sessions, removing older ones first
   - Each session can have unlimited messages
   - Prevents unlimited session accumulation in data.json
-  - Configurable in Settings → Chat Settings → Max sessions
+  - Configurable in Settings → Task Chat → Max sessions
+
+- **Chat History Context Configuration**: Control AI conversation context ⭐ NEW
+  - Configurable context length (1-100 messages, default: 5)
+  - **Dynamic tooltip**: Shows current value as you adjust
+  - **Auto-cleanup**: Warnings and task references automatically removed from context
+  - **Token optimization**: Balance between context quality and cost
+  - Settings → Task Chat → Chat history context
+
+- **Advanced Status Category Management**: Enhanced UI and features ⭐ IMPROVED
+  - **Protection System**: Different lock levels for built-in vs custom categories
+  - **Grid Layout**: Horizontal display with column headers
+  - **Collapsible Advanced Fields**: Display order, description, semantic terms
+  - **Auto-Organization**: Smart gap calculation based on category count (10, 20, 30...)
+  - **Validation System**: Detects duplicate orders with warning messages
+  - **Visual Indicators**: Lock icons (🔒), disabled states, tooltips
+  - **Semantic Terms**: Help AI recognize categories in natural language
+  - Settings → Status Categories section
+
+- **Dynamic Scoring Display**: Real-time max score calculation ⭐ NEW
+  - Shows breakdown: R:20 + D:6 + P:1 + S:1 = 28 points
+  - Updates automatically based on sub-coefficient settings
+  - Helps understand scoring impact
+  - Settings → Task Scoring section
+
+- **Enhanced Settings UI**: Improved user experience
+  - **Connection Testing**: Real-time validation with inline feedback
+  - **Model Count Indicators**: Shows number of available models per provider
+  - **Auto-fetch on Provider Selection**: Models loaded automatically when switching providers
+  - **Datacore Status Display**: Real-time API availability indicator (✓/⚠️/❌)
+  - **Context-Aware Descriptions**: Dynamic descriptions update based on current settings
 
 ### Fixed
 - **CRITICAL: Session History Persistence**: Fixed data loss bug where session history could be lost on Obsidian restart
   - Added defensive checks in `loadSettings()` to ensure sessionData structure exists
   - Enhanced `sessionManager.loadFromData()` to handle null/malformed data gracefully
   - Session history now persists correctly across restarts
+  - Deep merge for provider configs preserves defaults
 
 ### Improved
 - **Simplified Datacore Startup Logic**: Reduced complex 40+ line retry loop to simple 3-line wait
   - Faster plugin startup
   - Cleaner, more maintainable code
   - Same functionality with better performance
+
+- **Model Provider Management**: Enhanced model fetching and caching
+  - Per-provider model caching prevents re-fetching
+  - Graceful fallback to defaults if API unavailable
+  - Auto-configuration on provider selection
+  - Model validation against available models
+
+- **Settings Organization**: Clearer structure and labeling
+  - 12 main sections (was 10) with better categorization
+  - Model Configuration as separate section
+  - Task Sorting as separate section
+  - Task Display Limits as separate section
+  - More descriptive headings and subheadings
 
 ### Removed
 - **Debug Command Cleanup**: Removed `debug-datacore-status` command (no longer needed for production)

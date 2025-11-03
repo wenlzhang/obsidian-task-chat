@@ -7,15 +7,15 @@ Complete guide to configuring Task Chat for your workflow.
 Task Chat settings are organized into 10 main sections:
 
 1. **AI Provider** - Configure your AI service
-2. **Task Chat** - Chat interface settings
-3. **Chat Mode** - Choose default mode
+2. **Model Configuration** - Per-purpose model selection
+3. **Task Chat** - Chat interface and session settings
 4. **Semantic Expansion** - Multilingual keyword expansion
-5. **DataView Integration** - Task property fields
-6. **Status Category** - Custom task status
+5. **Datacore Integration** - Task property fields
+6. **Status Categories** - Custom task states with advanced features
 7. **Task Filtering** - Control which tasks appear
-8. **Task Scoring** - Weight importance factors
-9. **Task Display** - Result limits and sorting
-10. **Advanced** - System prompts and expert settings
+8. **Task Scoring** - Weight importance factors with sub-coefficients
+9. **Task Sorting** - Multi-criteria task ordering
+10. **Advanced** - System prompts, cost tracking, and debug settings
 
 ## 1. AI Provider
 
@@ -46,39 +46,100 @@ Click "Test connection" to verify:
 - API key is valid
 - Selected model is available
 - Network connectivity works
+- Real-time validation with inline feedback
 
-### Refresh Models
+### Model Availability
 
-Click "Refresh" to fetch latest models from your provider's API.
+The plugin automatically fetches available models from your provider:
+- **Auto-fetch on provider selection** - Models loaded automatically
+- **Refresh button** - Update model list manually
+- **Model count indicator** - Shows number of available models
+- **Per-provider caching** - Remembers models for each provider
 
-## 2. Task Chat
+## 2. Model Configuration
 
-### Max Chat History
+Configure different models for different purposes to optimize cost and performance!
 
-**What it does:** Max number of chat sessions to keep in history
+### Model Purpose System
+
+Task Chat uses two types of AI operations, each optimized for different needs:
+
+#### Query Parsing (Smart Search & Task Chat)
+**Purpose:** Understanding user queries and extracting filters
+
+**Recommended models:**
+- Fast, cost-effective models
+- GPT-4o-mini, or Qwen3:14b
+- Lower temperature (0.1) for consistent JSON output
+
+**Settings:**
+- **Provider selection** - Can differ from main AI provider
+- **Model selection** - Dropdown of available models
+- **Temperature** - 0.0-2.0 (0.1 recommended for reliable JSON)
+- **Auto-refresh** - Fetch latest models from provider
+
+#### Task Analysis (Task Chat responses)
+**Purpose:** Analyzing tasks and generating AI recommendations
+
+**Recommended models:**
+- Quality models for better insights
+- GPT-4o, Claude Sonnet 4, or Qwen3:14b
+- Adjustable temperature based on needs (0.1-2.0)
+
+**Settings:**
+- **Provider selection** - Independent from parsing provider
+- **Model selection** - Choose best model for analysis
+- **Temperature** - Control creativity vs consistency
+- **Auto-refresh** - Update model list
+
+### Per-Provider Model Storage
+
+**Smart model memory:**
+- Models are stored per-provider
+- Switch providers without losing model selections
+- Each provider remembers its last selected model
+- Seamless switching between cloud and local models
+
+## 3. Task Chat
+
+### Session Management
+
+**Max Sessions:** Maximum number of chat sessions to keep
 
 **Default:** 50 sessions
+**Range:** 10-1000
 
-### Max Response Length (Max Tokens)
+**How it works:**
+- Each chat conversation is a separate session
+- When limit is reached, oldest sessions are automatically deleted
+- Prevents unlimited accumulation in data.json
+- Each session can have unlimited messages
 
-**What it does:** Maximum length of AI responses
+**Note:** This controls the number of **sessions** (conversations), not messages per session.
 
-**Default:** 2000 tokens
+### Chat History Context
 
-### Temperature
+**What it does:** Number of recent messages to send to AI as context
 
-**What it does:** Controls AI creativity vs consistency
+**Default:** 5 messages
+**Range:** 1-100
 
-**Range:** 0.0-2.0  
-**Default:** 0.1
+**Impact:**
+- **Higher values:** Better AI understanding, more token usage
+- **Lower values:** Less context, lower cost
+- **Dynamic tooltip:** Shows current value as you adjust
 
-**Guide:**
-- **0.0-0.3** - Precise, factual, consistent
-- **0.4-0.7** - Balanced creativity (recommended)
-- **0.8-1.2** - Creative, varied responses
-- **1.3-2.0** - Very creative, less predictable
+**Auto-cleanup:** Warnings and task references are automatically removed from context
 
-## 3. Chat Mode
+### UI Settings
+
+**Show Task Count:** Display task count in chat interface
+
+**Auto-open Sidebar:** Open Task Chat automatically on Obsidian startup
+
+**Streaming Responses:** Show AI responses in real-time as they're generated
+
+## 4. Chat Mode
 
 ### Default Chat Mode
 
@@ -91,7 +152,7 @@ Click "Refresh" to fetch latest models from your provider's API.
 
 See [Chat Modes](CHAT_MODES.md) for detailed comparison.
 
-## 4. Semantic Expansion
+## 5. Semantic Expansion
 
 ### Enable Semantic Expansion
 
@@ -141,11 +202,13 @@ English, 中文, Japanese
 English, Spanish, French
 ```
 
-## 5. Dataview Integration
+## 6. Datacore Integration
 
-### Dataview Task Properties
+### Datacore Task Properties
 
-Configure field names that Dataview uses for task properties.
+Configure field names for task properties. Task Chat uses **Datacore** as the primary task indexing API (2-10x faster than Dataview).
+
+**Note:** Datacore must be installed and enabled for Task Chat to work. See [Task Indexing](TASK_INDEXING.md) for setup details.
 
 ### Due Date Field
 
@@ -176,46 +239,132 @@ Define which values map to each priority level:
 **Priority 3 (medium):** `3, low`  
 **Priority 4 (low):** `4, none`
 
-## 6. Status Category
+## 7. Status Categories
 
-Customize task status categories to match your workflow.
+Customize task status categories to match your workflow with advanced management features.
 
 See [Status Categories](STATUS_CATEGORIES.md) for complete guide.
 
 ### Built-in Categories
 
-- **Open** - Not started (symbol: space)
-- **In Progress** - Currently working (symbol: `/`)
-- **Completed** - Finished (symbols: `x`, `X`)
-- **Cancelled** - Abandoned (symbol: `-`)
-- **Other** - Catches unassigned symbols
+Task Chat includes protected built-in categories:
+
+- **Open** - Not started (symbol: space) - **Fully locked**
+- **In Progress** - Currently working (symbol: `/`) - **Partially locked**
+- **Completed** - Finished (symbols: `x`, `X`) - **Partially locked**
+- **Cancelled** - Abandoned (symbol: `-`) - **Partially locked**
+- **Other** - Catches unassigned symbols - **Fully locked**
+
+**Protection levels:**
+- **Fully locked:** Cannot modify any fields (Open, Other)
+- **Partially locked:** Can modify some fields but not delete (In Progress, Completed, Cancelled)
+- **Unlocked:** Can modify or delete (custom categories)
 
 ### Custom Categories
 
-Add your own categories:
+Add unlimited custom categories for your workflow:
 
 **Examples:**
-- **Question** - Waiting on dependencies (symbol: `?`)
+- **Blocked** - Waiting on dependencies (symbol: `?`)
 - **Review** - Under review (symbol: `R`)
 - **Important** - High priority (symbol: `!`)
 
-### Category Fields
+**Add button:** Creates new category with auto-generated unique name
 
-For each category, configure:
+### Category Configuration
 
-- **Display name** - Shown in UI
+#### Basic Fields
+- **Category key** - Internal identifier (camelCase)
+- **Display name** - Shown in UI (human-readable)
+- **Query aliases** - Alternative query names (comma-separated)
 - **Symbols** - Checkbox characters (comma-separated)
 - **Score** - Relevance weight (0.0-1.0)
-- **Order** - Display position (1, 2, 3...)
-- **Aliases** - Query alternatives (comma-separated)
-- **Description** - For AI understanding (optional)
-- **Terms** - Semantic keywords (optional)
 
-## 7. Task Filtering
+#### Advanced Fields (Collapsible)
+- **Display order** - Sort position (1, 2, 3...)
+- **Description** - Helps AI understand category meaning
+- **Semantic terms** - Keywords for AI recognition (multilingual support)
+
+### Advanced Features
+
+#### Auto-Organization
+**What it does:** Automatically renumbers all categories with consistent gaps
+
+**When to use:**
+- Duplicate orders detected
+- Want to reorganize categories
+- Need clean numbering (10, 20, 30...)
+
+**Gap calculation:** Smart gaps based on category count
+
+#### Validation System
+**Duplicate order detection:**
+- Warning appears if multiple categories share same order
+- Shows which categories have conflicts
+- One-click auto-fix available
+
+**Visual indicators:**
+- Lock icons (🔒) for protected fields
+- Warning boxes for validation issues
+- Status indicators for current state
+
+#### Grid Layout
+**Enhanced UI:**
+- Horizontal grid with column headers
+- Category key, Display name, Aliases, Symbols, Score
+- Collapsible advanced fields section
+- Remove buttons (custom categories only)
+
+### Category Management Actions
+
+**Add Category:** Create new custom category
+**Remove Category:** Delete custom categories (protected categories cannot be removed)
+**Auto-Organize:** Renumber all categories with consistent gaps
+**Reset to Defaults:** Restore built-in category configuration
+
+## 8. Task Filtering
 
 Control which tasks appear in results.
 
 **See also:** [Task Filtering Guide](FILTERING.md) for detailed information on inclusions (filter interface) and exclusions (settings).
+
+### Datacore Integration Status
+
+**What it shows:** Real-time status of Datacore API availability
+
+**Status indicators:**
+- ✓ Datacore is ready
+- ⚠️ Datacore is indexing...
+- ❌ Datacore not installed
+
+### Auto-Refresh Settings
+
+**Enable auto-refresh:** Toggle automatic task count updates
+
+**Refresh interval:** 10 seconds to 24 hours (default: 30 seconds)
+
+**Recommended values:**
+- Small vaults (<500 tasks): 10-30 seconds
+- Medium vaults (500-2000 tasks): 30-60 seconds
+- Large vaults (2000+ tasks): 60-300 seconds
+
+### Exclusions
+
+**Manage exclusions button:** Opens modal for managing excluded:
+- Note-level tags
+- Task-level tags
+- Folders (including subfolders)
+- Specific notes
+
+**Fuzzy search:** Quick filtering in exclusions modal
+
+See [Exclusions Guide](EXCLUSIONS.md) for detailed information.
+
+### Completed Tasks
+
+**Hide completed tasks:** Toggle to hide/show completed tasks
+
+**Performance boost:** Hiding completed tasks can improve performance in large vaults
 
 ### Stop Words
 
@@ -267,9 +416,9 @@ Threshold = Max Score × Quality Filter %
 
 **Note:** Only applies to keyword queries (skipped for properties-only)
 
-## 8. Task Scoring
+## 9. Task Scoring
 
-Control how much each factor affects task ranking.
+Control how much each factor affects task ranking with fine-grained sub-coefficients.
 
 See [Scoring System](SCORING_SYSTEM.md) for complete details.
 
@@ -280,7 +429,13 @@ See [Scoring System](SCORING_SYSTEM.md) for complete details.
 Final Score = (Relevance × R) + (Due Date × D) + (Priority × P) + (Status × S)
 ```
 
-**Defaults:** R:20, D:4, P:1, S:1 (Max: 32 points)
+**Defaults:** R:20, D:4, P:1, S:1 (Max: 26 points)
+
+**Dynamic max score display:** Shows real-time calculation
+```
+Max possible score: R:20 + D:6 + P:1 + S:1 = 28 points
+```
+Based on your current sub-coefficient settings
 
 **Common configurations:**
 
@@ -325,92 +480,166 @@ Control importance levels:
 
 ### Status Sub-Coefficients
 
-Managed per category in Status Category section.
+Managed per category in Status Categories section (Section 7).
+
+**Default scores:**
+- Open: 1.0
+- In Progress: 0.8
+- Completed: 0.3
+- Cancelled: 0.1
+- Other: 0.5
 
 ### Reset Options
 
-Five reset buttons for easy restoration:
+Multiple reset buttons for easy restoration:
 
 - **Reset all main weights** - R:20, D:4, P:1, S:1
-- **Reset all sub-coefficients** - All advanced settings
-- **Reset relevance core keyword match bonus** - 0.2
+- **Reset relevance sub-coefficients** - Core keyword match bonus
 - **Reset due date sub-coefficients** - All time ranges
 - **Reset priority sub-coefficients** - All priority levels
 
-## 9. Task Display
+**Note:** Resetting refreshes the dynamic max score display
 
-Control result limits and sorting behavior.
+## 10. Task Sorting
 
-### Result Limits
+Multi-criteria task ordering system with drag-and-drop interface.
 
-**Max direct results (default: 20):**
-- Simple Search display limit
-- Increase for more comprehensive results
-- Decrease for more relevant results
+See [Sorting System](SORTING_SYSTEM.md) for complete details.
 
-**Max tasks for AI (default: 100):**
-- Context sent to AI in Task Chat mode
-- Higher = Better AI understanding, more expensive
-- Lower = Faster, cheaper, less context
+### Sort Criteria
 
-**Max AI recommendations (default: 20):**
-- AI's recommended task limit
-- Final curated list after analysis
+**Available criteria:**
+- **Relevance** - Keyword match quality (locked, always first)
+- **Due Date** - Task urgency
+- **Priority** - Task importance
+- **Status** - Task state
+- **Created Date** - When task was created
+- **Alphabetical** - Task text A-Z
 
-### Task Sort Order
+**Default order:** [Relevance, Due date, Priority, Status]
 
-**What it does:** Multi-criteria sorting
+### Managing Criteria
 
-**Default:** [Relevance, Due date, Priority, Status]
+**Tag-based UI:** Visual badges show active criteria
 
-**How it works:**
-1. Tasks scored by weighted formula
-2. Sorted by score (primary)
-3. Tiebreaking by sort order (secondary)
+**Drag-and-drop:** Reorder criteria (coming soon)
 
-**Important:** Coefficients control importance, not sort order!
+**Remove button:** Click ✕ to remove non-locked criteria
+
+**Add dropdown:** Select from available criteria to add
+
+**Relevance locked:** Always first criterion (indicated by lock icon)
+
+### How Sorting Works
+
+**Primary:** Tasks sorted by weighted score (coefficients)
+
+**Secondary:** Tiebreaking by sort criteria order
 
 **Example:**
 ```
-Coefficients: R:20, D:4, P:1
-Task A: (0.8 × 20) + (1.5 × 4) + (1.0 × 1) = 23 points
-Task B: (0.9 × 20) + (0.5 × 4) + (0.75 × 1) = 20.75 points
-
-Task A ranks higher (23 > 20.75)
-Sort order only matters if scores are exactly equal
+Task A: Score 23.5 → Ranks higher
+Task B: Score 23.5 → Same score, uses sort criteria
+  If Due Date is first: Task B (earlier due date) appears first
+  If Priority is first: Task A (higher priority) appears first
 ```
 
-**Customization:**
-- Click ✕ to remove criteria
-- Use dropdown to add criteria
-- Relevance always first (locked)
+**Important:** Coefficients control importance, sort order is only for tiebreaking!
 
-### Show Token Usage
+## 11. Task Display Limits
 
-Toggle display of token usage statistics in chat interface.
+Control result limits for different search modes.
 
-## 10. Advanced
+### Result Limits
+
+**Max direct results (default: 20, range: 5-100):**
+- Simple Search and Smart Search display limit
+- Results shown without AI analysis
+- No token cost
+- Increase for more comprehensive results
+- Decrease for more focused results
+
+**Max tasks for AI (default: 100, range: 10-500):**
+- Task Chat mode: Context sent to AI
+- Higher = Better AI understanding, more expensive
+- Lower = Faster, cheaper, less context
+- Only applies to Task Chat mode
+
+**Max AI recommendations (default: 20, range: 5-100):**
+- Task Chat mode: AI's recommended task limit
+- Final curated list after AI analysis
+- AI selects most relevant from analyzed tasks
+
+### Search & AI Settings
+
+**Response Language:**
+- Auto (match user input)
+- English
+- Custom instruction field
+
+**Show AI Understanding:** Display detected language and property recognition
+
+**Show Token Usage:** Display token counts and costs
+
+**Streaming Responses:** Real-time AI response display
+
+## 12. Advanced Settings
+
+System prompts, cost tracking, and debug settings.
 
 ### System Prompt
 
 **What it does:** Instructions that shape AI assistant behavior
 
-**Default:** Pre-configured for task analysis
+**Default:** Pre-configured optimized prompt for task analysis
+
+**Technical instructions:** Automatically appended internally (not shown)
 
 **Customize when:**
 - Specific tone needed (formal/casual)
 - Domain expertise required
 - Custom output format desired
+- Industry-specific terminology
 
-### Pricing Data
+**Reset to default:** Restore recommended optimized prompt
 
-View and manage token usage costs.
+### Pricing & Cost Tracking
 
-**Shows:**
-- Total tokens used
-- Total cost (USD)
+View and manage AI usage statistics and costs.
 
-**Reset:** Clear statistics to start fresh
+**Pricing data:**
+- Model count (number of models cached)
+- Last pricing update (time since last refresh)
+- Refresh button (update OpenRouter pricing data)
+
+**Usage statistics:**
+- Total tokens used (all-time)
+- Total cost in USD (all-time)
+- Per-message token and cost tracking
+
+**Reset statistics:** Clear all accumulated usage data
+
+**Cost tracking documentation:** Link to [Cost Tracking Guide](COST_TRACKING.md)
+
+### Debug Logging
+
+**Enable debug logging:** Toggle detailed console output
+
+**What it logs:**
+- API requests and responses
+- Task filtering steps
+- Scoring calculations
+- Query parsing details
+- Model provider operations
+
+**Access console:** Press Ctrl/Cmd+Shift+I (Developer Tools)
+
+**Performance impact:** Minimal, but generates more console output
+
+**When to enable:**
+- Troubleshooting issues
+- Understanding plugin behavior
+- Reporting bugs with detailed logs
 
 ## Common Scenarios
 
