@@ -302,20 +302,30 @@ export class QueryParserService {
         }
 
         // Status from statusValues array (s:value syntax)
-        // Resolve raw values (aliases, symbols, category names) to category keys
+        // DO NOT resolve to category keys here - pass raw values through!
+        // Let datacoreService's resolveStatusValuesToSymbols() handle the distinction
+        // between direct symbols ("s:b") and categories ("s:important")
         if (
             standardParsed.statusValues &&
             standardParsed.statusValues.length > 0
         ) {
-            // Use centralized resolution from TaskPropertyService
-            const resolved = TaskPropertyService.resolveStatusValues(
-                standardParsed.statusValues,
-                settings,
-            );
+            // Validate values but keep them as-is
+            const validValues = [];
+            for (const value of standardParsed.statusValues) {
+                // Check if value is valid (category, alias, or symbol)
+                const resolved = TaskPropertyService.resolveStatusValue(
+                    value,
+                    settings,
+                );
+                if (resolved) {
+                    validValues.push(value); // Keep raw value, not resolved category!
+                }
+            }
 
-            if (resolved.length > 0) {
+            if (validValues.length > 0) {
                 // Single value or multiple values
-                result.status = resolved.length === 1 ? resolved[0] : resolved;
+                result.status =
+                    validValues.length === 1 ? validValues[0] : validValues;
             }
         }
 

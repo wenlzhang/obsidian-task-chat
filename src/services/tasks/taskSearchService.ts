@@ -506,17 +506,27 @@ export class TaskSearchService {
             const values = rawValues.split(",").map((v) => v.trim());
 
             for (const value of values) {
-                Logger.debug("Extracted status value:", value);
+                Logger.debug("Extracted status value (raw):", value);
 
-                // Use centralized resolution from TaskPropertyService
+                // DO NOT resolve to category here!
+                // Return raw values (category names, aliases, OR symbols)
+                // Let datacoreService's resolveStatusValuesToSymbols() handle the distinction
+                // This preserves the difference between:
+                //   - "s:important" (category) → returns ALL symbols ["!", "I", "b"]
+                //   - "s:b" (direct symbol) → returns ONLY ["b"]
+
+                // Validate that the value exists by trying to resolve it
+                // But DON'T store the resolved value - store the original!
                 const resolved = TaskPropertyService.resolveStatusValue(
                     value,
                     settings,
                 );
 
                 if (resolved) {
-                    Logger.debug(`Resolved to category: ${resolved}`);
-                    allStatuses.add(resolved);
+                    Logger.debug(
+                        `Validated status value: "${value}" (resolves to category "${resolved}")`,
+                    );
+                    allStatuses.add(value); // Store raw value, not resolved category!
                 } else {
                     // Collect unresolved values for warning (graceful degradation)
                     unresolvedValues.push(value);
