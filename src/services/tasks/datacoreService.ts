@@ -658,9 +658,10 @@ export class DatacoreService {
         const queryParts: string[] = ["@task"];
 
         // ========================================
-        // STATUS CATEGORY TO SYMBOL CONVERSION
-        // Convert status category keys to symbols if needed
-        // Uses centralized TaskPropertyService.convertStatusCategoriesToSymbols()
+        // STATUS VALUE TO SYMBOL CONVERSION
+        // Convert status values (categories, aliases, or direct symbols) to symbols
+        // Uses centralized TaskPropertyService.resolveStatusValuesToSymbols()
+        // Handles mixed searches like "s:open,b" or "s:important"
         // ========================================
         let resolvedPropertyFilters = propertyFilters;
         if (
@@ -668,22 +669,29 @@ export class DatacoreService {
             !propertyFilters?.statusValues &&
             !propertyFilters?.statusExclusions
         ) {
-            // Convert status categories to symbols using centralized method
-            const statusCategories = Array.isArray(propertyFilters.status)
+            // Convert status values to symbols using centralized method
+            const statusValues = Array.isArray(propertyFilters.status)
                 ? propertyFilters.status
                 : [propertyFilters.status];
 
-            const converted =
-                TaskPropertyService.convertStatusCategoriesToSymbols(
-                    statusCategories,
+            Logger.debug(
+                `[Query Builder] Converting status values to symbols: [${statusValues.join(", ")}]`,
+            );
+
+            const resolvedSymbols =
+                TaskPropertyService.resolveStatusValuesToSymbols(
+                    statusValues,
                     settings,
                 );
 
-            // Create new propertyFilters with converted symbols
+            Logger.debug(
+                `[Query Builder] Resolved symbols: [${resolvedSymbols.join(", ")}]`,
+            );
+
+            // Create new propertyFilters with resolved symbols
             resolvedPropertyFilters = {
                 ...propertyFilters,
-                statusValues: converted.statusValues,
-                statusExclusions: converted.statusExclusions,
+                statusValues: resolvedSymbols,
             };
         }
 

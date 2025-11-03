@@ -1133,6 +1133,171 @@ export class TaskPropertyService {
         return true;
     }
 
+    // ==========================================
+    // CORE DATE MATCHING HELPER
+    // ==========================================
+
+    /**
+     * Core helper: Check if a date matches a keyword filter
+     * This is the SINGLE SOURCE OF TRUTH for date keyword matching logic
+     * All other date methods MUST use this helper to avoid duplication
+     *
+     * @param dateValue - Date value to check (as moment object or date string)
+     * @param keyword - Keyword to match ("today", "overdue", "week", etc.)
+     * @returns True if date matches the keyword
+     */
+    private static matchesDateKeyword(
+        dateValue: any,
+        keyword: string,
+    ): boolean {
+        const moment = (window as any).moment;
+
+        if (!dateValue) return false;
+
+        // Parse date using moment
+        const date = moment(dateValue);
+        if (!date.isValid()) return false;
+
+        // Normalize to start of day for comparisons
+        const dateNormalized = date.startOf("day");
+        const today = moment().startOf("day");
+
+        switch (keyword) {
+            case "overdue":
+            case this.DUE_DATE_KEYWORDS.overdue:
+                return dateNormalized.isBefore(today);
+
+            case "future":
+            case this.DUE_DATE_KEYWORDS.future:
+                return dateNormalized.isAfter(today);
+
+            case "today":
+            case this.DUE_DATE_KEYWORDS.today:
+                return dateNormalized.isSame(today, "day");
+
+            case "tomorrow":
+            case this.DUE_DATE_KEYWORDS.tomorrow:
+                return dateNormalized.isSame(
+                    today.clone().add(1, "day"),
+                    "day",
+                );
+
+            case "yesterday":
+            case this.DUE_DATE_KEYWORDS.yesterday:
+                return dateNormalized.isSame(
+                    today.clone().subtract(1, "day"),
+                    "day",
+                );
+
+            case "week":
+            case this.DUE_DATE_KEYWORDS.week: {
+                const startOfWeek = moment().startOf("week");
+                const endOfWeek = moment().endOf("week");
+                return (
+                    dateNormalized.isSameOrAfter(startOfWeek, "day") &&
+                    dateNormalized.isSameOrBefore(endOfWeek, "day")
+                );
+            }
+
+            case "last-week":
+            case this.DUE_DATE_KEYWORDS.lastWeek: {
+                const startOfLastWeek = moment()
+                    .subtract(1, "week")
+                    .startOf("week");
+                const endOfLastWeek = moment()
+                    .subtract(1, "week")
+                    .endOf("week");
+                return (
+                    dateNormalized.isSameOrAfter(startOfLastWeek, "day") &&
+                    dateNormalized.isSameOrBefore(endOfLastWeek, "day")
+                );
+            }
+
+            case "next-week":
+            case this.DUE_DATE_KEYWORDS.nextWeek: {
+                const startOfNextWeek = moment().add(1, "week").startOf("week");
+                const endOfNextWeek = moment().add(1, "week").endOf("week");
+                return (
+                    dateNormalized.isSameOrAfter(startOfNextWeek, "day") &&
+                    dateNormalized.isSameOrBefore(endOfNextWeek, "day")
+                );
+            }
+
+            case "month":
+            case this.DUE_DATE_KEYWORDS.month: {
+                const startOfMonth = moment().startOf("month");
+                const endOfMonth = moment().endOf("month");
+                return (
+                    dateNormalized.isSameOrAfter(startOfMonth, "day") &&
+                    dateNormalized.isSameOrBefore(endOfMonth, "day")
+                );
+            }
+
+            case "last-month":
+            case this.DUE_DATE_KEYWORDS.lastMonth: {
+                const startOfLastMonth = moment()
+                    .subtract(1, "month")
+                    .startOf("month");
+                const endOfLastMonth = moment()
+                    .subtract(1, "month")
+                    .endOf("month");
+                return (
+                    dateNormalized.isSameOrAfter(startOfLastMonth, "day") &&
+                    dateNormalized.isSameOrBefore(endOfLastMonth, "day")
+                );
+            }
+
+            case "next-month":
+            case this.DUE_DATE_KEYWORDS.nextMonth: {
+                const startOfNextMonth = moment()
+                    .add(1, "month")
+                    .startOf("month");
+                const endOfNextMonth = moment().add(1, "month").endOf("month");
+                return (
+                    dateNormalized.isSameOrAfter(startOfNextMonth, "day") &&
+                    dateNormalized.isSameOrBefore(endOfNextMonth, "day")
+                );
+            }
+
+            case "year":
+            case this.DUE_DATE_KEYWORDS.year: {
+                const startOfYear = moment().startOf("year");
+                const endOfYear = moment().endOf("year");
+                return (
+                    dateNormalized.isSameOrAfter(startOfYear, "day") &&
+                    dateNormalized.isSameOrBefore(endOfYear, "day")
+                );
+            }
+
+            case "last-year":
+            case this.DUE_DATE_KEYWORDS.lastYear: {
+                const startOfLastYear = moment()
+                    .subtract(1, "year")
+                    .startOf("year");
+                const endOfLastYear = moment()
+                    .subtract(1, "year")
+                    .endOf("year");
+                return (
+                    dateNormalized.isSameOrAfter(startOfLastYear, "day") &&
+                    dateNormalized.isSameOrBefore(endOfLastYear, "day")
+                );
+            }
+
+            case "next-year":
+            case this.DUE_DATE_KEYWORDS.nextYear: {
+                const startOfNextYear = moment().add(1, "year").startOf("year");
+                const endOfNextYear = moment().add(1, "year").endOf("year");
+                return (
+                    dateNormalized.isSameOrAfter(startOfNextYear, "day") &&
+                    dateNormalized.isSameOrBefore(endOfNextYear, "day")
+                );
+            }
+
+            default:
+                return false;
+        }
+    }
+
     /**
      * Filter tasks by due date using moment for consistent date handling
      * OPTIMIZED: Uses moment from Obsidian API instead of native Date objects
@@ -1159,73 +1324,46 @@ export class TaskPropertyService {
         return tasks.filter((task) => {
             if (!task.dueDate) return false;
 
-            // Parse date using moment for consistent handling
-            const dueDate = moment(task.dueDate);
-            if (!dueDate.isValid()) return false;
-
-            // Normalize to start of day for comparisons
-            const dueDateNormalized = dueDate.startOf("day");
-            const today = moment().startOf("day");
-
-            switch (filter) {
-                case "overdue":
-                    return dueDateNormalized.isBefore(today);
-                case "future":
-                    return dueDateNormalized.isAfter(today);
-                case "today":
-                    return dueDateNormalized.isSame(today, "day");
-                case "tomorrow":
-                    return dueDateNormalized.isSame(
-                        today.clone().add(1, "day"),
-                        "day",
-                    );
-                case "week": {
-                    const weekEnd = today.clone().add(7, "days");
-                    return (
-                        dueDateNormalized.isSameOrAfter(today, "day") &&
-                        dueDateNormalized.isSameOrBefore(weekEnd, "day")
-                    );
-                }
-                case "next-week": {
-                    const nextWeekStart = today.clone().add(7, "days");
-                    const nextWeekEnd = today.clone().add(14, "days");
-                    return (
-                        dueDateNormalized.isSameOrAfter(nextWeekStart, "day") &&
-                        dueDateNormalized.isSameOrBefore(nextWeekEnd, "day")
-                    );
-                }
-                default:
-                    // Handle relative dates (+Nd, +Nw, +Nm)
-                    if (filter.startsWith("+")) {
-                        const relativeMatch = filter.match(/^\+(\d+)([dwm])$/);
-                        if (relativeMatch) {
-                            const amount = parseInt(relativeMatch[1]);
-                            const unit = relativeMatch[2];
-                            let targetDate = today.clone();
-
-                            if (unit === "d") {
-                                targetDate = targetDate.add(amount, "days");
-                            } else if (unit === "w") {
-                                targetDate = targetDate.add(amount, "weeks");
-                            } else if (unit === "m") {
-                                targetDate = targetDate.add(amount, "months");
-                            }
-
-                            return dueDateNormalized.isSame(targetDate, "day");
-                        }
-                    }
-
-                    // Try specific date match using moment
-                    const targetDate = moment(filter);
-                    if (targetDate.isValid()) {
-                        return dueDateNormalized.isSame(
-                            targetDate.startOf("day"),
-                            "day",
-                        );
-                    }
-
-                    return false;
+            // Try keyword matching first (uses core helper)
+            if (this.matchesDateKeyword(task.dueDate, filter)) {
+                return true;
             }
+
+            // Handle relative dates (+Nd, +Nw, +Nm)
+            if (filter.startsWith("+")) {
+                const relativeMatch = filter.match(/^\+(\d+)([dwm])$/);
+                if (relativeMatch) {
+                    const amount = parseInt(relativeMatch[1]);
+                    const unit = relativeMatch[2];
+                    const today = moment().startOf("day");
+                    let targetDate = today.clone();
+
+                    if (unit === "d") {
+                        targetDate = targetDate.add(amount, "days");
+                    } else if (unit === "w") {
+                        targetDate = targetDate.add(amount, "weeks");
+                    } else if (unit === "m") {
+                        targetDate = targetDate.add(amount, "months");
+                    }
+
+                    const dueDate = moment(task.dueDate).startOf("day");
+                    return (
+                        dueDate.isValid() && dueDate.isSame(targetDate, "day")
+                    );
+                }
+            }
+
+            // Try specific date match using moment
+            const targetDate = moment(filter);
+            if (targetDate.isValid()) {
+                const dueDate = moment(task.dueDate).startOf("day");
+                return (
+                    dueDate.isValid() &&
+                    dueDate.isSame(targetDate.startOf("day"), "day")
+                );
+            }
+
+            return false;
         });
     }
 
@@ -1268,6 +1406,109 @@ export class TaskPropertyService {
         return triggerWords;
     }
 
+    // ==========================================
+    // CORE STATUS MATCHING HELPER
+    // ==========================================
+
+    /**
+     * Core helper: Match a single status value against category/alias/symbol
+     * This is the SINGLE SOURCE OF TRUTH for status matching logic
+     * All other status methods MUST use this helper to avoid duplication
+     *
+     * @param value - Status value to check (e.g., "open", "wip", "x", "b")
+     * @param settings - Plugin settings with taskStatusMapping
+     * @returns Match result with detailed information, or null if no match
+     */
+    private static matchStatusValue(
+        value: string,
+        settings: PluginSettings,
+    ): {
+        matched: boolean;
+        categoryKey: string;
+        matchType: "category" | "alias" | "symbol";
+        originalValue: string;
+    } | null {
+        if (!value) return null;
+
+        const lowerValue = value.toLowerCase();
+
+        // Check user-configured categories first
+        for (const [categoryKey, config] of Object.entries(
+            settings.taskStatusMapping,
+        )) {
+            // Check if value matches category key
+            if (categoryKey.toLowerCase() === lowerValue) {
+                return {
+                    matched: true,
+                    categoryKey,
+                    matchType: "category",
+                    originalValue: value,
+                };
+            }
+
+            // Check if value matches any alias
+            if (config.aliases) {
+                const aliases = config.aliases
+                    .split(",")
+                    .map((a) => a.trim().toLowerCase());
+                if (aliases.includes(lowerValue)) {
+                    return {
+                        matched: true,
+                        categoryKey,
+                        matchType: "alias",
+                        originalValue: value,
+                    };
+                }
+            }
+
+            // Check if value matches any symbol
+            if (config.symbols && Array.isArray(config.symbols)) {
+                // Check both exact match and lowercase match
+                if (
+                    config.symbols.includes(value) ||
+                    config.symbols.some((s) => s.toLowerCase() === lowerValue)
+                ) {
+                    return {
+                        matched: true,
+                        categoryKey,
+                        matchType: "symbol",
+                        originalValue: value,
+                    };
+                }
+            }
+        }
+
+        // Fallback: Check default status config
+        for (const [categoryKey, defaultConfig] of Object.entries(
+            this.DEFAULT_STATUS_CONFIG,
+        )) {
+            // Check if value matches default category key
+            if (categoryKey.toLowerCase() === lowerValue) {
+                return {
+                    matched: true,
+                    categoryKey,
+                    matchType: "category",
+                    originalValue: value,
+                };
+            }
+
+            // Check if value matches default terms
+            const terms = defaultConfig.terms
+                .split(",")
+                .map((t) => t.trim().toLowerCase());
+            if (terms.includes(lowerValue)) {
+                return {
+                    matched: true,
+                    categoryKey,
+                    matchType: "alias",
+                    originalValue: value,
+                };
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Resolve status value to category key
      * Handles: category names, aliases, and symbols
@@ -1288,102 +1529,19 @@ export class TaskPropertyService {
         value: string,
         settings: PluginSettings,
     ): string | null {
-        // Handle null/undefined values
-        if (!value) {
-            Logger.debug("[resolveStatusValue] Input value is null/undefined");
-            return null;
-        }
+        Logger.debug(`[resolveStatusValue] Attempting to resolve: "${value}"`);
 
-        const lowerValue = value.toLowerCase();
-        Logger.debug(
-            `[resolveStatusValue] Attempting to resolve: "${value}" (lowercase: "${lowerValue}")`,
-        );
+        const match = this.matchStatusValue(value, settings);
 
-        // Check each category in the status mapping
-        const allCategories = Object.keys(settings.taskStatusMapping);
-        Logger.debug(
-            `[resolveStatusValue] Checking user taskStatusMapping (${allCategories.length} categories): [${allCategories.join(", ")}]`,
-        );
-
-        for (const [categoryKey, config] of Object.entries(
-            settings.taskStatusMapping,
-        )) {
+        if (match) {
             Logger.debug(
-                `[resolveStatusValue]   Checking category "${categoryKey}": symbols=[${config.symbols?.join(", ") || "none"}], aliases="${config.aliases || "none"}"`,
+                `[resolveStatusValue] ✓ Matched ${match.matchType}: "${value}" → category "${match.categoryKey}"`,
             );
-
-            // Check if value matches category key
-            if (categoryKey.toLowerCase() === lowerValue) {
-                Logger.debug(
-                    `[resolveStatusValue] ✓ Matched category key: "${categoryKey}"`,
-                );
-                return categoryKey;
-            }
-
-            // Check if value matches any alias
-            if (config.aliases) {
-                const aliases = config.aliases
-                    .split(",")
-                    .map((a) => a.trim().toLowerCase());
-                Logger.debug(
-                    `[resolveStatusValue]     Parsed aliases: [${aliases.join(", ")}]`,
-                );
-                if (aliases.includes(lowerValue)) {
-                    Logger.debug(
-                        `[resolveStatusValue] ✓ Matched alias "${value}" in category: "${categoryKey}"`,
-                    );
-                    return categoryKey;
-                }
-            }
-
-            // Check if value matches any symbol
-            if (config.symbols && Array.isArray(config.symbols)) {
-                const symbols = config.symbols.map((s) => s.toLowerCase());
-                Logger.debug(
-                    `[resolveStatusValue]     Checking symbols: [${symbols.join(", ")}]`,
-                );
-                if (symbols.includes(lowerValue)) {
-                    Logger.debug(
-                        `[resolveStatusValue] ✓ Matched symbol "${value}" in category: "${categoryKey}"`,
-                    );
-                    return categoryKey;
-                }
-            }
-        }
-
-        // FALLBACK: Check default status config if not found in user settings
-        // This ensures standard keywords like "open", "completed" work even with custom mappings
-        Logger.debug(
-            `[resolveStatusValue] Not found in user settings, checking DEFAULT_STATUS_CONFIG (${Object.keys(this.DEFAULT_STATUS_CONFIG).length} categories)`,
-        );
-        for (const [categoryKey, defaultConfig] of Object.entries(
-            this.DEFAULT_STATUS_CONFIG,
-        )) {
-            // Check if value matches default category key
-            if (categoryKey.toLowerCase() === lowerValue) {
-                Logger.debug(
-                    `[resolveStatusValue] ✓ Matched DEFAULT category key: "${categoryKey}"`,
-                );
-                return categoryKey;
-            }
-
-            // Check if value matches default terms
-            const terms = defaultConfig.terms
-                .split(",")
-                .map((t) => t.trim().toLowerCase());
-            if (terms.includes(lowerValue)) {
-                Logger.debug(
-                    `[resolveStatusValue] ✓ Matched DEFAULT term in category: "${categoryKey}"`,
-                );
-                return categoryKey;
-            }
+            return match.categoryKey;
         }
 
         Logger.warn(
             `[resolveStatusValue] ✗ No match found for "${value}" in user settings or defaults`,
-        );
-        Logger.warn(
-            `[resolveStatusValue] Checked ${allCategories.length} user categories: [${allCategories.join(", ")}]`,
         );
         Logger.warn(
             `[resolveStatusValue] If "${value}" is a custom category, please verify:`,
@@ -1416,6 +1574,74 @@ export class TaskPropertyService {
 
         // Remove duplicates
         return [...new Set(resolved)];
+    }
+
+    /**
+     * Resolve status search values (category names, aliases, OR symbols) to symbols
+     * Handles the key difference between category and symbol searches:
+     * - Category/alias search: Returns ALL symbols for that category
+     * - Direct symbol search: Returns ONLY that specific symbol
+     *
+     * Examples:
+     * - "open" (category) → [" "] (all symbols for open)
+     * - "wip" (alias for inProgress) → ["/"] (all symbols for inProgress)
+     * - "b" (direct symbol) → ["b"] (only that symbol, not all symbols in category)
+     * - "important" (category with symbols !, I, b) → ["!", "I", "b"] (all)
+     *
+     * @param values - Array of status values from user query (can be categories, aliases, or symbols)
+     * @param settings - Plugin settings with taskStatusMapping
+     * @returns Array of status symbols to use in Datacore query
+     */
+    static resolveStatusValuesToSymbols(
+        values: string[],
+        settings: PluginSettings,
+    ): string[] {
+        const symbols: string[] = [];
+
+        Logger.debug(
+            `[resolveStatusValuesToSymbols] Resolving ${values.length} values: [${values.join(", ")}]`,
+        );
+
+        for (const value of values) {
+            const match = this.matchStatusValue(value, settings);
+
+            if (match) {
+                const categoryConfig =
+                    settings.taskStatusMapping[match.categoryKey];
+
+                if (match.matchType === "symbol") {
+                    // Direct symbol match → return ONLY that symbol
+                    symbols.push(match.originalValue);
+                    Logger.debug(
+                        `[resolveStatusValuesToSymbols]   "${value}" matched direct symbol in category "${match.categoryKey}" → symbol: [${match.originalValue}] (not all symbols!)`,
+                    );
+                } else {
+                    // Category or alias match → return ALL symbols for that category
+                    if (
+                        categoryConfig &&
+                        categoryConfig.symbols &&
+                        categoryConfig.symbols.length > 0
+                    ) {
+                        symbols.push(...categoryConfig.symbols);
+                        Logger.debug(
+                            `[resolveStatusValuesToSymbols]   "${value}" matched ${match.matchType} "${match.categoryKey}" → symbols: [${categoryConfig.symbols.join(", ")}]`,
+                        );
+                    }
+                }
+            } else {
+                Logger.warn(
+                    `[resolveStatusValuesToSymbols]   "${value}" did not match any category, alias, or symbol`,
+                );
+            }
+        }
+
+        // Remove duplicates
+        const uniqueSymbols = [...new Set(symbols)];
+        Logger.debug(
+            `[resolveStatusValuesToSymbols] Final symbols: [${uniqueSymbols.join(", ")}]`,
+        );
+
+        return uniqueSymbols;
     }
 
     /**
@@ -1544,133 +1770,12 @@ export class TaskPropertyService {
     ): boolean {
         if (!dateValue) return false;
 
-        const moment = (window as any).moment;
+        // Format the date value first, then use core helper
         const formatted = formatDate(dateValue);
         if (!formatted) return false;
 
-        const taskDate = moment(formatted);
-        if (!taskDate.isValid()) return false;
-
-        // Match against all defined keywords
-        switch (keyword) {
-            case this.DUE_DATE_KEYWORDS.today:
-                return formatted === moment().format("YYYY-MM-DD");
-
-            case this.DUE_DATE_KEYWORDS.tomorrow:
-                return (
-                    formatted === moment().add(1, "day").format("YYYY-MM-DD")
-                );
-
-            case this.DUE_DATE_KEYWORDS.yesterday:
-                return (
-                    formatted ===
-                    moment().subtract(1, "day").format("YYYY-MM-DD")
-                );
-
-            case this.DUE_DATE_KEYWORDS.overdue:
-                return taskDate.isBefore(moment(), "day");
-
-            case this.DUE_DATE_KEYWORDS.future:
-                return taskDate.isAfter(moment(), "day");
-
-            case this.DUE_DATE_KEYWORDS.week: {
-                const startOfWeek = moment().startOf("week");
-                const endOfWeek = moment().endOf("week");
-                return (
-                    taskDate.isSameOrAfter(startOfWeek, "day") &&
-                    taskDate.isSameOrBefore(endOfWeek, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.lastWeek: {
-                const startOfLastWeek = moment()
-                    .subtract(1, "week")
-                    .startOf("week");
-                const endOfLastWeek = moment()
-                    .subtract(1, "week")
-                    .endOf("week");
-                return (
-                    taskDate.isSameOrAfter(startOfLastWeek, "day") &&
-                    taskDate.isSameOrBefore(endOfLastWeek, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.nextWeek: {
-                const startOfNextWeek = moment().add(1, "week").startOf("week");
-                const endOfNextWeek = moment().add(1, "week").endOf("week");
-                return (
-                    taskDate.isSameOrAfter(startOfNextWeek, "day") &&
-                    taskDate.isSameOrBefore(endOfNextWeek, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.month: {
-                const startOfMonth = moment().startOf("month");
-                const endOfMonth = moment().endOf("month");
-                return (
-                    taskDate.isSameOrAfter(startOfMonth, "day") &&
-                    taskDate.isSameOrBefore(endOfMonth, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.lastMonth: {
-                const startOfLastMonth = moment()
-                    .subtract(1, "month")
-                    .startOf("month");
-                const endOfLastMonth = moment()
-                    .subtract(1, "month")
-                    .endOf("month");
-                return (
-                    taskDate.isSameOrAfter(startOfLastMonth, "day") &&
-                    taskDate.isSameOrBefore(endOfLastMonth, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.nextMonth: {
-                const startOfNextMonth = moment()
-                    .add(1, "month")
-                    .startOf("month");
-                const endOfNextMonth = moment().add(1, "month").endOf("month");
-                return (
-                    taskDate.isSameOrAfter(startOfNextMonth, "day") &&
-                    taskDate.isSameOrBefore(endOfNextMonth, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.year: {
-                const startOfYear = moment().startOf("year");
-                const endOfYear = moment().endOf("year");
-                return (
-                    taskDate.isSameOrAfter(startOfYear, "day") &&
-                    taskDate.isSameOrBefore(endOfYear, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.lastYear: {
-                const startOfLastYear = moment()
-                    .subtract(1, "year")
-                    .startOf("year");
-                const endOfLastYear = moment()
-                    .subtract(1, "year")
-                    .endOf("year");
-                return (
-                    taskDate.isSameOrAfter(startOfLastYear, "day") &&
-                    taskDate.isSameOrBefore(endOfLastYear, "day")
-                );
-            }
-
-            case this.DUE_DATE_KEYWORDS.nextYear: {
-                const startOfNextYear = moment().add(1, "year").startOf("year");
-                const endOfNextYear = moment().add(1, "year").endOf("year");
-                return (
-                    taskDate.isSameOrAfter(startOfNextYear, "day") &&
-                    taskDate.isSameOrBefore(endOfNextYear, "day")
-                );
-            }
-
-            default:
-                return false;
-        }
+        // Delegate to core helper for all keyword matching
+        return this.matchesDateKeyword(formatted, keyword);
     }
 
     /**

@@ -128,7 +128,7 @@ export class ChatView extends ItemView {
             const isAvailable = TaskIndexService.isDatacoreAvailable();
 
             // Always update warning status to reflect current state
-            this.renderDataviewWarning();
+            this.renderDatacoreWarning();
 
             // If Datacore just became initialized, update task count
             if (isReady && this.isStartupPolling) {
@@ -143,7 +143,7 @@ export class ChatView extends ItemView {
                 this.updateFilterStatus();
 
                 // Force immediate warning update
-                this.renderDataviewWarning();
+                this.renderDatacoreWarning();
 
                 // Show success message
                 await this.addSystemMessage(
@@ -208,12 +208,12 @@ export class ChatView extends ItemView {
         });
         this.updateFilterStatus();
 
-        // Dataview warning element (initially null, created when needed)
+        // Datacore warning element (initially null, created when needed)
         // WARNING: Never hide this - it provides critical information about why searches return 0 results
         this.dataviewWarningEl = null;
 
-        // Check and render Dataview status immediately
-        this.renderDataviewWarning();
+        // Check and render Datacore status immediately
+        this.renderDatacoreWarning();
 
         // Button controls - grouped logically
         const controlsEl = this.contentEl.createDiv("task-chat-controls");
@@ -577,7 +577,7 @@ export class ChatView extends ItemView {
      * - Enabled but indexing: Wait for indexing to complete
      * - Enabled but 0 tasks: Troubleshooting tips
      */
-    private renderDataviewWarning(): void {
+    private renderDatacoreWarning(): void {
         // Use filteredTaskCount instead of currentTasks.length
         // currentTasks is empty until user sends a query (lazy loading)
         // but filteredTaskCount is updated on startup and when API becomes ready
@@ -631,7 +631,7 @@ export class ChatView extends ItemView {
             this.isStartupPolling, // Pass startup polling flag for better messaging
         );
 
-        Logger.debug(`[Dataview Warning] ${warning.type}: ${warning.message}`);
+        Logger.debug(`[Datacore Warning] ${warning.type}: ${warning.message}`);
     }
 
     /**
@@ -1811,7 +1811,7 @@ export class ChatView extends ItemView {
 
         // CRITICAL: Update warning banner immediately after count update
         // This ensures warning disappears when tasks are now available
-        this.renderDataviewWarning();
+        this.renderDatacoreWarning();
 
         // No cache invalidation needed - next query will fetch fresh data from API
         // Preserving cache improves performance for rapid repeated queries
@@ -1845,7 +1845,7 @@ export class ChatView extends ItemView {
         this.currentFilter = filter;
         this.updateFilterStatus();
         this.updateFilterButtonState();
-        this.renderDataviewWarning(); // Update warning banner status
+        this.renderDatacoreWarning(); // Update warning banner status
     }
 
     /**
