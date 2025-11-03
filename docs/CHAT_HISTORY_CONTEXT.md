@@ -324,7 +324,8 @@ When switching topics or AI seems confused:
 - Maximum messages to **save** in session
 - Storage limit
 - Prevents data.json from growing too large
-- Older messages are automatically discarded
+- **Automatically prunes oldest messages** when limit is exceeded
+- Maintains the most recent N messages, discarding older ones
 
 **2. `chatHistoryContextLength` (default: 5)**
 - Number of messages to **send to AI**

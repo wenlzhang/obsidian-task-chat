@@ -133,10 +133,24 @@ export class SessionManager {
 
     /**
      * Add message to current session
+     * Automatically prunes oldest messages if limit is exceeded
+     *
+     * @param message - Message to add
+     * @param maxMessages - Maximum number of messages to keep (optional, defaults to no limit)
      */
-    addMessage(message: ChatMessage): void {
+    addMessage(message: ChatMessage, maxMessages?: number): void {
         const session = this.getOrCreateCurrentSession();
         session.messages.push(message);
+
+        // Enforce message limit by removing oldest messages
+        if (
+            maxMessages !== undefined &&
+            session.messages.length > maxMessages
+        ) {
+            const excess = session.messages.length - maxMessages;
+            session.messages.splice(0, excess); // Remove oldest messages from the beginning
+        }
+
         session.updatedAt = Date.now();
     }
 

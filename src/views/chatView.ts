@@ -1306,7 +1306,10 @@ export class ChatView extends ItemView {
             content: message,
             timestamp: Date.now(),
         };
-        this.plugin.sessionManager.addMessage(userMessage);
+        this.plugin.sessionManager.addMessage(
+            userMessage,
+            this.plugin.settings.maxChatHistory,
+        );
 
         // Clear input AFTER adding to session
         this.inputEl.value = "";
@@ -1624,7 +1627,10 @@ export class ChatView extends ItemView {
                     error: result.error, // Include error info for parser failures
                 };
 
-                this.plugin.sessionManager.addMessage(directMessage);
+                this.plugin.sessionManager.addMessage(
+                    directMessage,
+                    this.plugin.settings.maxChatHistory,
+                );
 
                 // Render message directly to DOM (non-blocking)
                 await this.renderMessage(directMessage);
@@ -1648,7 +1654,10 @@ export class ChatView extends ItemView {
                     error: result.error, // Include error if this is a fallback result
                 };
 
-                this.plugin.sessionManager.addMessage(aiMessage);
+                this.plugin.sessionManager.addMessage(
+                    aiMessage,
+                    this.plugin.settings.maxChatHistory,
+                );
 
                 // Render message directly to DOM (non-blocking)
                 await this.renderMessage(aiMessage);
@@ -1707,7 +1716,10 @@ export class ChatView extends ItemView {
                 error: isAIError ? error.structured : undefined, // Attach structured error for UI display
             };
 
-            this.plugin.sessionManager.addMessage(errorMessage);
+            this.plugin.sessionManager.addMessage(
+                errorMessage,
+                this.plugin.settings.maxChatHistory,
+            );
 
             // Render error message directly to DOM (non-blocking)
             await this.renderMessage(errorMessage);
@@ -1776,7 +1788,10 @@ export class ChatView extends ItemView {
             timestamp: Date.now(),
         };
 
-        this.plugin.sessionManager.addMessage(message);
+        this.plugin.sessionManager.addMessage(
+            message,
+            this.plugin.settings.maxChatHistory,
+        );
         await this.renderMessages();
         this.plugin.saveSettings();
     }
