@@ -64,6 +64,166 @@ export class DatacoreService {
     }
 
     /**
+     * Convert date keyword to Datacore query condition
+     * Uses existing TaskPropertyService.DUE_DATE_KEYWORDS for consistency
+     * Delegates date calculations to centralized logic
+     */
+    private static convertDateKeywordToQuery(
+        dateKeyword: string,
+        dueDateField: string,
+    ): string | null {
+        const moment = (window as any).moment;
+        const K = TaskPropertyService.DUE_DATE_KEYWORDS; // Alias for brevity
+
+        // Map keyword to Datacore query using centralized constants
+        const keywordMap: Record<string, () => string> = {
+            [K.today]: () =>
+                `${dueDateField} = date("${moment().format("YYYY-MM-DD")}")`,
+            [K.tomorrow]: () =>
+                `${dueDateField} = date("${moment().add(1, "day").format("YYYY-MM-DD")}")`,
+            [K.yesterday]: () =>
+                `${dueDateField} = date("${moment().subtract(1, "day").format("YYYY-MM-DD")}")`,
+            [K.overdue]: () =>
+                `${dueDateField} < date("${moment().format("YYYY-MM-DD")}")`,
+            [K.future]: () =>
+                `${dueDateField} > date("${moment().format("YYYY-MM-DD")}")`,
+            [K.week]: () => {
+                const start = moment().startOf("week").format("YYYY-MM-DD");
+                const end = moment().endOf("week").format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+            [K.lastWeek]: () => {
+                const start = moment()
+                    .subtract(1, "week")
+                    .startOf("week")
+                    .format("YYYY-MM-DD");
+                const end = moment()
+                    .subtract(1, "week")
+                    .endOf("week")
+                    .format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+            [K.nextWeek]: () => {
+                const start = moment()
+                    .add(1, "week")
+                    .startOf("week")
+                    .format("YYYY-MM-DD");
+                const end = moment()
+                    .add(1, "week")
+                    .endOf("week")
+                    .format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+            [K.month]: () => {
+                const start = moment().startOf("month").format("YYYY-MM-DD");
+                const end = moment().endOf("month").format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+            [K.lastMonth]: () => {
+                const start = moment()
+                    .subtract(1, "month")
+                    .startOf("month")
+                    .format("YYYY-MM-DD");
+                const end = moment()
+                    .subtract(1, "month")
+                    .endOf("month")
+                    .format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+            [K.nextMonth]: () => {
+                const start = moment()
+                    .add(1, "month")
+                    .startOf("month")
+                    .format("YYYY-MM-DD");
+                const end = moment()
+                    .add(1, "month")
+                    .endOf("month")
+                    .format("YYYY-MM-DD");
+                return `${dueDateField} >= date("${start}") and ${dueDateField} <= date("${end}")`;
+            },
+        };
+
+        // Check if keyword exists in map
+        if (keywordMap[dateKeyword]) {
+            return keywordMap[dateKeyword]();
+        }
+
+        // Fallback: Try relative date parsing (1d, 2w, etc.) using existing service
+        const parsedRelative =
+            TaskPropertyService.parseRelativeDate(dateKeyword);
+        if (parsedRelative) {
+            return `${dueDateField} = date("${parsedRelative}")`;
+        }
+
+        // Fallback: Try exact date parsing
+        const parsed = moment(dateKeyword);
+        if (parsed.isValid()) {
+            return `${dueDateField} = date("${parsed.format("YYYY-MM-DD")}")`;
+        }
+
+        return null;
+    }
+
+    /**
+     * Add simple due date filter to query parts
+     * Converts extracted date keywords to Datacore query conditions
+     * Uses existing TaskPropertyService extraction methods and constants
+     */
+    private static addSimpleDueDateFilter(
+        queryParts: string[],
+        settings: PluginSettings,
+        dueDate?: string | string[] | null,
+    ): void {
+        if (!dueDate) return;
+
+        const dueDateField = settings.datacoreKeys.dueDate;
+        const dueDateValues = Array.isArray(dueDate) ? dueDate : [dueDate];
+        const conditions: string[] = [];
+
+        for (const dateValue of dueDateValues) {
+            // Check for special filter keywords using centralized constants
+            if (
+                dateValue ===
+                    TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.all ||
+                dateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.any
+            ) {
+                conditions.push(`${dueDateField}`);
+                continue;
+            }
+
+            if (
+                dateValue === TaskPropertyService.DUE_DATE_FILTER_KEYWORDS.none
+            ) {
+                queryParts.push(`!${dueDateField}`);
+                Logger.debug(
+                    `[Query Builder] Due date filter (${dueDateField}): none`,
+                );
+                return;
+            }
+
+            // Convert using centralized conversion method
+            const dateCondition = this.convertDateKeywordToQuery(
+                dateValue,
+                dueDateField,
+            );
+            if (dateCondition) {
+                conditions.push(dateCondition);
+            }
+        }
+
+        if (conditions.length > 0) {
+            const combinedCondition =
+                conditions.length === 1
+                    ? conditions[0]
+                    : `(${conditions.join(" or ")})`;
+            queryParts.push(combinedCondition);
+            Logger.debug(
+                `[Query Builder] Due date filter (${dueDateField}): ${dueDateValues.join(", ")}`,
+            );
+        }
+    }
+
+    /**
      * Add priority filter to query parts
      * Uses configured priority field name from settings.datacoreKeys.priority
      */
@@ -628,7 +788,14 @@ export class DatacoreService {
         // ========================================
 
         if (propertyFilters) {
-            // Due Date Range Filter
+            // Simple Due Date Filter (today, overdue, tomorrow, etc.)
+            this.addSimpleDueDateFilter(
+                queryParts,
+                settings,
+                propertyFilters.dueDate,
+            );
+
+            // Due Date Range Filter (from X to Y)
             this.addDateRangeFilter(
                 queryParts,
                 settings,

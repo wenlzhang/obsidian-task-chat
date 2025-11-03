@@ -352,7 +352,7 @@ export class TaskIndexService {
 
             // Handle regular categories (not "other")
             const regularCategories = filter.taskStatuses.filter(
-                (cat) => cat !== "other",
+                (cat: string) => cat !== "other",
             );
             for (const categoryKey of regularCategories) {
                 const statusConfig = settings.taskStatusMapping[categoryKey];
