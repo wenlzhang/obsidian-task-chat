@@ -658,6 +658,74 @@ export class DatacoreService {
         const queryParts: string[] = ["@task"];
 
         // ========================================
+        // STATUS CATEGORY TO SYMBOL CONVERSION
+        // Convert status category keys to symbols if needed
+        // Uses existing user settings (taskStatusMapping)
+        // ========================================
+        let resolvedPropertyFilters = propertyFilters;
+        if (
+            propertyFilters?.status &&
+            !propertyFilters?.statusValues &&
+            !propertyFilters?.statusExclusions
+        ) {
+            // Convert status categories to symbols using existing settings
+            const statusCategories = Array.isArray(propertyFilters.status)
+                ? propertyFilters.status
+                : [propertyFilters.status];
+
+            const statusSymbols: string[] = [];
+            const hasOtherCategory = statusCategories.includes("other");
+
+            for (const categoryKey of statusCategories) {
+                if (categoryKey === "other") continue; // Handle "other" separately
+
+                // Use existing user settings to get symbols for each category
+                const statusConfig =
+                    settings.taskStatusMapping[categoryKey as string];
+                if (statusConfig && statusConfig.symbols) {
+                    statusSymbols.push(...statusConfig.symbols);
+                    Logger.debug(
+                        `[Query Builder] Converted status category "${categoryKey}" -> symbols: [${statusConfig.symbols.join(", ")}]`,
+                    );
+                } else {
+                    Logger.warn(
+                        `[Query Builder] Status category "${categoryKey}" not found in settings`,
+                    );
+                }
+            }
+
+            // Handle "other" category (exclude all defined symbols)
+            let statusExclusions: string[] | undefined;
+            if (hasOtherCategory) {
+                const allDefinedSymbols: string[] = [];
+                for (const [catKey, config] of Object.entries(
+                    settings.taskStatusMapping,
+                )) {
+                    if (
+                        catKey !== "other" &&
+                        config &&
+                        config.symbols &&
+                        config.symbols.length > 0
+                    ) {
+                        allDefinedSymbols.push(...config.symbols);
+                    }
+                }
+                statusExclusions = allDefinedSymbols;
+                Logger.debug(
+                    `[Query Builder] "other" category: excluding symbols [${allDefinedSymbols.join(", ")}]`,
+                );
+            }
+
+            // Create new propertyFilters with converted symbols
+            resolvedPropertyFilters = {
+                ...propertyFilters,
+                statusValues:
+                    statusSymbols.length > 0 ? statusSymbols : undefined,
+                statusExclusions,
+            };
+        }
+
+        // ========================================
         // EXCLUSIONS (AND logic - all applied)
         // ========================================
 
@@ -787,33 +855,34 @@ export class DatacoreService {
         // Filter by task properties directly in Datacore query for performance
         // ========================================
 
-        if (propertyFilters) {
+        if (resolvedPropertyFilters) {
             // Simple Due Date Filter (today, overdue, tomorrow, etc.)
             this.addSimpleDueDateFilter(
                 queryParts,
                 settings,
-                propertyFilters.dueDate,
+                resolvedPropertyFilters.dueDate,
             );
 
             // Due Date Range Filter (from X to Y)
             this.addDateRangeFilter(
                 queryParts,
                 settings,
-                propertyFilters.dueDateRange,
+                resolvedPropertyFilters.dueDateRange,
             );
 
             // Priority Filter
             this.addPriorityFilter(
                 queryParts,
                 settings,
-                propertyFilters.priority,
+                resolvedPropertyFilters.priority,
             );
 
             // Status Filter (supports both inclusion and exclusion)
+            // Uses statusValues (symbols) converted from status (categories)
             this.addStatusFilter(
                 queryParts,
-                propertyFilters.statusValues,
-                propertyFilters.statusExclusions,
+                resolvedPropertyFilters.statusValues,
+                resolvedPropertyFilters.statusExclusions,
             );
         }
 
