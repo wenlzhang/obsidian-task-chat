@@ -3,7 +3,7 @@
 	"name": "Task Chat",
 	"version": "0.0.1",
 	"minAppVersion": "1.0.0",
-	"description": "Chat with AI to analyze and manage tasks. Filter by due date, priority, status, and get intelligent recommendations using natural language queries.",
+	"description": "AI-powered task assistant. Natural language queries, customizable scoring, and intelligent recommendations. Datacore for vault-wide task indexing.",
 	"author": "wenlzhang",
 	"authorUrl": "https://github.com/wenlzhang",
 	"fundingUrl": {

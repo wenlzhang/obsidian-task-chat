@@ -1,6 +1,6 @@
 # Task Chat
 
-An AI-powered Obsidian plugin for intelligent task management. Chat with your tasks naturally, and get AI insights.
+An AI-powered task management assistant that lets you chat with your tasks naturally. Search with simple filters, expand queries across languages, or get full AI analysis—all optimized for speed with smart filtering, customizable scoring, and intelligent recommendations.
 
 ## ✨ Key Features
 
@@ -296,6 +296,7 @@ See [LICENSE](LICENSE) for details.
 - Works great with [Task Marker](https://github.com/wenlzhang/obsidian-task-marker)
 - Recommended theme: [Minimal](https://github.com/kepano/obsidian-minimal)
 - Exclusions UI pattern inspired by [Obsidian Copilot](https://github.com/logancyang/obsidian-copilot) by Logan Yang
+- Developed using **Vibe Coding** with [WindSurf](https://windsurf.com), [Claude Code](https://www.claude.com/product/claude-code), and [Claude Sonnet 4.5](https://www.anthropic.com/claude)
 
 ## 🆘 Support
 
