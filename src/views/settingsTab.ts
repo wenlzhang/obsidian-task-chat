@@ -448,17 +448,17 @@ export class SettingsTab extends PluginSettingTab {
         });
 
         new Setting(containerEl)
-            .setName("Max chat history")
+            .setName("Max sessions")
             .setDesc(
-                "Maximum number of messages to keep in chat history (10-200)",
+                "Maximum number of chat sessions to keep (10-1000). Oldest sessions are automatically deleted when limit is exceeded.",
             )
             .addSlider((slider) =>
                 slider
-                    .setLimits(10, 200, 10)
-                    .setValue(this.plugin.settings.maxChatHistory)
+                    .setLimits(10, 1000, 10)
+                    .setValue(this.plugin.settings.maxSessions)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
-                        this.plugin.settings.maxChatHistory = value;
+                        this.plugin.settings.maxSessions = value;
                         await this.plugin.saveSettings();
                     }),
             );

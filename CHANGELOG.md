@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-11-03
+
+### Added
+- **Session Limit Management**: Renamed `maxChatHistory` to `maxSessions` for clarity
+  - Controls maximum number of **chat sessions** to keep (not messages per session)
+  - Default: 50 sessions, Range: 10-100
+  - **Automatically prunes oldest sessions** when limit is exceeded
+  - Maintains the most recent N sessions, removing older ones first
+  - Each session can have unlimited messages
+  - Prevents unlimited session accumulation in data.json
+  - Configurable in Settings → Chat Settings → Max sessions
+
+### Fixed
+- **CRITICAL: Session History Persistence**: Fixed data loss bug where session history could be lost on Obsidian restart
+  - Added defensive checks in `loadSettings()` to ensure sessionData structure exists
+  - Enhanced `sessionManager.loadFromData()` to handle null/malformed data gracefully
+  - Session history now persists correctly across restarts
+
+### Improved
+- **Simplified Datacore Startup Logic**: Reduced complex 40+ line retry loop to simple 3-line wait
+  - Faster plugin startup
+  - Cleaner, more maintainable code
+  - Same functionality with better performance
+
+### Removed
+- **Debug Command Cleanup**: Removed `debug-datacore-status` command (no longer needed for production)
+  - Bundle size reduced: 410.2kb → 409.6kb
+
 ## [Unreleased] - 2025-10-15
 
 ### Added

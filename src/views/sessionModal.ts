@@ -289,7 +289,9 @@ export class SessionModal extends Modal {
 
             // Create a new session automatically
             const newSession =
-                this.plugin.sessionManager.getOrCreateCurrentSession();
+                this.plugin.sessionManager.getOrCreateCurrentSession(
+                    this.plugin.settings.maxSessions,
+                );
             this.onSessionSelect(newSession.id);
 
             // Close modal after deleting all

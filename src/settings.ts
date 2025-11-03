@@ -207,7 +207,7 @@ export interface PluginSettings {
     };
 
     // Chat Settings
-    maxChatHistory: number; // Max messages to save in session history (storage limit)
+    maxSessions: number; // Maximum number of chat sessions to keep (older sessions are automatically deleted)
     chatHistoryContextLength: number; // Number of recent messages to send to AI as context (affects tokens and behavior)
     showTaskCount: boolean;
     autoOpenSidebar: boolean;
@@ -471,7 +471,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     },
 
     // Chat Settings
-    maxChatHistory: 50, // Storage limit for session messages
+    maxSessions: 50, // Maximum number of sessions to keep (older sessions auto-deleted)
     chatHistoryContextLength: 5, // Number of messages sent to AI as context (balance between context and token cost)
     showTaskCount: true,
     autoOpenSidebar: false,

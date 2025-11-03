@@ -65,7 +65,9 @@ export class ChatView extends ItemView {
         this.contentEl.addClass("task-chat-container");
 
         // Load last session or create new
-        const session = this.plugin.sessionManager.getOrCreateCurrentSession();
+        const session = this.plugin.sessionManager.getOrCreateCurrentSession(
+            this.plugin.settings.maxSessions,
+        );
 
         // Initialize chat mode from last used (stored in settings.currentChatMode in data.json)
         // If currentChatMode matches defaultChatMode, use null (meaning "use default")
@@ -1308,7 +1310,7 @@ export class ChatView extends ItemView {
         };
         this.plugin.sessionManager.addMessage(
             userMessage,
-            this.plugin.settings.maxChatHistory,
+            this.plugin.settings.maxSessions,
         );
 
         // Clear input AFTER adding to session
@@ -1629,7 +1631,7 @@ export class ChatView extends ItemView {
 
                 this.plugin.sessionManager.addMessage(
                     directMessage,
-                    this.plugin.settings.maxChatHistory,
+                    this.plugin.settings.maxSessions,
                 );
 
                 // Render message directly to DOM (non-blocking)
@@ -1656,7 +1658,7 @@ export class ChatView extends ItemView {
 
                 this.plugin.sessionManager.addMessage(
                     aiMessage,
-                    this.plugin.settings.maxChatHistory,
+                    this.plugin.settings.maxSessions,
                 );
 
                 // Render message directly to DOM (non-blocking)
@@ -1718,7 +1720,7 @@ export class ChatView extends ItemView {
 
             this.plugin.sessionManager.addMessage(
                 errorMessage,
-                this.plugin.settings.maxChatHistory,
+                this.plugin.settings.maxSessions,
             );
 
             // Render error message directly to DOM (non-blocking)
@@ -1790,7 +1792,7 @@ export class ChatView extends ItemView {
 
         this.plugin.sessionManager.addMessage(
             message,
-            this.plugin.settings.maxChatHistory,
+            this.plugin.settings.maxSessions,
         );
         await this.renderMessages();
         this.plugin.saveSettings();
@@ -2064,7 +2066,10 @@ export class ChatView extends ItemView {
         }
 
         // Create new session only if current has actual conversation
-        const newSession = this.plugin.sessionManager.createSession();
+        const newSession = this.plugin.sessionManager.createSession(
+            undefined,
+            this.plugin.settings.maxSessions,
+        );
 
         // Reset chat mode to default for new session
         this.chatModeOverride = null;

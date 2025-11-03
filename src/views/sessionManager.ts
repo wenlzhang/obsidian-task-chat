@@ -58,8 +58,12 @@ export class SessionManager {
 
     /**
      * Create a new session
+     * Automatically prunes oldest sessions if maxSessions limit is exceeded
+     *
+     * @param name - Optional session name
+     * @param maxSessions - Maximum number of sessions to keep (optional, defaults to no limit)
      */
-    createSession(name?: string): ChatSession {
+    createSession(name?: string, maxSessions?: number): ChatSession {
         const id = this.generateSessionId();
         const now = Date.now();
 
@@ -74,6 +78,19 @@ export class SessionManager {
         this.sessions.set(id, session);
         this.currentSessionId = id;
         this.lastSessionId = id;
+
+        // Enforce session limit by removing oldest sessions
+        if (maxSessions !== undefined && this.sessions.size > maxSessions) {
+            const excess = this.sessions.size - maxSessions;
+            // Get all sessions sorted by update time (oldest first)
+            const sortedSessions = Array.from(this.sessions.values()).sort(
+                (a, b) => a.updatedAt - b.updatedAt,
+            );
+            // Delete the oldest excess sessions
+            for (let i = 0; i < excess; i++) {
+                this.sessions.delete(sortedSessions[i].id);
+            }
+        }
 
         return session;
     }
@@ -97,11 +114,13 @@ export class SessionManager {
 
     /**
      * Get or create current session
+     *
+     * @param maxSessions - Maximum number of sessions to keep (optional, defaults to no limit)
      */
-    getOrCreateCurrentSession(): ChatSession {
+    getOrCreateCurrentSession(maxSessions?: number): ChatSession {
         let session = this.getCurrentSession();
         if (!session) {
-            session = this.createSession();
+            session = this.createSession(undefined, maxSessions);
         }
         return session;
     }
@@ -133,24 +152,13 @@ export class SessionManager {
 
     /**
      * Add message to current session
-     * Automatically prunes oldest messages if limit is exceeded
      *
      * @param message - Message to add
-     * @param maxMessages - Maximum number of messages to keep (optional, defaults to no limit)
+     * @param maxSessions - Maximum number of sessions to keep (optional, defaults to no limit)
      */
-    addMessage(message: ChatMessage, maxMessages?: number): void {
-        const session = this.getOrCreateCurrentSession();
+    addMessage(message: ChatMessage, maxSessions?: number): void {
+        const session = this.getOrCreateCurrentSession(maxSessions);
         session.messages.push(message);
-
-        // Enforce message limit by removing oldest messages
-        if (
-            maxMessages !== undefined &&
-            session.messages.length > maxMessages
-        ) {
-            const excess = session.messages.length - maxMessages;
-            session.messages.splice(0, excess); // Remove oldest messages from the beginning
-        }
-
         session.updatedAt = Date.now();
     }
 

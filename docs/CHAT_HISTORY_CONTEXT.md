@@ -320,22 +320,24 @@ When switching topics or AI seems confused:
 
 ### **Two Different Settings**
 
-**1. `maxChatHistory` (default: 50)**
-- Maximum messages to **save** in session
-- Storage limit
-- Prevents data.json from growing too large
-- **Automatically prunes oldest messages** when limit is exceeded
-- Maintains the most recent N messages, discarding older ones
+**1. `maxSessions` (default: 50)**
+- Maximum number of **chat sessions** to keep
+- Session storage limit
+- **Automatically prunes oldest sessions** when limit is exceeded
+- Maintains the most recent N sessions, discarding older ones
+- Range: 10-100 sessions
+- Each session can have unlimited messages
 
 **2. `chatHistoryContextLength` (default: 5)**
-- Number of messages to **send to AI**
-- Context limit
+- Number of messages to **send to AI** from current session
+- Context limit for AI requests
 - Balances context quality vs. token cost
-- Always ≤ maxChatHistory
+- Does not affect message storage
 
 **Example:**
-- You have 30 messages saved (storage: maxChatHistory = 50)
-- Only last 5 are sent to AI (context: chatHistoryContextLength = 5)
+- You have 30 sessions saved (storage: maxSessions = 50)
+- Current session has 100 messages
+- Only last 5 messages are sent to AI (context: chatHistoryContextLength = 5)
 
 ### **Message Cleaning Process**
 
