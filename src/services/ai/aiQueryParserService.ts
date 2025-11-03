@@ -348,83 +348,24 @@ export class QueryParserService {
 
     /**
      * Remove standard property syntax from query to get remaining keywords
-     * Uses centralized patterns from TaskPropertyService for consistency
+     * STRATEGY: Global removal (removes properties from anywhere in query)
+     * Uses shared pattern list from TaskPropertyService.getAllPropertyPatterns()
+     *
+     * This differs from TaskSearchService.removePropertySyntax() which only removes
+     * from beginning/end to preserve middle content. Here we remove all properties
+     * globally before sending remaining keywords to AI for semantic expansion.
      */
     private static removeStandardProperties(query: string): string {
         let cleaned = query;
 
-        // Use centralized QUERY_PATTERNS from TaskPropertyService
-        // This ensures consistency across all services
+        // Use comprehensive shared pattern list from TaskPropertyService
+        // This ensures consistency across all services and eliminates duplication
+        const patterns = TaskPropertyService.getAllPropertyPatterns();
 
-        // Remove priority syntax (p1-p4)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.priority,
-            "",
-        );
-
-        // Remove status syntax (s:value or s:value1,value2)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.status,
-            "",
-        );
-
-        // Remove project syntax (##project)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.project,
-            "",
-        );
-
-        // Remove search syntax (search:"term" or search:term)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.search,
-            "",
-        );
-
-        // Remove special keywords (centralized patterns)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordSubtask,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoDate,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoPriority,
-            "",
-        );
-
-        // Remove date range syntax (centralized patterns)
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.dueBeforeRange,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.dueAfterRange,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.dateBeforeRange,
-            "",
-        );
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.dateAfterRange,
-            "",
-        );
-
-        // Remove operators
-        cleaned = cleaned.replace(
-            TaskPropertyService.QUERY_PATTERNS.operators,
-            "",
-        );
+        // Remove all property patterns globally (from anywhere in the query)
+        for (const pattern of patterns) {
+            cleaned = cleaned.replace(pattern, "");
+        }
 
         // Clean up extra spaces
         cleaned = cleaned.replace(/\s+/g, " ").trim();

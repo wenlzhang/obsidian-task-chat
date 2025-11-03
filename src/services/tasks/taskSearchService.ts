@@ -54,6 +54,9 @@ export class TaskSearchService {
      * NOT natural language trigger words ("urgent", "priority", "tasks")
      * Natural language property detection is handled by AI in Smart/Chat modes
      *
+     * STRATEGY: Positional removal (beginning/end only)
+     * Uses shared pattern list from TaskPropertyService.getAllPropertyPatterns()
+     *
      * @param query - Original user query
      * @returns Query with property syntax removed from beginning/end only
      */
@@ -61,28 +64,9 @@ export class TaskSearchService {
         let result = query.trim();
         let changed = true;
 
-        // All property patterns to check
-        const patterns = [
-            TaskPropertyService.QUERY_PATTERNS.priority,
-            TaskPropertyService.QUERY_PATTERNS.priorityUnified,
-            TaskPropertyService.QUERY_PATTERNS.status,
-            TaskPropertyService.QUERY_PATTERNS.dueUnified,
-            TaskPropertyService.QUERY_PATTERNS.project,
-            TaskPropertyService.QUERY_PATTERNS.search,
-            TaskPropertyService.QUERY_PATTERNS.folder,
-            TaskPropertyService.getDueDateKeywordsPattern(),
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordOverdue,
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordRecurring,
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordSubtask,
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoDate,
-            TaskPropertyService.QUERY_PATTERNS.specialKeywordNoPriority,
-            TaskPropertyService.QUERY_PATTERNS.dueBeforeRange,
-            TaskPropertyService.QUERY_PATTERNS.dueAfterRange,
-            TaskPropertyService.QUERY_PATTERNS.dateBeforeRange,
-            TaskPropertyService.QUERY_PATTERNS.dateAfterRange,
-            TaskPropertyService.QUERY_PATTERNS.hashtag,
-            TaskPropertyService.QUERY_PATTERNS.operators,
-        ];
+        // Use comprehensive shared pattern list from TaskPropertyService
+        // This ensures consistency across all services and eliminates duplication
+        const patterns = TaskPropertyService.getAllPropertyPatterns();
 
         // Remove from BEGINNING (loop until nothing matches)
         while (changed) {

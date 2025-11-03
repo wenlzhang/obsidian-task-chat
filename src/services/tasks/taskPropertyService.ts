@@ -377,6 +377,51 @@ export class TaskPropertyService {
     }
 
     /**
+     * Get comprehensive list of all property patterns for removal
+     * SHARED PATTERN LIST - Single source of truth for property syntax removal
+     *
+     * Used by:
+     * - TaskSearchService.removePropertySyntax() - Positional removal (beginning/end only)
+     * - AiQueryParserService.removeStandardProperties() - Global removal (anywhere)
+     *
+     * @returns Array of all regex patterns for property syntax
+     */
+    static getAllPropertyPatterns(): RegExp[] {
+        return [
+            // Priority patterns
+            this.QUERY_PATTERNS.priority,
+            this.QUERY_PATTERNS.priorityUnified,
+
+            // Status patterns
+            this.QUERY_PATTERNS.status,
+
+            // Due date patterns
+            this.QUERY_PATTERNS.dueUnified,
+            this.getDueDateKeywordsPattern(),
+            this.QUERY_PATTERNS.dueBeforeRange,
+            this.QUERY_PATTERNS.dueAfterRange,
+            this.QUERY_PATTERNS.dateBeforeRange,
+            this.QUERY_PATTERNS.dateAfterRange,
+
+            // Other property patterns
+            this.QUERY_PATTERNS.project,
+            this.QUERY_PATTERNS.search,
+            this.QUERY_PATTERNS.folder,
+            this.QUERY_PATTERNS.hashtag,
+
+            // Special keyword patterns
+            this.QUERY_PATTERNS.specialKeywordOverdue,
+            this.QUERY_PATTERNS.specialKeywordRecurring,
+            this.QUERY_PATTERNS.specialKeywordSubtask,
+            this.QUERY_PATTERNS.specialKeywordNoDate,
+            this.QUERY_PATTERNS.specialKeywordNoPriority,
+
+            // Operators
+            this.QUERY_PATTERNS.operators,
+        ];
+    }
+
+    /**
      * Special keywords recognized in queries
      */
     static readonly SPECIAL_KEYWORDS = [
