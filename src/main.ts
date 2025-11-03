@@ -134,39 +134,6 @@ export default class TaskChatPlugin extends Plugin {
             }),
         );
 
-        // Add debug command to check Datacore status
-        this.addCommand({
-            id: "debug-datacore-status",
-            name: "Debug: Check Datacore status",
-            callback: () => {
-                const dc = (window as any).datacore;
-                const isAvailable = TaskIndexService.isDatacoreAvailable();
-                const isReady = TaskIndexService.isAPIReady();
-                const status = TaskIndexService.getAPIStatus();
-
-                const message = [
-                    "=== Datacore Debug Info ===",
-                    `window.datacore exists: ${dc !== undefined}`,
-                    `window.datacore type: ${typeof dc}`,
-                    `window.datacore.query exists: ${dc?.query !== undefined}`,
-                    `window.datacore.query type: ${typeof dc?.query}`,
-                    `window.datacore.core.initialized: ${dc?.core?.initialized}`,
-                    `isDatacoreAvailable(): ${isAvailable}`,
-                    `isAPIReady(): ${isReady}`,
-                    `getAPIStatus(): ${status}`,
-                    "",
-                    "Datacore structure: window.datacore.core.initialized",
-                    "Check console for full Datacore object details.",
-                ].join("\n");
-
-                console.log(message);
-                console.log("Full window.datacore object:", dc);
-
-                new Notice(message, 10000);
-                Logger.info(message);
-            },
-        });
-
         // Add settings tab
         this.addSettingTab(new SettingsTab(this.app, this));
 
@@ -175,45 +142,10 @@ export default class TaskChatPlugin extends Plugin {
             // CRITICAL: Wait for task indexing API to be fully ready before loading tasks
             await this.waitForTaskIndexAPI();
 
-            // Wait for API to finish initial indexing (especially important for large vaults)
-            // Datacore/Dataview may report "ready" but still be indexing tasks
+            // Give Datacore a moment to complete initial indexing, then get task count
             Logger.info("Waiting for API to complete initial indexing...");
-
-            // Try getting task count with retries for large vaults
-            let retries = 0;
-            const maxRetries = 5; // Try up to 5 times
-            let previousCount = -1;
-
-            while (retries < maxRetries) {
-                await new Promise((resolve) =>
-                    setTimeout(resolve, retries === 0 ? 1000 : 2000),
-                );
-                await this.updateTaskCount();
-
-                Logger.warn(
-                    `Attempt ${retries + 1}/${maxRetries}: Task count = ${this.taskCount}`,
-                );
-
-                // If count is stable and non-zero, we're done
-                if (this.taskCount > 0 && this.taskCount === previousCount) {
-                    Logger.warn("Task count stabilized, indexing complete");
-                    break;
-                }
-
-                // If count is increasing, continue waiting
-                if (this.taskCount > previousCount) {
-                    previousCount = this.taskCount;
-                    retries++;
-                } else if (retries >= 2) {
-                    // After 2 attempts with 0 count, likely no tasks or still indexing
-                    Logger.warn(
-                        `Task count still ${this.taskCount} after ${retries + 1} attempts`,
-                    );
-                    break;
-                } else {
-                    retries++;
-                }
-            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await this.updateTaskCount();
 
             Logger.warn(
                 `Startup complete. Task count: ${this.taskCount} (exclusions applied)`,
@@ -298,6 +230,26 @@ export default class TaskChatPlugin extends Plugin {
             }
             if (!this.settings.exclusions.notes) {
                 this.settings.exclusions.notes = [];
+            }
+        }
+
+        // Ensure sessionData structure exists with all required fields
+        if (!this.settings.sessionData) {
+            this.settings.sessionData = {
+                sessions: [],
+                currentSessionId: null,
+                lastSessionId: null,
+            };
+        } else {
+            // Ensure required fields exist (for data integrity)
+            if (!Array.isArray(this.settings.sessionData.sessions)) {
+                this.settings.sessionData.sessions = [];
+            }
+            if (this.settings.sessionData.currentSessionId === undefined) {
+                this.settings.sessionData.currentSessionId = null;
+            }
+            if (this.settings.sessionData.lastSessionId === undefined) {
+                this.settings.sessionData.lastSessionId = null;
             }
         }
 

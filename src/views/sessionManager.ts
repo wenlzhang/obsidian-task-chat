@@ -25,14 +25,24 @@ export class SessionManager {
     loadFromData(data: SessionData): void {
         this.sessions.clear();
 
-        if (data.sessions) {
+        // Defensive check: ensure data exists and has the right structure
+        if (!data) {
+            this.currentSessionId = null;
+            this.lastSessionId = null;
+            return;
+        }
+
+        if (data.sessions && Array.isArray(data.sessions)) {
             data.sessions.forEach((session) => {
-                this.sessions.set(session.id, session);
+                // Ensure each session has required fields
+                if (session && session.id) {
+                    this.sessions.set(session.id, session);
+                }
             });
         }
 
-        this.currentSessionId = data.currentSessionId;
-        this.lastSessionId = data.lastSessionId;
+        this.currentSessionId = data.currentSessionId ?? null;
+        this.lastSessionId = data.lastSessionId ?? null;
     }
 
     /**
