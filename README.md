@@ -1,6 +1,6 @@
 # Task Chat
 
-An AI-powered task management assistant that lets you chat with your tasks naturally. Search with simple filters, expand queries across languages, or get full AI analysis—all optimized for speed with smart filtering, customizable scoring, and intelligent recommendations.
+An AI-powered task management assistant that lets you chat with your tasks naturally. Search with simple filters, expand queries across languages, or get full AI analysis.
 
 ## ✨ Key Features
 
@@ -105,7 +105,7 @@ s:blocked priority:1
 
 ## 🔒 Privacy & Network Use
 
-This plugin connects to external AI services for Smart Search and Task Chat modes. Network usage details:
+This plugin connects to external AI services for Smart Search and Task Chat modes.
 
 ### Network Services Used
 
@@ -130,52 +130,15 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 
 - **Simple Search mode** - 100% local, no network calls, completely free
 - **Ollama** - 100% local AI, no data leaves your device
-- **Chat history context** - Configurable (1-100 messages, default: 5)
-- **API keys** - Stored locally in Obsidian, never sent to our servers
+- **Chat history context** - Configurable
+- **API keys** - Stored locally in Obsidian
 
 ### Data Security
 
 - Your API keys are stored securely in Obsidian's local settings
-- No telemetry or analytics collected by this plugin
 - You control which tasks are processed via filters
 
 > **Note**: When using cloud AI providers (OpenAI, Anthropic, OpenRouter), data is sent to their servers. Review their privacy policies for details. For complete privacy, use Simple Search mode or Ollama.
-
-## ⚙️ Configuration
-
-→ [Model selection guide](docs/MODEL_SELECTION_GUIDE.md) - Choose the right model
-→ [Model purpose configuration](docs/MODEL_CONFIGURATION.md) - Optimize cost/performance
-→ [Complete settings guide](docs/SETTINGS_GUIDE.md) - Every setting explained
-
-### Common Adjustments
-
-**Too many results?**
-- Raise minimum relevance score (Settings → Task Filtering)
-- Increase quality filter
-- Adjust max results limit
-
-**Too few results?**
-- Lower minimum relevance score (Settings → Task Filtering)
-- Lower quality filter
-
-**Results not relevant?**
-- Adjust scoring coefficients (Settings → Task Scoring)
-- Customize task property weights
-
-**AI responses not using context?**
-- Adjust chat history context length (Settings → Task Chat)
-- Default: 5 messages, increase for longer conversations
-
-**Seeing unwanted tasks?**
-- Use exclusions to hide tasks by tags, folders, or notes (Settings → Task Filtering → Manage exclusions)
-- Exclude archived content with tags like `#archive` or `#completed`
-- Hide template folders or specific template files
-- Click "Refresh" in chat after adding exclusions
-
-→ [Task filtering guide](docs/FILTERING.md) - Inclusions and exclusions
-→ [Task exclusions guide](docs/EXCLUSIONS.md) - Settings-based exclusions
-→ [Chat history context guide](docs/CHAT_HISTORY_CONTEXT.md)
-→ [Troubleshooting guide](docs/SETTINGS_GUIDE.md#common-scenarios)
 
 ## 📖 Documentation
 
@@ -183,107 +146,20 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 
 - **[Chat Modes](docs/CHAT_MODES.md)** - Choose the right mode for your needs
 - **[Settings Guide](docs/SETTINGS_GUIDE.md)** - Complete configuration reference
-  - AI Provider setup
-  - Semantic expansion
-  - Task filtering and scoring
-  - Task sorting
-
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
-  - Built-in categories (Open, In Progress, Completed, Cancelled)
-  - Custom categories (Blocked, Review, Important, etc.)
 
 ### Advanced Features
 
 - **[Task Filtering](docs/FILTERING.md)** - Control which tasks appear
-  - Filter interface (inclusions) - Focus on specific tasks
 - **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
-  - Exclude by tags (task-level or note-level)
-  - Exclude by folders (including subfolders)
-  - Exclude by specific notes
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
-  - Main coefficients (Relevance, Due Date, Priority, Status)
-  - Sub-coefficients for fine-tuning
-  - Minimum relevance and quality filters
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual keyword matching
-  - How AI expands keywords
-  - Property concept recognition
-  - Typo correction
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
-  - Sort criteria (relevance, due date, priority, status, created, alphabetical)
 - **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
-  - User-configurable context length
-  - Balance between context quality and cost
 - **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior
-  - Temperature
-  - Max response tokens
-  - Context window
 - **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model
-  - Cloud vs local comparison
 - **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide
-  - Installation and CORS configuration
-  - Parameter configuration for different model sizes
-
-## 🎚️ Customization
-
-### Status Categories
-
-Create custom task states that match your workflow:
-
-**Examples:**
-- **Question** - Waiting on dependencies (symbol: `?`)
-- **Review** - Under code review (symbol: `R`)
-- **Important** - High-priority flag (symbol: `!`)
-
-→ [Status categories guide](docs/STATUS_CATEGORIES.md)
-
-### Scoring Weights
-
-Customize how tasks are ranked:
-
-```
-Keyword-focused: R:30, D:2,  P:1  → Emphasize keyword matching
-Urgency-focused: R:20, D:10, P:5  → Emphasize deadlines
-Balanced:        R:10, D:10, P:10 → Equal weight to all
-```
-
-→ [Scoring system guide](docs/SCORING_SYSTEM.md)
-
-### Task Properties
-
-Configure inline field names:
-
-- Due date fields: `due, deadline`
-- Priority fields: `priority, p`
-
-→ [Datacore integration settings](docs/SETTINGS_GUIDE.md#5-datacore-integration)
-
-## 🌐 Multilingual Support
-
-Search and manage tasks in multiple languages:
-
-- English (default)
-- Any language - configure in Settings → Semantic Expansion
-
-**How it works:**
-- AI generates semantic equivalents in configured languages
-- Default: 5 variations per keyword
-- Works in Smart Search and Task Chat modes
-
-→ [Semantic expansion guide](docs/SEMANTIC_EXPANSION.md)
-
-## 💰 Cost Management
-
-### Free Options
-
-- **Simple Search** - $0 (no AI used)
-- **Ollama** - $0 (local models)
-
-→ [More cost details in chat modes](docs/CHAT_MODES.md#cost-considerations)
-→ [Cost tracking and transparency](docs/COST_TRACKING.md)
-
-## 🔧 Troubleshooting
-
-→ [Complete troubleshooting](docs/SETTINGS_GUIDE.md#troubleshooting)
+- **[Troubleshooting](docs/SETTINGS_GUIDE.md#troubleshooting)**
 
 ## 📜 License
 
