@@ -465,7 +465,7 @@ export class DatacoreService {
         dcTask: any,
         settings: PluginSettings,
         index: number,
-        filePath: string = "",
+        filePath = "",
     ): Task | null {
         if (!this.isValidTask(dcTask)) {
             return null;
@@ -1675,7 +1675,7 @@ export class DatacoreService {
 
             // Execute query to get all tasks (already filtered by Datacore)
             const queryStart = Date.now();
-            let results = await datacoreApi.query(query);
+            const results = await datacoreApi.query(query);
             profiler.log(
                 `Datacore query execution (${results?.length || 0} results, already filtered)`,
                 queryStart,

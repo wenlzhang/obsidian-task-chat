@@ -72,7 +72,7 @@ export async function processInChunks<T>(
 export async function filterInChunks<T>(
     items: T[],
     predicate: (item: T, index: number) => boolean,
-    chunkSize: number = 500,
+    chunkSize = 500,
 ): Promise<T[]> {
     const result: T[] = [];
     const total = items.length;
@@ -107,7 +107,7 @@ export async function filterInChunks<T>(
 export async function mapInChunks<T, R>(
     items: T[],
     mapper: (item: T, index: number) => R,
-    chunkSize: number = 500,
+    chunkSize = 500,
 ): Promise<R[]> {
     const result: R[] = new Array(items.length);
     const total = items.length;
@@ -140,7 +140,7 @@ export async function mapInChunks<T, R>(
 export async function vectorizedInChunks<T>(
     batchProcessor: (startIndex: number, endIndex: number) => T,
     totalItems: number,
-    chunkSize: number = 1000,
+    chunkSize = 1000,
 ): Promise<T[]> {
     const results: T[] = [];
 

@@ -868,13 +868,13 @@ export class AIService {
 
                     // Coefficient activation
                     const relevanceActive = queryType.hasKeywords ? 1.0 : 0.0;
-                    const dueDateActive = !!intent.extractedDueDateFilter
+                    const dueDateActive = intent.extractedDueDateFilter
                         ? 1.0
                         : 0.0;
-                    const priorityActive = !!intent.extractedPriority
+                    const priorityActive = intent.extractedPriority
                         ? 1.0
                         : 0.0;
-                    const statusActive = !!intent.extractedStatus ? 1.0 : 0.0;
+                    const statusActive = intent.extractedStatus ? 1.0 : 0.0;
 
                     // Final score with coefficients
                     const finalScore =
@@ -943,13 +943,13 @@ export class AIService {
                 if (cached) {
                     // Calculate activation based on query (same logic as scoring)
                     const relevanceActive = queryType.hasKeywords ? 1.0 : 0.0;
-                    const dueDateActive = !!intent.extractedDueDateFilter
+                    const dueDateActive = intent.extractedDueDateFilter
                         ? 1.0
                         : 0.0;
-                    const priorityActive = !!intent.extractedPriority
+                    const priorityActive = intent.extractedPriority
                         ? 1.0
                         : 0.0;
-                    const statusActive = !!intent.extractedStatus ? 1.0 : 0.0;
+                    const statusActive = intent.extractedStatus ? 1.0 : 0.0;
 
                     Logger.debug(`Sample score breakdown (top task):`);
                     Logger.debug(
