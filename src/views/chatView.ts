@@ -230,10 +230,14 @@ export class ChatView extends ItemView {
             text: "New",
             cls: "task-chat-new-session-btn",
         });
-        newSessionBtn.addEventListener("click", () => this.createNewSession());
+        newSessionBtn.addEventListener("click", () => {
+            void this.createNewSession();
+        });
 
         const clearBtn = sessionGroup.createEl("button", { text: "Clear" });
-        clearBtn.addEventListener("click", () => this.clearChat());
+        clearBtn.addEventListener("click", () => {
+            void this.clearChat();
+        });
 
         const sessionsBtn = sessionGroup.createEl("button", {
             text: "Sessions",
@@ -305,7 +309,9 @@ export class ChatView extends ItemView {
         const refreshBtn = refreshGroup.createEl("button", {
             text: "Refresh",
         });
-        refreshBtn.addEventListener("click", () => this.refreshTaskCount());
+        refreshBtn.addEventListener("click", () => {
+            void this.refreshTaskCount();
+        });
 
         // Messages container
         this.messagesEl = this.contentEl.createDiv("task-chat-messages");
@@ -2102,10 +2108,12 @@ export class ChatView extends ItemView {
         const modal = new SessionModal(
             this.app,
             this.plugin,
-            async (sessionId: string) => {
-                this.plugin.sessionManager.switchSession(sessionId);
-                await this.renderMessages();
-                await this.plugin.saveSettings();
+            (sessionId: string) => {
+                void (async () => {
+                    this.plugin.sessionManager.switchSession(sessionId);
+                    await this.renderMessages();
+                    await this.plugin.saveSettings();
+                })();
             },
         );
         modal.open();

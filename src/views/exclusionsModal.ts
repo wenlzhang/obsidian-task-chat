@@ -254,101 +254,109 @@ export class ExclusionsModal extends Modal {
     }
 
     private showNoteTagSuggest(listContainer: HTMLElement) {
-        const modal = new TagSuggestModal(this.app, async (tag) => {
-            // Ensure noteTags array exists
-            if (!this.plugin.settings.exclusions.noteTags) {
-                this.plugin.settings.exclusions.noteTags = [];
-            }
-            if (!this.plugin.settings.exclusions.noteTags.includes(tag)) {
-                this.plugin.settings.exclusions.noteTags.push(tag);
-                await this.plugin.saveSettings();
-                this.renderExclusionsList(listContainer);
+        const modal = new TagSuggestModal(this.app, (tag) => {
+            void (async () => {
+                // Ensure noteTags array exists
+                if (!this.plugin.settings.exclusions.noteTags) {
+                    this.plugin.settings.exclusions.noteTags = [];
+                }
+                if (!this.plugin.settings.exclusions.noteTags.includes(tag)) {
+                    this.plugin.settings.exclusions.noteTags.push(tag);
+                    await this.plugin.saveSettings();
+                    this.renderExclusionsList(listContainer);
 
-                // Mark that changes were made
-                this.changesMade = true;
+                    // Mark that changes were made
+                    this.changesMade = true;
 
-                // Update task count silently (no system message yet)
-                // System message will be shown when modal closes
-                await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: false,
-                });
-            }
+                    // Update task count silently (no system message yet)
+                    // System message will be shown when modal closes
+                    await this.plugin.refreshTaskCount(true, {
+                        showSystemMessage: false,
+                    });
+                }
+            })();
         });
 
         modal.open();
     }
 
     private showTaskTagSuggest(listContainer: HTMLElement) {
-        const modal = new TagSuggestModal(this.app, async (tag) => {
-            // Ensure taskTags array exists
-            if (!this.plugin.settings.exclusions.taskTags) {
-                this.plugin.settings.exclusions.taskTags = [];
-            }
-            if (!this.plugin.settings.exclusions.taskTags.includes(tag)) {
-                this.plugin.settings.exclusions.taskTags.push(tag);
-                await this.plugin.saveSettings();
-                this.renderExclusionsList(listContainer);
+        const modal = new TagSuggestModal(this.app, (tag) => {
+            void (async () => {
+                // Ensure taskTags array exists
+                if (!this.plugin.settings.exclusions.taskTags) {
+                    this.plugin.settings.exclusions.taskTags = [];
+                }
+                if (!this.plugin.settings.exclusions.taskTags.includes(tag)) {
+                    this.plugin.settings.exclusions.taskTags.push(tag);
+                    await this.plugin.saveSettings();
+                    this.renderExclusionsList(listContainer);
 
-                // Mark that changes were made
-                this.changesMade = true;
+                    // Mark that changes were made
+                    this.changesMade = true;
 
-                // Update task count silently (no system message yet)
-                // System message will be shown when modal closes
-                await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: false,
-                });
-            }
+                    // Update task count silently (no system message yet)
+                    // System message will be shown when modal closes
+                    await this.plugin.refreshTaskCount(true, {
+                        showSystemMessage: false,
+                    });
+                }
+            })();
         });
 
         modal.open();
     }
 
     private showFolderSuggest(listContainer: HTMLElement) {
-        const modal = new FolderSuggestModal(this.app, async (folder) => {
-            // Ensure folders array exists
-            if (!this.plugin.settings.exclusions.folders) {
-                this.plugin.settings.exclusions.folders = [];
-            }
-            if (!this.plugin.settings.exclusions.folders.includes(folder)) {
-                this.plugin.settings.exclusions.folders.push(folder);
-                await this.plugin.saveSettings();
-                this.renderExclusionsList(listContainer);
+        const modal = new FolderSuggestModal(this.app, (folder) => {
+            void (async () => {
+                // Ensure folders array exists
+                if (!this.plugin.settings.exclusions.folders) {
+                    this.plugin.settings.exclusions.folders = [];
+                }
+                if (!this.plugin.settings.exclusions.folders.includes(folder)) {
+                    this.plugin.settings.exclusions.folders.push(folder);
+                    await this.plugin.saveSettings();
+                    this.renderExclusionsList(listContainer);
 
-                // Mark that changes were made
-                this.changesMade = true;
+                    // Mark that changes were made
+                    this.changesMade = true;
 
-                // Update task count silently (no system message yet)
-                // System message will be shown when modal closes
-                await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: false,
-                });
-            }
+                    // Update task count silently (no system message yet)
+                    // System message will be shown when modal closes
+                    await this.plugin.refreshTaskCount(true, {
+                        showSystemMessage: false,
+                    });
+                }
+            })();
         });
 
         modal.open();
     }
 
     private showNoteSuggest(listContainer: HTMLElement) {
-        const modal = new NoteSuggestModal(this.app, async (file) => {
-            const notePath = file.path;
-            // Ensure notes array exists
-            if (!this.plugin.settings.exclusions.notes) {
-                this.plugin.settings.exclusions.notes = [];
-            }
-            if (!this.plugin.settings.exclusions.notes.includes(notePath)) {
-                this.plugin.settings.exclusions.notes.push(notePath);
-                await this.plugin.saveSettings();
-                this.renderExclusionsList(listContainer);
+        const modal = new NoteSuggestModal(this.app, (file) => {
+            void (async () => {
+                const notePath = file.path;
+                // Ensure notes array exists
+                if (!this.plugin.settings.exclusions.notes) {
+                    this.plugin.settings.exclusions.notes = [];
+                }
+                if (!this.plugin.settings.exclusions.notes.includes(notePath)) {
+                    this.plugin.settings.exclusions.notes.push(notePath);
+                    await this.plugin.saveSettings();
+                    this.renderExclusionsList(listContainer);
 
-                // Mark that changes were made
-                this.changesMade = true;
+                    // Mark that changes were made
+                    this.changesMade = true;
 
-                // Update task count silently (no system message yet)
-                // System message will be shown when modal closes
-                await this.plugin.refreshTaskCount(true, {
-                    showSystemMessage: false,
-                });
-            }
+                    // Update task count silently (no system message yet)
+                    // System message will be shown when modal closes
+                    await this.plugin.refreshTaskCount(true, {
+                        showSystemMessage: false,
+                    });
+                }
+            })();
         });
 
         modal.open();

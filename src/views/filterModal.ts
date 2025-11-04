@@ -295,29 +295,26 @@ export class FilterModal extends Modal {
         switch (type) {
             case "folder":
                 {
-                    const modal = new FolderSuggestModal(
-                        this.app,
-                        async (folder) => {
-                            if (!this.filter.folders) {
-                                this.filter.folders = [];
-                            }
-                            if (!this.filter.folders.includes(folder)) {
-                                this.filter.folders.push(folder);
-                                this.renderInclusionItems(
-                                    listContainer,
-                                    type,
-                                    this.filter.folders,
-                                );
-                            }
-                        },
-                    );
+                    const modal = new FolderSuggestModal(this.app, (folder) => {
+                        if (!this.filter.folders) {
+                            this.filter.folders = [];
+                        }
+                        if (!this.filter.folders.includes(folder)) {
+                            this.filter.folders.push(folder);
+                            this.renderInclusionItems(
+                                listContainer,
+                                type,
+                                this.filter.folders,
+                            );
+                        }
+                    });
                     modal.open();
                 }
                 break;
 
             case "noteTag":
                 {
-                    const modal = new TagSuggestModal(this.app, async (tag) => {
+                    const modal = new TagSuggestModal(this.app, (tag) => {
                         if (!this.filter.noteTags) {
                             this.filter.noteTags = [];
                         }
@@ -336,7 +333,7 @@ export class FilterModal extends Modal {
 
             case "taskTag":
                 {
-                    const modal = new TagSuggestModal(this.app, async (tag) => {
+                    const modal = new TagSuggestModal(this.app, (tag) => {
                         if (!this.filter.taskTags) {
                             this.filter.taskTags = [];
                         }
@@ -355,23 +352,20 @@ export class FilterModal extends Modal {
 
             case "note":
                 {
-                    const modal = new NoteSuggestModal(
-                        this.app,
-                        async (file) => {
-                            const notePath = file.path;
-                            if (!this.filter.notes) {
-                                this.filter.notes = [];
-                            }
-                            if (!this.filter.notes.includes(notePath)) {
-                                this.filter.notes.push(notePath);
-                                this.renderInclusionItems(
-                                    listContainer,
-                                    type,
-                                    this.filter.notes,
-                                );
-                            }
-                        },
-                    );
+                    const modal = new NoteSuggestModal(this.app, (file) => {
+                        const notePath = file.path;
+                        if (!this.filter.notes) {
+                            this.filter.notes = [];
+                        }
+                        if (!this.filter.notes.includes(notePath)) {
+                            this.filter.notes.push(notePath);
+                            this.renderInclusionItems(
+                                listContainer,
+                                type,
+                                this.filter.notes,
+                            );
+                        }
+                    });
                     modal.open();
                 }
                 break;
