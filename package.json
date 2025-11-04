@@ -1,6 +1,6 @@
 {
     "name": "task-chat",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "AI-powered task assistant. Natural language queries, customizable scoring, and intelligent recommendations. Datacore for vault-wide task indexing.",
     "main": "main.js",
     "scripts": {

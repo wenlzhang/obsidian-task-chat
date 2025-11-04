@@ -1,13 +1,13 @@
 {
 	"id": "task-chat",
 	"name": "Task Chat",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"minAppVersion": "1.0.0",
 	"description": "AI-powered task assistant. Natural language queries, customizable scoring, and intelligent recommendations. Datacore for vault-wide task indexing.",
 	"author": "wenlzhang",
 	"authorUrl": "https://github.com/wenlzhang",
 	"fundingUrl": {
-        "Buy Me a Coffee": "https://ko-fi.com/f84556"
-    },
+		"Buy Me a Coffee": "https://ko-fi.com/f84556"
+	},
 	"isDesktopOnly": false
 }
