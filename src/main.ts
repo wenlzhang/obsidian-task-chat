@@ -50,14 +50,14 @@ export default class TaskChatPlugin extends Plugin {
         });
 
         // Add ribbon icon
-        this.addRibbonIcon("messages-square", "Task Chat", () => {
+        this.addRibbonIcon("messages-square", "Open task chat", () => {
             this.activateView();
         });
 
         // Add command to open chat view
         this.addCommand({
             id: "open-task-chat",
-            name: "Open Task Chat",
+            name: "Open chat view",
             callback: () => {
                 this.activateView();
             },
@@ -447,7 +447,7 @@ export default class TaskChatPlugin extends Plugin {
                 "Task indexing API not available after waiting 10 seconds - tasks may not load correctly",
             );
             new Notice(
-                "Task indexing API not detected. Please install Datacore or Dataview plugin.",
+                "Task indexing API not detected. Please install Datacore!",
                 5000,
             );
         }

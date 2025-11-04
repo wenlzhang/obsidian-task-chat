@@ -59,7 +59,7 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("openai", "OpenAI")
                     .addOption("anthropic", "Anthropic")
                     .addOption("openrouter", "OpenRouter")
-                    .addOption("ollama", "Ollama (Local)")
+                    .addOption("ollama", "Ollama")
                     .setValue(this.plugin.settings.aiProvider)
                     .onChange(async (value) => {
                         this.plugin.settings.aiProvider = value as any;
@@ -132,7 +132,7 @@ export class SettingsTab extends PluginSettingTab {
         const tokenSetting = new Setting(containerEl)
             .setName("Max response tokens")
             .setDesc(
-                "Maximum tokens for AI response generation. Affects BOTH Smart Search AND Task Chat.",
+                "Maximum tokens for AI response generation. Affects both smart search and task chat.",
             )
             .addSlider((slider) =>
                 slider
@@ -179,7 +179,7 @@ export class SettingsTab extends PluginSettingTab {
         const parsingProviderSetting = new Setting(containerEl)
             .setName("Query parsing provider")
             .setDesc(
-                "Provider for AI query parsing (Smart Search & Task Chat).",
+                "Provider for AI query parsing (smart search & task chat).",
             );
 
         parsingProviderSetting.addDropdown((dropdown) => {
@@ -187,7 +187,7 @@ export class SettingsTab extends PluginSettingTab {
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
                 .addOption("openrouter", "OpenRouter")
-                .addOption("ollama", "Ollama (Local)")
+                .addOption("ollama", "Ollama")
                 .setValue(this.plugin.settings.parsingProvider)
                 .onChange(async (value) => {
                     const newProvider = value as
@@ -295,14 +295,14 @@ export class SettingsTab extends PluginSettingTab {
         // Analysis Model Configuration
         const analysisProviderSetting = new Setting(containerEl)
             .setName("Task analysis provider")
-            .setDesc("Provider for AI task analysis (Task Chat mode only).");
+            .setDesc("Provider for AI task analysis (task chat mode only).");
 
         analysisProviderSetting.addDropdown((dropdown) => {
             dropdown
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
                 .addOption("openrouter", "OpenRouter")
-                .addOption("ollama", "Ollama (Local)")
+                .addOption("ollama", "Ollama")
                 .setValue(this.plugin.settings.analysisProvider)
                 .onChange(async (value) => {
                     const newProvider = value as
@@ -425,9 +425,9 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Set default mode for new chat sessions.")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("simple", "Simple Search - Free")
-                    .addOption("smart", "Smart Search - AI keyword expansion")
-                    .addOption("chat", "Task Chat - Full AI assistant")
+                    .addOption("simple", "Simple search - Free")
+                    .addOption("smart", "Smart search - AI keyword expansion")
+                    .addOption("chat", "Task chat - Full AI assistant")
                     .setValue(this.plugin.settings.defaultChatMode)
                     .onChange(async (value: "simple" | "smart" | "chat") => {
                         this.plugin.settings.defaultChatMode = value;
@@ -478,7 +478,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Auto-open sidebar")
-            .setDesc("Automatically open the Task Chat sidebar on startup")
+            .setDesc("Automatically open chat view sidebar on startup")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.autoOpenSidebar)
@@ -495,7 +495,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Max direct results")
-            .setDesc("Maximum tasks to show in Simple & Smart Search modes.")
+            .setDesc("Maximum tasks to show in Simple & Smart search modes.")
             .addSlider((slider) =>
                 slider
                     .setLimits(5, 100, 5)
@@ -550,7 +550,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Max tasks for AI analysis")
             .setDesc(
-                "Maximum tasks to send to AI in Task Chat mode. Default: 100. Higher values increase token usage.",
+                "Maximum tasks to send to AI in task chat mode. Default: 100. Higher values increase token usage.",
             )
             .addSlider((slider) =>
                 slider
@@ -604,7 +604,7 @@ export class SettingsTab extends PluginSettingTab {
                 .setDesc("Specify how the AI should choose response language")
                 .addText((text) =>
                     text
-                        .setPlaceholder("e.g., Always respond in English")
+                        .setPlaceholder("e.g., always respond in English")
                         .setValue(
                             this.plugin.settings.customLanguageInstruction,
                         )
@@ -619,7 +619,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Show AI understanding")
             .setDesc(
-                "Display query interpretation in Task Chat mode (detected language,property recognition).",
+                "Display query interpretation in task chat mode (detected language, property recognition).",
             )
             .addToggle((toggle) =>
                 toggle
@@ -1641,13 +1641,13 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        // Priority Sub-Coefficients
+        // Priority sub-coefficients
         new Setting(containerEl)
             .setName("Priority sub-coefficients")
             .setClass("setting-subsection-heading");
 
         new Setting(containerEl)
-            .setName("Priority 1 (Highest)")
+            .setName("Priority 1 (highest)")
             .setDesc("Score for priority 1 tasks (0.0-1.0). Default: 1.0.")
             .addSlider((slider) =>
                 slider
@@ -1661,7 +1661,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Priority 2 (High)")
+            .setName("Priority 2 (high)")
             .setDesc("Score for priority 2 tasks (0.0-1.0). Default: 0.75.")
             .addSlider((slider) =>
                 slider
@@ -1675,7 +1675,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Priority 3 (Medium)")
+            .setName("Priority 3 (medium)")
             .setDesc("Score for priority 3 tasks (0.0-1.0). Default: 0.5.")
             .addSlider((slider) =>
                 slider
@@ -1689,7 +1689,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Priority 4 (Low)")
+            .setName("Priority 4 (low)")
             .setDesc("Score for priority 4 tasks (0.0-1.0). Default: 0.2.")
             .addSlider((slider) =>
                 slider
@@ -2031,7 +2031,7 @@ export class SettingsTab extends PluginSettingTab {
         aliasesInput.value = aliases;
         aliasesInput.placeholder = "e.g., wip,doing";
         aliasesInput.title =
-            "Comma-separated aliases for querying (NO SPACES). Example: completed,done,finished";
+            "Comma-separated aliases for querying (no spaces). Example: completed,done,finished";
         aliasesInput.classList.add("task-chat-status-input");
         aliasesInput.addEventListener("change", async () => {
             const value = aliasesInput.value.trim();
@@ -2110,10 +2110,10 @@ export class SettingsTab extends PluginSettingTab {
             // Provide specific messages for different protected categories
             if (categoryKey === "open") {
                 disabledBtn.title =
-                    "Cannot delete: Default open task category (required)";
+                    "Cannot delete: default open task category (required)";
             } else if (categoryKey === "other") {
                 disabledBtn.title =
-                    "Cannot delete: Default catch-all category (required)";
+                    "Cannot delete: default catch-all category (required)";
             } else if (
                 (
                     PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED as readonly string[]
@@ -2186,7 +2186,7 @@ export class SettingsTab extends PluginSettingTab {
             .setName("Display order")
             .setDesc(orderDesc)
             .setTooltip(
-                "This is a relative number - only the ORDER matters, not the actual values.",
+                "This is a relative number - only the order matters, not the actual values.",
             );
 
         // Add slider for easier adjustment
@@ -2223,12 +2223,12 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(advancedFields)
             .setName("Description")
             .setDesc(
-                `Helps AI understand category meaning in Smart Search and Task Chat. Leave empty for smart defaults.`,
+                `Helps AI understand category meaning in smart search and task chat modes. Leave empty for smart defaults.`,
             )
             .addTextArea((textarea) => {
                 textarea
                     .setPlaceholder(
-                        "e.g., High-priority urgent tasks requiring immediate attention",
+                        "e.g., high-priority urgent tasks requiring immediate attention",
                     )
                     .setValue(description || "")
                     .onChange(async (value) => {
@@ -2245,7 +2245,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(advancedFields)
             .setName("Semantic terms")
             .setDesc(
-                `Comma-separated terms for recognition in Smart Search and Task Chat (e.g., "urgent, critical").`,
+                `Comma-separated terms for recognition in smart search and task chat modes (e.g., "urgent, critical").`,
             )
             .addTextArea((textarea) => {
                 textarea
@@ -2758,7 +2758,7 @@ export class SettingsTab extends PluginSettingTab {
                 });
 
                 dropdown.createEl("option", {
-                    text: "+ Add criterion",
+                    text: "Add criterion",
                     value: "",
                 });
 

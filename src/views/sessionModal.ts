@@ -27,14 +27,14 @@ export class SessionModal extends Modal {
         contentEl.addClass("task-chat-session-modal");
 
         // Title
-        contentEl.createEl("h2", { text: "Chat Sessions" });
+        contentEl.createEl("h2", { text: "Chat sessions" });
 
         const sessions = this.plugin.sessionManager.getAllSessions();
         const currentSession = this.plugin.sessionManager.getCurrentSession();
 
         if (sessions.length === 0) {
             contentEl.createEl("p", {
-                text: 'No sessions yet. Click "+ New" to create one.',
+                text: 'No sessions yet. Click "New" to create one.',
                 cls: "task-chat-empty-sessions",
             });
             return;

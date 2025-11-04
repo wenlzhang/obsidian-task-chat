@@ -53,7 +53,7 @@ export class ChatView extends ItemView {
     }
 
     getDisplayText(): string {
-        return "Task Chat";
+        return "Task chat";
     }
 
     getIcon(): string {
@@ -358,7 +358,7 @@ export class ChatView extends ItemView {
             this.app.setting.open();
             // @ts-ignore
             this.app.setting.openTabById("task-chat");
-            new Notice("Opening Settings → Model configuration");
+            new Notice("Navigate to model configuration");
         });
 
         // Send button (right side)
@@ -548,15 +548,15 @@ export class ChatView extends ItemView {
         // Create all three mode options without icons (icon only on button)
         this.chatModeSelect.createEl("option", {
             value: "simple",
-            text: "Simple Search",
+            text: "Simple search",
         });
         this.chatModeSelect.createEl("option", {
             value: "smart",
-            text: "Smart Search",
+            text: "Smart search",
         });
         this.chatModeSelect.createEl("option", {
             value: "chat",
-            text: "Task Chat",
+            text: "Task chat",
         });
 
         // Set to current setting (or override if one exists)

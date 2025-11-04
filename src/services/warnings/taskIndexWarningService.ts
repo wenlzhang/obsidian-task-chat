@@ -302,7 +302,7 @@ export class TaskIndexWarningService {
             const apiStatusEl = warningEl.createDiv(
                 "task-chat-task-index-warning-api-status",
             );
-            apiStatusEl.createEl("strong", { text: "API Status:" });
+            apiStatusEl.createEl("strong", { text: "API status:" });
 
             const statusList = apiStatusEl.createEl("ul");
 

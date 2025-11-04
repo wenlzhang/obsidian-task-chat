@@ -178,7 +178,7 @@ export class ErrorMessageService {
         const linkUrl = error.docsLink || baseUrl;
 
         const linkEl = docsEl.createEl("a", {
-            text: "Troubleshooting Guide",
+            text: "Troubleshooting guide",
             href: linkUrl,
         });
 
@@ -188,7 +188,7 @@ export class ErrorMessageService {
             if (providerLink) {
                 docsEl.appendText(" • ");
                 docsEl.createEl("a", {
-                    text: "Provider Docs",
+                    text: "Provider docs",
                     href: providerLink,
                 });
             }
