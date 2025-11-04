@@ -371,7 +371,7 @@ export class ChatView extends ItemView {
             if (this.isProcessing) {
                 this.stopGeneration();
             } else {
-                this.sendMessage();
+                void this.sendMessage();
             }
         });
 
@@ -380,8 +380,8 @@ export class ChatView extends ItemView {
         if (messages.length === 0) {
             // Note: addSystemMessage is async but we don't await here as it's called from constructor
             // Message will render asynchronously
-            this.addSystemMessage(
-                "Welcome to Task Chat! I can help you manage and analyze your tasks. Ask me anything about your tasks, and I'll provide recommendations.",
+            void this.addSystemMessage(
+                "Welcome to Task Chat! I can help you manage and analyze your tasks. Ask me anything about your tasks!",
             );
         }
     }
@@ -1030,7 +1030,7 @@ export class ChatView extends ItemView {
                 });
 
                 navBtn.addEventListener("click", () => {
-                    NavigationService.navigateToTask(this.app, task);
+                    void NavigationService.navigateToTask(this.app, task);
                 });
             }
         }
@@ -1192,7 +1192,7 @@ export class ChatView extends ItemView {
                 });
             }
 
-            navigator.clipboard.writeText(textToCopy);
+            void navigator.clipboard.writeText(textToCopy);
             new Notice("Message copied to clipboard");
         });
     }
@@ -1221,7 +1221,7 @@ export class ChatView extends ItemView {
         // Handle internal links ([[Note]])
         if (linkClass.contains("internal-link")) {
             // Use Obsidian's built-in method to open links
-            this.app.workspace.openLinkText(href, sourcePath, false);
+            void this.app.workspace.openLinkText(href, sourcePath, false);
             return;
         }
 
@@ -1236,7 +1236,7 @@ export class ChatView extends ItemView {
         }
 
         // Fallback: try to open as internal link
-        this.app.workspace.openLinkText(href, sourcePath, false);
+        void this.app.workspace.openLinkText(href, sourcePath, false);
     }
 
     /**
@@ -1247,7 +1247,7 @@ export class ChatView extends ItemView {
         // Focus input first to ensure proper context
         this.inputEl.focus();
         // Trigger send
-        this.sendMessage();
+        void this.sendMessage();
     }
 
     /**
@@ -1388,7 +1388,7 @@ export class ChatView extends ItemView {
                           this.streamingMessageEl.removeClass(
                               "task-chat-streaming",
                           );
-                          MarkdownRenderer.renderMarkdown(
+                          void MarkdownRenderer.renderMarkdown(
                               streamedContent,
                               this.streamingMessageEl,
                               "",
@@ -1849,7 +1849,7 @@ export class ChatView extends ItemView {
             this.currentTasks,
             this.currentFilter,
             (filter) => {
-                this.setFilter(filter);
+                void this.setFilter(filter);
             },
         );
     }
