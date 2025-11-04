@@ -49,7 +49,7 @@ export default class TaskChatPlugin extends Plugin {
 
         // Add ribbon icon
         this.addRibbonIcon("messages-square", "Open task chat", () => {
-            this.activateView();
+            void this.activateView();
         });
 
         // Add command to open chat view
@@ -57,7 +57,7 @@ export default class TaskChatPlugin extends Plugin {
             id: "open-task-chat",
             name: "Open chat view",
             callback: () => {
-                this.activateView();
+                void this.activateView();
             },
         });
 
@@ -98,7 +98,7 @@ export default class TaskChatPlugin extends Plugin {
                 // Only available if there's an active markdown file
                 if (activeFile && activeFile.extension === "md") {
                     if (!checking) {
-                        this.addNoteToFilter(activeFile.path);
+                        void this.addNoteToFilter(activeFile.path);
                     }
                     return true;
                 }
@@ -115,7 +115,7 @@ export default class TaskChatPlugin extends Plugin {
                         item.setTitle("Add to Task Chat filter")
                             .setIcon("filter")
                             .onClick(() => {
-                                this.addFolderToFilter(file.path);
+                                void this.addFolderToFilter(file.path);
                             });
                     });
                 } else if (file instanceof TFile && file.extension === "md") {
@@ -124,7 +124,7 @@ export default class TaskChatPlugin extends Plugin {
                         item.setTitle("Add to Task Chat filter")
                             .setIcon("filter")
                             .onClick(() => {
-                                this.addNoteToFilter(file.path);
+                                void this.addNoteToFilter(file.path);
                             });
                     });
                 }
@@ -266,7 +266,7 @@ export default class TaskChatPlugin extends Plugin {
         StopWords.setUserStopWords(this.settings.userStopWords || []);
 
         // Auto-load models if not already cached
-        this.loadModelsInBackground();
+        void this.loadModelsInBackground();
     }
 
     /**
@@ -438,7 +438,7 @@ export default class TaskChatPlugin extends Plugin {
             const isUsingDefault = chatView.getChatModeOverride() === null;
             if (isUsingDefault) {
                 this.settings.currentChatMode = this.settings.defaultChatMode;
-                this.saveSettings();
+                void this.saveSettings();
             }
 
             chatView.updateChatModeOptions();

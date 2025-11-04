@@ -209,7 +209,7 @@ export class SessionModal extends Modal {
 
         if (confirm(confirmMessage)) {
             this.plugin.sessionManager.deleteSession(session.id);
-            this.plugin.saveSettings();
+            void this.plugin.saveSettings();
 
             // Refresh modal content
             this.onOpen();
@@ -247,7 +247,7 @@ export class SessionModal extends Modal {
             selectedSessions.forEach((session) => {
                 this.plugin.sessionManager.deleteSession(session.id);
             });
-            this.plugin.saveSettings();
+            void this.plugin.saveSettings();
 
             // Exit selection mode
             this.selectionMode = false;
@@ -285,7 +285,7 @@ export class SessionModal extends Modal {
             sessions.forEach((session) => {
                 this.plugin.sessionManager.deleteSession(session.id);
             });
-            this.plugin.saveSettings();
+            void this.plugin.saveSettings();
 
             // Create a new session automatically
             const newSession =

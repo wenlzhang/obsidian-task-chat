@@ -1795,7 +1795,7 @@ export class ChatView extends ItemView {
             this.plugin.settings.maxSessions,
         );
         await this.renderMessages();
-        this.plugin.saveSettings();
+        await this.plugin.saveSettings();
     }
 
     /**
@@ -1807,7 +1807,7 @@ export class ChatView extends ItemView {
         await this.addSystemMessage(
             "Chat cleared. How can I help you with your tasks?",
         );
-        this.plugin.saveSettings();
+        await this.plugin.saveSettings();
     }
 
     /**
@@ -2100,7 +2100,7 @@ export class ChatView extends ItemView {
             async (sessionId: string) => {
                 this.plugin.sessionManager.switchSession(sessionId);
                 await this.renderMessages();
-                this.plugin.saveSettings();
+                await this.plugin.saveSettings();
             },
         );
         modal.open();
