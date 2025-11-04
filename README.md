@@ -1,6 +1,8 @@
 # Task Chat
 
-An AI-powered task management assistant that lets you chat with your tasks naturally. Search with simple filters, expand queries across languages, or get full AI analysis.
+[![GitHub release (Latest by date)](https://img.shields.io/github/v/release/wenlzhang/obsidian-task-chat)](https://github.com/wenlzhang/obsidian-task-chat/releases) ![GitHub all releases](https://img.shields.io/github/downloads/wenlzhang/obsidian-task-chat/total?color=success)
+
+An AI-powered task management assistant for [Obsidian](https://obsidian.md/) that lets you chat with your tasks naturally. Search with simple filters, expand queries across languages, or get full AI analysis.
 
 ## ✨ Key Features
 
