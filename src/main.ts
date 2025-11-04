@@ -54,7 +54,7 @@ export default class TaskChatPlugin extends Plugin {
 
         // Add command to open chat view
         this.addCommand({
-            id: "open-task-chat",
+            id: "open-chat-view",
             name: "Open chat view",
             callback: () => {
                 void this.activateView();
@@ -172,7 +172,6 @@ export default class TaskChatPlugin extends Plugin {
     onunload(): void {
         Logger.info("Unloading Task Chat plugin");
         this.stopAutoRefreshTaskCount();
-        this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);
     }
 
     /**
@@ -272,7 +271,7 @@ export default class TaskChatPlugin extends Plugin {
     /**
      * Load models and pricing in background without blocking startup
      */
-    private async loadModelsInBackground(): Promise<void> {
+    private loadModelsInBackground(): void {
         // Wait a bit for the plugin to fully initialize
         setTimeout(async () => {
             const provider = this.settings.aiProvider;
