@@ -175,7 +175,7 @@ export class PerformanceTimer {
     lap(sublabel?: string): number {
         const elapsed = performance.now() - this.startTime;
         const fullLabel = sublabel ? `${this.label} - ${sublabel}` : this.label;
-        console.log(`[Performance] ${fullLabel}: ${elapsed.toFixed(1)}ms`);
+        console.debug(`[Performance] ${fullLabel}: ${elapsed.toFixed(1)}ms`);
         return elapsed;
     }
 

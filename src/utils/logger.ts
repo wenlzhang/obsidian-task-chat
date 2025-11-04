@@ -22,7 +22,7 @@ export class Logger {
      */
     static debug(message: string, ...data: unknown[]): void {
         if (this.settings?.enableDebugLogging) {
-            console.log(`[Task Chat] ${message}`, ...data);
+            console.debug(`[Task Chat] ${message}`, ...data);
         }
     }
 
@@ -58,7 +58,7 @@ export class Logger {
      */
     static info(message: string, ...data: unknown[]): void {
         if (this.settings?.enableDebugLogging) {
-            console.info(`[Task Chat] ${message}`, ...data);
+            console.debug(`[Task Chat] ${message}`, ...data);
         }
     }
 }

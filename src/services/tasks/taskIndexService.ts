@@ -405,11 +405,11 @@ export class TaskIndexService {
             notes?: string[];
         },
     ): Promise<number> {
-        console.log(
+        console.debug(
             "[TaskIndexService.getTaskCount] propertyFilters:",
             propertyFilters,
         );
-        console.log(
+        console.debug(
             "[TaskIndexService.getTaskCount] inclusionFilters:",
             inclusionFilters,
         );
