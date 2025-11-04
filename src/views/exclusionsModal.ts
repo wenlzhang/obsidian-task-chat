@@ -167,9 +167,11 @@ export class ExclusionsModal extends Modal {
                 text: "×",
             });
 
-            removeBtn.addEventListener("click", async () => {
-                await this.removeExclusion(type, value);
-                this.renderExclusionsList(container);
+            removeBtn.addEventListener("click", () => {
+                void (async () => {
+                    await this.removeExclusion(type, value);
+                    this.renderExclusionsList(container);
+                })();
             });
         });
     }

@@ -1970,31 +1970,37 @@ export class SettingsTab extends PluginSettingTab {
         } else {
             // Custom categories: allow editing key
             keyInput.classList.add("task-chat-status-input");
-            keyInput.addEventListener("change", async () => {
-                const newKey = keyInput.value.trim();
-                if (
-                    newKey &&
-                    newKey !== categoryKey &&
-                    !this.plugin.settings.taskStatusMapping[newKey]
-                ) {
-                    // Rename the category key
-                    this.plugin.settings.taskStatusMapping[newKey] = {
-                        symbols: symbols,
-                        score: score,
-                        displayName: displayName,
-                        aliases: aliases,
-                    };
-                    delete this.plugin.settings.taskStatusMapping[categoryKey];
-                    await this.plugin.saveSettings();
-                    this.display(); // Refresh UI
-                } else {
-                    keyInput.value = categoryKey; // Reset if invalid
-                    if (!newKey) {
-                        new Notice("Category key cannot be empty");
-                    } else if (this.plugin.settings.taskStatusMapping[newKey]) {
-                        new Notice("Category key already exists");
+            keyInput.addEventListener("change", () => {
+                void (async () => {
+                    const newKey = keyInput.value.trim();
+                    if (
+                        newKey &&
+                        newKey !== categoryKey &&
+                        !this.plugin.settings.taskStatusMapping[newKey]
+                    ) {
+                        // Rename the category key
+                        this.plugin.settings.taskStatusMapping[newKey] = {
+                            symbols: symbols,
+                            score: score,
+                            displayName: displayName,
+                            aliases: aliases,
+                        };
+                        delete this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ];
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh UI
+                    } else {
+                        keyInput.value = categoryKey; // Reset if invalid
+                        if (!newKey) {
+                            new Notice("Category key cannot be empty");
+                        } else if (
+                            this.plugin.settings.taskStatusMapping[newKey]
+                        ) {
+                            new Notice("Category key already exists");
+                        }
                     }
-                }
+                })();
             });
         }
 
@@ -2018,11 +2024,13 @@ export class SettingsTab extends PluginSettingTab {
             }
         } else {
             nameInput.classList.add("task-chat-status-input");
-            nameInput.addEventListener("change", async () => {
-                this.plugin.settings.taskStatusMapping[
-                    categoryKey
-                ].displayName = nameInput.value || categoryKey;
-                await this.plugin.saveSettings();
+            nameInput.addEventListener("change", () => {
+                void (async () => {
+                    this.plugin.settings.taskStatusMapping[
+                        categoryKey
+                    ].displayName = nameInput.value || categoryKey;
+                    await this.plugin.saveSettings();
+                })();
             });
         }
 
@@ -2033,11 +2041,13 @@ export class SettingsTab extends PluginSettingTab {
         aliasesInput.title =
             "Comma-separated aliases for querying (no spaces). Example: completed,done,finished";
         aliasesInput.classList.add("task-chat-status-input");
-        aliasesInput.addEventListener("change", async () => {
-            const value = aliasesInput.value.trim();
-            this.plugin.settings.taskStatusMapping[categoryKey].aliases =
-                value || categoryKey.toLowerCase();
-            await this.plugin.saveSettings();
+        aliasesInput.addEventListener("change", () => {
+            void (async () => {
+                const value = aliasesInput.value.trim();
+                this.plugin.settings.taskStatusMapping[categoryKey].aliases =
+                    value || categoryKey.toLowerCase();
+                await this.plugin.saveSettings();
+            })();
         });
 
         // Symbols (locked only for fully locked categories: open, other)
@@ -2062,13 +2072,16 @@ export class SettingsTab extends PluginSettingTab {
         } else {
             symbolsInput.classList.add("task-chat-status-input");
             symbolsInput.placeholder = "e.g., x,X or !,I,b";
-            symbolsInput.addEventListener("change", async () => {
-                this.plugin.settings.taskStatusMapping[categoryKey].symbols =
-                    symbolsInput.value
+            symbolsInput.addEventListener("change", () => {
+                void (async () => {
+                    this.plugin.settings.taskStatusMapping[
+                        categoryKey
+                    ].symbols = symbolsInput.value
                         .split(",")
                         .map((v) => v.trim())
                         .filter((v) => v);
-                await this.plugin.saveSettings();
+                    await this.plugin.saveSettings();
+                })();
             });
         }
 
@@ -2093,11 +2106,14 @@ export class SettingsTab extends PluginSettingTab {
         });
         scoreLabel.textContent = score.toFixed(2);
 
-        scoreInput.addEventListener("input", async () => {
-            const value = parseFloat(scoreInput.value);
-            scoreLabel.textContent = value.toFixed(2);
-            this.plugin.settings.taskStatusMapping[categoryKey].score = value;
-            await this.plugin.saveSettings();
+        scoreInput.addEventListener("input", () => {
+            void (async () => {
+                const value = parseFloat(scoreInput.value);
+                scoreLabel.textContent = value.toFixed(2);
+                this.plugin.settings.taskStatusMapping[categoryKey].score =
+                    value;
+                await this.plugin.saveSettings();
+            })();
         });
 
         // Remove button (disabled for all protected categories)
@@ -2132,17 +2148,21 @@ export class SettingsTab extends PluginSettingTab {
             });
             removeBtn.title = `Remove ${displayName}`;
             removeBtn.classList.add("task-chat-status-btn-remove");
-            removeBtn.addEventListener("click", async () => {
-                if (
-                    confirm(
-                        `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,
-                    )
-                ) {
-                    delete this.plugin.settings.taskStatusMapping[categoryKey];
-                    await this.plugin.saveSettings();
-                    this.display(); // Refresh UI
-                    new Notice(`Removed category: ${displayName}`);
-                }
+            removeBtn.addEventListener("click", () => {
+                void (async () => {
+                    if (
+                        confirm(
+                            `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,
+                        )
+                    ) {
+                        delete this.plugin.settings.taskStatusMapping[
+                            categoryKey
+                        ];
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh UI
+                        new Notice(`Removed category: ${displayName}`);
+                    }
+                })();
             });
         }
 
@@ -2734,14 +2754,16 @@ export class SettingsTab extends PluginSettingTab {
                         text: "✕",
                         cls: "task-chat-sort-tag-remove",
                     });
-                    removeBtn.addEventListener("click", async (e) => {
-                        e.preventDefault();
-                        const newOrder = sortOrder.filter(
-                            (c) => c !== criterion,
-                        );
-                        this.plugin.settings.taskSortOrder = newOrder;
-                        await this.plugin.saveSettings();
-                        renderTags();
+                    removeBtn.addEventListener("click", (e) => {
+                        void (async () => {
+                            e.preventDefault();
+                            const newOrder = sortOrder.filter(
+                                (c) => c !== criterion,
+                            );
+                            this.plugin.settings.taskSortOrder = newOrder;
+                            await this.plugin.saveSettings();
+                            renderTags();
+                        })();
                     });
                 }
             });
@@ -2769,23 +2791,25 @@ export class SettingsTab extends PluginSettingTab {
                     });
                 });
 
-                dropdown.addEventListener("change", async (e) => {
-                    const selected = (e.target as HTMLSelectElement).value;
-                    if (
-                        selected &&
-                        selected !== "" &&
-                        !sortOrder.includes(
-                            selected as import("../settings").SortCriterion,
-                        )
-                    ) {
-                        const newOrder = [
-                            ...sortOrder,
-                            selected as import("../settings").SortCriterion,
-                        ];
-                        this.plugin.settings.taskSortOrder = newOrder;
-                        await this.plugin.saveSettings();
-                        renderTags();
-                    }
+                dropdown.addEventListener("change", (e) => {
+                    void (async () => {
+                        const selected = (e.target as HTMLSelectElement).value;
+                        if (
+                            selected &&
+                            selected !== "" &&
+                            !sortOrder.includes(
+                                selected as import("../settings").SortCriterion,
+                            )
+                        ) {
+                            const newOrder = [
+                                ...sortOrder,
+                                selected as import("../settings").SortCriterion,
+                            ];
+                            this.plugin.settings.taskSortOrder = newOrder;
+                            await this.plugin.saveSettings();
+                            renderTags();
+                        }
+                    })();
                 });
             }
         };

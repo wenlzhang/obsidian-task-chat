@@ -273,120 +273,125 @@ export default class TaskChatPlugin extends Plugin {
      */
     private loadModelsInBackground(): void {
         // Wait a bit for the plugin to fully initialize
-        setTimeout(async () => {
-            const provider = this.settings.aiProvider;
-            const providerConfig = this.settings.providerConfigs[provider];
-            const cached = providerConfig.availableModels;
+        setTimeout(() => {
+            void (async () => {
+                const provider = this.settings.aiProvider;
+                const providerConfig = this.settings.providerConfigs[provider];
+                const cached = providerConfig.availableModels;
 
-            // Auto-refresh pricing if stale (older than 24 hours)
-            if (
-                PricingService.shouldRefreshPricing(
-                    this.settings.pricingCache.lastUpdated,
-                )
-            ) {
-                Logger.debug(
-                    "Pricing cache is stale, refreshing in background...",
-                );
-                try {
-                    const pricing =
-                        await PricingService.fetchPricingFromOpenRouter();
-                    if (Object.keys(pricing).length > 0) {
-                        this.settings.pricingCache.data = pricing;
-                        this.settings.pricingCache.lastUpdated = Date.now();
-                        await this.saveSettings();
-                        Logger.debug(
-                            `Updated pricing for ${Object.keys(pricing).length} models`,
+                // Auto-refresh pricing if stale (older than 24 hours)
+                if (
+                    PricingService.shouldRefreshPricing(
+                        this.settings.pricingCache.lastUpdated,
+                    )
+                ) {
+                    Logger.debug(
+                        "Pricing cache is stale, refreshing in background...",
+                    );
+                    try {
+                        const pricing =
+                            await PricingService.fetchPricingFromOpenRouter();
+                        if (Object.keys(pricing).length > 0) {
+                            this.settings.pricingCache.data = pricing;
+                            this.settings.pricingCache.lastUpdated = Date.now();
+                            await this.saveSettings();
+                            Logger.debug(
+                                `Updated pricing for ${Object.keys(pricing).length} models`,
+                            );
+                        }
+                    } catch (error) {
+                        Logger.warn(
+                            "Failed to refresh pricing, using cached/embedded rates",
+                            error,
                         );
                     }
-                } catch (error) {
-                    Logger.warn(
-                        "Failed to refresh pricing, using cached/embedded rates",
-                        error,
+                }
+
+                // Only load models if cache is empty
+                if (!cached || cached.length === 0) {
+                    Logger.debug(`Loading ${provider} models in background...`);
+                    try {
+                        let models: string[] = [];
+
+                        switch (provider) {
+                            case "openai":
+                                if (providerConfig.apiKey) {
+                                    models =
+                                        await ModelProviderService.fetchOpenAIModels(
+                                            providerConfig.apiKey,
+                                        );
+                                } else {
+                                    models =
+                                        ModelProviderService.getDefaultOpenAIModels();
+                                }
+                                break;
+                            case "anthropic":
+                                models =
+                                    ModelProviderService.getDefaultAnthropicModels();
+                                break;
+                            case "openrouter":
+                                if (providerConfig.apiKey) {
+                                    models =
+                                        await ModelProviderService.fetchOpenRouterModels(
+                                            providerConfig.apiKey,
+                                        );
+                                } else {
+                                    models =
+                                        ModelProviderService.getDefaultOpenRouterModels();
+                                }
+                                break;
+                            case "ollama":
+                                models =
+                                    await ModelProviderService.fetchOllamaModels(
+                                        providerConfig.apiEndpoint,
+                                    );
+                                break;
+                        }
+
+                        if (models.length > 0) {
+                            providerConfig.availableModels = models;
+                            await this.saveSettings();
+                            Logger.debug(
+                                `Loaded ${models.length} ${provider} models`,
+                            );
+                        }
+                    } catch (error) {
+                        Logger.error(
+                            "Error loading models in background:",
+                            error,
+                        );
+                    }
+                }
+
+                // Refresh pricing if needed (older than 24 hours)
+                if (
+                    PricingService.shouldRefreshPricing(
+                        this.settings.pricingCache.lastUpdated,
+                    )
+                ) {
+                    Logger.debug(
+                        "Pricing cache is stale, refreshing from OpenRouter API...",
+                    );
+                    try {
+                        const pricing =
+                            await PricingService.fetchPricingFromOpenRouter();
+                        if (Object.keys(pricing).length > 0) {
+                            this.settings.pricingCache.data = pricing;
+                            this.settings.pricingCache.lastUpdated = Date.now();
+                            await this.saveSettings();
+                            Logger.debug(
+                                `Updated pricing for ${Object.keys(pricing).length} models`,
+                            );
+                        }
+                    } catch (error) {
+                        Logger.error("Error refreshing pricing:", error);
+                    }
+                } else {
+                    Logger.debug(
+                        `Pricing cache is fresh (updated ${PricingService.getTimeSinceUpdate(this.settings.pricingCache.lastUpdated)})`,
                     );
                 }
-            }
-
-            // Only load models if cache is empty
-            if (!cached || cached.length === 0) {
-                Logger.debug(`Loading ${provider} models in background...`);
-                try {
-                    let models: string[] = [];
-
-                    switch (provider) {
-                        case "openai":
-                            if (providerConfig.apiKey) {
-                                models =
-                                    await ModelProviderService.fetchOpenAIModels(
-                                        providerConfig.apiKey,
-                                    );
-                            } else {
-                                models =
-                                    ModelProviderService.getDefaultOpenAIModels();
-                            }
-                            break;
-                        case "anthropic":
-                            models =
-                                ModelProviderService.getDefaultAnthropicModels();
-                            break;
-                        case "openrouter":
-                            if (providerConfig.apiKey) {
-                                models =
-                                    await ModelProviderService.fetchOpenRouterModels(
-                                        providerConfig.apiKey,
-                                    );
-                            } else {
-                                models =
-                                    ModelProviderService.getDefaultOpenRouterModels();
-                            }
-                            break;
-                        case "ollama":
-                            models =
-                                await ModelProviderService.fetchOllamaModels(
-                                    providerConfig.apiEndpoint,
-                                );
-                            break;
-                    }
-
-                    if (models.length > 0) {
-                        providerConfig.availableModels = models;
-                        await this.saveSettings();
-                        Logger.debug(
-                            `Loaded ${models.length} ${provider} models`,
-                        );
-                    }
-                } catch (error) {
-                    Logger.error("Error loading models in background:", error);
-                }
-            }
-
-            // Refresh pricing if needed (older than 24 hours)
-            if (
-                PricingService.shouldRefreshPricing(
-                    this.settings.pricingCache.lastUpdated,
-                )
-            ) {
-                Logger.debug(
-                    "Pricing cache is stale, refreshing from OpenRouter API...",
-                );
-                try {
-                    const pricing =
-                        await PricingService.fetchPricingFromOpenRouter();
-                    if (Object.keys(pricing).length > 0) {
-                        this.settings.pricingCache.data = pricing;
-                        this.settings.pricingCache.lastUpdated = Date.now();
-                        await this.saveSettings();
-                        Logger.debug(
-                            `Updated pricing for ${Object.keys(pricing).length} models`,
-                        );
-                    }
-                } catch (error) {
-                    Logger.error("Error refreshing pricing:", error);
-                }
-            } else {
-                Logger.debug(
-                    `Pricing cache is fresh (updated ${PricingService.getTimeSinceUpdate(this.settings.pricingCache.lastUpdated)})`,
-                );
-            }
+            })();
         }, 2000); // Wait 2 seconds after startup
     }
 
@@ -765,34 +770,36 @@ export default class TaskChatPlugin extends Plugin {
             `Starting auto-refresh task count (interval: ${this.settings.autoRefreshTaskCountInterval}s)`,
         );
 
-        this.autoRefreshInterval = window.setInterval(async () => {
-            try {
-                // OPTIMIZATION: Don't load full task list!
-                // Just update count (lightweight, 20-30x faster)
-                const previousCount = this.taskCount;
+        this.autoRefreshInterval = window.setInterval(() => {
+            void (async () => {
+                try {
+                    // OPTIMIZATION: Don't load full task list!
+                    // Just update count (lightweight, 20-30x faster)
+                    const previousCount = this.taskCount;
 
-                // No cache invalidation needed - DataView/DataCore maintain their own indexes
-                // Preserving cache improves performance for rapid repeated queries
+                    // No cache invalidation needed - DataView/DataCore maintain their own indexes
+                    // Preserving cache improves performance for rapid repeated queries
 
-                // Update task count in UI (silent, no system message)
-                const chatView = this.getChatView();
-                const filter = chatView?.getCurrentFilter() || {};
-                await this.updateTaskCount(filter);
+                    // Update task count in UI (silent, no system message)
+                    const chatView = this.getChatView();
+                    const filter = chatView?.getCurrentFilter() || {};
+                    await this.updateTaskCount(filter);
 
-                // Log if count changed
-                const newCount = this.taskCount;
-                if (newCount !== previousCount) {
-                    Logger.info(
-                        `Auto-refresh: Task count changed from ${previousCount} to ${newCount}`,
-                    );
-                } else {
-                    Logger.debug(
-                        `Auto-refresh completed (${newCount} tasks, no change)`,
-                    );
+                    // Log if count changed
+                    const newCount = this.taskCount;
+                    if (newCount !== previousCount) {
+                        Logger.info(
+                            `Auto-refresh: Task count changed from ${previousCount} to ${newCount}`,
+                        );
+                    } else {
+                        Logger.debug(
+                            `Auto-refresh completed (${newCount} tasks, no change)`,
+                        );
+                    }
+                } catch (error) {
+                    Logger.error("Auto-refresh failed:", error);
                 }
-            } catch (error) {
-                Logger.error("Auto-refresh failed:", error);
-            }
+            })();
         }, intervalMs);
     }
 

@@ -122,74 +122,77 @@ export class ChatView extends ItemView {
             `Starting Datacore initialization polling (max ${(DATACORE_POLLING.MAX_POLLS * DATACORE_POLLING.INTERVAL_MS) / 1000}s)...`,
         );
 
-        const pollInterval = setInterval(async () => {
-            pollCount++;
+        const pollInterval = setInterval(() => {
+            void (async () => {
+                pollCount++;
 
-            // Check if Datacore is initialized (finished indexing)
-            const isReady = TaskIndexService.isAPIReady();
-            const isAvailable = TaskIndexService.isDatacoreAvailable();
+                // Check if Datacore is initialized (finished indexing)
+                const isReady = TaskIndexService.isAPIReady();
+                const isAvailable = TaskIndexService.isDatacoreAvailable();
 
-            // Always update warning status to reflect current state
-            this.renderDatacoreWarning();
-
-            // If Datacore just became initialized, update task count
-            if (isReady && this.isStartupPolling) {
-                Logger.debug(
-                    `Datacore initialized after ${pollCount} polls (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s)`,
-                );
-
-                // Update task count now that indexing is complete
-                this.filteredTaskCount = await this.plugin.getFilteredTaskCount(
-                    this.currentFilter,
-                );
-                this.updateFilterStatus();
-
-                // Force immediate warning update
+                // Always update warning status to reflect current state
                 this.renderDatacoreWarning();
 
-                // Show success message
-                await this.addSystemMessage(
-                    `Task indexing ready (Datacore). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
-                );
+                // If Datacore just became initialized, update task count
+                if (isReady && this.isStartupPolling) {
+                    Logger.debug(
+                        `Datacore initialized after ${pollCount} polls (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s)`,
+                    );
 
-                // Stop polling - we're done!
-                clearInterval(pollInterval);
-                this.isStartupPolling = false;
-                return;
-            }
+                    // Update task count now that indexing is complete
+                    this.filteredTaskCount =
+                        await this.plugin.getFilteredTaskCount(
+                            this.currentFilter,
+                        );
+                    this.updateFilterStatus();
 
-            // Stop polling if not available (user needs to install Datacore)
-            if (!isAvailable) {
-                Logger.warn(
-                    "Datacore not available. Stopping polling. Please install Datacore plugin.",
-                );
-                await this.addSystemMessage(
-                    `Task indexing not available - please install Datacore`,
-                );
-                clearInterval(pollInterval);
-                this.isStartupPolling = false;
-                return;
-            }
+                    // Force immediate warning update
+                    this.renderDatacoreWarning();
 
-            // Stop polling if timeout reached
-            if (pollCount >= DATACORE_POLLING.MAX_POLLS) {
-                Logger.warn(
-                    `Datacore still indexing after ${(DATACORE_POLLING.MAX_POLLS * DATACORE_POLLING.INTERVAL_MS) / 1000}s timeout. Large vault may need more time. Stopping polling.`,
-                );
-                await this.addSystemMessage(
-                    `Datacore is still indexing (large vault detected). Task count will update when ready.`,
-                );
-                clearInterval(pollInterval);
-                this.isStartupPolling = false;
-                return;
-            }
+                    // Show success message
+                    await this.addSystemMessage(
+                        `Task indexing ready (Datacore). Found ${this.filteredTaskCount} task${this.filteredTaskCount === 1 ? "" : "s"}.`,
+                    );
 
-            // Log progress every N polls
-            if (pollCount % DATACORE_POLLING.LOG_INTERVAL === 0) {
-                Logger.debug(
-                    `Still waiting for Datacore initialization... (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s elapsed)`,
-                );
-            }
+                    // Stop polling - we're done!
+                    clearInterval(pollInterval);
+                    this.isStartupPolling = false;
+                    return;
+                }
+
+                // Stop polling if not available (user needs to install Datacore)
+                if (!isAvailable) {
+                    Logger.warn(
+                        "Datacore not available. Stopping polling. Please install Datacore plugin.",
+                    );
+                    await this.addSystemMessage(
+                        `Task indexing not available - please install Datacore`,
+                    );
+                    clearInterval(pollInterval);
+                    this.isStartupPolling = false;
+                    return;
+                }
+
+                // Stop polling if timeout reached
+                if (pollCount >= DATACORE_POLLING.MAX_POLLS) {
+                    Logger.warn(
+                        `Datacore still indexing after ${(DATACORE_POLLING.MAX_POLLS * DATACORE_POLLING.INTERVAL_MS) / 1000}s timeout. Large vault may need more time. Stopping polling.`,
+                    );
+                    await this.addSystemMessage(
+                        `Datacore is still indexing (large vault detected). Task count will update when ready.`,
+                    );
+                    clearInterval(pollInterval);
+                    this.isStartupPolling = false;
+                    return;
+                }
+
+                // Log progress every N polls
+                if (pollCount % DATACORE_POLLING.LOG_INTERVAL === 0) {
+                    Logger.debug(
+                        `Still waiting for Datacore initialization... (${(pollCount * DATACORE_POLLING.INTERVAL_MS) / 1000}s elapsed)`,
+                    );
+                }
+            })();
         }, DATACORE_POLLING.INTERVAL_MS);
     }
 
@@ -251,24 +254,26 @@ export class ChatView extends ItemView {
         // Populate options
         this.updateChatModeOptions();
 
-        this.chatModeSelect.addEventListener("change", async () => {
-            const value = this.chatModeSelect?.value as
-                | "simple"
-                | "smart"
-                | "chat";
+        this.chatModeSelect.addEventListener("change", () => {
+            void (async () => {
+                const value = this.chatModeSelect?.value as
+                    | "simple"
+                    | "smart"
+                    | "chat";
 
-            // If user selects the default mode, clear the override
-            if (value === this.plugin.settings.defaultChatMode) {
-                this.chatModeOverride = null;
-            } else {
-                this.chatModeOverride = value;
-            }
+                // If user selects the default mode, clear the override
+                if (value === this.plugin.settings.defaultChatMode) {
+                    this.chatModeOverride = null;
+                } else {
+                    this.chatModeOverride = value;
+                }
 
-            // Save to settings.currentChatMode (persists in data.json for current session)
-            this.plugin.settings.currentChatMode = value;
-            await this.plugin.saveSettings();
+                // Save to settings.currentChatMode (persists in data.json for current session)
+                this.plugin.settings.currentChatMode = value;
+                await this.plugin.saveSettings();
 
-            Logger.debug(`Chat mode changed to: ${value}`);
+                Logger.debug(`Chat mode changed to: ${value}`);
+            })();
         });
 
         // Group 3: Filter controls
