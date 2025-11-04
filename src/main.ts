@@ -21,7 +21,6 @@ import { Logger } from "./utils/logger";
 export default class TaskChatPlugin extends Plugin {
     settings: PluginSettings;
     private allTasks: Task[] = [];
-    private chatView: ChatView | null = null;
     sessionManager: SessionManager;
     private taskCount = 0;
     private taskCountLastUpdated = 0;
@@ -45,8 +44,7 @@ export default class TaskChatPlugin extends Plugin {
 
         // Register the chat view
         this.registerView(CHAT_VIEW_TYPE, (leaf: WorkspaceLeaf) => {
-            this.chatView = new ChatView(leaf, this);
-            return this.chatView;
+            return new ChatView(leaf, this);
         });
 
         // Add ribbon icon
@@ -80,11 +78,10 @@ export default class TaskChatPlugin extends Plugin {
             name: "Send chat message",
             checkCallback: (checking: boolean) => {
                 // Only available when chat view is active
-                const leaves =
-                    this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
-                if (leaves.length > 0 && this.chatView) {
+                const chatView = this.getChatView();
+                if (chatView) {
                     if (!checking) {
-                        this.chatView.sendMessageFromCommand();
+                        chatView.sendMessageFromCommand();
                     }
                     return true;
                 }
@@ -176,6 +173,18 @@ export default class TaskChatPlugin extends Plugin {
         Logger.info("Unloading Task Chat plugin");
         this.stopAutoRefreshTaskCount();
         this.app.workspace.detachLeavesOfType(CHAT_VIEW_TYPE);
+    }
+
+    /**
+     * Get the current chat view instance (if any exists)
+     * This avoids memory leaks by not storing a persistent reference
+     */
+    private getChatView(): ChatView | null {
+        const leaves = this.app.workspace.getLeavesOfType(CHAT_VIEW_TYPE);
+        if (leaves.length > 0) {
+            return leaves[0].view as ChatView;
+        }
+        return null;
     }
 
     async loadSettings(): Promise<void> {
@@ -423,15 +432,16 @@ export default class TaskChatPlugin extends Plugin {
      * Refresh chat view chat mode dropdown when default chat mode changes
      */
     refreshChatViewChatMode(): void {
-        if (this.chatView) {
+        const chatView = this.getChatView();
+        if (chatView) {
             // If user hasn't overridden (using default), sync currentChatMode to new default
-            const isUsingDefault = this.chatView.getChatModeOverride() === null;
+            const isUsingDefault = chatView.getChatModeOverride() === null;
             if (isUsingDefault) {
                 this.settings.currentChatMode = this.settings.defaultChatMode;
                 this.saveSettings();
             }
 
-            this.chatView.updateChatModeOptions();
+            chatView.updateChatModeOptions();
         }
     }
 
@@ -486,24 +496,25 @@ export default class TaskChatPlugin extends Plugin {
             );
 
             // Update chat view if it exists and updateChatView is true
-            if (updateChatView && this.chatView) {
+            const chatView = this.getChatView();
+            if (updateChatView && chatView) {
                 // Get current filter
-                const currentFilter = this.chatView.getCurrentFilter();
+                const currentFilter = chatView.getCurrentFilter();
 
                 // Update task count at top of chat view (lightweight!)
                 const taskCount =
                     await this.getFilteredTaskCount(currentFilter);
-                this.chatView.updateTaskCount(taskCount);
+                chatView.updateTaskCount(taskCount);
 
                 // Clear cached tasks in chatView (lazy reload on next query)
-                this.chatView.updateTasks([], currentFilter);
+                chatView.updateTasks([], currentFilter);
 
                 // Optionally show system message
                 if (options?.showSystemMessage) {
                     const message = options.context
                         ? `${options.context} Found ${taskCount} task${taskCount === 1 ? "" : "s"}.`
                         : `Tasks refreshed. Found ${taskCount} task${taskCount === 1 ? "" : "s"}.`;
-                    await this.chatView.addSystemMessage(message);
+                    await chatView.addSystemMessage(message);
                 }
 
                 Logger.debug(
@@ -602,8 +613,9 @@ export default class TaskChatPlugin extends Plugin {
         currentFilter.notes.push(notePath);
 
         // Update the filter in chat view if it exists
-        if (this.chatView) {
-            await this.chatView.setFilter(currentFilter);
+        const chatView = this.getChatView();
+        if (chatView) {
+            await chatView.setFilter(currentFilter);
 
             // Show success message with note name
             const fileName = notePath.split("/").pop() || notePath;
@@ -645,8 +657,9 @@ export default class TaskChatPlugin extends Plugin {
         currentFilter.folders.push(folderPath);
 
         // Update the filter in chat view if it exists
-        if (this.chatView) {
-            await this.chatView.setFilter(currentFilter);
+        const chatView = this.getChatView();
+        if (chatView) {
+            await chatView.setFilter(currentFilter);
 
             // Show success message with folder name
             const folderName = folderPath.split("/").pop() || folderPath;
@@ -694,8 +707,9 @@ export default class TaskChatPlugin extends Plugin {
             this.taskCountLastUpdated = moment().valueOf();
 
             // Update UI if ChatView is open
-            if (this.chatView) {
-                this.chatView.updateTaskCount(count);
+            const chatView = this.getChatView();
+            if (chatView) {
+                chatView.updateTaskCount(count);
             }
 
             const elapsed = moment().valueOf() - startTime;
@@ -762,7 +776,8 @@ export default class TaskChatPlugin extends Plugin {
                 // Preserving cache improves performance for rapid repeated queries
 
                 // Update task count in UI (silent, no system message)
-                const filter = this.chatView?.getCurrentFilter() || {};
+                const chatView = this.getChatView();
+                const filter = chatView?.getCurrentFilter() || {};
                 await this.updateTaskCount(filter);
 
                 // Log if count changed
