@@ -3,6 +3,7 @@ import TaskChatPlugin from "../main";
 import { ModelProviderService } from "../services/ai/modelProviderService";
 import { PricingService } from "../services/ai/pricingService";
 import { TaskPropertyService } from "../services/tasks/taskPropertyService";
+import { TaskIndexService } from "../services/tasks/taskIndexService";
 import {
     DEFAULT_SETTINGS,
     isStatusCategoryProtected,
@@ -824,8 +825,6 @@ export class SettingsTab extends PluginSettingTab {
             href: "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/SETTINGS_GUIDE.md#5-dataview-integration",
         });
 
-        const TaskIndexService =
-            require("../services/tasks/taskIndexService").TaskIndexService;
         const status = TaskIndexService.getDetailedStatus();
         new Setting(containerEl)
             .setName("Task indexing API")

@@ -1,7 +1,7 @@
 {
     "name": "task-chat",
     "version": "0.0.1",
-    "description": "Chat with an AI about your tasks. Filter, analyze, and get recommendations for your Obsidian tasks.",
+    "description": "AI-powered task assistant. Natural language queries, customizable scoring, and intelligent recommendations. Datacore for vault-wide task indexing.",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",

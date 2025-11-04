@@ -871,9 +871,7 @@ export class AIService {
                     const dueDateActive = intent.extractedDueDateFilter
                         ? 1.0
                         : 0.0;
-                    const priorityActive = intent.extractedPriority
-                        ? 1.0
-                        : 0.0;
+                    const priorityActive = intent.extractedPriority ? 1.0 : 0.0;
                     const statusActive = intent.extractedStatus ? 1.0 : 0.0;
 
                     // Final score with coefficients
@@ -946,9 +944,7 @@ export class AIService {
                     const dueDateActive = intent.extractedDueDateFilter
                         ? 1.0
                         : 0.0;
-                    const priorityActive = intent.extractedPriority
-                        ? 1.0
-                        : 0.0;
+                    const priorityActive = intent.extractedPriority ? 1.0 : 0.0;
                     const statusActive = intent.extractedStatus ? 1.0 : 0.0;
 
                     Logger.debug(`Sample score breakdown (top task):`);

@@ -134,13 +134,14 @@ export class TaskSortService {
             let comparison = 0;
 
             switch (criterion) {
-                case "relevance":
+                case "relevance": {
                     // RELEVANCE: Higher scores = more relevant
                     // Direction: DESC (100 before 50)
                     const scoreA = getRelevance(itemA);
                     const scoreB = getRelevance(itemB);
                     comparison = scoreB - scoreA; // DESC
                     break;
+                }
 
                 case "dueDate":
                     // DUE DATE: Earlier dates = more urgent
@@ -160,7 +161,7 @@ export class TaskSortService {
                     ); // ASC
                     break;
 
-                case "status":
+                case "status": {
                     // STATUS: User-configured status category order
                     // Direction: Active work (open/inProgress) > finished work (completed/cancelled)
                     const aOrder = TaskPropertyService.getStatusOrder(
@@ -173,6 +174,7 @@ export class TaskSortService {
                     );
                     comparison = aOrder - bOrder;
                     break;
+                }
 
                 case "created":
                     // CREATED DATE: Newer = more relevant
