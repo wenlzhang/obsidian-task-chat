@@ -25,8 +25,10 @@ declare const window: WindowWithPlugins;
  */
 interface PropertyFilters {
     priority?: number | number[] | "none";
-    dueDateRange?: DateRange;
+    dueDateRange?: DateRange | null;
     status?: string | string[];
+    statusValues?: string[] | null;
+    statusExclusions?: string[] | null;
 }
 
 /**
@@ -157,9 +159,10 @@ export class TaskIndexService {
         propertyFilters?: {
             priority?: number | number[] | "all" | "any" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start: string; end: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
+            statusExclusions?: string[] | null;
         },
         inclusionFilters?: {
             folders?: string[];
@@ -433,9 +436,10 @@ export class TaskIndexService {
         propertyFilters?: {
             priority?: number | number[] | "all" | "none" | null;
             dueDate?: string | string[] | null;
-            dueDateRange?: { start: string; end: string } | null;
+            dueDateRange?: DateRange | null;
             status?: string | string[] | null;
             statusValues?: string[] | null;
+            statusExclusions?: string[] | null;
         },
         inclusionFilters?: {
             folders?: string[];

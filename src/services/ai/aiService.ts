@@ -1,5 +1,5 @@
 import { App, requestUrl, moment } from "obsidian";
-import { Task, ChatMessage, TokenUsage, QueryIntent } from "../../models/task";
+import { Task, ChatMessage, TokenUsage, QueryIntent, DateRange } from "../../models/task";
 import {
     ErrorHandler,
     AIError,
@@ -469,8 +469,10 @@ export class AIService {
                         | "none"
                         | null;
                     dueDate?: string | null;
-                    dueDateRange?: { start: string; end: string } | null;
+                    dueDateRange?: DateRange | null;
                     status?: string | string[] | null;
+                    statusValues?: string[] | null;
+                    statusExclusions?: string[] | null;
                 } = {
                     // Start with query-extracted properties (from intent)
                     priority: intent.extractedPriority,
