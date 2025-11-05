@@ -290,9 +290,8 @@ export class DatacoreService {
             queryParts.push(`!${priorityField}`);
         } else if (Array.isArray(priority)) {
             // Multiple specific priorities - filter out invalid values
-            const validPriorities = priority.filter(
-                (p): p is 1 | 2 | 3 | 4 =>
-                    (this.VALID_PRIORITIES as readonly number[]).includes(p),
+            const validPriorities = priority.filter((p): p is 1 | 2 | 3 | 4 =>
+                (this.VALID_PRIORITIES as readonly number[]).includes(p),
             );
             if (validPriorities.length > 0) {
                 queryParts.push(`(${buildPriorityCondition(validPriorities)})`);
@@ -1281,8 +1280,10 @@ export class DatacoreService {
                 results = qualitySortedTasks
                     .slice(0, earlyLimit)
                     .map(
-                        (item: { dcTask: DatacoreTask; qualityScore: number }) =>
-                            item.dcTask,
+                        (item: {
+                            dcTask: DatacoreTask;
+                            qualityScore: number;
+                        }) => item.dcTask,
                     );
 
                 earlyLimitTimer.lap(

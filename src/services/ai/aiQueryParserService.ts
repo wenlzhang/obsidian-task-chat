@@ -245,10 +245,22 @@ export class QueryParserService {
                 if (
                     typeof parsed === "object" &&
                     (Object.prototype.hasOwnProperty.call(parsed, "keywords") ||
-                        Object.prototype.hasOwnProperty.call(parsed, "priority") ||
-                        Object.prototype.hasOwnProperty.call(parsed, "dueDate") ||
-                        Object.prototype.hasOwnProperty.call(parsed, "status") ||
-                        Object.prototype.hasOwnProperty.call(parsed, "folder") ||
+                        Object.prototype.hasOwnProperty.call(
+                            parsed,
+                            "priority",
+                        ) ||
+                        Object.prototype.hasOwnProperty.call(
+                            parsed,
+                            "dueDate",
+                        ) ||
+                        Object.prototype.hasOwnProperty.call(
+                            parsed,
+                            "status",
+                        ) ||
+                        Object.prototype.hasOwnProperty.call(
+                            parsed,
+                            "folder",
+                        ) ||
                         Object.prototype.hasOwnProperty.call(parsed, "tags"))
                 ) {
                     return candidate; // This looks like our target JSON
@@ -2419,7 +2431,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         }
 
         // Separate system message from conversation messages
-        const systemMessage = messages.find((m: AIMessage) => m.role === "system");
+        const systemMessage = messages.find(
+            (m: AIMessage) => m.role === "system",
+        );
         const conversationMessages = messages.filter(
             (m: AIMessage) => m.role !== "system",
         );
@@ -2619,7 +2633,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             // Ollama doesn't provide token counts - estimate based on character count
             // Rough estimate: 1 token ≈ 4 characters
-            const promptText = messages.map((m: AIMessage) => m.content).join(" ");
+            const promptText = messages
+                .map((m: AIMessage) => m.content)
+                .join(" ");
             const promptTokens = Math.ceil(promptText.length / 4);
             const completionTokens = Math.ceil(responseContent.length / 4);
             const totalTokens = promptTokens + completionTokens;

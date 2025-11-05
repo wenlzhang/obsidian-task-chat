@@ -327,7 +327,10 @@ export class TaskIndexService {
      * @param settings - Plugin settings (needed for status category -> symbol mapping)
      * @returns PropertyFilters for Datacore query or undefined if no filters
      */
-    static buildPropertyFilters(filter: TaskFilter, settings: PluginSettings): PropertyFilters | undefined {
+    static buildPropertyFilters(
+        filter: TaskFilter,
+        settings: PluginSettings,
+    ): PropertyFilters | undefined {
         const propertyFilters: PropertyFilters = {};
 
         // Priority Filter: Convert string priorities to numbers
@@ -386,7 +389,9 @@ export class TaskIndexService {
      * Build inclusion filters from TaskFilter
      * Shared utility used by both parseTasksFromIndex() and getTaskCount()
      */
-    static buildInclusionFilters(filter: TaskFilter): InclusionFilters | undefined {
+    static buildInclusionFilters(
+        filter: TaskFilter,
+    ): InclusionFilters | undefined {
         const inclusionFilters: InclusionFilters = {};
 
         if (filter.folders && filter.folders.length > 0) {

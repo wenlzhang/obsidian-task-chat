@@ -63,7 +63,11 @@ export class SettingsTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.aiProvider)
                     .onChange(
                         async (
-                            value: "openai" | "anthropic" | "openrouter" | "ollama",
+                            value:
+                                | "openai"
+                                | "anthropic"
+                                | "openrouter"
+                                | "ollama",
                         ) => {
                             this.plugin.settings.aiProvider = value;
                             // Auto-configure provider defaults
@@ -412,7 +416,9 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Chat Settings
-        const taskChatSetting = new Setting(containerEl).setName("Task chat").setHeading();
+        const taskChatSetting = new Setting(containerEl)
+            .setName("Task chat")
+            .setHeading();
 
         const taskChatDesc = taskChatSetting.descEl;
         taskChatDesc.createSpan({ text: " " });
@@ -592,15 +598,11 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("english", "English")
                     .addOption("custom", "Custom instruction")
                     .setValue(this.plugin.settings.responseLanguage)
-                    .onChange(
-                        async (
-                            value: "auto" | "english" | "custom",
-                        ) => {
-                            this.plugin.settings.responseLanguage = value;
-                            await this.plugin.saveSettings();
-                            this.display(); // Refresh to show/hide custom instruction
-                        },
-                    ),
+                    .onChange(async (value: "auto" | "english" | "custom") => {
+                        this.plugin.settings.responseLanguage = value;
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh to show/hide custom instruction
+                    }),
             );
 
         // Show custom language instruction if custom is selected
@@ -863,12 +865,21 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Auto-refresh interval")
             .setDesc("Set interval (s) ≥ Datacore update frequency.")
-            .addSlider((slider) =>
-                slider
+            .addSlider((slider) => {
+                // Add current value display
+                const valueDisplay = slider.sliderEl.createDiv({
+                    cls: "setting-slider-value",
+                });
+                valueDisplay.setText(
+                    `${this.plugin.settings.autoRefreshTaskCountInterval} s`,
+                );
+
+                return slider
                     .setLimits(10, 86400, 10)
                     .setValue(this.plugin.settings.autoRefreshTaskCountInterval)
                     .setDynamicTooltip()
                     .onChange(async (value) => {
+                        valueDisplay.setText(`${value} s`);
                         this.plugin.settings.autoRefreshTaskCountInterval =
                             value;
                         await this.plugin.saveSettings();
@@ -878,26 +889,7 @@ export class SettingsTab extends PluginSettingTab {
                             this.plugin.stopAutoRefreshTaskCount();
                             this.plugin.startAutoRefreshTaskCount();
                         }
-                    }),
-            )
-            .then((setting) => {
-                // Add current value display
-                const valueDisplay = setting.controlEl.createDiv({
-                    cls: "setting-slider-value",
-                });
-                valueDisplay.setText(
-                    `${this.plugin.settings.autoRefreshTaskCountInterval} s`,
-                );
-
-                // Update display when slider changes
-                const slider = setting.components[0] as {
-                    onChange: (callback: (value: number) => void) => void;
-                };
-                const originalOnChange = slider.onChange;
-                slider.onChange = async (value: number) => {
-                    valueDisplay.setText(`${value} s`);
-                    await originalOnChange.call(slider, value);
-                };
+                    });
             });
 
         new Setting(containerEl)

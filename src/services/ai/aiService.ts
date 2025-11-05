@@ -2463,9 +2463,9 @@ ${taskContext}`;
                     typeof headersObj === "object" &&
                     headersObj !== null &&
                     "x-generation-id" in headersObj &&
-                    typeof (
-                        headersObj as Record<string, unknown>
-                    )["x-generation-id"] === "string"
+                    typeof (headersObj as Record<string, unknown>)[
+                        "x-generation-id"
+                    ] === "string"
                         ? (headersObj as Record<string, unknown>)[
                               "x-generation-id"
                           ]
@@ -2684,7 +2684,9 @@ ${taskContext}`;
             "https://api.anthropic.com/v1/messages";
 
         // Separate system message from conversation messages
-        const systemMessage = messages.find((m: AIMessage) => m.role === "system");
+        const systemMessage = messages.find(
+            (m: AIMessage) => m.role === "system",
+        );
         const conversationMessages = messages.filter(
             (m: AIMessage) => m.role !== "system",
         );
