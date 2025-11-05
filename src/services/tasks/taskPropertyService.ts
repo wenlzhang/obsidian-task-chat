@@ -789,7 +789,7 @@ export class TaskPropertyService {
     ): TaskStatusCategory {
         if (!symbol) return "open";
 
-        const cleanSymbol = symbol.replace(/[\[\]]/g, "").trim();
+        const cleanSymbol = symbol.replace(/[[\]]/g, "").trim();
 
         // Check user's configured status mapping
         for (const [category, config] of Object.entries(
@@ -1086,7 +1086,7 @@ export class TaskPropertyService {
                     ? momentDate.format(format)
                     : momentDate.format("YYYY-MM-DD");
             }
-        } catch (e) {
+        } catch (_e) {
             Logger.error("Error formatting date:", e);
         }
 
@@ -1112,7 +1112,7 @@ export class TaskPropertyService {
                     return parsed.format("YYYY-MM-DD");
                 }
             }
-        } catch (e) {
+        } catch (_e) {
             // Continue to fallback
         }
 

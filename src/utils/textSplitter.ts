@@ -23,7 +23,7 @@ export class TextSplitter {
         // Step 2: Split by whitespace and punctuation for alphabetic languages
         // This handles English, German, French, Spanish, etc.
         const alphaWords = cleanText
-            .split(/[\s,;:!?.()[\]{}""''<>\/\\|~`@#$%^&*+=]+/)
+            .split(/[\s,;:!?.()[\]{}""''<>/\\|~`@#$%^&*+=]+/)
             .filter((word) => word.length > 0);
 
         for (const word of alphaWords) {

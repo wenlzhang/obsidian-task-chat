@@ -365,9 +365,9 @@ export class ChatView extends ItemView {
             cls: "task-chat-model-config-text",
         });
         modelConfigBtn.addEventListener("click", () => {
-            // @ts-ignore
+            // @ts-expect-error - app.setting is not in the official API
             this.app.setting.open();
-            // @ts-ignore
+            // @ts-expect-error - app.setting is not in the official API
             this.app.setting.openTabById("task-chat");
             new Notice("Navigate to model configuration");
         });

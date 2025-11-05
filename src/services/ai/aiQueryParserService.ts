@@ -183,7 +183,7 @@ export class QueryParserService {
                 // Verify it's valid JSON before returning
                 JSON.parse(markdownMatch[1]);
                 return markdownMatch[1];
-            } catch (e) {
+            } catch (_e) {
                 // Continue to other extraction methods
             }
         }
@@ -217,16 +217,16 @@ export class QueryParserService {
                 // Check if it has expected query parser fields
                 if (
                     typeof parsed === "object" &&
-                    (parsed.hasOwnProperty("keywords") ||
-                        parsed.hasOwnProperty("priority") ||
-                        parsed.hasOwnProperty("dueDate") ||
-                        parsed.hasOwnProperty("status") ||
-                        parsed.hasOwnProperty("folder") ||
-                        parsed.hasOwnProperty("tags"))
+                    (Object.prototype.hasOwnProperty.call(parsed, "keywords") ||
+                        Object.prototype.hasOwnProperty.call(parsed, "priority") ||
+                        Object.prototype.hasOwnProperty.call(parsed, "dueDate") ||
+                        Object.prototype.hasOwnProperty.call(parsed, "status") ||
+                        Object.prototype.hasOwnProperty.call(parsed, "folder") ||
+                        Object.prototype.hasOwnProperty.call(parsed, "tags"))
                 ) {
                     return candidate; // This looks like our target JSON
                 }
-            } catch (e) {
+            } catch (_e) {
                 // Not valid JSON, try next candidate
                 continue;
             }
@@ -237,7 +237,7 @@ export class QueryParserService {
             try {
                 JSON.parse(candidate);
                 return candidate; // At least it's valid JSON
-            } catch (e) {
+            } catch (_e) {
                 continue;
             }
         }
@@ -1787,12 +1787,12 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             // Validate that AI returned the correct schema
             const hasExpectedFields =
-                parsed.hasOwnProperty("keywords") ||
-                parsed.hasOwnProperty("priority") ||
-                parsed.hasOwnProperty("dueDate") ||
-                parsed.hasOwnProperty("status") ||
-                parsed.hasOwnProperty("folder") ||
-                parsed.hasOwnProperty("tags");
+                Object.prototype.hasOwnProperty.call(parsed, "keywords") ||
+                Object.prototype.hasOwnProperty.call(parsed, "priority") ||
+                Object.prototype.hasOwnProperty.call(parsed, "dueDate") ||
+                Object.prototype.hasOwnProperty.call(parsed, "status") ||
+                Object.prototype.hasOwnProperty.call(parsed, "folder") ||
+                Object.prototype.hasOwnProperty.call(parsed, "tags");
 
             if (!hasExpectedFields) {
                 Logger.error(
