@@ -20,7 +20,7 @@ import { TokenUsage } from "../../models/task";
  */
 export interface AIMessage {
     role: string;
-    content: string;
+    content: string | Array<{ type: string; text?: string; [key: string]: unknown }>;
 }
 
 /**
@@ -61,12 +61,12 @@ export interface ParsedQuery {
 
     // PART 2: Task Attributes (Structured Filters)
     // Multi-value support: Can be single value or array
-    priority?: number | number[]; // Single: 1, Multi: [1, 2, 3]
-    dueDate?: string; // Single date: "today", "overdue", "+5d" (relative)
+    priority?: number | number[] | "all" | "any" | "none"; // Single: 1, Multi: [1, 2, 3], Special: "all", "any", "none"
+    dueDate?: string | string[]; // Single date: "today", "overdue", "+5d" (relative), Multi: ["today", "tomorrow"]
     dueDateRange?: {
         // Date range: "this week", "next month"
-        start: string;
-        end: string;
+        start?: string;
+        end?: string;
     };
     status?: string | string[]; // Single: "open", Multi: ["open", "inProgress"]
     folder?: string;
@@ -99,6 +99,7 @@ export interface ParsedQuery {
         };
         confidence?: number; // 0-1, how confident AI is in the parsing
         naturalLanguageUsed?: boolean; // Whether user used natural language vs exact syntax
+        notes?: string; // Additional notes from AI about the query understanding
     };
 
     // Parser Error Information (for fallback cases)
@@ -240,7 +241,7 @@ export class QueryParserService {
         // Prioritize candidates with expected fields (priority, keywords, etc.)
         for (const candidate of jsonCandidates) {
             try {
-                const parsed = JSON.parse(candidate);
+                const parsed: ParsedQuery = JSON.parse(candidate);
                 // Check if it has expected query parser fields
                 if (
                     typeof parsed === "object" &&
@@ -1821,7 +1822,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             // Extract JSON from response (handles DeepSeek's <think> tags and other wrappers)
             const jsonString = this.extractJSON(aiResponse);
-            const parsed = JSON.parse(jsonString);
+            const parsed: ParsedQuery = JSON.parse(jsonString);
             Logger.debug("AI query parser parsed:", parsed);
 
             // Validate that AI returned the correct schema
@@ -1852,7 +1853,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             // If AI didn't extract any keywords but also didn't extract any filters,
             // split the query into words as fallback
-            let keywords = parsed.keywords || [];
+            let keywords: string[] = parsed.keywords || [];
             if (
                 keywords.length === 0 &&
                 !parsed.priority &&
@@ -1873,7 +1874,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Post-process keywords to remove stop words (safety net)
             // AI is instructed via prompt to NOT extract stop words (see STOP WORDS section in prompt)
             // This post-filter is a safety net in case AI ignores instructions
-            const filteredKeywords = StopWords.filterStopWords(keywords);
+            const filteredKeywords: string[] = StopWords.filterStopWords(keywords);
 
             Logger.debug(
                 `Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
@@ -1883,7 +1884,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     `[AI Parser] Post-filter safety net removed ${keywords.length - filteredKeywords.length} stop words that AI missed`,
                 );
                 Logger.debug(
-                    `[AI Parser] Removed: [${keywords.filter((k: string) => !filteredKeywords.includes(k)).join(", ")}]`,
+                    `[AI Parser] Removed: [${keywords.filter((k) => !filteredKeywords.includes(k)).join(", ")}]`,
                 );
             }
 
@@ -1897,14 +1898,14 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                     `[AI Parser] Post-filter safety net removed ${rawCoreKeywords.length - coreKeywords.length} stop words from core keywords`,
                 );
                 Logger.debug(
-                    `[AI Parser] Removed: [${rawCoreKeywords.filter((k: string) => !coreKeywords.includes(k)).join(", ")}]`,
+                    `[AI Parser] Removed: [${rawCoreKeywords.filter((k) => !coreKeywords.includes(k)).join(", ")}]`,
                 );
             }
 
             // Ensure all core keywords are included in expanded keywords
             // AI should include them, but sometimes misses them - this is a safety net
             const missingCoreKeywords = coreKeywords.filter(
-                (k: string) => !filteredKeywords.includes(k),
+                (k) => !filteredKeywords.includes(k),
             );
             if (missingCoreKeywords.length > 0) {
                 Logger.warn(
@@ -1916,7 +1917,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             const expandedKeywords = [
                 ...coreKeywords,
                 ...filteredKeywords.filter(
-                    (k: string) => !coreKeywords.includes(k),
+                    (k) => !coreKeywords.includes(k),
                 ),
             ];
 
@@ -2184,7 +2185,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
             settings,
@@ -2255,8 +2256,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
         // Extract token usage
         const usage = data.usage || {};
-        let promptTokens = usage.prompt_tokens || 0;
-        let completionTokens = usage.completion_tokens || 0;
+        let promptTokens: number = usage.prompt_tokens || 0;
+        let completionTokens: number = usage.completion_tokens || 0;
         let totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
         // Calculate cost using pricing table (initial estimate)
@@ -2279,7 +2280,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             if (data.id) {
                 generationId = data.id;
                 Logger.debug(
-                    `[OpenRouter Parser] ✓ Generation ID from response: ${generationId}`,
+                    `[OpenRouter Parser] ✓ Generation ID from response: ${generationId ?? "unknown"}`,
                 );
             }
 
@@ -2341,7 +2342,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 } catch (error) {
                     isEstimated = true;
                     Logger.warn(
-                        `[OpenRouter Parser] Failed to fetch actual usage, using estimates: ${error}`,
+                        `[OpenRouter Parser] Failed to fetch actual usage, using estimates: ${error instanceof Error ? error.message : String(error)}`,
                     );
                 }
             } else {
@@ -2408,7 +2409,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
             settings,
@@ -2542,12 +2543,17 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
+    ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use parsing model configuration
-        const { provider, model, temperature } = getProviderForPurpose(
-            settings,
-            "parsing",
-        );
+        const {
+            provider,
+            model,
+            temperature,
+        }: {
+            provider: "openai" | "anthropic" | "openrouter" | "ollama";
+            model: string;
+            temperature: number;
+        } = getProviderForPurpose(settings, "parsing");
         const providerConfig = getProviderConfigForPurpose(settings, "parsing");
 
         const endpoint =
@@ -2579,8 +2585,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             if (response.status !== 200) {
                 const errorBody = response.json || {};
-                const errorMessage =
-                    errorBody.error || response.text || "Unknown error";
+                const errorMessage: string = String(
+                    errorBody.error || response.text || "Unknown error",
+                );
 
                 // Log detailed error for debugging
                 Logger.error("Ollama Query Parser API Error:", {
@@ -2609,7 +2616,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 throw new Error(`${errorMessage} | ${solution}`);
             }
 
-            const data = response.json;
+            const data: {
+                message?: { content?: string };
+            } = response.json as { message?: { content?: string } };
 
             // Validate response structure
             if (!data || !data.message || !data.message.content) {
@@ -2619,7 +2628,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                 );
             }
 
-            const responseContent = data.message.content.trim();
+            const responseContent: string = data.message.content.trim();
 
             if (responseContent.length === 0) {
                 throw new Error(

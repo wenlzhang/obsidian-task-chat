@@ -6,6 +6,24 @@ import { TaskPropertyService } from "./taskPropertyService";
 import { Logger } from "../../utils/logger";
 
 /**
+ * Moment.js instance type (from window.moment)
+ */
+interface MomentInstance {
+    valueOf(): number;
+    format(format: string): string;
+    startOf(unit: string): MomentInstance;
+    endOf(unit: string): MomentInstance;
+}
+
+/**
+ * Moment.js function type (callable function that returns a Moment instance)
+ */
+type MomentFn = {
+    (): MomentInstance;
+    (date?: string | Date | number): MomentInstance;
+};
+
+/**
  * Global window extensions for Obsidian plugins
  */
 interface WindowWithPlugins extends Window {
@@ -15,7 +33,7 @@ interface WindowWithPlugins extends Window {
         };
         [key: string]: unknown;
     };
-    moment?: unknown;
+    moment?: MomentFn;
 }
 
 declare const window: WindowWithPlugins;
@@ -201,7 +219,13 @@ export class TaskIndexService {
         // Check cache
         const cached = this.queryCache.get(cacheKey);
         const moment = window.moment;
-        const now = moment().valueOf();
+        if (!moment) {
+            Logger.warn(
+                "[TaskIndex] window.moment is not available, cache check skipped",
+            );
+            // Proceed without cache
+        }
+        const now = moment ? moment().valueOf() : Date.now();
 
         if (cached && now - cached.timestamp < this.CACHE_TTL) {
             Logger.debug(
@@ -249,6 +273,9 @@ export class TaskIndexService {
      */
     private static cleanupExpiredCache(): void {
         const moment = window.moment;
+        if (!moment) {
+            return; // Cannot cleanup without moment
+        }
         const now = moment().valueOf();
         let cleanedCount = 0;
 
@@ -338,12 +365,21 @@ export class TaskIndexService {
 
         // Priority Filter: Convert string priorities to numbers
         if (filter.priorities && filter.priorities.length > 0) {
-            propertyFilters.priority = filter.priorities.map((p: string) =>
-                p === "none" ? "none" : parseInt(p),
+            const priorityValues: (number | "none")[] = filter.priorities.map(
+                (p: string) => (p === "none" ? "none" : parseInt(p)),
             );
             // Simplify single-value arrays to scalar for cleaner query building
-            if (propertyFilters.priority.length === 1) {
-                propertyFilters.priority = propertyFilters.priority[0];
+            if (priorityValues.length === 1) {
+                propertyFilters.priority = priorityValues[0];
+            } else {
+                // Filter out "none" from multi-value arrays as it doesn't make sense with other values
+                const numericPriorities = priorityValues.filter(
+                    (p): p is number => typeof p === "number",
+                );
+                propertyFilters.priority =
+                    numericPriorities.length > 0
+                        ? numericPriorities
+                        : undefined;
             }
         }
 
@@ -513,7 +549,16 @@ export class TaskIndexService {
         specialKeywords?: string[];
         operators?: { and?: boolean; or?: boolean; not?: boolean };
     } {
-        const result = {
+        const result: {
+            keywords?: string[];
+            priority?: number;
+            dueDate?: string;
+            dueDateRange?: { start?: string; end?: string };
+            project?: string;
+            statusValues?: string[];
+            specialKeywords: string[];
+            operators: { and?: boolean; or?: boolean; not?: boolean };
+        } = {
             specialKeywords: [],
             operators: {},
         };
@@ -566,7 +611,8 @@ export class TaskIndexService {
         // "overdue" or "over due" or "od"
         if (
             /\b(overdue|over\s+due|od)\b/i.test(query) &&
-            !query.includes("!overdue")
+            !query.includes("!overdue") &&
+            moment
         ) {
             result.specialKeywords.push("overdue");
             // Set date range to show overdue tasks

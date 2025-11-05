@@ -1,14 +1,41 @@
-import { moment, type Moment } from "obsidian";
+import { moment } from "obsidian";
 import { Task, TaskStatusCategory, DateRange } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
 
 /**
+ * Moment.js instance type (from window.moment)
+ */
+interface MomentInstance {
+    valueOf(): number;
+    format(format: string): string;
+    startOf(unit: string): MomentInstance;
+    endOf(unit: string): MomentInstance;
+    isValid(): boolean;
+    isBefore(date: MomentInstance): boolean;
+    isAfter(date: MomentInstance): boolean;
+    isSame(date: MomentInstance, unit: string): boolean;
+    isSameOrAfter(date: MomentInstance, unit: string): boolean;
+    isSameOrBefore(date: MomentInstance, unit: string): boolean;
+    add(amount: number, unit: string): MomentInstance;
+    subtract(amount: number, unit: string): MomentInstance;
+    clone(): MomentInstance;
+}
+
+/**
+ * Moment.js function type (callable function that returns a Moment instance)
+ */
+type MomentFn = {
+    (): MomentInstance;
+    (date?: string | Date | number | unknown): MomentInstance;
+};
+
+/**
  * Global window extensions for Obsidian plugins
  */
 interface WindowWithPlugins extends Window {
-    moment?: unknown;
+    moment?: MomentFn;
 }
 
 declare const window: WindowWithPlugins;
@@ -25,6 +52,7 @@ export interface GenericTask {
     status?: unknown;
     completed?: unknown;
     $completed?: unknown;
+    fields?: { [key: string]: unknown };
     [key: string]: unknown;
 }
 
@@ -864,7 +892,18 @@ export class TaskPropertyService {
         // Sort by effective order (respecting defaults and explicit orders)
         categories.sort(([keyA, configA], [keyB, configB]) => {
             // Get effective order for each category
-            const getEffective = (key: string, config: unknown): number => {
+            const getEffective = (
+                key: string,
+                config: {
+                    symbols: string[];
+                    score: number;
+                    displayName: string;
+                    aliases: string;
+                    order?: number;
+                    description?: string;
+                    terms?: string;
+                },
+            ): number => {
                 if (config.order !== undefined) return config.order;
                 const defaultConfig = this.DEFAULT_STATUS_CONFIG[key];
                 if (defaultConfig) return defaultConfig.order;
@@ -1074,18 +1113,22 @@ export class TaskPropertyService {
             if (
                 date &&
                 typeof date === "object" &&
-                typeof date.format === "function"
+                "format" in date &&
+                typeof (date as { format: unknown }).format === "function"
             ) {
-                return format ? date.format(format) : date.format("YYYY-MM-DD");
+                const dateWithFormat = date as { format: (fmt: string) => string };
+                return format ? dateWithFormat.format(format) : dateWithFormat.format("YYYY-MM-DD");
             }
 
             // Handle Datacore date objects (toString() but not .format())
             if (
                 date &&
                 typeof date === "object" &&
-                typeof date.toString === "function"
+                "toString" in date &&
+                typeof (date as { toString: unknown }).toString === "function"
             ) {
-                const dateStr = date.toString();
+                const dateWithToString = date as { toString: () => string };
+                const dateStr = dateWithToString.toString();
                 const momentDate = moment(dateStr);
                 if (momentDate.isValid()) {
                     return format
@@ -1110,8 +1153,9 @@ export class TaskPropertyService {
                     ? momentDate.format(format)
                     : momentDate.format("YYYY-MM-DD");
             }
-        } catch (_e) {
-            Logger.error("Error formatting date:", e);
+        } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            Logger.error("Error formatting date:", errorMsg);
         }
 
         return undefined;
@@ -1220,6 +1264,10 @@ export class TaskPropertyService {
         keyword: string,
     ): boolean {
         const moment = window.moment;
+        if (!moment) {
+            Logger.warn("[TaskPropertyService] window.moment is not available");
+            return false;
+        }
 
         if (!dateValue) return false;
 
@@ -1379,6 +1427,10 @@ export class TaskPropertyService {
      */
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
         const moment = window.moment;
+        if (!moment) {
+            Logger.warn("[TaskPropertyService] window.moment is not available, cannot filter by due date");
+            return tasks; // Return all tasks if moment unavailable
+        }
 
         // Special case: "any" means tasks WITH a due date
         if (filter === "any") {
@@ -1852,10 +1904,14 @@ export class TaskPropertyService {
      * Centralized date range parsing for week-start, month-end, etc.
      *
      * @param keyword - The date range keyword
-     * @returns Moment date object
+     * @returns Moment date object or null if moment unavailable
      */
-    static parseDateRangeKeyword(keyword: string): unknown {
+    static parseDateRangeKeyword(keyword: string): MomentInstance | null {
         const moment = window.moment;
+        if (!moment) {
+            Logger.warn("[TaskPropertyService] window.moment is not available, cannot parse date range keyword");
+            return null;
+        }
 
         switch (keyword) {
             case this.DATE_RANGE_KEYWORDS.weekStart:
@@ -1909,6 +1965,10 @@ export class TaskPropertyService {
      */
     static parseRelativeDate(relativeDate: string): string | null {
         const moment = window.moment;
+        if (!moment) {
+            Logger.warn("[TaskPropertyService] window.moment is not available, cannot parse relative date");
+            return null;
+        }
 
         // Match pattern: optional +/-, number, unit (d/w/m/y)
         // Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
@@ -1920,7 +1980,7 @@ export class TaskPropertyService {
         const unit = match[3].toLowerCase();
 
         // Map unit to moment unit
-        const unitMap: { [key: string]: unknown } = {
+        const unitMap: { [key: string]: string } = {
             d: "days",
             w: "weeks",
             m: "months",
@@ -1931,11 +1991,11 @@ export class TaskPropertyService {
         if (!momentUnit) return null;
 
         // Calculate target date
-        let targetDate: Moment;
+        let targetDate: MomentInstance;
         if (sign === "-") {
-            targetDate = moment().subtract(amount, momentUnit);
+            targetDate = moment().subtract(amount, momentUnit as "days" | "weeks" | "months" | "years");
         } else {
-            targetDate = moment().add(amount, momentUnit);
+            targetDate = moment().add(amount, momentUnit as "days" | "weeks" | "months" | "years");
         }
 
         return targetDate.format("YYYY-MM-DD");
@@ -2582,7 +2642,7 @@ export class TaskPropertyService {
 
             filters.push((task: GenericTask) => {
                 const status = task.$status || task.status;
-                if (status !== undefined) {
+                if (typeof status === "string") {
                     const mapped = this.mapStatusToCategory(status, settings);
                     return targetStatuses.includes(mapped);
                 }
@@ -2610,7 +2670,7 @@ export class TaskPropertyService {
             } else {
                 filters.push((task: GenericTask) => {
                     const taskStatus = task.$status || task.status;
-                    if (taskStatus === undefined) return false;
+                    if (typeof taskStatus !== "string") return false;
 
                     // Map task status to category and check if it's in resolved list (O(1) operation)
                     const mappedCategory = this.mapStatusToCategory(

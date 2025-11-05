@@ -21,6 +21,8 @@ interface OpenRouterUsageData {
         native_tokens_completion?: number;
         tokens_prompt?: number;
         tokens_completion?: number;
+        total_cost?: number | string;
+        usage?: number | string;
     };
 }
 
@@ -59,10 +61,10 @@ export class PricingService {
                     if (model.id && model.pricing) {
                         // OpenRouter returns pricing per token, convert to per million tokens
                         const promptCost = parseFloat(
-                            model.pricing.prompt || 0,
+                            String(model.pricing.prompt || 0),
                         );
                         const completionCost = parseFloat(
-                            model.pricing.completion || 0,
+                            String(model.pricing.completion || 0),
                         );
 
                         if (promptCost > 0 || completionCost > 0) {

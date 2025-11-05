@@ -11,10 +11,30 @@ import { Logger } from "../../utils/logger";
 import { VectorizedScoring } from "../../utils/vectorizedScoring";
 
 /**
+ * Moment.js instance type (from window.moment)
+ */
+interface MomentInstance {
+    valueOf(): number;
+    format(format: string): string;
+    startOf(unit: string): MomentInstance;
+    endOf(unit: string): MomentInstance;
+    isValid(): boolean;
+    diff(date: MomentInstance, unit: string): number;
+}
+
+/**
+ * Moment.js function type (callable function that returns a Moment instance)
+ */
+type MomentFn = {
+    (): MomentInstance;
+    (date?: string | Date | number): MomentInstance;
+};
+
+/**
  * Global window extensions for Obsidian plugins
  */
 interface WindowWithPlugins extends Window {
-    moment?: unknown;
+    moment?: MomentFn;
 }
 
 declare const window: WindowWithPlugins;
@@ -1669,8 +1689,8 @@ export class TaskSearchService {
             // Get task text based on data source
             const taskText =
                 source === "datacore"
-                    ? (task.$text || task.text || "").toLowerCase()
-                    : (task.text || task.visual || "").toLowerCase();
+                    ? ((task as any).$text || task.text || "").toLowerCase()
+                    : (task.text || (task as any).visual || "").toLowerCase();
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
             // Pass pre-lowercased keywords from closure

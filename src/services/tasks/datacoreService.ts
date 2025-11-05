@@ -14,11 +14,38 @@ import {
 import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
 
 /**
+ * Moment.js instance type (from window.moment)
+ */
+interface MomentInstance {
+    format(format: string): string;
+    add(amount: number, unit: string): MomentInstance;
+    subtract(amount: number, unit: string): MomentInstance;
+    startOf(unit: string): MomentInstance;
+    endOf(unit: string): MomentInstance;
+    isValid(): boolean;
+}
+
+/**
+ * Moment.js function type (callable function that returns a Moment instance)
+ */
+type MomentFn = {
+    (): MomentInstance;
+    (date?: string | Date | number): MomentInstance;
+};
+
+/**
+ * Datacore API interface
+ */
+interface DatacoreAPI {
+    query(query: string): Promise<DatacoreTask[]>;
+}
+
+/**
  * Global window extensions for Obsidian plugins
  */
 interface WindowWithPlugins extends Window {
-    datacore?: unknown;
-    moment?: unknown;
+    datacore?: DatacoreAPI;
+    moment?: MomentFn;
 }
 
 declare const window: WindowWithPlugins;
@@ -71,12 +98,18 @@ export class DatacoreService {
 
         const { start, end } = dueDateRange;
         // Use configured due date field name (e.g., "due", "dueDate", etc.)
-        const dueDateField = settings.datacoreKeys.dueDate;
+        const dueDateField: string = String(settings.datacoreKeys.dueDate);
 
         if (start) {
             const startDate = TaskPropertyService.parseDateRangeKeyword(start);
-            if (startDate) {
-                const startStr = startDate.format("YYYY-MM-DD");
+            if (
+                startDate &&
+                typeof startDate === "object" &&
+                "format" in startDate
+            ) {
+                const startStr: string = (
+                    startDate as MomentInstance
+                ).format("YYYY-MM-DD");
                 queryParts.push(`${dueDateField} >= date("${startStr}")`);
                 Logger.debug(
                     `[Query Builder] Due date (${dueDateField}) >= ${startStr}`,
@@ -86,8 +119,14 @@ export class DatacoreService {
 
         if (end) {
             const endDate = TaskPropertyService.parseDateRangeKeyword(end);
-            if (endDate) {
-                const endStr = endDate.format("YYYY-MM-DD");
+            if (
+                endDate &&
+                typeof endDate === "object" &&
+                "format" in endDate
+            ) {
+                const endStr: string = (endDate as MomentInstance).format(
+                    "YYYY-MM-DD",
+                );
                 queryParts.push(`${dueDateField} <= date("${endStr}")`);
                 Logger.debug(
                     `[Query Builder] Due date (${dueDateField}) <= ${endStr}`,
@@ -106,6 +145,12 @@ export class DatacoreService {
         dueDateField: string,
     ): string | null {
         const moment = window.moment;
+        if (!moment) {
+            Logger.warn(
+                "[Datacore] window.moment is not available, cannot convert date keywords",
+            );
+            return null;
+        }
         const K = TaskPropertyService.DUE_DATE_KEYWORDS; // Alias for brevity
 
         // Map keyword to Datacore query using centralized constants
@@ -301,8 +346,11 @@ export class DatacoreService {
             queryParts.push(`${priorityField} = ${priority}`);
         }
 
+        const priorityStr = Array.isArray(priority)
+            ? priority.join(", ")
+            : String(priority);
         Logger.debug(
-            `[Query Builder] Priority filter (${priorityField}): ${priority}`,
+            `[Query Builder] Priority filter (${priorityField}): ${priorityStr}`,
         );
     }
 
@@ -373,21 +421,32 @@ export class DatacoreService {
      * Used for score caching so we can reuse quality/relevance calculations between passes.
      */
     private static getTaskId(dcTask: DatacoreTask): string {
-        const path = dcTask?.$file || dcTask?.file || "";
-        const line = dcTask?.$line ?? dcTask?.line ?? 0;
-        const textSnippet = dcTask?.$text || dcTask?.text || "";
+        const rawPath = dcTask?.$file || dcTask?.file || "";
+        const path: string =
+            typeof rawPath === "string"
+                ? rawPath
+                : typeof rawPath === "object" &&
+                    rawPath !== null &&
+                    "path" in rawPath &&
+                    typeof rawPath.path === "string"
+                  ? rawPath.path
+                  : "";
+        const rawLine = dcTask?.$line ?? dcTask?.line;
+        const line: number = typeof rawLine === "number" ? rawLine : 0;
+        const rawText = dcTask?.$text || dcTask?.text;
+        const textSnippet: string = typeof rawText === "string" ? rawText : "";
         return `${path}:${line}:${textSnippet}`;
     }
 
     /**
      * Get Datacore API
      */
-    static getAPI(): unknown {
+    static getAPI(): DatacoreAPI | null {
         if (!this.isDatacoreEnabled()) {
             return null;
         }
 
-        return window.datacore;
+        return window.datacore ?? null;
     }
 
     /**
@@ -505,13 +564,25 @@ export class DatacoreService {
         }
 
         // Extract path (use $file per API docs)
-        const path = filePath || dcTask.$file || dcTask.file || "";
+        const rawPath = filePath || dcTask.$file || dcTask.file || "";
+        const path: string =
+            typeof rawPath === "string"
+                ? rawPath
+                : typeof rawPath === "object" &&
+                    rawPath !== null &&
+                    "path" in rawPath &&
+                    typeof rawPath.path === "string"
+                  ? rawPath.path
+                  : "";
 
         // Use $text for task text (Datacore's built-in field)
-        const text = dcTask.$text || dcTask.text || "";
+        const rawText = dcTask.$text || dcTask.text;
+        const text: string = typeof rawText === "string" ? rawText : "";
         // Use $status for task status marker (not $symbol)
-        const status = dcTask.$status || dcTask.status || "";
-        const line = dcTask.$line || dcTask.line || 0;
+        const rawStatus = dcTask.$status || dcTask.status;
+        const status: string = typeof rawStatus === "string" ? rawStatus : "";
+        const rawLine = dcTask.$line ?? dcTask.line;
+        const line: number = typeof rawLine === "number" ? rawLine : 0;
         const statusCategory = this.mapStatusToCategory(status, settings);
 
         // Extract folder from path
@@ -977,7 +1048,9 @@ export class DatacoreService {
             // No need for JavaScript post-filtering - Datacore does it all!
 
             // Execute query to get all tasks (already filtered by Datacore)
-            let results = await datacoreApi.query(query);
+            let results: DatacoreTask[] = (await datacoreApi.query(
+                query,
+            )) as DatacoreTask[];
 
             if (!results || results.length === 0) {
                 Logger.debug("[Datacore] Query returned no results");
@@ -985,7 +1058,7 @@ export class DatacoreService {
             }
 
             Logger.debug(
-                `[Datacore] Query returned ${results.length} results (already filtered by Datacore)`,
+                `[Datacore] Query returned ${String(results.length)} results (already filtered by Datacore)`,
             );
 
             // ========================================
@@ -1122,7 +1195,9 @@ export class DatacoreService {
                                 : undefined;
 
                         // Extract and map status
-                        const statusValue = task.$status || task.status || "";
+                        const rawStatus = task.$status || task.status;
+                        const statusValue: string =
+                            typeof rawStatus === "string" ? rawStatus : "";
                         task._mappedStatus = this.mapStatusToCategory(
                             statusValue,
                             settings,
@@ -1229,8 +1304,9 @@ export class DatacoreService {
                                           settings,
                                       )
                                     : undefined;
-                            const statusValue =
-                                task.$status || task.status || "";
+                            const rawStatus = task.$status || task.status;
+                            const statusValue: string =
+                                typeof rawStatus === "string" ? rawStatus : "";
                             task._mappedStatus = this.mapStatusToCategory(
                                 statusValue,
                                 settings,
@@ -1376,8 +1452,9 @@ export class DatacoreService {
                                     : undefined;
 
                             // Extract and map status
-                            const statusValue =
-                                task.$status || task.status || "";
+                            const rawStatus = task.$status || task.status;
+                            const statusValue: string =
+                                typeof rawStatus === "string" ? rawStatus : "";
                             task._mappedStatus = this.mapStatusToCategory(
                                 statusValue,
                                 settings,
@@ -1439,7 +1516,9 @@ export class DatacoreService {
                         // Property scores
                         cached.dueDate =
                             TaskSearchService.calculateDueDateScore(
-                                dcTask._dueDate,
+                                typeof dcTask._dueDate === "string"
+                                    ? dcTask._dueDate
+                                    : undefined,
                                 settings,
                             );
                         cached.priority =
@@ -1589,7 +1668,16 @@ export class DatacoreService {
                 allTasks,
                 (dcTask: DatacoreTask) => {
                     // Use $file per API docs (not $path)
-                    const taskPath = dcTask.$file || dcTask.file || "";
+                    const rawPath = dcTask.$file || dcTask.file || "";
+                    const taskPath: string =
+                        typeof rawPath === "string"
+                            ? rawPath
+                            : typeof rawPath === "object" &&
+                                rawPath !== null &&
+                                "path" in rawPath &&
+                                typeof rawPath.path === "string"
+                              ? rawPath.path
+                              : "";
 
                     // Process task
                     const task = this.processDatacoreTask(
@@ -1795,7 +1883,16 @@ export class DatacoreService {
                     inclusionFilters?.notes &&
                     inclusionFilters.notes.length > 0
                 ) {
-                    const taskPath = dcTask.$file || dcTask.file || "";
+                    const rawPath = dcTask.$file || dcTask.file || "";
+                    const taskPath: string =
+                        typeof rawPath === "string"
+                            ? rawPath
+                            : typeof rawPath === "object" &&
+                                rawPath !== null &&
+                                "path" in rawPath &&
+                                typeof rawPath.path === "string"
+                              ? rawPath.path
+                              : "";
                     const matchesNote = inclusionFilters.notes.some((note) => {
                         const fileName =
                             TaskFilterService.normalizePathForDatacore(note);

@@ -253,8 +253,9 @@ export class AIService {
             const hasParserError = parsedQuery && parsedQuery._parserError;
             const hasParsedData = parsedQuery && !hasParserError;
 
-            if (hasParsedData) {
+            if (hasParsedData && parsedQuery) {
                 // AI parsing succeeded - use AI-parsed results
+                // Type guard: parsedQuery is guaranteed non-null in this block
                 // If AI returned no filters and no keywords, use query as keyword
                 const hasAnyFilter = !!(
                     parsedQuery.priority ||
@@ -285,6 +286,7 @@ export class AIService {
                     keywords: keywords,
                     extractedPriority: parsedQuery.priority || null,
                     extractedDueDateFilter: parsedQuery.dueDate || null,
+                    extractedDueDateRange: parsedQuery.dueDateRange || null,
                     extractedStatus: parsedQuery.status || null,
                     extractedFolder: parsedQuery.folder || null,
                     extractedTags: parsedQuery.tags || [],
@@ -468,7 +470,7 @@ export class AIService {
                         | "any"
                         | "none"
                         | null;
-                    dueDate?: string | null;
+                    dueDate?: string | string[] | null;
                     dueDateRange?: DateRange | null;
                     status?: string | string[] | null;
                     statusValues?: string[] | null;
@@ -1040,7 +1042,7 @@ export class AIService {
                 );
 
                 // Calculate token usage based on mode
-                let tokenUsage;
+                let tokenUsage: TokenUsage;
                 if (chatMode === "simple") {
                     // Simple Search: No AI usage at all
                     tokenUsage = {
@@ -1049,7 +1051,7 @@ export class AIService {
                         totalTokens: 0,
                         estimatedCost: 0,
                         model: "none",
-                        provider: "openai", // Placeholder (Simple Search doesn't use AI)
+                        provider: "openai" as const, // Placeholder (Simple Search doesn't use AI)
                         isEstimated: false,
                         directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
                     };
@@ -1139,7 +1141,7 @@ export class AIService {
                 // so the UI can display them (even though no AI expansion was used)
                 // NOTE: intent.keywords already deduplicated + filtered by extractKeywords()
                 // No need to process again - just use them directly!
-                let finalParsedQuery = parsedQuery;
+                let finalParsedQuery = parsedQuery ?? undefined;
                 if (
                     chatMode === "simple" &&
                     intent.keywords &&
@@ -1441,7 +1443,7 @@ export class AIService {
                         `[Task Chat] Combined token usage: Parser (${parserUsage.provider}/${parserUsage.model}: ${parserUsage.totalTokens}) + Analysis (${tokenUsage.provider}/${tokenUsage.model}: ${tokenUsage.totalTokens}) = ${combinedTokenUsage.totalTokens} total tokens`,
                     );
                     Logger.debug(
-                        `[Task Chat] Combined tokens breakdown: promptTokens=${combinedTokenUsage.promptTokens}, completionTokens=${combinedTokenUsage.completionTokens}, tokenSource=${combinedTokenUsage.tokenSource}, costMethod=${combinedTokenUsage.costMethod}`,
+                        `[Task Chat] Combined tokens breakdown: promptTokens=${combinedTokenUsage.promptTokens}, completionTokens=${combinedTokenUsage.completionTokens}, tokenSource=${combinedTokenUsage.tokenSource ?? "unknown"}, costMethod=${combinedTokenUsage.costMethod ?? "unknown"}`,
                     );
                 } else if (parserError) {
                     // Parser failed - add parsing model info for UI display (0 tokens for parser)
@@ -1476,7 +1478,9 @@ export class AIService {
                 }
 
                 // Create parsedQuery with core keywords from Simple Search fallback if parser failed
-                let finalParsedQuery = usingAIParsing ? parsedQuery : undefined;
+                let finalParsedQuery = usingAIParsing
+                    ? parsedQuery ?? undefined
+                    : undefined;
                 if (!usingAIParsing && intent.keywords.length > 0) {
                     finalParsedQuery = {
                         coreKeywords: intent.keywords,
@@ -1626,7 +1630,7 @@ export class AIService {
 
                     // Create parsedQuery with core keywords from Simple Search fallback if parser failed
                     let finalParsedQueryForError = usingAIParsing
-                        ? parsedQuery
+                        ? parsedQuery ?? undefined
                         : undefined;
                     if (!usingAIParsing && intent.keywords.length > 0) {
                         finalParsedQueryForError = {
@@ -1767,15 +1771,24 @@ export class AIService {
         const parts: string[] = [];
 
         if (intent.extractedPriority) {
-            parts.push(`priority: ${intent.extractedPriority}`);
+            const priorityStr = Array.isArray(intent.extractedPriority)
+                ? intent.extractedPriority.join(", ")
+                : String(intent.extractedPriority);
+            parts.push(`priority: ${priorityStr}`);
         }
 
         if (intent.extractedDueDateFilter) {
-            parts.push(`due date: ${intent.extractedDueDateFilter}`);
+            const dueDateStr = Array.isArray(intent.extractedDueDateFilter)
+                ? intent.extractedDueDateFilter.join(", ")
+                : intent.extractedDueDateFilter;
+            parts.push(`due date: ${dueDateStr}`);
         }
 
         if (intent.extractedStatus) {
-            parts.push(`status: ${intent.extractedStatus}`);
+            const statusStr = Array.isArray(intent.extractedStatus)
+                ? intent.extractedStatus.join(", ")
+                : intent.extractedStatus;
+            parts.push(`status: ${statusStr}`);
         }
 
         if (intent.extractedFolder) {
@@ -1962,14 +1975,24 @@ Always check the actual due date against ${today} before describing urgency!`;
             intent.extractedTags?.length > 0
         ) {
             const appliedFilters: string[] = [];
-            if (intent.extractedPriority)
-                appliedFilters.push(`Priority: ${intent.extractedPriority}`);
-            if (intent.extractedDueDateFilter)
-                appliedFilters.push(
-                    `Due date: ${intent.extractedDueDateFilter}`,
-                );
-            if (intent.extractedStatus)
-                appliedFilters.push(`Status: ${intent.extractedStatus}`);
+            if (intent.extractedPriority) {
+                const priorityStr = Array.isArray(intent.extractedPriority)
+                    ? intent.extractedPriority.join(", ")
+                    : String(intent.extractedPriority);
+                appliedFilters.push(`Priority: ${priorityStr}`);
+            }
+            if (intent.extractedDueDateFilter) {
+                const dueDateStr = Array.isArray(intent.extractedDueDateFilter)
+                    ? intent.extractedDueDateFilter.join(", ")
+                    : intent.extractedDueDateFilter;
+                appliedFilters.push(`Due date: ${dueDateStr}`);
+            }
+            if (intent.extractedStatus) {
+                const statusStr = Array.isArray(intent.extractedStatus)
+                    ? intent.extractedStatus.join(", ")
+                    : intent.extractedStatus;
+                appliedFilters.push(`Status: ${statusStr}`);
+            }
             if (intent.extractedFolder)
                 appliedFilters.push(`Folder: ${intent.extractedFolder}`);
             if (intent.extractedTags?.length > 0)
@@ -2449,22 +2472,23 @@ ${taskContext}`;
 
                 // Try different header formats
                 const headersObj = response.headers as unknown;
-                const headerFallback =
+                const headerFallback: string | null =
                     typeof headersObj === "object" &&
                     headersObj !== null &&
                     "x-generation-id" in headersObj &&
                     typeof (headersObj as Record<string, unknown>)[
                         "x-generation-id"
                     ] === "string"
-                        ? (headersObj as Record<string, unknown>)[
-                              "x-generation-id"
-                          ]
+                        ? String(
+                              (headersObj as Record<string, unknown>)[
+                                  "x-generation-id"
+                              ],
+                          )
                         : null;
 
-                generationId =
-                    response.headers.get("x-generation-id") ||
+                generationId = (response.headers.get("x-generation-id") ||
                     response.headers.get("X-Generation-Id") ||
-                    headerFallback;
+                    headerFallback) as string | null;
 
                 if (generationId) {
                     Logger.debug(
@@ -2581,8 +2605,12 @@ ${taskContext}`;
                             );
                         }
                     } catch (error) {
+                        const errorMsg =
+                            error instanceof Error
+                                ? error.message
+                                : String(error);
                         Logger.warn(
-                            `[OpenRouter] Failed to fetch actual usage, using estimates: ${error}`,
+                            `[OpenRouter] Failed to fetch actual usage, using estimates: ${errorMsg}`,
                         );
                     }
                 }
@@ -2640,7 +2668,10 @@ ${taskContext}`;
             };
         } catch (error: unknown) {
             // Handle abort errors gracefully
-            if (error.name === "AbortError") {
+            if (
+                error instanceof Error &&
+                error.name === "AbortError"
+            ) {
                 Logger.debug("Stream aborted by user");
                 throw new Error("Request aborted");
             }
@@ -2753,13 +2784,28 @@ ${taskContext}`;
                 } else {
                     // API didn't provide token counts - estimate them
                     // For Anthropic, estimate from system message + conversation messages
-                    let inputText = systemMessage?.content || "";
+                    let inputText = "";
+                    
+                    // Extract text from system message
+                    if (systemMessage?.content) {
+                        if (typeof systemMessage.content === "string") {
+                            inputText += systemMessage.content;
+                        } else if (Array.isArray(systemMessage.content)) {
+                            for (const part of systemMessage.content) {
+                                if (part.type === "text" && part.text) {
+                                    inputText += part.text;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Extract text from conversation messages
                     for (const msg of conversationMessages) {
                         if (typeof msg.content === "string") {
                             inputText += msg.content;
                         } else if (Array.isArray(msg.content)) {
                             for (const part of msg.content) {
-                                if (part.type === "text") {
+                                if (part.type === "text" && part.text) {
                                     inputText += part.text;
                                 }
                             }
@@ -2809,7 +2855,10 @@ ${taskContext}`;
                     tokenUsage,
                 };
             } catch (error: unknown) {
-                if (error.name === "AbortError") {
+                if (
+                    error instanceof Error &&
+                    error.name === "AbortError"
+                ) {
                     Logger.debug("Anthropic stream aborted by user");
                     throw new Error("Request aborted");
                 }
@@ -3030,13 +3079,17 @@ ${taskContext}`;
                     tokenUsage,
                 };
             } catch (error: unknown) {
-                if (error.name === "AbortError") {
+                if (
+                    error instanceof Error &&
+                    error.name === "AbortError"
+                ) {
                     Logger.debug("Ollama stream aborted by user");
                     throw new Error("Request aborted");
                 }
 
                 // Enhanced error handling
-                const errorMsg = error.message || String(error);
+                const errorMsg =
+                    error instanceof Error ? error.message : String(error);
 
                 if (
                     errorMsg.includes("ECONNREFUSED") ||
@@ -3074,8 +3127,10 @@ ${taskContext}`;
             });
 
             if (response.status !== 200) {
-                const errorMsg =
-                    response.json?.error || response.text || "Unknown error";
+                const errorData: { error?: string } =
+                    response.json as { error?: string };
+                const errorMsg: string =
+                    errorData?.error || response.text || "Unknown error";
                 throw new Error(
                     `Ollama API error (${response.status}): ${errorMsg}. ` +
                         `Ensure Ollama is running and model '${providerConfig.model}' is available. ` +
@@ -3083,7 +3138,15 @@ ${taskContext}`;
                 );
             }
 
-            const data = response.json;
+            const data: {
+                message?: { content?: string };
+                prompt_eval_count?: number;
+                eval_count?: number;
+            } = response.json as {
+                message?: { content?: string };
+                prompt_eval_count?: number;
+                eval_count?: number;
+            };
 
             // Validate response structure
             if (!data || !data.message || !data.message.content) {
@@ -3141,7 +3204,8 @@ ${taskContext}`;
             };
         } catch (error) {
             // Enhanced error handling for common Ollama issues
-            const errorMsg = error.message || String(error);
+            const errorMsg: string =
+                error instanceof Error ? error.message : String(error);
 
             if (
                 errorMsg.includes("ECONNREFUSED") ||
