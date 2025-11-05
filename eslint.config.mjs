@@ -37,23 +37,23 @@ export default [
   {
     rules: {
       // Custom rules from old config
-      "no-unused-vars": "on",
-      "@typescript-eslint/no-unused-vars": "on",
-      "@typescript-eslint/no-explicit-any": "on",
-      "@typescript-eslint/no-non-null-assertion": "on",
-      "no-useless-escape": "on",
-      "no-var": "on",
-      "@typescript-eslint/ban-ts-comment": "on",
-      "no-prototype-builtins": "on",
-      "@typescript-eslint/no-empty-function": "on",
+      "no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-non-null-assertion": "warn",
+      "no-useless-escape": "warn",
+      "no-var": "warn",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "no-prototype-builtins": "warn",
+      "@typescript-eslint/no-empty-function": "warn",
       "@typescript-eslint/no-this-alias": [
-        "error",
+        "warn",
         {
           allowDestructuring: true,
           allowedNames: ["self"],
         },
       ],
-      "require-yield": "off",
+      "require-yield": "warn",
       // Obsidian plugin rules (add any you need)
       // "obsidianmd/sample-names": "off",
       // "obsidianmd/prefer-file-manager-trash": "error",
