@@ -1,9 +1,28 @@
 import { App } from "obsidian";
-import { Task } from "../../models/task";
+import { Task, TaskFilter, DateRange } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import { DatacoreService } from "./datacoreService";
 import { TaskPropertyService } from "./taskPropertyService";
 import { Logger } from "../../utils/logger";
+
+/**
+ * Property filters for Datacore query
+ */
+interface PropertyFilters {
+    priority?: number | number[] | "none";
+    dueDateRange?: DateRange;
+    status?: string | string[];
+}
+
+/**
+ * Inclusion filters for task filtering
+ */
+interface InclusionFilters {
+    folders?: string[];
+    noteTags?: string[];
+    taskTags?: string[];
+    notes?: string[];
+}
 
 /**
  * Unified Task Indexing Service
@@ -293,8 +312,8 @@ export class TaskIndexService {
      * @param settings - Plugin settings (needed for status category -> symbol mapping)
      * @returns PropertyFilters for Datacore query or undefined if no filters
      */
-    static buildPropertyFilters(filter: any, settings: PluginSettings): any {
-        const propertyFilters: any = {};
+    static buildPropertyFilters(filter: TaskFilter, settings: PluginSettings): PropertyFilters | undefined {
+        const propertyFilters: PropertyFilters = {};
 
         // Priority Filter: Convert string priorities to numbers
         if (filter.priorities && filter.priorities.length > 0) {
@@ -352,8 +371,8 @@ export class TaskIndexService {
      * Build inclusion filters from TaskFilter
      * Shared utility used by both parseTasksFromIndex() and getTaskCount()
      */
-    static buildInclusionFilters(filter: any): any {
-        const inclusionFilters: any = {};
+    static buildInclusionFilters(filter: TaskFilter): InclusionFilters | undefined {
+        const inclusionFilters: InclusionFilters = {};
 
         if (filter.folders && filter.folders.length > 0) {
             inclusionFilters.folders = filter.folders;
@@ -470,7 +489,7 @@ export class TaskIndexService {
         specialKeywords?: string[];
         operators?: { and?: boolean; or?: boolean; not?: boolean };
     } {
-        const result: any = {
+        const result = {
             specialKeywords: [],
             operators: {},
         };

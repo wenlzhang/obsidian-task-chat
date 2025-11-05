@@ -1638,14 +1638,14 @@ export class TaskSearchService {
                 relevance?: number;
             }
         >,
-        getTaskId?: (task: any) => string,
-    ): (task: any) => boolean {
+        getTaskId?: (task: Task) => string,
+    ): (task: Task) => boolean {
         // PERFORMANCE: Pre-compute lowercased keywords ONCE before creating predicate
         // These are captured in the closure and reused for all tasks (avoiding repeated toLowerCase calls)
         const keywordsLower = keywords.map((kw) => kw.toLowerCase());
         const coreKeywordsLower = coreKeywords.map((kw) => kw.toLowerCase());
 
-        return (task: any) => {
+        return (task: Task) => {
             // Skip relevance filtering for property-only queries (no keywords)
             // This allows "p1 overdue" queries to work without keyword matching
             if (keywordsLower.length === 0 || coreKeywordsLower.length === 0) {

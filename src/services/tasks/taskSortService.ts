@@ -2,6 +2,26 @@ import { Task } from "../../models/task";
 import { PluginSettings, SortCriterion } from "../../settings";
 import { TaskPropertyService } from "./taskPropertyService";
 
+/**
+ * Datacore task representation (subset of properties used for sorting)
+ */
+interface DatacoreTask {
+    _dueDate?: string;
+    _mappedPriority?: number;
+    _mappedStatus?: string;
+    $text?: string;
+    text?: string;
+    [key: string]: unknown; // Allow other datacore properties
+}
+
+/**
+ * Score cache entry with component scores
+ */
+interface ScoreCacheEntry {
+    relevance?: number;
+    [key: string]: unknown; // Allow other score components
+}
+
 export class TaskSortService {
     /**
      * Sort tasks using multi-criteria sorting with smart internal defaults
@@ -63,12 +83,12 @@ export class TaskSortService {
      * @returns Sorted array (mutates in place, but also returns for convenience)
      */
     static sortScoredDcTasks(
-        scoredTasks: Array<{ dcTask: any; finalScore: number }>,
+        scoredTasks: Array<{ dcTask: DatacoreTask; finalScore: number }>,
         sortOrder: SortCriterion[],
         settings: PluginSettings,
-        getTaskId: (dcTask: any) => string,
-        scoreCache: Map<string, any>,
-    ): Array<{ dcTask: any; finalScore: number }> {
+        getTaskId: (dcTask: DatacoreTask) => string,
+        scoreCache: Map<string, ScoreCacheEntry>,
+    ): Array<{ dcTask: DatacoreTask; finalScore: number }> {
         scoredTasks.sort((a, b) => {
             // Primary sort: finalScore DESC (highest first)
             const scoreDiff = b.finalScore - a.finalScore;

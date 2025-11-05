@@ -2,6 +2,29 @@ import { requestUrl } from "obsidian";
 import { Logger } from "../../utils/logger";
 
 /**
+ * OpenRouter API model response structure
+ */
+interface OpenRouterModel {
+    id: string;
+    pricing?: {
+        prompt?: string | number;
+        completion?: string | number;
+    };
+}
+
+/**
+ * OpenRouter Generation API usage data structure
+ */
+interface OpenRouterUsageData {
+    data?: {
+        native_tokens_prompt?: number;
+        native_tokens_completion?: number;
+        tokens_prompt?: number;
+        tokens_completion?: number;
+    };
+}
+
+/**
  * Service for fetching and managing AI model pricing data
  * Fetches real-time pricing from OpenRouter API and falls back to embedded rates
  */
@@ -32,7 +55,7 @@ export class PricingService {
 
             // Parse OpenRouter models response
             if (data.data && Array.isArray(data.data)) {
-                data.data.forEach((model: any) => {
+                data.data.forEach((model: OpenRouterModel) => {
                     if (model.id && model.pricing) {
                         // OpenRouter returns pricing per token, convert to per million tokens
                         const promptCost = parseFloat(
@@ -394,7 +417,7 @@ export class PricingService {
      * Parse OpenRouter Generation API response data
      * Extracts token counts and actual cost from the API response
      */
-    private static parseOpenRouterUsageData(data: any): {
+    private static parseOpenRouterUsageData(data: OpenRouterUsageData): {
         promptTokens: number;
         completionTokens: number;
         actualCost?: number;

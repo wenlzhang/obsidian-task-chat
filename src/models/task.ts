@@ -1,3 +1,6 @@
+import type { ParsedQuery } from "../services/ai/aiQueryParserService";
+import type { StructuredError } from "../services/warnings/errorHandler";
+
 export interface Task {
     id: string;
     text: string;
@@ -53,8 +56,8 @@ export interface ChatMessage {
     timestamp: number;
     recommendedTasks?: Task[];
     tokenUsage?: TokenUsage;
-    parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata (for AI enhancement display)
-    error?: any; // Structured error information (for displaying API/analysis errors in chat UI)
+    parsedQuery?: ParsedQuery; // ParsedQuery with aiUnderstanding metadata (for AI enhancement display)
+    error?: StructuredError; // Structured error information (for displaying API/analysis errors in chat UI)
 }
 
 export interface TokenUsage {
