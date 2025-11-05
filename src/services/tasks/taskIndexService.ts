@@ -6,6 +6,21 @@ import { TaskPropertyService } from "./taskPropertyService";
 import { Logger } from "../../utils/logger";
 
 /**
+ * Global window extensions for Obsidian plugins
+ */
+interface WindowWithPlugins extends Window {
+    datacore?: {
+        core?: {
+            initialized?: boolean;
+        };
+        [key: string]: unknown;
+    };
+    moment?: unknown;
+}
+
+declare const window: WindowWithPlugins;
+
+/**
  * Property filters for Datacore query
  */
 interface PropertyFilters {
@@ -81,7 +96,7 @@ export class TaskIndexService {
         // Check if Datacore has finished indexing
         // Per Datacore API structure: window.datacore.core.initialized
         // The initialized property is on the core object, not on datacore directly
-        const dc = (window as any).datacore;
+        const dc = window.datacore;
         return dc?.core?.initialized === true;
     }
 
@@ -93,7 +108,7 @@ export class TaskIndexService {
             return "⚠️ Datacore not available - please install Datacore plugin";
         }
 
-        const dc = (window as any).datacore;
+        const dc = window.datacore;
         if (dc?.core?.initialized === true) {
             return "✓ Using Datacore (ready)";
         }
@@ -182,7 +197,7 @@ export class TaskIndexService {
 
         // Check cache
         const cached = this.queryCache.get(cacheKey);
-        const moment = (window as any).moment;
+        const moment = window.moment;
         const now = moment().valueOf();
 
         if (cached && now - cached.timestamp < this.CACHE_TTL) {
@@ -230,7 +245,7 @@ export class TaskIndexService {
      * Only keeps entries that are still valid
      */
     private static cleanupExpiredCache(): void {
-        const moment = (window as any).moment;
+        const moment = window.moment;
         const now = moment().valueOf();
         let cleanedCount = 0;
 
@@ -537,7 +552,7 @@ export class TaskIndexService {
         }
 
         // Pattern 5: Special keywords
-        const moment = (window as any).moment;
+        const moment = window.moment;
 
         // "overdue" or "over due" or "od"
         if (

@@ -1,6 +1,10 @@
 import { App, requestUrl, moment } from "obsidian";
-import { Task, ChatMessage, TokenUsage } from "../../models/task";
-import { ErrorHandler, AIError } from "../warnings/errorHandler";
+import { Task, ChatMessage, TokenUsage, QueryIntent } from "../../models/task";
+import {
+    ErrorHandler,
+    AIError,
+    StructuredError,
+} from "../warnings/errorHandler";
 import {
     PluginSettings,
     SortCriterion,
@@ -9,7 +13,11 @@ import {
     getProviderConfigForPurpose,
 } from "../../settings";
 import { TaskSearchService } from "../tasks/taskSearchService";
-import { QueryParserService, ParsedQuery } from "./aiQueryParserService";
+import {
+    QueryParserService,
+    ParsedQuery,
+    AIMessage,
+} from "./aiQueryParserService";
 import { PricingService } from "./pricingService";
 import { TaskSortService } from "../tasks/taskSortService";
 import { PromptBuilderService } from "./aiPromptBuilderService";
@@ -71,8 +79,8 @@ export class AIService {
         recommendedTasks?: Task[];
         tokenUsage?: TokenUsage;
         directResults?: Task[];
-        parsedQuery?: any; // ParsedQuery with aiUnderstanding metadata
-        error?: any; // Structured error for fallback results
+        parsedQuery?: ParsedQuery; // ParsedQuery with aiUnderstanding metadata
+        error?: StructuredError; // Structured error for fallback results
     }> {
         // API key not required for local Ollama
         if (settings.aiProvider !== "ollama") {
@@ -92,7 +100,7 @@ export class AIService {
         // Sort order only matters for tiebreaking tasks with identical scores
         const sortOrder = settings.taskSortOrder;
 
-        let intent: any;
+        let intent: QueryIntent;
         let parsedQuery: ParsedQuery | null = null;
         let usingAIParsing = false; // Track if AI parsing was actually used
 
@@ -224,7 +232,12 @@ export class AIService {
                                 ? error.message
                                 : String(error);
                         const parserModel =
-                            (error as any).parserModel || "unknown";
+                            typeof error === "object" &&
+                            error !== null &&
+                            "parserModel" in error &&
+                            typeof error.parserModel === "string"
+                                ? error.parserModel
+                                : "unknown";
                         parsedQuery = {
                             _parserError: errorMessage,
                             _parserModel: parserModel,
@@ -764,7 +777,7 @@ export class AIService {
                         totalTokens: 0,
                         estimatedCost: 0,
                         model: "none",
-                        provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
+                        provider: "openai", // Placeholder (Simple Search doesn't use AI)
                         isEstimated: true,
                         directSearchReason: reason,
                     },
@@ -1034,7 +1047,7 @@ export class AIService {
                         totalTokens: 0,
                         estimatedCost: 0,
                         model: "none",
-                        provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
+                        provider: "openai", // Placeholder (Simple Search doesn't use AI)
                         isEstimated: false,
                         directSearchReason: `${sortedTasksForDisplay.length} result${sortedTasksForDisplay.length !== 1 ? "s" : ""}`,
                     };
@@ -1096,8 +1109,8 @@ export class AIService {
                     parsedQuery._parserError
                 ) {
                     // Use stored structured error from AIError if available
-                    if ((parsedQuery as any)._structuredError) {
-                        error = (parsedQuery as any)._structuredError;
+                    if (parsedQuery._structuredError) {
+                        error = parsedQuery._structuredError;
                         error.fallbackUsed = `AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found).`;
                     } else {
                         // Create structured error from basic info
@@ -1166,8 +1179,8 @@ export class AIService {
             let parserError = undefined;
             if (!usingAIParsing && parsedQuery && parsedQuery._parserError) {
                 // Use stored structured error from AIError if available
-                if ((parsedQuery as any)._structuredError) {
-                    parserError = (parsedQuery as any)._structuredError;
+                if (parsedQuery._structuredError) {
+                    parserError = parsedQuery._structuredError;
                     parserError.fallbackUsed = `1. AI parser failed, used Simple Search fallback (${sortedTasksForDisplay.length} tasks found)\n2. Continued to AI analysis`;
                 } else {
                     // Create structured error from basic info
@@ -1506,9 +1519,9 @@ export class AIService {
                     parsedQuery._parserError
                 ) {
                     // Parser failed - use PARSER error (parser is primary issue)
-                    if ((parsedQuery as any)._structuredError) {
+                    if (parsedQuery._structuredError) {
                         // Use stored structured error from AIError
-                        structured = (parsedQuery as any)._structuredError;
+                        structured = parsedQuery._structuredError;
                     } else {
                         // Fallback: create structured error from basic info
                         const {
@@ -1683,7 +1696,7 @@ export class AIService {
                     totalTokens: 0,
                     estimatedCost: 0,
                     model: "none",
-                    provider: "openai" as any, // Placeholder (Simple Search doesn't use AI)
+                    provider: "openai", // Placeholder (Simple Search doesn't use AI)
                     isEstimated: true,
                     directSearchReason: `${sortedTasks.length} task${sortedTasks.length !== 1 ? "s" : ""}`,
                 },
@@ -1695,7 +1708,7 @@ export class AIService {
      * Detect query type based on content (Part 1 vs Part 2 vs both)
      * Used to dynamically adapt scoring and filtering
      */
-    private static detectQueryType(intent: any): {
+    private static detectQueryType(intent: QueryIntent): {
         hasKeywords: boolean;
         hasTaskProperties: boolean;
         queryType: "keywords-only" | "properties-only" | "mixed" | "empty";
@@ -1760,7 +1773,7 @@ export class AIService {
     /**
      * Build a human-readable description of applied filters
      */
-    private static buildFilterDescription(intent: any): string {
+    private static buildFilterDescription(intent: QueryIntent): string {
         const parts: string[] = [];
 
         if (intent.extractedPriority) {
@@ -1796,7 +1809,7 @@ export class AIService {
      */
     private static buildTaskContext(
         tasks: Task[],
-        intent: any,
+        intent: QueryIntent,
         settings: PluginSettings,
     ): string {
         if (tasks.length === 0) {
@@ -1877,10 +1890,10 @@ export class AIService {
         taskContext: string,
         chatHistory: ChatMessage[],
         settings: PluginSettings,
-        intent: any,
+        intent: QueryIntent,
         sortOrder: SortCriterion[],
         taskCount: number, // Number of tasks available for recommendation
-    ): any[] {
+    ): AIMessage[] {
         // Build prominent language instruction based on user settings
         let languageInstructionBlock = "";
         switch (settings.responseLanguage) {
@@ -2119,7 +2132,7 @@ The task list below shows tasks with their IDs. Reference them using those exact
 
 ${taskContext}`;
 
-        const messages: any[] = [
+        const messages: AIMessage[] = [
             {
                 role: "system",
                 content: systemPrompt,
@@ -2253,7 +2266,7 @@ ${taskContext}`;
      * Call AI API
      */
     private static async callAI(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
@@ -2377,7 +2390,7 @@ ${taskContext}`;
      * Uses native Fetch API instead of requestUrl to support streaming
      */
     private static async callOpenAIWithStreaming(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         onStream: (chunk: string) => void,
         abortSignal?: AbortSignal,
@@ -2445,11 +2458,23 @@ ${taskContext}`;
                 );
 
                 // Try different header formats
+                const headersObj = response.headers as unknown;
+                const headerFallback =
+                    typeof headersObj === "object" &&
+                    headersObj !== null &&
+                    "x-generation-id" in headersObj &&
+                    typeof (
+                        headersObj as Record<string, unknown>
+                    )["x-generation-id"] === "string"
+                        ? (headersObj as Record<string, unknown>)[
+                              "x-generation-id"
+                          ]
+                        : null;
+
                 generationId =
                     response.headers.get("x-generation-id") ||
                     response.headers.get("X-Generation-Id") ||
-                    (response.headers as any)["x-generation-id"] ||
-                    null;
+                    headerFallback;
 
                 if (generationId) {
                     Logger.debug(
@@ -2623,7 +2648,7 @@ ${taskContext}`;
                 response: cleanedResponse,
                 tokenUsage,
             };
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Handle abort errors gracefully
             if (error.name === "AbortError") {
                 Logger.debug("Stream aborted by user");
@@ -2639,7 +2664,7 @@ ${taskContext}`;
      * Call Anthropic API (different format than OpenAI)
      */
     private static async callAnthropic(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
@@ -2659,9 +2684,9 @@ ${taskContext}`;
             "https://api.anthropic.com/v1/messages";
 
         // Separate system message from conversation messages
-        const systemMessage = messages.find((m: any) => m.role === "system");
+        const systemMessage = messages.find((m: AIMessage) => m.role === "system");
         const conversationMessages = messages.filter(
-            (m: any) => m.role !== "system",
+            (m: AIMessage) => m.role !== "system",
         );
 
         const apiKey = this.getApiKeyForProvider(settings);
@@ -2791,7 +2816,7 @@ ${taskContext}`;
                     response: cleanedResponse,
                     tokenUsage,
                 };
-            } catch (error: any) {
+            } catch (error: unknown) {
                 if (error.name === "AbortError") {
                     Logger.debug("Anthropic stream aborted by user");
                     throw new Error("Request aborted");
@@ -2887,7 +2912,7 @@ ${taskContext}`;
      * - No built-in token counting (must estimate)
      */
     private static async callOllama(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         onStream?: (chunk: string) => void,
         abortSignal?: AbortSignal,
@@ -3012,7 +3037,7 @@ ${taskContext}`;
                     response: cleanedResponse,
                     tokenUsage,
                 };
-            } catch (error: any) {
+            } catch (error: unknown) {
                 if (error.name === "AbortError") {
                     Logger.debug("Ollama stream aborted by user");
                     throw new Error("Request aborted");

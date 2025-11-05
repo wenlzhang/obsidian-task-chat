@@ -1,8 +1,32 @@
-import { moment } from "obsidian";
+import { moment, type Moment } from "obsidian";
 import { Task, TaskStatusCategory, DateRange } from "../../models/task";
 import { PluginSettings } from "../../settings";
 import * as chrono from "chrono-node";
 import { Logger } from "../../utils/logger";
+
+/**
+ * Global window extensions for Obsidian plugins
+ */
+interface WindowWithPlugins extends Window {
+    moment?: unknown;
+}
+
+declare const window: WindowWithPlugins;
+
+/**
+ * Generic task type for property extraction (supports both Task and Datacore task formats)
+ */
+export interface GenericTask {
+    $text?: string;
+    text?: string;
+    due?: unknown;
+    $due?: unknown;
+    priority?: unknown;
+    status?: unknown;
+    completed?: unknown;
+    $completed?: unknown;
+    [key: string]: unknown;
+}
 
 /**
  * Task source type for distinguishing between different task indexing APIs
@@ -840,7 +864,7 @@ export class TaskPropertyService {
         // Sort by effective order (respecting defaults and explicit orders)
         categories.sort(([keyA, configA], [keyB, configB]) => {
             // Get effective order for each category
-            const getEffective = (key: string, config: any): number => {
+            const getEffective = (key: string, config: unknown): number => {
                 if (config.order !== undefined) return config.order;
                 const defaultConfig = this.DEFAULT_STATUS_CONFIG[key];
                 if (defaultConfig) return defaultConfig.order;
@@ -985,7 +1009,7 @@ export class TaskPropertyService {
      * @returns Priority number: 1 (highest), 2 (high), 3 (medium), 4 (low), undefined (none)
      */
     static mapPriority(
-        value: any,
+        value: unknown,
         settings: PluginSettings,
     ): number | undefined {
         if (value === undefined || value === null) {
@@ -1035,7 +1059,7 @@ export class TaskPropertyService {
      * @param format - Optional format string (default: YYYY-MM-DD)
      * @returns Formatted date string or undefined
      */
-    static formatDate(date: any, format?: string): string | undefined {
+    static formatDate(date: unknown, format?: string): string | undefined {
         if (!date) return undefined;
 
         try {
@@ -1192,10 +1216,10 @@ export class TaskPropertyService {
      * @returns True if date matches the keyword
      */
     private static matchesDateKeyword(
-        dateValue: any,
+        dateValue: unknown,
         keyword: string,
     ): boolean {
-        const moment = (window as any).moment;
+        const moment = window.moment;
 
         if (!dateValue) return false;
 
@@ -1354,7 +1378,7 @@ export class TaskPropertyService {
      * @returns Filtered array of tasks
      */
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
-        const moment = (window as any).moment;
+        const moment = window.moment;
 
         // Special case: "any" means tasks WITH a due date
         if (filter === "any") {
@@ -1809,9 +1833,9 @@ export class TaskPropertyService {
      * @returns True if the date matches the keyword
      */
     static matchesDueDateKeyword(
-        dateValue: any,
+        dateValue: unknown,
         keyword: string,
-        formatDate: (date: any) => string | undefined,
+        formatDate: (date: unknown) => string | undefined,
     ): boolean {
         if (!dateValue) return false;
 
@@ -1830,8 +1854,8 @@ export class TaskPropertyService {
      * @param keyword - The date range keyword
      * @returns Moment date object
      */
-    static parseDateRangeKeyword(keyword: string): any {
-        const moment = (window as any).moment;
+    static parseDateRangeKeyword(keyword: string): unknown {
+        const moment = window.moment;
 
         switch (keyword) {
             case this.DATE_RANGE_KEYWORDS.weekStart:
@@ -1884,7 +1908,7 @@ export class TaskPropertyService {
      * @returns Formatted date string (YYYY-MM-DD) or null if invalid
      */
     static parseRelativeDate(relativeDate: string): string | null {
-        const moment = (window as any).moment;
+        const moment = window.moment;
 
         // Match pattern: optional +/-, number, unit (d/w/m/y)
         // Supports: 1d, +1d, -1d, 1w, +1w, -1w, 1m, +1m, -1m, 1y, +1y, -1y
@@ -1896,7 +1920,7 @@ export class TaskPropertyService {
         const unit = match[3].toLowerCase();
 
         // Map unit to moment unit
-        const unitMap: { [key: string]: any } = {
+        const unitMap: { [key: string]: unknown } = {
             d: "days",
             w: "weeks",
             m: "months",
@@ -1907,7 +1931,7 @@ export class TaskPropertyService {
         if (!momentUnit) return null;
 
         // Calculate target date
-        let targetDate: any;
+        let targetDate: Moment;
         if (sign === "-") {
             targetDate = moment().subtract(amount, momentUnit);
         } else {
@@ -2132,7 +2156,7 @@ export class TaskPropertyService {
      * @returns Task text
      */
     private static getTaskText(
-        task: any,
+        task: GenericTask,
         source: TaskSource = "datacore",
     ): string {
         // Always use Datacore format (source parameter kept for compatibility)
@@ -2216,11 +2240,11 @@ export class TaskPropertyService {
      * @returns Field value, or undefined if not found
      */
     static getUnifiedFieldValue(
-        task: any,
+        task: GenericTask,
         fieldKey: string,
         text: string,
         settings: PluginSettings,
-    ): any {
+    ): unknown {
         // Strategy 1: Check Datacore built-in fields
         // Try $ prefix first for Datacore built-ins
         const builtInKey = this.getDatacoreBuiltInKey(fieldKey);
@@ -2275,7 +2299,7 @@ export class TaskPropertyService {
      * @returns True if task matches the due date value
      */
     static matchesUnifiedDueDateValue(
-        task: any,
+        task: GenericTask,
         dueDateValue: string,
         dueDateFields: string[],
         settings: PluginSettings,
@@ -2376,8 +2400,8 @@ export class TaskPropertyService {
             statusValues?: string[] | null;
         },
         settings: PluginSettings,
-    ): ((task: any) => boolean) | null {
-        const filters: ((task: any) => boolean)[] = [];
+    ): ((task: GenericTask) => boolean) | null {
+        const filters: ((task: GenericTask) => boolean)[] = [];
 
         // Build priority filter
         if (propertyFilters.priority) {
@@ -2389,7 +2413,7 @@ export class TaskPropertyService {
                 propertyFilters.priority === this.PRIORITY_FILTER_KEYWORDS.any
             ) {
                 // Tasks with ANY priority (P1-P4)
-                filters.push((task: any) => {
+                filters.push((task: GenericTask) => {
                     const taskText = this.getTaskText(task);
                     return priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
@@ -2409,7 +2433,7 @@ export class TaskPropertyService {
                 propertyFilters.priority === this.PRIORITY_FILTER_KEYWORDS.none
             ) {
                 // Tasks with NO priority
-                filters.push((task: any) => {
+                filters.push((task: GenericTask) => {
                     const taskText = this.getTaskText(task);
                     return !priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
@@ -2429,7 +2453,7 @@ export class TaskPropertyService {
                     ? propertyFilters.priority
                     : [propertyFilters.priority];
 
-                filters.push((task: any) => {
+                filters.push((task: GenericTask) => {
                     const taskText = this.getTaskText(task);
                     return priorityFields.some((field) => {
                         const value = this.getUnifiedFieldValue(
@@ -2458,7 +2482,7 @@ export class TaskPropertyService {
                 ? propertyFilters.dueDate
                 : [propertyFilters.dueDate];
 
-            filters.push((task: any) => {
+            filters.push((task: GenericTask) => {
                 for (const dueDateValue of dueDateValues) {
                     if (
                         this.matchesUnifiedDueDateValue(
@@ -2497,7 +2521,7 @@ export class TaskPropertyService {
                 // OPTIMIZATION: Cache extracted dates to avoid re-parsing
                 const dateCache = new Map<string, number | null>();
 
-                filters.push((task: any) => {
+                filters.push((task: GenericTask) => {
                     // Generate cache key from task
                     const taskId = `${task.$file || task.file}:${task.$line ?? task.line}`;
 
@@ -2556,7 +2580,7 @@ export class TaskPropertyService {
                 ? propertyFilters.status
                 : [propertyFilters.status];
 
-            filters.push((task: any) => {
+            filters.push((task: GenericTask) => {
                 const status = task.$status || task.status;
                 if (status !== undefined) {
                     const mapped = this.mapStatusToCategory(status, settings);
@@ -2584,7 +2608,7 @@ export class TaskPropertyService {
                     "No valid status categories resolved from filter values",
                 );
             } else {
-                filters.push((task: any) => {
+                filters.push((task: GenericTask) => {
                     const taskStatus = task.$status || task.status;
                     if (taskStatus === undefined) return false;
 
@@ -2600,6 +2624,6 @@ export class TaskPropertyService {
 
         if (filters.length === 0) return null;
 
-        return (task: any) => filters.every((f) => f(task));
+        return (task: GenericTask) => filters.every((f) => f(task));
     }
 }

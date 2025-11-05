@@ -16,6 +16,32 @@ import { ErrorHandler, AIError } from "../warnings/errorHandler";
 import { TokenUsage } from "../../models/task";
 
 /**
+ * AI chat message format (standard across all providers)
+ */
+export interface AIMessage {
+    role: string;
+    content: string;
+}
+
+/**
+ * Token usage response from AI APIs
+ */
+export interface AITokenUsage {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    [key: string]: unknown;
+}
+
+/**
+ * Error with additional parser metadata
+ */
+interface EnrichedParserError extends Error {
+    parserModel?: string;
+    isParserError?: boolean;
+}
+
+/**
  * Structured query result from AI parsing - Three-part system
  *
  * PART 1: Task Content
@@ -78,6 +104,7 @@ export interface ParsedQuery {
     // Parser Error Information (for fallback cases)
     _parserError?: string; // Error message if parsing failed
     _parserModel?: string; // Model that was attempted (provider/model)
+    _structuredError?: import("../warnings/errorHandler").StructuredError; // Full structured error for detailed error handling
 
     // Token Usage from Query Parsing (AI calls made during parsing)
     _parserTokenUsage?: TokenUsage;
@@ -2119,7 +2146,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Re-throw error with structured info for proper error handling
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
-            const enrichedError = new Error(errorMessage);
+            const enrichedError = new Error(
+                errorMessage,
+            ) as EnrichedParserError;
             // Add metadata for UI display - format as "Provider: model" not "provider/model"
             const providerName =
                 parsingProvider === "openai"
@@ -2129,9 +2158,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
                       : parsingProvider === "openrouter"
                         ? "OpenRouter"
                         : "Ollama";
-            (enrichedError as any).parserModel =
-                `${providerName}: ${parsingModel}`;
-            (enrichedError as any).isParserError = true;
+            enrichedError.parserModel = `${providerName}: ${parsingModel}`;
+            enrichedError.isParserError = true;
             throw enrichedError;
         }
     }
@@ -2141,10 +2169,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
      * Returns both response text and token usage information
      */
     private static async callAI(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: any }> {
+    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
             settings,
@@ -2244,11 +2272,23 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             }
 
             // Try to get from headers if available (requestUrl may expose headers)
-            if (!generationId && (response as any).headers) {
-                const headers = (response as any).headers;
+            const responseWithHeaders = response as unknown;
+            if (
+                !generationId &&
+                typeof responseWithHeaders === "object" &&
+                responseWithHeaders !== null &&
+                "headers" in responseWithHeaders
+            ) {
+                const headers = (
+                    responseWithHeaders as { headers: Record<string, unknown> }
+                ).headers;
                 generationId =
-                    headers["x-generation-id"] ||
-                    headers["X-Generation-Id"] ||
+                    (typeof headers["x-generation-id"] === "string"
+                        ? headers["x-generation-id"]
+                        : null) ||
+                    (typeof headers["X-Generation-Id"] === "string"
+                        ? headers["X-Generation-Id"]
+                        : null) ||
                     null;
                 if (generationId) {
                     Logger.debug(
@@ -2353,10 +2393,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
      * Returns both response text and token usage information
      */
     private static async callAnthropic(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: any }> {
+    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
             settings,
@@ -2379,9 +2419,9 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         }
 
         // Separate system message from conversation messages
-        const systemMessage = messages.find((m: any) => m.role === "system");
+        const systemMessage = messages.find((m: AIMessage) => m.role === "system");
         const conversationMessages = messages.filter(
-            (m: any) => m.role !== "system",
+            (m: AIMessage) => m.role !== "system",
         );
 
         const response = await requestUrl({
@@ -2485,10 +2525,10 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
      * Returns both response text and estimated token usage
      */
     private static async callOllama(
-        messages: any[],
+        messages: AIMessage[],
         settings: PluginSettings,
         abortSignal?: AbortSignal,
-    ): Promise<{ response: string; tokenUsage: any }> {
+    ): Promise<{ response: string; tokenUsage: AITokenUsage }> {
         // Use parsing model configuration
         const { provider, model, temperature } = getProviderForPurpose(
             settings,
@@ -2579,7 +2619,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
 
             // Ollama doesn't provide token counts - estimate based on character count
             // Rough estimate: 1 token ≈ 4 characters
-            const promptText = messages.map((m: any) => m.content).join(" ");
+            const promptText = messages.map((m: AIMessage) => m.content).join(" ");
             const promptTokens = Math.ceil(promptText.length / 4);
             const completionTokens = Math.ceil(responseContent.length / 4);
             const totalTokens = promptTokens + completionTokens;

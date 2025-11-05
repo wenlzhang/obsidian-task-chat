@@ -11,6 +11,15 @@ import { Logger } from "../../utils/logger";
 import { VectorizedScoring } from "../../utils/vectorizedScoring";
 
 /**
+ * Global window extensions for Obsidian plugins
+ */
+interface WindowWithPlugins extends Window {
+    moment?: unknown;
+}
+
+declare const window: WindowWithPlugins;
+
+/**
  * Service for searching and matching tasks based on queries
  *
  * ARCHITECTURE: Shared Scoring Functions
@@ -807,8 +816,8 @@ export class TaskSearchService {
             isPriority: propertyHints.hasPriority,
             isDueDate: propertyHints.hasDueDate,
             keywords,
-            extractedPriority: extractedPriority as any,
-            extractedDueDateFilter: extractedDueDateFilter as any,
+            extractedPriority: extractedPriority,
+            extractedDueDateFilter: extractedDueDateFilter,
             extractedDueDateRange, // NEW: Now uses actual extracted value
             extractedStatus,
             extractedFolder,
@@ -1124,7 +1133,7 @@ export class TaskSearchService {
         if (!dueDate) return settings.dueDateNoneScore;
 
         // Use moment for reliable date comparisons (from Obsidian)
-        const { moment } = window as any;
+        const { moment } = window;
         if (!moment) {
             Logger.warn("moment not available, skipping due date score");
             return settings.dueDateNoneScore;

@@ -14,6 +14,39 @@ import {
 import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
 
 /**
+ * Global window extensions for Obsidian plugins
+ */
+interface WindowWithPlugins extends Window {
+    datacore?: unknown;
+    moment?: unknown;
+}
+
+declare const window: WindowWithPlugins;
+
+/**
+ * Generic Datacore task type (raw format from Datacore API)
+ */
+interface DatacoreTask {
+    $text?: string;
+    text?: string;
+    due?: unknown;
+    $due?: unknown;
+    priority?: unknown;
+    status?: unknown;
+    completed?: unknown;
+    $completed?: unknown;
+    path?: string;
+    $path?: string;
+    file?: { path?: string };
+    $file?: { path?: string };
+    tags?: string[];
+    $tags?: string[];
+    _mappedPriority?: number;
+    _mappedStatus?: TaskStatusCategory;
+    [key: string]: unknown;
+}
+
+/**
  * Service for integrating with Datacore plugin to fetch tasks
  * Datacore is the successor to Dataview with 2-10x better performance
  *
@@ -72,7 +105,7 @@ export class DatacoreService {
         dateKeyword: string,
         dueDateField: string,
     ): string | null {
-        const moment = (window as any).moment;
+        const moment = window.moment;
         const K = TaskPropertyService.DUE_DATE_KEYWORDS; // Alias for brevity
 
         // Map keyword to Datacore query using centralized constants
@@ -257,8 +290,9 @@ export class DatacoreService {
             queryParts.push(`!${priorityField}`);
         } else if (Array.isArray(priority)) {
             // Multiple specific priorities - filter out invalid values
-            const validPriorities = priority.filter((p) =>
-                this.VALID_PRIORITIES.includes(p as any),
+            const validPriorities = priority.filter(
+                (p): p is 1 | 2 | 3 | 4 =>
+                    (this.VALID_PRIORITIES as readonly number[]).includes(p),
             );
             if (validPriorities.length > 0) {
                 queryParts.push(`(${buildPriorityCondition(validPriorities)})`);
@@ -313,7 +347,7 @@ export class DatacoreService {
      * Check if Datacore plugin is enabled and available
      */
     static isDatacoreEnabled(): boolean {
-        const dc = (window as any).datacore;
+        const dc = window.datacore;
 
         // Debug logging to help diagnose issues
         if (dc === undefined) {
@@ -339,7 +373,7 @@ export class DatacoreService {
      * Generate a stable identifier for a Datacore task.
      * Used for score caching so we can reuse quality/relevance calculations between passes.
      */
-    private static getTaskId(dcTask: any): string {
+    private static getTaskId(dcTask: DatacoreTask): string {
         const path = dcTask?.$file || dcTask?.file || "";
         const line = dcTask?.$line ?? dcTask?.line ?? 0;
         const textSnippet = dcTask?.$text || dcTask?.text || "";
@@ -349,12 +383,12 @@ export class DatacoreService {
     /**
      * Get Datacore API
      */
-    static getAPI(): any {
+    static getAPI(): unknown {
         if (!this.isDatacoreEnabled()) {
             return null;
         }
 
-        return (window as any).datacore;
+        return window.datacore;
     }
 
     /**
@@ -373,7 +407,7 @@ export class DatacoreService {
      * Delegates to TaskPropertyService for consistent behavior
      */
     static mapPriority(
-        value: any,
+        value: unknown,
         settings: PluginSettings,
     ): number | undefined {
         return TaskPropertyService.mapPriority(value, settings);
@@ -383,7 +417,7 @@ export class DatacoreService {
      * Format date to consistent string format
      * Delegates to TaskPropertyService for consistent behavior
      */
-    static formatDate(date: any, format?: string): string | undefined {
+    static formatDate(date: unknown, format?: string): string | undefined {
         return TaskPropertyService.formatDate(date, format);
     }
 
@@ -403,11 +437,11 @@ export class DatacoreService {
      * Additional fields may include custom properties and inline fields
      */
     private static getFieldValue(
-        dcTask: any,
+        dcTask: DatacoreTask,
         fieldKey: string,
         text: string,
         settings: PluginSettings,
-    ): any {
+    ): unknown {
         // Delegate to unified extraction method in TaskPropertyService
         return TaskPropertyService.getUnifiedFieldValue(
             dcTask,
@@ -428,7 +462,7 @@ export class DatacoreService {
      * - Empty $text (some tasks have custom status symbols but no text)
      * - Custom $status symbols (-, >, ?, /, !, b, I, p, c, d, f, etc.)
      */
-    private static isValidTask(task: any): boolean {
+    private static isValidTask(task: DatacoreTask): boolean {
         if (!task) return false;
 
         // CRITICAL: Check $type FIRST (Datacore's definitive indicator)
@@ -462,7 +496,7 @@ export class DatacoreService {
      * Uses fields from API docs: $text, $status, $file, $completed, $tags, etc.
      */
     static processDatacoreTask(
-        dcTask: any,
+        dcTask: DatacoreTask,
         settings: PluginSettings,
         index: number,
         filePath = "",
@@ -878,7 +912,7 @@ export class DatacoreService {
             statusExclusions?: string[] | null; // For "other" category - excludes defined symbols
         },
         settings: PluginSettings,
-    ): ((dcTask: any) => boolean) | null {
+    ): ((dcTask: DatacoreTask) => boolean) | null {
         // Delegate to unified filter building method in TaskPropertyService
         return TaskPropertyService.buildUnifiedTaskFilter(
             propertyFilters,
@@ -1054,7 +1088,7 @@ export class DatacoreService {
                 // This prevents UI freezing for large datasets (>5000 tasks)
                 await processInChunks(
                     results,
-                    (task: any) => {
+                    (task: DatacoreTask) => {
                         const taskText = task.$text || task.text || "";
 
                         // Extract and store due date
@@ -1162,7 +1196,7 @@ export class DatacoreService {
 
                 // STEP 1: Extract properties if not already extracted
                 const needsPropertyExtraction = results.some(
-                    (dcTask: any) =>
+                    (dcTask: DatacoreTask) =>
                         dcTask._dueDate === undefined &&
                         dcTask._mappedPriority === undefined &&
                         dcTask._mappedStatus === undefined,
@@ -1171,7 +1205,7 @@ export class DatacoreService {
                 if (needsPropertyExtraction) {
                     await processInChunks(
                         results,
-                        (task: any) => {
+                        (task: DatacoreTask) => {
                             const taskText = task.$text || task.text || "";
 
                             task._dueDate =
@@ -1228,7 +1262,7 @@ export class DatacoreService {
 
                 // Sort by quality score (highest first)
                 const qualitySortedTasks = results
-                    .map((dcTask: any) => {
+                    .map((dcTask: DatacoreTask) => {
                         const taskId = this.getTaskId(dcTask);
                         const cached = scoreCache.get(taskId);
                         const qualityScore =
@@ -1239,15 +1273,15 @@ export class DatacoreService {
                     })
                     .sort(
                         (
-                            a: { dcTask: any; qualityScore: number },
-                            b: { dcTask: any; qualityScore: number },
+                            a: { dcTask: DatacoreTask; qualityScore: number },
+                            b: { dcTask: DatacoreTask; qualityScore: number },
                         ) => b.qualityScore - a.qualityScore,
                     );
 
                 results = qualitySortedTasks
                     .slice(0, earlyLimit)
                     .map(
-                        (item: { dcTask: any; qualityScore: number }) =>
+                        (item: { dcTask: DatacoreTask; qualityScore: number }) =>
                             item.dcTask,
                     );
 
@@ -1294,7 +1328,7 @@ export class DatacoreService {
 
                 // STEP 1: Extract properties if needed (for scoring)
                 const needsPropertyExtraction = results.some(
-                    (dcTask: any) =>
+                    (dcTask: DatacoreTask) =>
                         dcTask._dueDate === undefined &&
                         dcTask._mappedPriority === undefined &&
                         dcTask._mappedStatus === undefined,
@@ -1306,7 +1340,7 @@ export class DatacoreService {
                     );
                     await processInChunks(
                         results,
-                        (task: any) => {
+                        (task: DatacoreTask) => {
                             const taskText = task.$text || task.text || "";
 
                             // Extract and store due date
@@ -1382,7 +1416,7 @@ export class DatacoreService {
 
                 // STEP 3: Score all tasks by applying coefficients to component scores
                 // Scoring is just: finalScore = sum of (componentScore × coefficient × activationFlag)
-                const scoredTasks = results.map((dcTask: any) => {
+                const scoredTasks = results.map((dcTask: DatacoreTask) => {
                     const taskId = this.getTaskId(dcTask);
                     const taskText = dcTask.$text || dcTask.text || "";
                     let cached = scoreCache.get(taskId);
@@ -1450,7 +1484,7 @@ export class DatacoreService {
                 if (shouldLimit) {
                     const limitedTasks = scoredTasks.slice(0, maxResults);
                     results = limitedTasks.map(
-                        (item: { dcTask: any; finalScore: number }) =>
+                        (item: { dcTask: DatacoreTask; finalScore: number }) =>
                             item.dcTask,
                     );
                     earlyLimitTimer.lap(
@@ -1461,7 +1495,7 @@ export class DatacoreService {
                     );
                 } else {
                     results = scoredTasks.map(
-                        (item: { dcTask: any; finalScore: number }) =>
+                        (item: { dcTask: DatacoreTask; finalScore: number }) =>
                             item.dcTask,
                     );
                     earlyLimitTimer.lap(`Sorted ${results.length} tasks`);
@@ -1494,7 +1528,7 @@ export class DatacoreService {
             // VALIDATION (CHUNKED - Non-blocking)
             // Filter out invalid items with periodic yielding
             // ========================================
-            const allTasks: any[] = [];
+            const allTasks: DatacoreTask[] = [];
             const validationStats = {
                 total: 0,
                 validTasks: 0,
@@ -1509,7 +1543,7 @@ export class DatacoreService {
 
             await processInChunks(
                 results,
-                (dcTask: any) => {
+                (dcTask: DatacoreTask) => {
                     validationStats.total++;
 
                     // Track what types we're seeing
@@ -1552,7 +1586,7 @@ export class DatacoreService {
 
             await processInChunks(
                 allTasks,
-                (dcTask: any) => {
+                (dcTask: DatacoreTask) => {
                     // Use $file per API docs (not $path)
                     const taskPath = dcTask.$file || dcTask.file || "";
 

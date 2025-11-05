@@ -61,13 +61,17 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("openrouter", "OpenRouter")
                     .addOption("ollama", "Ollama")
                     .setValue(this.plugin.settings.aiProvider)
-                    .onChange(async (value) => {
-                        this.plugin.settings.aiProvider = value as any;
-                        // Auto-configure provider defaults
-                        await this.configureProviderDefaults(value);
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh to show provider-specific settings
-                    }),
+                    .onChange(
+                        async (
+                            value: "openai" | "anthropic" | "openrouter" | "ollama",
+                        ) => {
+                            this.plugin.settings.aiProvider = value;
+                            // Auto-configure provider defaults
+                            await this.configureProviderDefaults(value);
+                            await this.plugin.saveSettings();
+                            this.display(); // Refresh to show provider-specific settings
+                        },
+                    ),
             );
 
         // Show API key only for cloud providers
@@ -588,11 +592,15 @@ export class SettingsTab extends PluginSettingTab {
                     .addOption("english", "English")
                     .addOption("custom", "Custom instruction")
                     .setValue(this.plugin.settings.responseLanguage)
-                    .onChange(async (value) => {
-                        this.plugin.settings.responseLanguage = value as any;
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh to show/hide custom instruction
-                    }),
+                    .onChange(
+                        async (
+                            value: "auto" | "english" | "custom",
+                        ) => {
+                            this.plugin.settings.responseLanguage = value;
+                            await this.plugin.saveSettings();
+                            this.display(); // Refresh to show/hide custom instruction
+                        },
+                    ),
             );
 
         // Show custom language instruction if custom is selected
@@ -882,7 +890,9 @@ export class SettingsTab extends PluginSettingTab {
                 );
 
                 // Update display when slider changes
-                const slider = setting.components[0] as any;
+                const slider = setting.components[0] as {
+                    onChange: (callback: (value: number) => void) => void;
+                };
                 const originalOnChange = slider.onChange;
                 slider.onChange = async (value: number) => {
                     valueDisplay.setText(`${value} s`);

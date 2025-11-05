@@ -4,6 +4,7 @@ import {
     Notice,
     MarkdownRenderer,
     setIcon,
+    type App,
 } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
 import { AIService } from "../services/ai/aiService";
@@ -13,6 +14,19 @@ import { getCurrentProviderConfig } from "../settings";
 import TaskChatPlugin from "../main";
 import { Logger } from "../utils/logger";
 import { AIError } from "../services/warnings/errorHandler";
+
+/**
+ * Extended App interface for internal Obsidian APIs
+ */
+interface AppWithInternalPlugins extends App {
+    internalPlugins?: {
+        getPluginById: (id: string) => {
+            instance?: {
+                openGlobalSearch?: (query: string) => void;
+            };
+        };
+    };
+}
 import { cleanWarningsFromContent } from "../services/warnings/warningService";
 import { ErrorMessageService } from "../services/warnings/errorMessageService";
 import { MetadataService } from "./metadataService";
@@ -1223,9 +1237,10 @@ export class ChatView extends ItemView {
         // Handle tags (#tag)
         if (linkClass.contains("tag")) {
             // Use Obsidian's search for tags
-            (this.app as any).internalPlugins
-                .getPluginById("global-search")
-                .instance.openGlobalSearch(`tag:${href.replace("#", "")}`);
+            const appWithPlugins = this.app as AppWithInternalPlugins;
+            appWithPlugins.internalPlugins
+                ?.getPluginById("global-search")
+                ?.instance?.openGlobalSearch?.(`tag:${href.replace("#", "")}`);
             return;
         }
 

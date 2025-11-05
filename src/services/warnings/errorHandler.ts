@@ -38,7 +38,7 @@ export class ErrorHandler {
      * Parse API error response and create structured error
      */
     static parseAPIError(
-        error: any,
+        error: unknown,
         model: string,
         operation: "parser" | "analysis",
     ): StructuredError {
@@ -147,7 +147,7 @@ export class ErrorHandler {
      * Extract HTTP status code from error
      */
     private static extractStatusCode(
-        error: any,
+        error: unknown,
         errorMsg: string,
     ): number | undefined {
         // Try to extract from error object
@@ -177,7 +177,7 @@ export class ErrorHandler {
      */
     private static createContextLengthError(
         errorMsg: string,
-        errorBody: any,
+        errorBody: unknown,
         model: string,
         statusCode?: number,
     ): StructuredError {
@@ -257,7 +257,7 @@ export class ErrorHandler {
      */
     private static createBadRequestError(
         errorMsg: string,
-        errorBody: any,
+        errorBody: unknown,
         model: string,
         statusCode: number,
     ): StructuredError {
@@ -404,7 +404,7 @@ export class ErrorHandler {
      * Create parser error with fallback info
      */
     static createParserError(
-        error: any,
+        error: unknown,
         model: string,
         fallbackType: "simple" | "semantic",
     ): StructuredError {
@@ -422,7 +422,7 @@ export class ErrorHandler {
     /**
      * Create analysis error (no fallback for analysis - user must fix)
      */
-    static createAnalysisError(error: any, model: string): StructuredError {
+    static createAnalysisError(error: unknown, model: string): StructuredError {
         const structured = this.parseAPIError(error, model, "analysis");
 
         // Analysis errors don't have automatic fallback

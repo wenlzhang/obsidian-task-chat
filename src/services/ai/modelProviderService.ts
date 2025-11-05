@@ -2,6 +2,24 @@ import { requestUrl } from "obsidian";
 import { Logger } from "../../utils/logger";
 
 /**
+ * Generic model interface for API responses
+ */
+interface ApiModel {
+    id?: string;
+    name?: string;
+    [key: string]: unknown;
+}
+
+/**
+ * Generic API response structure
+ */
+interface ApiResponse {
+    data?: ApiModel[];
+    models?: ApiModel[];
+    [key: string]: unknown;
+}
+
+/**
  * Service for fetching available AI models from different providers
  */
 export class ModelProviderService {
@@ -27,7 +45,7 @@ export class ModelProviderService {
             // Include all models - don't filter out anything
             // OpenAI's API returns all available models including specialized ones
             const allModels = data.data
-                .map((model: any) => model.id)
+                .map((model: ApiModel) => model.id)
                 .sort()
                 .reverse();
 
@@ -126,7 +144,7 @@ export class ModelProviderService {
 
             const data = response.json;
             // Get model IDs and sort by popularity/recency
-            const models = data.data.map((model: any) => model.id).sort();
+            const models = data.data.map((model: ApiModel) => model.id).sort();
 
             return models.length > 0
                 ? models
@@ -177,7 +195,7 @@ export class ModelProviderService {
             const data = response.json;
             // Extract model names
             const models = data.models
-                ? data.models.map((model: any) => model.name)
+                ? data.models.map((model: ApiModel) => model.name)
                 : [];
 
             return models.length > 0 ? models : this.getDefaultOllamaModels();
@@ -231,7 +249,7 @@ export class ModelProviderService {
 
             // Check if the selected model exists
             const data = response.json;
-            const modelExists = data.data.some((m: any) => m.id === model);
+            const modelExists = data.data.some((m: ApiModel) => m.id === model);
 
             if (!modelExists) {
                 return {
@@ -335,7 +353,7 @@ export class ModelProviderService {
 
             // Check if selected model exists
             const data = response.json;
-            const modelExists = data.data.some((m: any) => m.id === model);
+            const modelExists = data.data.some((m: ApiModel) => m.id === model);
 
             if (!modelExists) {
                 return {
@@ -385,7 +403,7 @@ export class ModelProviderService {
             // Check if model is installed
             const data = tagsResponse.json;
             const installedModels = data.models
-                ? data.models.map((m: any) => m.name)
+                ? data.models.map((m: ApiModel) => m.name)
                 : [];
 
             const modelInstalled = installedModels.some(

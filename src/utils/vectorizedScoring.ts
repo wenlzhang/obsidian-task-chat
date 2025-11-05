@@ -22,6 +22,26 @@ import { PluginSettings } from "../settings";
 import { TaskSearchService } from "../services/tasks/taskSearchService";
 
 /**
+ * Generic datacore task type (for vectorized scoring)
+ */
+interface DatacoreTask {
+    $text?: string;
+    text?: string;
+    [key: string]: unknown;
+}
+
+/**
+ * Score cache entry with component scores
+ */
+interface ScoreCacheEntry {
+    relevance?: number;
+    dueDate?: number;
+    priority?: number;
+    status?: number;
+    [key: string]: unknown;
+}
+
+/**
  * Batch extract and score all properties from Datacore raw tasks
  *
  * This performs ALL scoring operations in a single optimized pass:
@@ -133,12 +153,12 @@ export class VectorizedScoring {
      * @returns Filtered results with cached scores
      */
     static vectorizedQualityFilter(
-        results: any[],
+        results: DatacoreTask[],
         qualityThreshold: number,
         settings: PluginSettings,
-        scoreCache: Map<string, any>,
-        getTaskId: (task: any) => string,
-    ): any[] {
+        scoreCache: Map<string, ScoreCacheEntry>,
+        getTaskId: (task: DatacoreTask) => string,
+    ): DatacoreTask[] {
         const n = results.length;
 
         // Step 1: Extract all properties (single pass through data)
@@ -183,7 +203,7 @@ export class VectorizedScoring {
         );
 
         // Step 3: Calculate quality scores and filter (vectorized)
-        const filtered: any[] = [];
+        const filtered: DatacoreTask[] = [];
         const { dueDateCoefficient, priorityCoefficient, statusCoefficient } =
             settings;
 
@@ -212,14 +232,14 @@ export class VectorizedScoring {
      * Vectorized relevance filtering with score caching
      */
     static vectorizedRelevanceFilter(
-        results: any[],
+        results: DatacoreTask[],
         keywords: string[],
         coreKeywords: string[],
         minimumRelevanceScore: number,
         settings: PluginSettings,
-        scoreCache: Map<string, any>,
-        getTaskId: (task: any) => string,
-    ): any[] {
+        scoreCache: Map<string, ScoreCacheEntry>,
+        getTaskId: (task: DatacoreTask) => string,
+    ): DatacoreTask[] {
         const n = results.length;
 
         // Step 1: Extract all task texts (single pass)
@@ -240,7 +260,7 @@ export class VectorizedScoring {
         );
 
         // Step 3: Filter by threshold and cache (vectorized)
-        const filtered: any[] = [];
+        const filtered: DatacoreTask[] = [];
 
         for (let i = 0; i < n; i++) {
             if (relevanceScores[i] >= minimumRelevanceScore) {
