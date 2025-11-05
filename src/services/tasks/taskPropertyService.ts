@@ -821,7 +821,7 @@ export class TaskPropertyService {
         )) {
             if (config && Array.isArray(config.symbols)) {
                 if (config.symbols.some((s) => s === cleanSymbol)) {
-                    return category as TaskStatusCategory;
+                    return category;
                 }
             }
         }

@@ -431,7 +431,7 @@ export class FilterModal extends Modal {
                 id: startInputId,
                 type: "date",
             },
-        }) as HTMLInputElement;
+        });
         startInput.value = this.filter.dueDateRange?.start || "";
         startInput.addEventListener("change", () => {
             if (!this.filter.dueDateRange) {
@@ -452,7 +452,7 @@ export class FilterModal extends Modal {
                 id: endInputId,
                 type: "date",
             },
-        }) as HTMLInputElement;
+        });
         endInput.value = this.filter.dueDateRange?.end || "";
         endInput.addEventListener("change", () => {
             if (!this.filter.dueDateRange) {

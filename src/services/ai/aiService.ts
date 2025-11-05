@@ -1056,11 +1056,7 @@ export class AIService {
                     // Use actual token usage from query parser
                     if (parsedQuery && parsedQuery._parserTokenUsage) {
                         const parserUsage = parsedQuery._parserTokenUsage;
-                        const parsingProvider = parserUsage.provider as
-                            | "openai"
-                            | "anthropic"
-                            | "openrouter"
-                            | "ollama";
+                        const parsingProvider = parserUsage.provider;
                         tokenUsage = {
                             promptTokens: parserUsage.promptTokens,
                             completionTokens: parserUsage.completionTokens,
@@ -1425,11 +1421,7 @@ export class AIService {
                         pricingSource: combinedPricingSource,
                         // Add separate tracking for parsing and analysis
                         parsingModel: parserUsage.model,
-                        parsingProvider: parserUsage.provider as
-                            | "openai"
-                            | "anthropic"
-                            | "openrouter"
-                            | "ollama",
+                        parsingProvider: parserUsage.provider,
                         parsingTokens: parserUsage.totalTokens,
                         parsingCost: parserUsage.estimatedCost,
                         parsingTokenSource: parserTokenSource,
@@ -1593,11 +1585,7 @@ export class AIService {
                     ) {
                         // Parsing succeeded - show its token usage and cost
                         const parserUsage = parsedQuery._parserTokenUsage;
-                        const parsingProvider = parserUsage.provider as
-                            | "openai"
-                            | "anthropic"
-                            | "openrouter"
-                            | "ollama";
+                        const parsingProvider = parserUsage.provider;
                         tokenUsageForError = {
                             promptTokens: parserUsage.promptTokens,
                             completionTokens: parserUsage.completionTokens,

@@ -112,7 +112,7 @@ export default class TaskChatPlugin extends Plugin {
                 if (file instanceof TFolder) {
                     // This is a folder
                     menu.addItem((item) => {
-                        item.setTitle("Add to Task Chat filter")
+                        item.setTitle("Add to task chat filter")
                             .setIcon("filter")
                             .onClick(() => {
                                 void this.addFolderToFilter(file.path);
@@ -121,7 +121,7 @@ export default class TaskChatPlugin extends Plugin {
                 } else if (file instanceof TFile && file.extension === "md") {
                     // This is a markdown file
                     menu.addItem((item) => {
-                        item.setTitle("Add to Task Chat filter")
+                        item.setTitle("Add to task chat filter")
                             .setIcon("filter")
                             .onClick(() => {
                                 void this.addNoteToFilter(file.path);

@@ -39,10 +39,10 @@ export const PROTECTED_STATUS_CATEGORIES = {
 export function isStatusCategoryProtected(categoryKey: string): boolean {
     return (
         (
-            PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED as readonly string[]
+            PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED
         ).includes(categoryKey) ||
         (
-            PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED as readonly string[]
+            PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED
         ).includes(categoryKey)
     );
 }
@@ -50,7 +50,7 @@ export function isStatusCategoryProtected(categoryKey: string): boolean {
 // Helper to check if a category is fully locked (displayName and symbols cannot be modified)
 export function isStatusCategoryFullyLocked(categoryKey: string): boolean {
     return (
-        PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED as readonly string[]
+        PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED
     ).includes(categoryKey);
 }
 

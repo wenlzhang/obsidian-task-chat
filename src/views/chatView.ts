@@ -1136,7 +1136,7 @@ export class ChatView extends ItemView {
 
             errorEl.createEl("div", {
                 cls: "task-chat-parser-error-header",
-                text: "⚠️ AI Query Parser Failed",
+                text: "⚠️ AI query parser failed",
             });
 
             const detailsEl = errorEl.createDiv({
@@ -1172,7 +1172,8 @@ export class ChatView extends ItemView {
             let fallbackText = "";
             if (hasSemanticExpansion) {
                 // AI parsing succeeded before the error - we have expanded keywords
-                fallbackText = `✓ Semantic expansion succeeded (${message.parsedQuery.expansionMetadata.totalKeywords} keywords from ${message.parsedQuery.expansionMetadata.coreKeywordsCount} core). Using AI-filtered results.`;
+                const metadata = message.parsedQuery?.expansionMetadata;
+                fallbackText = `✓ Semantic expansion succeeded (${metadata?.totalKeywords} keywords from ${metadata?.coreKeywordsCount} core). Using AI-filtered results.`;
             } else {
                 // AI parsing failed completely - using Simple Search fallback
                 fallbackText =
@@ -1917,7 +1918,7 @@ export class ChatView extends ItemView {
                 exclusions.folders.length > 0
             ) {
                 const conflictingFolders = filter.folders.filter((folder) =>
-                    exclusions.folders!.some(
+                    exclusions.folders.some(
                         (excluded) =>
                             folder.startsWith(excluded) ||
                             excluded.startsWith(folder),
@@ -1939,7 +1940,7 @@ export class ChatView extends ItemView {
             ) {
                 const conflictingNoteTags = filter.noteTags.filter((tag) => {
                     const normalizedTag = tag.replace(/^#+/, "").toLowerCase();
-                    return exclusions.noteTags!.some(
+                    return exclusions.noteTags.some(
                         (excluded) =>
                             excluded.replace(/^#+/, "").toLowerCase() ===
                             normalizedTag,
@@ -1961,7 +1962,7 @@ export class ChatView extends ItemView {
             ) {
                 const conflictingTaskTags = filter.taskTags.filter((tag) => {
                     const normalizedTag = tag.replace(/^#+/, "").toLowerCase();
-                    return exclusions.taskTags!.some(
+                    return exclusions.taskTags.some(
                         (excluded) =>
                             excluded.replace(/^#+/, "").toLowerCase() ===
                             normalizedTag,
@@ -1982,7 +1983,7 @@ export class ChatView extends ItemView {
                 exclusions.notes.length > 0
             ) {
                 const conflictingNotes = filter.notes.filter((note) =>
-                    exclusions.notes!.includes(note),
+                    exclusions.notes.includes(note),
                 );
                 if (conflictingNotes.length > 0) {
                     conflicts.push(

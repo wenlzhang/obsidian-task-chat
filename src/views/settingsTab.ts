@@ -2132,7 +2132,7 @@ export class SettingsTab extends PluginSettingTab {
                     "Cannot delete: default catch-all category (required)";
             } else if (
                 (
-                    PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED as readonly string[]
+                    PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED
                 ).includes(categoryKey)
             ) {
                 disabledBtn.title = `Cannot delete: Core category "${displayName}" (required for consistent task management)`;
