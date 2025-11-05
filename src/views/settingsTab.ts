@@ -408,9 +408,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Chat Settings
-        const taskChatSetting = new Setting(containerEl)
-            .setName("Task chat")
-            .setHeading();
+        const taskChatSetting = new Setting(containerEl).setName("Task chat").setHeading();
 
         const taskChatDesc = taskChatSetting.descEl;
         taskChatDesc.createSpan({ text: " " });

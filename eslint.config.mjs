@@ -54,7 +54,10 @@ export default [
         },
       ],
       "require-yield": "warn",
-      // Obsidian plugin rules (add any you need)
+      // Obsidian plugin rules overrides
+      "obsidianmd/ui/sentence-case": "warn",
+      "obsidianmd/no-static-styles-assignment": "warn",
+      "obsidianmd/settings-tab/no-problematic-settings-headings": "warn",
       // "obsidianmd/sample-names": "off",
       // "obsidianmd/prefer-file-manager-trash": "error",
     },
