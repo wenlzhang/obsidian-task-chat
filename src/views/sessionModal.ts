@@ -207,6 +207,7 @@ export class SessionModal extends Modal {
                 ? `Delete "${session.name}" with ${messageCount} message${messageCount !== 1 ? "s" : ""}?`
                 : `Delete empty session "${session.name}"?`;
 
+        // TODO: Replace with Obsidian Modal for better UX
         if (confirm(confirmMessage)) {
             this.plugin.sessionManager.deleteSession(session.id);
             void this.plugin.saveSettings();
@@ -242,6 +243,7 @@ export class SessionModal extends Modal {
                 ? `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""} (${totalMessages} total messages)?\n\nThis action cannot be undone.`
                 : `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""}?`;
 
+        // TODO: Replace with Obsidian Modal for better UX
         if (confirm(confirmMessage)) {
             // Delete selected sessions
             selectedSessions.forEach((session) => {
@@ -280,6 +282,7 @@ export class SessionModal extends Modal {
                 ? `Delete all ${sessions.length} sessions (${totalMessages} total messages)?\n\nThis action cannot be undone.`
                 : `Delete all ${sessions.length} empty sessions?`;
 
+        // TODO: Replace with Obsidian Modal for better UX
         if (confirm(confirmMessage)) {
             // Delete all sessions
             sessions.forEach((session) => {

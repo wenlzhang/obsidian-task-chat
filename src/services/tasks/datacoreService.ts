@@ -1746,11 +1746,11 @@ export class DatacoreService {
             notes?: string[];
         },
     ): Promise<number> {
-        console.debug(
+        Logger.debug(
             "[DatacoreService.getTaskCount] Received propertyFilters:",
             propertyFilters,
         );
-        console.debug(
+        Logger.debug(
             "[DatacoreService.getTaskCount] Received inclusionFilters:",
             inclusionFilters,
         );
@@ -1800,7 +1800,7 @@ export class DatacoreService {
 
             // DEBUG: Log sample tasks to inspect field names and values
             if (results && results.length > 0) {
-                console.debug(
+                Logger.debug(
                     "[DEBUG] Sample Datacore task object (first result):",
                     JSON.stringify(
                         {
@@ -1825,7 +1825,7 @@ export class DatacoreService {
             if (!results || results.length === 0) {
                 Logger.info("[Task Count] No results from Datacore query");
                 // DEBUG: Test simpler query without property filters
-                console.debug(
+                Logger.debug(
                     "[DEBUG] Testing simpler query without property filters...",
                 );
                 const simpleQuery = this.buildDatacoreQuery(
@@ -1833,13 +1833,13 @@ export class DatacoreService {
                     inclusionFilters,
                     undefined, // No property filters
                 );
-                console.debug("[DEBUG] Simple query:", simpleQuery);
+                Logger.debug("[DEBUG] Simple query:", simpleQuery);
                 const simpleResults = await datacoreApi.query(simpleQuery);
-                console.debug(
+                Logger.debug(
                     `[DEBUG] Simple query returned ${simpleResults?.length || 0} results`,
                 );
                 if (simpleResults && simpleResults.length > 0) {
-                    console.debug(
+                    Logger.debug(
                         "[DEBUG] Sample task from simple query:",
                         JSON.stringify(
                             {

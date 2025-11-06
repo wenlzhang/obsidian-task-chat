@@ -12,6 +12,7 @@
  */
 
 import { CHUNK_SIZES } from "./constants";
+import { Logger } from "./logger";
 
 /**
  * Yield to browser event loop using requestAnimationFrame
@@ -175,7 +176,7 @@ export class PerformanceTimer {
     lap(sublabel?: string): number {
         const elapsed = performance.now() - this.startTime;
         const fullLabel = sublabel ? `${this.label} - ${sublabel}` : this.label;
-        console.debug(`[Performance] ${fullLabel}: ${elapsed.toFixed(1)}ms`);
+        Logger.debug(`[Performance] ${fullLabel}: ${elapsed.toFixed(1)}ms`);
         return elapsed;
     }
 

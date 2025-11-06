@@ -2150,6 +2150,7 @@ export class SettingsTab extends PluginSettingTab {
             removeBtn.classList.add("task-chat-status-btn-remove");
             removeBtn.addEventListener("click", () => {
                 void (async () => {
+                    // TODO: Replace with Obsidian Modal for better UX
                     if (
                         confirm(
                             `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,

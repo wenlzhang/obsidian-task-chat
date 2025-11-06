@@ -484,11 +484,11 @@ export class TaskIndexService {
             notes?: string[];
         },
     ): Promise<number> {
-        console.debug(
+        Logger.debug(
             "[TaskIndexService.getTaskCount] propertyFilters:",
             propertyFilters,
         );
-        console.debug(
+        Logger.debug(
             "[TaskIndexService.getTaskCount] inclusionFilters:",
             inclusionFilters,
         );

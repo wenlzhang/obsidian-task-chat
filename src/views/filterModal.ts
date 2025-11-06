@@ -7,6 +7,7 @@ import {
     NoteSuggestModal,
 } from "../utils/suggestModals";
 import TaskChatPlugin from "../main";
+import { Logger } from "../utils/logger";
 
 /**
  * Enhanced Filter Modal with two sections:
@@ -689,7 +690,7 @@ export class FilterModal extends Modal {
             cls: "task-chat-filter-button-apply mod-cta",
         });
         applyBtn.addEventListener("click", () => {
-            console.debug(
+            Logger.debug(
                 "[FilterModal] Applying filter:",
                 JSON.stringify(this.filter, null, 2),
             );
