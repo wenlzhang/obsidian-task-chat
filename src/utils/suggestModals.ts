@@ -7,7 +7,7 @@ import { App, FuzzySuggestModal, TFile } from "obsidian";
 export class FolderSuggestModal extends FuzzySuggestModal<string> {
     constructor(
         app: App,
-        private onChooseFolder: (folder: string) => void,
+        private _onChooseFolder: (_folder: string) => void,
     ) {
         super(app);
         this.setPlaceholder("Type to search folders...");
@@ -42,8 +42,8 @@ export class FolderSuggestModal extends FuzzySuggestModal<string> {
         return folder === "/" ? "/ (root)" : folder;
     }
 
-    onChooseItem(folder: string, evt: MouseEvent | KeyboardEvent): void {
-        this.onChooseFolder(folder);
+    onChooseItem(folder: string, _evt: MouseEvent | KeyboardEvent): void {
+        this._onChooseFolder(folder);
     }
 }
 
@@ -54,7 +54,7 @@ export class FolderSuggestModal extends FuzzySuggestModal<string> {
 export class TagSuggestModal extends FuzzySuggestModal<string> {
     constructor(
         app: App,
-        private onChooseTag: (tag: string) => void,
+        private _onChooseTag: (_tag: string) => void,
     ) {
         super(app);
         this.setPlaceholder("Type to search tags...");
@@ -104,8 +104,8 @@ export class TagSuggestModal extends FuzzySuggestModal<string> {
         return tag;
     }
 
-    onChooseItem(tag: string, evt: MouseEvent | KeyboardEvent): void {
-        this.onChooseTag(tag);
+    onChooseItem(tag: string, _evt: MouseEvent | KeyboardEvent): void {
+        this._onChooseTag(tag);
     }
 }
 
@@ -116,7 +116,7 @@ export class TagSuggestModal extends FuzzySuggestModal<string> {
 export class NoteSuggestModal extends FuzzySuggestModal<TFile> {
     constructor(
         app: App,
-        private onChooseNote: (note: TFile) => void,
+        private _onChooseNote: (_note: TFile) => void,
     ) {
         super(app);
         this.setPlaceholder("Type to search notes...");
@@ -146,7 +146,7 @@ export class NoteSuggestModal extends FuzzySuggestModal<TFile> {
         return file.path;
     }
 
-    onChooseItem(file: TFile, evt: MouseEvent | KeyboardEvent): void {
-        this.onChooseNote(file);
+    onChooseItem(file: TFile, _evt: MouseEvent | KeyboardEvent): void {
+        this._onChooseNote(file);
     }
 }

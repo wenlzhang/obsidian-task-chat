@@ -211,7 +211,7 @@ export class QueryParserService {
                 // Verify it's valid JSON before returning
                 JSON.parse(markdownMatch[1]);
                 return markdownMatch[1];
-            } catch (_e) {
+            } catch {
                 // Continue to other extraction methods
             }
         }
@@ -266,7 +266,7 @@ export class QueryParserService {
                 ) {
                     return candidate; // This looks like our target JSON
                 }
-            } catch (_e) {
+            } catch {
                 // Not valid JSON, try next candidate
                 continue;
             }
@@ -277,7 +277,7 @@ export class QueryParserService {
             try {
                 JSON.parse(candidate);
                 return candidate; // At least it's valid JSON
-            } catch (_e) {
+            } catch {
                 continue;
             }
         }

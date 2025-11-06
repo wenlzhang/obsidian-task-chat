@@ -184,7 +184,7 @@ export class StreamingService {
                 tokenUsage: usage,
                 generationId: json.id || undefined, // Capture generation ID for OpenRouter
             };
-        } catch (error) {
+        } catch {
             Logger.debug("Failed to parse OpenAI chunk:", data);
             return null;
         }
@@ -273,7 +273,7 @@ export class StreamingService {
                 }
 
                 return null;
-            } catch (error) {
+            } catch {
                 Logger.debug("Failed to parse Anthropic chunk:", data);
                 return null;
             }
@@ -318,7 +318,7 @@ export class StreamingService {
                 done,
                 tokenUsage: usage,
             };
-        } catch (error) {
+        } catch {
             Logger.debug("Failed to parse Ollama chunk:", data);
             return null;
         }

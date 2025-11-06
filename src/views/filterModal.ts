@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Menu, moment } from "obsidian";
+import { App, Modal, moment } from "obsidian";
 import { TaskFilter } from "../models/task";
 import { Task } from "../models/task";
 import {
@@ -17,7 +17,7 @@ import TaskChatPlugin from "../main";
  */
 export class FilterModal extends Modal {
     private filter: TaskFilter;
-    private onSubmit: (filter: TaskFilter) => void;
+    private onSubmit: (_filter: TaskFilter) => void;
     private allTasks: Task[];
     private plugin: TaskChatPlugin;
     private listContainers: {
@@ -32,7 +32,7 @@ export class FilterModal extends Modal {
         plugin: TaskChatPlugin,
         allTasks: Task[],
         currentFilter: TaskFilter,
-        onSubmit: (filter: TaskFilter) => void,
+        onSubmit: (_filter: TaskFilter) => void,
     ) {
         super(app);
         this.plugin = plugin;
@@ -149,7 +149,7 @@ export class FilterModal extends Modal {
         const row = container.createDiv("task-chat-filter-inclusion-row");
 
         // Label (left side)
-        const labelEl = row.createDiv({
+        const _labelEl = row.createDiv({
             cls: "task-chat-filter-inclusion-label",
             text: label,
         });

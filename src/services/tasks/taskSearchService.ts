@@ -8,18 +8,18 @@ import { PluginSettings, SortCriterion } from "../../settings";
 import { moment } from "obsidian";
 import { TypoCorrection } from "../../utils/typoCorrection";
 import { Logger } from "../../utils/logger";
-import { VectorizedScoring } from "../../utils/vectorizedScoring";
+import type { VectorizedScoring as _VectorizedScoring } from "../../utils/vectorizedScoring";
 
 /**
  * Moment.js instance type (from window.moment)
  */
 interface MomentInstance {
     valueOf(): number;
-    format(format: string): string;
-    startOf(unit: string): MomentInstance;
-    endOf(unit: string): MomentInstance;
+    format(_format: string): string;
+    startOf(_unit: string): MomentInstance;
+    endOf(_unit: string): MomentInstance;
     isValid(): boolean;
-    diff(date: MomentInstance, unit: string): number;
+    diff(_date: MomentInstance, _unit: string): number;
 }
 
 /**
@@ -27,7 +27,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    (date?: string | Date | number): MomentInstance;
+    (_date?: string | Date | number): MomentInstance;
 };
 
 /**
@@ -593,7 +593,7 @@ export class TaskSearchService {
      * Extract folder filter from query
      */
     static extractFolderFromQuery(query: string): string | null {
-        const lowerQuery = query.toLowerCase();
+        const _lowerQuery = query.toLowerCase();
 
         // Match patterns like "in folder X", "from folder X", "folder X"
         const folderPatterns = [
@@ -1667,8 +1667,8 @@ export class TaskSearchService {
                 relevance?: number;
             }
         >,
-        getTaskId?: (task: Task) => string,
-    ): (task: Task) => boolean {
+        getTaskId?: (_task: Task) => string,
+    ): (_task: Task) => boolean {
         // PERFORMANCE: Pre-compute lowercased keywords ONCE before creating predicate
         // These are captured in the closure and reused for all tasks (avoiding repeated toLowerCase calls)
         const keywordsLower = keywords.map((kw) => kw.toLowerCase());

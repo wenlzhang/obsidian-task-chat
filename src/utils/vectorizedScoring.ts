@@ -17,7 +17,7 @@
  * - Typed arrays for native performance
  */
 
-import { Task, TaskStatusCategory } from "../models/task";
+import type { Task as _Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "../services/tasks/taskSearchService";
 
@@ -157,7 +157,7 @@ export class VectorizedScoring {
         qualityThreshold: number,
         settings: PluginSettings,
         scoreCache: Map<string, ScoreCacheEntry>,
-        getTaskId: (task: DatacoreTask) => string,
+        getTaskId: (_task: DatacoreTask) => string,
     ): DatacoreTask[] {
         const n = results.length;
 
@@ -169,7 +169,7 @@ export class VectorizedScoring {
 
         for (let i = 0; i < n; i++) {
             const task = results[i];
-            const taskText = task.$text || task.text || "";
+            const _taskText = task.$text || task.text || "";
 
             // Extract due date (Datacore format)
             const dueValue = task.due || task.$due;
@@ -242,7 +242,7 @@ export class VectorizedScoring {
         minimumRelevanceScore: number,
         settings: PluginSettings,
         scoreCache: Map<string, ScoreCacheEntry>,
-        getTaskId: (task: DatacoreTask) => string,
+        getTaskId: (_task: DatacoreTask) => string,
     ): DatacoreTask[] {
         const n = results.length;
 

@@ -10,9 +10,9 @@ import { Logger } from "../../utils/logger";
  */
 interface MomentInstance {
     valueOf(): number;
-    format(format: string): string;
-    startOf(unit: string): MomentInstance;
-    endOf(unit: string): MomentInstance;
+    format(_format: string): string;
+    startOf(_unit: string): MomentInstance;
+    endOf(_unit: string): MomentInstance;
 }
 
 /**
@@ -20,7 +20,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    (date?: string | Date | number): MomentInstance;
+    (_date?: string | Date | number): MomentInstance;
 };
 
 /**

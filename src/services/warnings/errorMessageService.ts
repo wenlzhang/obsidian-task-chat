@@ -177,7 +177,7 @@ export class ErrorMessageService {
             "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md";
         const linkUrl = error.docsLink || baseUrl;
 
-        const linkEl = docsEl.createEl("a", {
+        const _linkEl = docsEl.createEl("a", {
             text: "Troubleshooting guide",
             href: linkUrl,
         });

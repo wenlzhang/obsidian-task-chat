@@ -20,9 +20,9 @@ import { AIError } from "../services/warnings/errorHandler";
  */
 interface AppWithInternalPlugins extends App {
     internalPlugins?: {
-        getPluginById: (id: string) => {
+        getPluginById: (_id: string) => {
             instance?: {
-                openGlobalSearch?: (query: string) => void;
+                openGlobalSearch?: (_query: string) => void;
             };
         };
     };
@@ -79,7 +79,7 @@ export class ChatView extends ItemView {
         this.contentEl.addClass("task-chat-container");
 
         // Load last session or create new
-        const session = this.plugin.sessionManager.getOrCreateCurrentSession(
+        const _session = this.plugin.sessionManager.getOrCreateCurrentSession(
             this.plugin.settings.maxSessions,
         );
 
@@ -633,7 +633,7 @@ export class ChatView extends ItemView {
         // Create warning banner if it doesn't exist
         if (!this.dataviewWarningEl) {
             // Insert at the top of content, after header and status bar
-            const headerEl = this.contentEl.querySelector(".task-chat-header");
+            const _headerEl = this.contentEl.querySelector(".task-chat-header");
             const statusEl = this.contentEl.querySelector(".task-chat-status");
 
             this.dataviewWarningEl = this.contentEl.createDiv(

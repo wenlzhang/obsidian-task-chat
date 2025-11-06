@@ -32,7 +32,7 @@ export function generateZeroResultsDiagnostic(
     // Show top task score if available
     if (topScores.length > 0) {
         const topScore = topScores[0];
-        const scorePercentage = (
+        const _scorePercentage = (
             (topScore.score / finalThreshold) *
             100
         ).toFixed(0);
@@ -223,7 +223,7 @@ export function generateAIFormatWarning(
 export function generateModelValidationWarning(
     model: string,
     provider: string,
-    purpose: "parsing" | "analysis",
+    _purpose: "parsing" | "analysis",
 ): string {
     return `⚠️ Model '${model}' not found in ${provider}'s available models list. It may still work if it's a valid model name. Click 'Refresh' to update the model list.`;
 }

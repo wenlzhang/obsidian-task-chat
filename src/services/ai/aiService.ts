@@ -2405,7 +2405,7 @@ ${taskContext}`;
     private static async callOpenAIWithStreaming(
         messages: AIMessage[],
         settings: PluginSettings,
-        onStream: (chunk: string) => void,
+        onStream: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
@@ -2687,7 +2687,7 @@ ${taskContext}`;
     private static async callAnthropic(
         messages: AIMessage[],
         settings: PluginSettings,
-        onStream?: (chunk: string) => void,
+        onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
@@ -2955,12 +2955,12 @@ ${taskContext}`;
     private static async callOllama(
         messages: AIMessage[],
         settings: PluginSettings,
-        onStream?: (chunk: string) => void,
+        onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider, model, temperature } = getProviderForPurpose(
+        const { provider: _provider, model, temperature } = getProviderForPurpose(
             settings,
             "analysis",
         );
@@ -3041,7 +3041,7 @@ ${taskContext}`;
                     (tokenUsageInfo ? "actual" : "estimated");
 
                 // Use enhanced cost calculation with tracking (Ollama is free)
-                const costTracking = PricingService.calculateCostWithTracking(
+                const _costTracking = PricingService.calculateCostWithTracking(
                     promptTokens,
                     completionTokens,
                     model,

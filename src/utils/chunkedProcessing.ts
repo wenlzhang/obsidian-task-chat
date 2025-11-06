@@ -35,9 +35,9 @@ export async function yieldToUI(): Promise<void> {
  */
 export async function processInChunks<T>(
     items: T[],
-    processor: (item: T, index: number) => void,
+    processor: (_item: T, _index: number) => void,
     chunkSize: number = CHUNK_SIZES.DEFAULT,
-    onProgress?: (processed: number, total: number) => void,
+    onProgress?: (_processed: number, _total: number) => void,
 ): Promise<void> {
     const total = items.length;
 
@@ -71,7 +71,7 @@ export async function processInChunks<T>(
  */
 export async function filterInChunks<T>(
     items: T[],
-    predicate: (item: T, index: number) => boolean,
+    predicate: (_item: T, _index: number) => boolean,
     chunkSize = 500,
 ): Promise<T[]> {
     const result: T[] = [];
@@ -106,7 +106,7 @@ export async function filterInChunks<T>(
  */
 export async function mapInChunks<T, R>(
     items: T[],
-    mapper: (item: T, index: number) => R,
+    mapper: (_item: T, _index: number) => R,
     chunkSize = 500,
 ): Promise<R[]> {
     const result: R[] = new Array(items.length);
@@ -138,7 +138,7 @@ export async function mapInChunks<T, R>(
  * @param chunkSize - Batch size before yielding
  */
 export async function vectorizedInChunks<T>(
-    batchProcessor: (startIndex: number, endIndex: number) => T,
+    batchProcessor: (_startIndex: number, _endIndex: number) => T,
     totalItems: number,
     chunkSize = 1000,
 ): Promise<T[]> {

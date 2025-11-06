@@ -13,7 +13,7 @@ interface ApiModel {
 /**
  * Generic API response structure
  */
-interface ApiResponse {
+interface _ApiResponse {
     data?: ApiModel[];
     models?: ApiModel[];
     [key: string]: unknown;

@@ -17,11 +17,11 @@ import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
  * Moment.js instance type (from window.moment)
  */
 interface MomentInstance {
-    format(format: string): string;
-    add(amount: number, unit: string): MomentInstance;
-    subtract(amount: number, unit: string): MomentInstance;
-    startOf(unit: string): MomentInstance;
-    endOf(unit: string): MomentInstance;
+    format(_format: string): string;
+    add(_amount: number, _unit: string): MomentInstance;
+    subtract(_amount: number, _unit: string): MomentInstance;
+    startOf(_unit: string): MomentInstance;
+    endOf(_unit: string): MomentInstance;
     isValid(): boolean;
 }
 
@@ -30,14 +30,14 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    (date?: string | Date | number): MomentInstance;
+    (_date?: string | Date | number): MomentInstance;
 };
 
 /**
  * Datacore API interface
  */
 interface DatacoreAPI {
-    query(query: string): Promise<DatacoreTask[]>;
+    query(_query: string): Promise<DatacoreTask[]>;
 }
 
 /**
@@ -982,7 +982,7 @@ export class DatacoreService {
             statusExclusions?: string[] | null; // For "other" category - excludes defined symbols
         },
         settings: PluginSettings,
-    ): ((dcTask: DatacoreTask) => boolean) | null {
+    ): ((_dcTask: DatacoreTask) => boolean) | null {
         // Delegate to unified filter building method in TaskPropertyService
         return TaskPropertyService.buildUnifiedTaskFilter(
             propertyFilters,

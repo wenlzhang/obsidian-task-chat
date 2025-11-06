@@ -124,7 +124,7 @@ export class MetadataService {
             }
 
             // Token count and cost together (grouped with comma)
-            const totalTokens = message.tokenUsage.totalTokens || 0;
+            const _totalTokens = message.tokenUsage.totalTokens || 0;
             const promptTokens = message.tokenUsage.promptTokens || 0;
             const completionTokens = message.tokenUsage.completionTokens || 0;
 

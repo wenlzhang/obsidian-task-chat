@@ -9,17 +9,17 @@ import { Logger } from "../../utils/logger";
  */
 interface MomentInstance {
     valueOf(): number;
-    format(format: string): string;
-    startOf(unit: string): MomentInstance;
-    endOf(unit: string): MomentInstance;
+    format(_format: string): string;
+    startOf(_unit: string): MomentInstance;
+    endOf(_unit: string): MomentInstance;
     isValid(): boolean;
-    isBefore(date: MomentInstance): boolean;
-    isAfter(date: MomentInstance): boolean;
-    isSame(date: MomentInstance, unit: string): boolean;
-    isSameOrAfter(date: MomentInstance, unit: string): boolean;
-    isSameOrBefore(date: MomentInstance, unit: string): boolean;
-    add(amount: number, unit: string): MomentInstance;
-    subtract(amount: number, unit: string): MomentInstance;
+    isBefore(_date: MomentInstance): boolean;
+    isAfter(_date: MomentInstance): boolean;
+    isSame(_date: MomentInstance, _unit: string): boolean;
+    isSameOrAfter(_date: MomentInstance, _unit: string): boolean;
+    isSameOrBefore(_date: MomentInstance, _unit: string): boolean;
+    add(_amount: number, _unit: string): MomentInstance;
+    subtract(_amount: number, _unit: string): MomentInstance;
     clone(): MomentInstance;
 }
 
@@ -28,7 +28,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    (date?: string | Date | number | unknown): MomentInstance;
+    (_date?: string | Date | number | unknown): MomentInstance;
 };
 
 /**
@@ -1116,7 +1116,7 @@ export class TaskPropertyService {
                 "format" in date &&
                 typeof (date as { format: unknown }).format === "function"
             ) {
-                const dateWithFormat = date as { format: (fmt: string) => string };
+                const dateWithFormat = date as { format: (_fmt: string) => string };
                 return format ? dateWithFormat.format(format) : dateWithFormat.format("YYYY-MM-DD");
             }
 
@@ -1180,7 +1180,7 @@ export class TaskPropertyService {
                     return parsed.format("YYYY-MM-DD");
                 }
             }
-        } catch (_e) {
+        } catch {
             // Continue to fallback
         }
 
@@ -1887,7 +1887,7 @@ export class TaskPropertyService {
     static matchesDueDateKeyword(
         dateValue: unknown,
         keyword: string,
-        formatDate: (date: unknown) => string | undefined,
+        formatDate: (_date: unknown) => string | undefined,
     ): boolean {
         if (!dateValue) return false;
 
@@ -2217,7 +2217,7 @@ export class TaskPropertyService {
      */
     private static getTaskText(
         task: GenericTask,
-        source: TaskSource = "datacore",
+        _source: TaskSource = "datacore",
     ): string {
         // Always use Datacore format (source parameter kept for compatibility)
         return task.$text || task.text || "";
@@ -2261,7 +2261,7 @@ export class TaskPropertyService {
      */
     private static getStandardFieldMapping(
         fieldKey: string,
-        settings: PluginSettings,
+        _settings: PluginSettings,
     ): string[] {
         const fieldMap: { [key: string]: string[] } = {};
 
@@ -2460,8 +2460,8 @@ export class TaskPropertyService {
             statusValues?: string[] | null;
         },
         settings: PluginSettings,
-    ): ((task: GenericTask) => boolean) | null {
-        const filters: ((task: GenericTask) => boolean)[] = [];
+    ): ((_task: GenericTask) => boolean) | null {
+        const filters: ((_task: GenericTask) => boolean)[] = [];
 
         // Build priority filter
         if (propertyFilters.priority) {

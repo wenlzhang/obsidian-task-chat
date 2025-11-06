@@ -131,7 +131,7 @@ export class ExclusionsModal extends Modal {
         });
 
         // Section label (left side)
-        const label = sectionRow.createDiv({
+        const _label = sectionRow.createDiv({
             cls: "task-chat-exclusion-label",
             text: sectionTitle,
         });
@@ -157,7 +157,7 @@ export class ExclusionsModal extends Modal {
                     : `${filename}.md`;
             }
 
-            const text = badge.createSpan({
+            const _text = badge.createSpan({
                 cls: "task-chat-exclusion-badge-text",
                 text: displayText,
             });
