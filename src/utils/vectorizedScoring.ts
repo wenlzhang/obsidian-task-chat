@@ -176,7 +176,9 @@ export class VectorizedScoring {
             dueDates[i] =
                 dueValue && typeof dueValue === "string"
                     ? dueValue
-                    : dueValue?.toString();
+                    : dueValue
+                      ? String(dueValue)
+                      : undefined;
 
             // Extract priority (already mapped)
             priorities[i] =

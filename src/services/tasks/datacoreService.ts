@@ -1425,7 +1425,7 @@ export class DatacoreService {
                             task._dueDate = dueValue
                                 ? typeof dueValue === "string"
                                     ? dueValue
-                                    : dueValue.toString()
+                                    : String(dueValue)
                                 : undefined;
 
                             // Extract and map priority

@@ -38,14 +38,22 @@ export class ErrorHandler {
      * Helper to safely check error code in error body
      */
     private static hasErrorCode(errorBody: unknown, code: string): boolean {
-        if (!errorBody || typeof errorBody !== "object" || !("error" in errorBody)) {
+        if (
+            !errorBody ||
+            typeof errorBody !== "object" ||
+            !("error" in errorBody)
+        ) {
             return false;
         }
 
         const bodyRecord = errorBody as Record<string, unknown>;
         const errorField = bodyRecord.error;
 
-        if (!errorField || typeof errorField !== "object" || !("code" in errorField)) {
+        if (
+            !errorField ||
+            typeof errorField !== "object" ||
+            !("code" in errorField)
+        ) {
             return false;
         }
 
