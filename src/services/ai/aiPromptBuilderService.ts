@@ -161,17 +161,6 @@ Users may use these field names in queries - recognize all variations:
             })
             .join("\n");
 
-        const _statusTerms = Object.entries(settings.taskStatusMapping)
-            .map(([key, config]) => {
-                // Get semantic terms based on category key (stable)
-                const termSuggestions = this.inferStatusTermSuggestions(
-                    key,
-                    settings,
-                );
-                return `  - ${config.displayName} (${key}): ${termSuggestions}`;
-            })
-            .join("\n");
-
         return `
 TASK STATUS CATEGORIES (User-Configured):
 ${categories}
@@ -467,8 +456,6 @@ REMEMBER: All these fields are extracted from inline field syntax and shown as c
             dueDate: TaskPropertyService.getCombinedDueDateTerms(settings),
             status: TaskPropertyService.getCombinedStatusTerms(settings),
         };
-
-        const _languageList = queryLanguages.join(", ");
 
         // Build comprehensive guidance
         return `

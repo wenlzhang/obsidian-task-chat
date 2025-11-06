@@ -2261,14 +2261,6 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         let completionTokens: number = usage.completion_tokens || 0;
         let totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
-        // Calculate cost using pricing table (initial estimate)
-        const _calculatedCost = PricingService.calculateCost(
-            promptTokens,
-            completionTokens,
-            model,
-            provider,
-            settings.pricingCache.data,
-        );
         let actualCost: number | undefined = undefined;
         let isEstimated = false;
 
