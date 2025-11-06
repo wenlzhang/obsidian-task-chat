@@ -32,10 +32,6 @@ export function generateZeroResultsDiagnostic(
     // Show top task score if available
     if (topScores.length > 0) {
         const topScore = topScores[0];
-        const _scorePercentage = (
-            (topScore.score / finalThreshold) *
-            100
-        ).toFixed(0);
         message += `**Top Task Score:** ${topScore.score.toFixed(1)} points (needed: ${finalThreshold.toFixed(2)})`;
 
         // Show relevance if it's a keyword query
@@ -223,9 +219,9 @@ export function generateAIFormatWarning(
 export function generateModelValidationWarning(
     model: string,
     provider: string,
-    _purpose: "parsing" | "analysis",
+    purpose: "parsing" | "analysis",
 ): string {
-    return `⚠️ Model '${model}' not found in ${provider}'s available models list. It may still work if it's a valid model name. Click 'Refresh' to update the model list.`;
+    return `⚠️ Model '${model}' not found in ${provider}'s available models list (for ${purpose}). It may still work if it's a valid model name. Click 'Refresh' to update the model list.`;
 }
 
 /**

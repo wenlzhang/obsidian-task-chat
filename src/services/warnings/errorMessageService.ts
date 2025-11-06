@@ -177,11 +177,6 @@ export class ErrorMessageService {
             "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md";
         const linkUrl = error.docsLink || baseUrl;
 
-        const _linkEl = docsEl.createEl("a", {
-            text: "Troubleshooting guide",
-            href: linkUrl,
-        });
-
         // Add provider-specific link if relevant
         if (error.model) {
             const providerLink = this.getProviderDocsLink(error.model);

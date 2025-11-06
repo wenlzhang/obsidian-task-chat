@@ -57,8 +57,10 @@ export class SettingsTab extends PluginSettingTab {
             )
             .addDropdown((dropdown) =>
                 dropdown
+                    // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                     .addOption("openai", "OpenAI")
                     .addOption("anthropic", "Anthropic")
+                    // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                     .addOption("openrouter", "OpenRouter")
                     .addOption("ollama", "Ollama")
                     .setValue(this.plugin.settings.aiProvider)
@@ -193,8 +195,10 @@ export class SettingsTab extends PluginSettingTab {
 
         parsingProviderSetting.addDropdown((dropdown) => {
             dropdown
+                // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
+                // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                 .addOption("openrouter", "OpenRouter")
                 .addOption("ollama", "Ollama")
                 .setValue(this.plugin.settings.parsingProvider)
@@ -308,8 +312,10 @@ export class SettingsTab extends PluginSettingTab {
 
         analysisProviderSetting.addDropdown((dropdown) => {
             dropdown
+                // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                 .addOption("openai", "OpenAI")
                 .addOption("anthropic", "Anthropic")
+                // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                 .addOption("openrouter", "OpenRouter")
                 .addOption("ollama", "Ollama")
                 .setValue(this.plugin.settings.analysisProvider)
@@ -667,6 +673,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Enable streaming responses")
+            // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name (ChatGPT)
             .setDesc("Show AI responses as they're generated (like ChatGPT).")
             .addToggle((toggle) =>
                 toggle
@@ -2551,9 +2558,11 @@ export class SettingsTab extends PluginSettingTab {
             switch (provider) {
                 case "openai":
                     if (!apiKey) {
+                        // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                         new Notice("Please set OpenAI API key first");
                         return;
                     }
+                    // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                     new Notice("Fetching OpenAI models...");
                     models =
                         await ModelProviderService.fetchOpenAIModels(apiKey);
@@ -2567,9 +2576,11 @@ export class SettingsTab extends PluginSettingTab {
 
                 case "openrouter":
                     if (!apiKey) {
+                        // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                         new Notice("Please set OpenRouter API key first");
                         return;
                     }
+                    // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name
                     new Notice("Fetching OpenRouter models...");
                     models =
                         await ModelProviderService.fetchOpenRouterModels(
