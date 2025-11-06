@@ -2429,7 +2429,7 @@ ${taskContext}`;
         Logger.debug("Starting OpenAI streaming call...");
 
         try {
-            // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -2723,7 +2723,7 @@ ${taskContext}`;
             Logger.debug("Starting Anthropic streaming call...");
 
             try {
-                // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
@@ -2978,7 +2978,7 @@ ${taskContext}`;
             Logger.debug("Starting Ollama streaming call...");
 
             try {
-                // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
