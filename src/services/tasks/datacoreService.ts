@@ -501,7 +501,6 @@ export class DatacoreService {
             dcTask,
             fieldKey,
             text,
-            settings,
         );
     }
 
@@ -1163,7 +1162,6 @@ export class DatacoreService {
                                 task,
                                 "due",
                                 taskText,
-                                settings,
                             );
                         // Use formatDate to handle all date types (string, Datacore date, moment, etc.)
                         task._dueDate = dueValue
@@ -1176,7 +1174,6 @@ export class DatacoreService {
                                 task,
                                 "priority",
                                 taskText,
-                                settings,
                             );
                         task._mappedPriority =
                             priorityValue !== undefined &&
@@ -1280,14 +1277,12 @@ export class DatacoreService {
                                     task,
                                     "due",
                                     taskText,
-                                    settings,
                                 );
                             const priorityValue =
                                 TaskPropertyService.getUnifiedFieldValue(
                                     task,
                                     "priority",
                                     taskText,
-                                    settings,
                                 );
                             task._mappedPriority =
                                 priorityValue !== undefined &&
@@ -1419,7 +1414,6 @@ export class DatacoreService {
                                     task,
                                     "due",
                                     taskText,
-                                    settings,
                                 );
                             // Use formatDate to handle all date types (string, Datacore date, moment, etc.)
                             task._dueDate = dueValue
@@ -1432,7 +1426,6 @@ export class DatacoreService {
                                     task,
                                     "priority",
                                     taskText,
-                                    settings,
                                 );
                             task._mappedPriority =
                                 priorityValue !== undefined &&
