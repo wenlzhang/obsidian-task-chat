@@ -3047,16 +3047,6 @@ ${taskContext}`;
                     tokenUsageInfo?.tokenSource ||
                     (tokenUsageInfo ? "actual" : "estimated");
 
-                // Use enhanced cost calculation with tracking (Ollama is free)
-                const _costTracking = PricingService.calculateCostWithTracking(
-                    promptTokens,
-                    completionTokens,
-                    model,
-                    "ollama",
-                    settings.pricingCache.data,
-                    tokenSource,
-                );
-
                 const tokenUsage: TokenUsage = {
                     promptTokens,
                     completionTokens,

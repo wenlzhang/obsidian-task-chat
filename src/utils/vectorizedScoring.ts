@@ -170,7 +170,6 @@ export class VectorizedScoring {
 
         for (let i = 0; i < n; i++) {
             const task = results[i];
-            const _taskText = task.$text || task.text || "";
 
             // Extract due date (Datacore format)
             const dueValue = task.due || task.$due;

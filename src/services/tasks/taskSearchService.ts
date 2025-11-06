@@ -588,8 +588,6 @@ export class TaskSearchService {
      * Extract folder filter from query
      */
     static extractFolderFromQuery(query: string): string | null {
-        const _lowerQuery = query.toLowerCase();
-
         // Match patterns like "in folder X", "from folder X", "folder X"
         const folderPatterns = [
             /(?:in|from|under)\s+(?:folder|directory)\s+["']?([^"'\s,]+)["']?/i,
