@@ -103,7 +103,7 @@ export class ErrorMessageService {
         const solutionEl = containerEl.createEl("div", {
             cls: "task-chat-api-error-solution",
         });
-        solutionEl.createEl("strong", { text: "💡 Solutions: " });
+        solutionEl.createEl("strong", { text: "💡 solutions: " });
 
         // Split solution by newlines and create list
         const solutions = solution.split("\n").filter((s: string) => s.trim());
@@ -129,7 +129,7 @@ export class ErrorMessageService {
         const fallbackEl = containerEl.createEl("div", {
             cls: "task-chat-api-error-fallback",
         });
-        fallbackEl.createEl("strong", { text: "✓ Fallback: " });
+        fallbackEl.createEl("strong", { text: "✓ fallback: " });
 
         // Check if message contains newlines (numbered list format)
         if (fallbackUsed.includes("\n")) {
@@ -170,7 +170,7 @@ export class ErrorMessageService {
         const docsEl = containerEl.createEl("div", {
             cls: "task-chat-api-error-docs",
         });
-        docsEl.createEl("strong", { text: "📖 Help: " });
+        docsEl.createEl("strong", { text: "📖 help: " });
 
         // Link to troubleshooting guide (with anchor to status code section if available)
         const baseUrl =

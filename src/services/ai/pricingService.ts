@@ -409,7 +409,7 @@ export class PricingService {
             }
 
             Logger.warn(
-                `[OpenRouter] Failed to fetch generation data after ${retryCount + 1} attempts: ${error}`,
+                `[OpenRouter] Failed to fetch generation data after ${retryCount + 1} attempts: ${error instanceof Error ? error.message : String(error)}`,
             );
             return null;
         }

@@ -257,10 +257,10 @@ export class MetadataService {
 
             if (parsingProviderName === analysisProviderName) {
                 // Same provider, show combined
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser), ${analysisModel} (analysis)`;
+                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${analysisModel} (analysis)`;
             } else {
                 // Different providers
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`;
+                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`;
             }
         }
 
@@ -272,11 +272,11 @@ export class MetadataService {
 
             if (sameProvider) {
                 const provider = message.tokenUsage!.parsingProvider!;
-                return `${this.formatProvider(provider)}: ${message.tokenUsage!.parsingModel} (parser), ${message.tokenUsage!.analysisModel} (analysis)`;
+                return `${this.formatProvider(provider)}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${message.tokenUsage!.analysisModel ?? "unknown"} (analysis)`;
             } else {
                 const parsingProvider = message.tokenUsage!.parsingProvider!;
                 const analysisProvider = message.tokenUsage!.analysisProvider!;
-                return `${this.formatProvider(parsingProvider)}: ${message.tokenUsage!.parsingModel} (parser), ${this.formatProvider(analysisProvider)}: ${message.tokenUsage!.analysisModel} (analysis)`;
+                return `${this.formatProvider(parsingProvider)}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${this.formatProvider(analysisProvider)}: ${message.tokenUsage!.analysisModel ?? "unknown"} (analysis)`;
             }
         }
 

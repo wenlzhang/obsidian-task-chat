@@ -161,7 +161,7 @@ Users may use these field names in queries - recognize all variations:
             })
             .join("\n");
 
-        const statusTerms = Object.entries(settings.taskStatusMapping)
+        const _statusTerms = Object.entries(settings.taskStatusMapping)
             .map(([key, config]) => {
                 // Get semantic terms based on category key (stable)
                 const termSuggestions = this.inferStatusTermSuggestions(
@@ -468,7 +468,7 @@ REMEMBER: All these fields are extracted from inline field syntax and shown as c
             status: TaskPropertyService.getCombinedStatusTerms(settings),
         };
 
-        const languageList = queryLanguages.join(", ");
+        const _languageList = queryLanguages.join(", ");
 
         // Build comprehensive guidance
         return `

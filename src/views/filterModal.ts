@@ -411,7 +411,7 @@ export class FilterModal extends Modal {
         const dueDateSection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        dueDateSection.createEl("h4", { text: "📅 Due date range" });
+        dueDateSection.createEl("h4", { text: "📅 due date range" });
 
         const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const startInputId = `task-chat-filter-date-start-${uniqueSuffix}`;
@@ -543,7 +543,7 @@ export class FilterModal extends Modal {
         const prioritySection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        prioritySection.createEl("h4", { text: "🎯 Priorities" });
+        prioritySection.createEl("h4", { text: "🎯 priorities" });
 
         const priorityContainer = prioritySection.createDiv(
             "task-chat-filter-toggles",
@@ -605,7 +605,7 @@ export class FilterModal extends Modal {
         const statusSection = container.createDiv(
             "task-chat-filter-subsection",
         );
-        statusSection.createEl("h4", { text: "✓ Task status" });
+        statusSection.createEl("h4", { text: "✓ task status" });
 
         const statusContainer = statusSection.createDiv(
             "task-chat-filter-toggles",

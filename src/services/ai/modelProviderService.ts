@@ -111,10 +111,10 @@ export class ModelProviderService {
     /**
      * Fetch available models from Anthropic
      */
-    static async fetchAnthropicModels(apiKey: string): Promise<string[]> {
+    static fetchAnthropicModels(_apiKey: string): Promise<string[]> {
         // Anthropic doesn't have a public models API endpoint yet
         // Return hardcoded list of current models
-        return this.getDefaultAnthropicModels();
+        return Promise.resolve(this.getDefaultAnthropicModels());
     }
 
     /**
@@ -265,7 +265,7 @@ export class ModelProviderService {
         } catch (error) {
             return {
                 success: false,
-                message: `Connection failed: ${error.message || "Unknown error"}`,
+                message: `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
             };
         }
     }
@@ -307,7 +307,7 @@ export class ModelProviderService {
             }
         } catch (error) {
             // Parse error message
-            const errorMsg = error.message || String(error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
             if (errorMsg.includes("401")) {
                 return {
                     success: false,
@@ -369,7 +369,7 @@ export class ModelProviderService {
         } catch (error) {
             return {
                 success: false,
-                message: `Connection failed: ${error.message || "Unknown error"}`,
+                message: `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
             };
         }
     }
@@ -443,7 +443,7 @@ export class ModelProviderService {
                 };
             }
         } catch (error) {
-            const errorMsg = error.message || String(error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
             if (
                 errorMsg.includes("ECONNREFUSED") ||
                 errorMsg.includes("fetch")

@@ -1032,7 +1032,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
         ${queryLanguages
-            .map((lang, idx) =>
+            .map((lang, _idx) =>
                 lang === "English"
                     ? '"develop", "build", "create", "implement", "code"'
                     : lang === "中文"
@@ -1043,7 +1043,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
             )
             .join(",\n        ")},
         ${queryLanguages
-            .map((lang, idx) =>
+            .map((lang, _idx) =>
                 lang === "English"
                     ? '"task", "work", "job", "assignment", "item"'
                     : lang === "中文"
@@ -1054,7 +1054,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
             )
             .join(",\n        ")},
         ${queryLanguages
-            .map((lang, idx) =>
+            .map((lang, _idx) =>
                 lang === "English"
                     ? '"chat", "conversation", "talk", "discussion", "dialogue"'
                     : lang === "中文"
@@ -2261,7 +2261,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
         let totalTokens = usage.total_tokens || promptTokens + completionTokens;
 
         // Calculate cost using pricing table (initial estimate)
-        const calculatedCost = PricingService.calculateCost(
+        const _calculatedCost = PricingService.calculateCost(
             promptTokens,
             completionTokens,
             model,

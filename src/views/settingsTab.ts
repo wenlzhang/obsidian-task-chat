@@ -417,7 +417,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Chat Settings
         const taskChatSetting = new Setting(containerEl)
-            .setName("Task chat")
+            .setName("Chat")
             .setHeading();
 
         const taskChatDesc = taskChatSetting.descEl;
@@ -433,9 +433,9 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Set default mode for new chat sessions.")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOption("simple", "Simple search - Free")
+                    .addOption("simple", "Simple search - free")
                     .addOption("smart", "Smart search - AI keyword expansion")
-                    .addOption("chat", "Task chat - Full AI assistant")
+                    .addOption("chat", "Task chat - full AI assistant")
                     .setValue(this.plugin.settings.defaultChatMode)
                     .onChange(async (value: "simple" | "smart" | "chat") => {
                         this.plugin.settings.defaultChatMode = value;
@@ -503,7 +503,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Max direct results")
-            .setDesc("Maximum tasks to show in Simple & Smart search modes.")
+            .setDesc("Maximum tasks to show in simple & smart search modes.")
             .addSlider((slider) =>
                 slider
                     .setLimits(5, 100, 5)
@@ -517,7 +517,7 @@ export class SettingsTab extends PluginSettingTab {
 
         // Smart search & Task chat
         new Setting(containerEl)
-            .setName("Smart search & Task chat")
+            .setName("Smart search & task chat")
             .setClass("setting-subsection-heading");
 
         // Add detailed setting for chat history context length
@@ -590,7 +590,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Response language")
             .setDesc(
-                "Language for AI responses. 'Auto' matches user input language.",
+                "Language for AI responses. 'auto' matches user input language.",
             )
             .addDropdown((dropdown) =>
                 dropdown
@@ -612,7 +612,7 @@ export class SettingsTab extends PluginSettingTab {
                 .setDesc("Specify how the AI should choose response language")
                 .addText((text) =>
                     text
-                        .setPlaceholder("e.g., always respond in English")
+                        .setPlaceholder("E.g., always respond in english")
                         .setValue(
                             this.plugin.settings.customLanguageInstruction,
                         )
@@ -644,7 +644,7 @@ export class SettingsTab extends PluginSettingTab {
         const tokenUsageSetting = new Setting(containerEl)
             .setName("Show token usage")
             .setDesc(
-                "Note: Figures are estimates. Check your API provider for actual billing.",
+                "Note: figures are estimates. Check your API provider for actual billing.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -709,7 +709,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Query language")
-            .setDesc("Separate with commas. Examples: English, Español.")
+            .setDesc("Separate with commas. Examples: english, español.")
             .addTextArea((text) =>
                 text
                     .setPlaceholder("English")
@@ -753,7 +753,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Custom priority terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("priority, urgent")
+                    .setPlaceholder("Priority, urgent")
                     .setValue(
                         this.plugin.settings.userPropertyTerms.priority.join(
                             ", ",
@@ -777,7 +777,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Custom due date terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("due, deadline")
+                    .setPlaceholder("Due, deadline")
                     .setValue(
                         this.plugin.settings.userPropertyTerms.dueDate.join(
                             ", ",
@@ -801,7 +801,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Custom status terms. Combines with built-in terms.")
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("done, completed, in progress")
+                    .setPlaceholder("Done, completed, in progress")
                     .setValue(
                         this.plugin.settings.userPropertyTerms.status.join(
                             ", ",
@@ -845,7 +845,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Auto-refresh task count")
             .setDesc(
-                "Automatically update task count at regular intervals. Note: This only queries the existing Datacore index, it does not force re-indexing.",
+                "Automatically update task count at regular intervals. Note: this only queries the existing datacore index, it does not force re-indexing.",
             )
             .addToggle((toggle) =>
                 toggle
@@ -864,7 +864,7 @@ export class SettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Auto-refresh interval")
-            .setDesc("Set interval (s) ≥ Datacore update frequency.")
+            .setDesc("Set interval (s) ≥ datacore update frequency.")
             .addSlider((slider) => {
                 // Add current value display
                 const valueDisplay = slider.sliderEl.createDiv({
@@ -902,7 +902,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Dataview field name for due dates")
             .addText((text) =>
                 text
-                    .setPlaceholder("due")
+                    .setPlaceholder("Due")
                     .setValue(this.plugin.settings.datacoreKeys.dueDate)
                     .onChange(async (value) => {
                         this.plugin.settings.datacoreKeys.dueDate = value;
@@ -915,7 +915,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Dataview field name for creation dates")
             .addText((text) =>
                 text
-                    .setPlaceholder("created")
+                    .setPlaceholder("Created")
                     .setValue(this.plugin.settings.datacoreKeys.createdDate)
                     .onChange(async (value) => {
                         this.plugin.settings.datacoreKeys.createdDate = value;
@@ -928,7 +928,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Dataview field name for completion dates")
             .addText((text) =>
                 text
-                    .setPlaceholder("completed")
+                    .setPlaceholder("Completed")
                     .setValue(this.plugin.settings.datacoreKeys.completedDate)
                     .onChange(async (value) => {
                         this.plugin.settings.datacoreKeys.completedDate = value;
@@ -941,7 +941,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc("Dataview field name for priority")
             .addText((text) =>
                 text
-                    .setPlaceholder("p")
+                    .setPlaceholder("P")
                     .setValue(this.plugin.settings.datacoreKeys.priority)
                     .onChange(async (value) => {
                         this.plugin.settings.datacoreKeys.priority = value;
@@ -1080,14 +1080,14 @@ export class SettingsTab extends PluginSettingTab {
             const warningBox = containerEl.createDiv({
                 cls: "task-chat-warning-box",
             });
-            warningBox.style.marginBottom = "16px";
+            warningBox.setCssProps({ marginBottom: "16px" });
 
             for (const warning of validation.warnings) {
                 const warningText = warningBox.createEl("p", {
                     cls: "task-chat-warning-message",
                 });
                 warningText.textContent = "⚠️ " + warning;
-                warningText.style.marginBottom = "4px";
+                warningText.setCssProps({ marginBottom: "4px" });
             }
         }
 
@@ -1216,7 +1216,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Task exclusion")
             .setDesc(
-                "Exclude tasks from searches. Click 'Refresh' in the chat to update task counts. ",
+                "Exclude tasks from searches. Click 'refresh' in the chat to update task counts. ",
             )
             .addButton((button) => {
                 button
@@ -1259,7 +1259,7 @@ export class SettingsTab extends PluginSettingTab {
             )
             .addTextArea((text) =>
                 text
-                    .setPlaceholder("task")
+                    .setPlaceholder("Task")
                     .setValue(this.plugin.settings.userStopWords.join(", "))
                     .onChange(async (value) => {
                         this.plugin.settings.userStopWords = value
@@ -1460,7 +1460,7 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Reset all main weights")
             .setDesc(
-                "Reset all main weights to defaults (R:20, D:4, P:1, S:1).",
+                "Reset all main weights to defaults (r:20, d:4, p:1, s:1).",
             )
             .addButton((button) =>
                 button
@@ -1754,7 +1754,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-description task-chat-info-box",
         });
         statusScoreNote.createEl("p", {
-            text: 'Each status category has its own coefficient. Scroll up to the "Status category" section to manage coefficients.',
+            text: 'Each status category has its own coefficient. Scroll up to the "status category" section to manage coefficients.',
         });
 
         // Task Sorting
@@ -2037,7 +2037,7 @@ export class SettingsTab extends PluginSettingTab {
         // Aliases (comma-separated query names)
         const aliasesInput = rowDiv.createEl("input", { type: "text" });
         aliasesInput.value = aliases;
-        aliasesInput.placeholder = "e.g., wip,doing";
+        aliasesInput.placeholder = "E.g., wip,doing";
         aliasesInput.title =
             "Comma-separated aliases for querying (no spaces). Example: completed,done,finished";
         aliasesInput.classList.add("task-chat-status-input");
@@ -2071,7 +2071,7 @@ export class SettingsTab extends PluginSettingTab {
             }
         } else {
             symbolsInput.classList.add("task-chat-status-input");
-            symbolsInput.placeholder = "e.g., x,X or !,I,b";
+            symbolsInput.placeholder = "E.g., X,X or !,i,b";
             symbolsInput.addEventListener("change", () => {
                 void (async () => {
                     this.plugin.settings.taskStatusMapping[
@@ -2182,13 +2182,13 @@ export class SettingsTab extends PluginSettingTab {
         });
 
         const advancedFields = advancedContainer.createDiv();
-        advancedFields.style.display = "none"; // Initially collapsed
+        advancedFields.setCssProps({ display: "none" }); // Initially collapsed
 
         advancedHeader.addEventListener("click", () => {
             if (advancedFields.style.display === "none") {
-                advancedFields.style.display = "block";
+                advancedFields.setCssProps({ display: "block" });
             } else {
-                advancedFields.style.display = "none";
+                advancedFields.setCssProps({ display: "none" });
             }
         });
 
@@ -2220,7 +2220,7 @@ export class SettingsTab extends PluginSettingTab {
                         value;
                     await this.plugin.saveSettings();
                 });
-            slider.sliderEl.style.width = "200px";
+            slider.sliderEl.setCssProps({ width: "200px" });
         });
 
         // Add clear button to reset to default
@@ -2248,7 +2248,7 @@ export class SettingsTab extends PluginSettingTab {
             .addTextArea((textarea) => {
                 textarea
                     .setPlaceholder(
-                        "e.g., high-priority urgent tasks requiring immediate attention",
+                        "E.g., high-priority urgent tasks requiring immediate attention",
                     )
                     .setValue(description || "")
                     .onChange(async (value) => {
@@ -2257,8 +2257,7 @@ export class SettingsTab extends PluginSettingTab {
                         ].description = value.trim() || undefined;
                         await this.plugin.saveSettings();
                     });
-                textarea.inputEl.style.width = "100%";
-                textarea.inputEl.style.minHeight = "60px";
+                textarea.inputEl.setCssProps({ width: "100%", minHeight: "60px" });
             });
 
         // Terms field
@@ -2269,7 +2268,7 @@ export class SettingsTab extends PluginSettingTab {
             )
             .addTextArea((textarea) => {
                 textarea
-                    .setPlaceholder("e.g., urgent,critical")
+                    .setPlaceholder("E.g., urgent,critical")
                     .setValue(terms || "")
                     .onChange(async (value) => {
                         this.plugin.settings.taskStatusMapping[
@@ -2277,7 +2276,7 @@ export class SettingsTab extends PluginSettingTab {
                         ].terms = value.trim() || undefined;
                         await this.plugin.saveSettings();
                     });
-                textarea.inputEl.style.width = "100%";
+                textarea.inputEl.setCssProps({ width: "100%" });
             });
     }
 
@@ -2560,7 +2559,7 @@ export class SettingsTab extends PluginSettingTab {
                     break;
 
                 case "anthropic":
-                    new Notice("Loading Anthropic models...");
+                    new Notice("Loading anthropic models...");
                     models =
                         await ModelProviderService.fetchAnthropicModels(apiKey);
                     break;
@@ -2578,7 +2577,7 @@ export class SettingsTab extends PluginSettingTab {
                     break;
 
                 case "ollama":
-                    new Notice("Fetching local Ollama models...");
+                    new Notice("Fetching local ollama models...");
                     models = await ModelProviderService.fetchOllamaModels(
                         providerConfig.apiEndpoint,
                     );
@@ -2661,7 +2660,7 @@ export class SettingsTab extends PluginSettingTab {
         } catch (error) {
             return {
                 success: false,
-                message: `Test failed: ${error.message || "Unknown error"}`,
+                message: `Test failed: ${error instanceof Error ? error.message : String(error)}`,
             };
         }
     }

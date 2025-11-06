@@ -146,7 +146,7 @@ export class StreamingService {
                     `[Streaming] ✓ Raw API usage data: ${JSON.stringify(json.usage)}`,
                 );
                 Logger.debug(
-                    `[Streaming] ✓ Token counts: ${json.usage.prompt_tokens} prompt + ${json.usage.completion_tokens} completion = ${json.usage.total_tokens} total`,
+                    `[Streaming] ✓ Token counts: ${String((json.usage as Record<string, unknown>).prompt_tokens)} prompt + ${String((json.usage as Record<string, unknown>).completion_tokens)} completion = ${String((json.usage as Record<string, unknown>).total_tokens)} total`,
                 );
             }
 
@@ -154,7 +154,7 @@ export class StreamingService {
             // This ID is crucial for fetching actual costs from OpenRouter
             if (json.id) {
                 Logger.debug(
-                    `[Streaming] ✓ Chunk ID from response: ${json.id} (type: ${typeof json.id})`,
+                    `[Streaming] ✓ Chunk ID from response: ${String(json.id)} (type: ${typeof json.id})`,
                 );
                 if (
                     json.id.startsWith("gen-") ||

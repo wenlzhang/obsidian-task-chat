@@ -2583,7 +2583,8 @@ export class TaskPropertyService {
 
                 filters.push((task: GenericTask) => {
                     // Generate cache key from task
-                    const taskId = `${task.$file || task.file}:${task.$line ?? task.line}`;
+                    const taskRecord = task as Record<string, unknown>;
+                    const taskId = `${String(taskRecord.$file ?? taskRecord.file)}:${String(taskRecord.$line ?? taskRecord.line)}`;
 
                     // Check cache first
                     let taskTimestamp: number | null;

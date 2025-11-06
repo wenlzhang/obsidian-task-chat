@@ -1050,7 +1050,7 @@ export class DatacoreService {
             // Execute query to get all tasks (already filtered by Datacore)
             let results: DatacoreTask[] = (await datacoreApi.query(
                 query,
-            )) as DatacoreTask[];
+            ));
 
             if (!results || results.length === 0) {
                 Logger.debug("[Datacore] Query returned no results");

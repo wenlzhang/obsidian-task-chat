@@ -362,14 +362,14 @@ export class ExclusionsModal extends Modal {
         modal.open();
     }
 
-    async onClose() {
+    onClose() {
         const { contentEl } = this;
         contentEl.empty();
 
         // Show single system message if any changes were made during this session
         if (this.changesMade) {
             // Trigger final refresh with system message
-            await this.plugin.refreshTaskCount(true, {
+            void this.plugin.refreshTaskCount(true, {
                 showSystemMessage: true,
                 context: "Exclusions updated.",
             });

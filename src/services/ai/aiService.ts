@@ -72,7 +72,7 @@ export class AIService {
         chatHistory: ChatMessage[],
         settings: PluginSettings,
         currentFilter?: import("../../models/task").TaskFilter, // Used for property filter reloads
-        onStream?: (chunk: string) => void, // Optional streaming callback
+        onStream?: (_chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
         response: string;
@@ -2281,7 +2281,7 @@ ${taskContext}`;
     private static async callAI(
         messages: AIMessage[],
         settings: PluginSettings,
-        onStream?: (chunk: string) => void,
+        onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration for Task Chat responses
@@ -2488,7 +2488,7 @@ ${taskContext}`;
 
                 generationId = (response.headers.get("x-generation-id") ||
                     response.headers.get("X-Generation-Id") ||
-                    headerFallback) as string | null;
+                    headerFallback);
 
                 if (generationId) {
                     Logger.debug(

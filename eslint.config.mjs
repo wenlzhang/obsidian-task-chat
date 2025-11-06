@@ -6,12 +6,28 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 export default [
   // Ignore patterns
   {
-    ignores: ["node_modules/**", "build/**"],
+    ignores: [
+      "node_modules/**",
+      "build/**",
+      "docs/**/*.js",
+      "*.config.{js,mjs}",
+      "version-*.mjs",
+      "jest.config.js"
+    ],
   },
 
-  // Base config for all files
+  // Config for JavaScript files (no TypeScript project needed)
   {
-    files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
+    files: ["**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+      sourceType: "module",
+    },
+  },
+
+  // Config for TypeScript files (with project reference)
+  {
+    files: ["**/*.{ts,mts,cts}"],
     languageOptions: {
       globals: globals.browser,
       parser: tseslint.parser,

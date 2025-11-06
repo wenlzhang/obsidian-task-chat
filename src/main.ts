@@ -461,7 +461,7 @@ export default class TaskChatPlugin extends Plugin {
                 "Task indexing API not available after waiting 10 seconds - tasks may not load correctly",
             );
             new Notice(
-                "Task indexing API not detected. Please install Datacore!",
+                "Task indexing API not detected. Please install datacore!",
                 5000,
             );
         }
@@ -584,7 +584,7 @@ export default class TaskChatPlugin extends Plugin {
     openFilterModal(
         allTasks: Task[],
         currentFilter: TaskFilter,
-        onSubmit: (filter: TaskFilter) => void,
+        onSubmit: (_filter: TaskFilter) => void,
     ): void {
         new FilterModal(
             this.app,

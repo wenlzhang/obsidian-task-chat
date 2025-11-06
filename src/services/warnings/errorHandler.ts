@@ -42,15 +42,16 @@ export class ErrorHandler {
         model: string,
         operation: "parser" | "analysis",
     ): StructuredError {
-        const errorMsg = error instanceof Error 
-            ? error.message 
-            : (error && typeof error === "object" && "message" in error && typeof (error as any).message === "string")
-                ? (error as any).message
+        const errorRecord = error as Record<string, unknown>;
+        const errorMsg = error instanceof Error
+            ? error.message
+            : (error && typeof error === "object" && "message" in error && typeof errorRecord.message === "string")
+                ? String(errorRecord.message)
                 : String(error);
         const errorBody = (error && typeof error === "object" && "json" in error)
-            ? (error as any).json
-            : (error && typeof error === "object" && "response" in error && (error as any).response?.json)
-                ? (error as any).response.json
+            ? errorRecord.json
+            : (error && typeof error === "object" && "response" in error && (errorRecord.response as Record<string, unknown> | undefined)?.json)
+                ? (errorRecord.response as Record<string, unknown>).json
                 : {};
 
         // Extract HTTP status code if available
@@ -160,17 +161,18 @@ export class ErrorHandler {
     ): number | undefined {
         // Try to extract from error object
         if (error && typeof error === "object") {
-            if ("status" in error && typeof (error as any).status === "number") {
-                return (error as any).status;
+            const errorRecord = error as Record<string, unknown>;
+            if ("status" in error && typeof errorRecord.status === "number") {
+                return errorRecord.status;
             }
-            if ("response" in error && (error as any).response && typeof (error as any).response === "object") {
-                const response = (error as any).response;
+            if ("response" in error && errorRecord.response && typeof errorRecord.response === "object") {
+                const response = errorRecord.response as Record<string, unknown>;
                 if ("status" in response && typeof response.status === "number") {
                     return response.status;
                 }
             }
-            if ("statusCode" in error && typeof (error as any).statusCode === "number") {
-                return (error as any).statusCode;
+            if ("statusCode" in error && typeof errorRecord.statusCode === "number") {
+                return errorRecord.statusCode;
             }
         }
 
@@ -283,13 +285,23 @@ export class ErrorHandler {
         if (
             errorBody &&
             typeof errorBody === "object" &&
-            "error" in errorBody &&
-            (errorBody as any).error &&
-            typeof (errorBody as any).error === "object" &&
-            "message" in (errorBody as any).error &&
-            typeof (errorBody as any).error.message === "string"
+            "error" in errorBody
         ) {
-            details = (errorBody as any).error.message;
+            const bodyRecord = errorBody as Record<string, unknown>;
+            const errorField = bodyRecord.error;
+            if (
+                errorField &&
+                typeof errorField === "object" &&
+                "message" in errorField
+            ) {
+                const errorFieldRecord = errorField as Record<string, unknown>;
+                if (typeof errorFieldRecord.message === "string") {
+                    details = errorFieldRecord.message;
+                }
+            }
+        }
+
+        if (details) {
 
             // Specific guidance for model errors
             if (details.toLowerCase().includes("model")) {

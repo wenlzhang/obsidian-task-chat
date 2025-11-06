@@ -199,13 +199,13 @@ export class TaskIndexWarningService {
 
             if (hasFilters) {
                 suggestions.push(
-                    `Clear filters (currently filtering by: ${filterInfo.filterSummary})`,
+                    `Clear filters (currently filtering by: ${filterInfo.filterSummary ?? ""})`,
                 );
             }
 
             if (hasExclusions) {
                 suggestions.push(
-                    `Check exclusions (currently excluding: ${filterInfo.exclusionSummary})`,
+                    `Check exclusions (currently excluding: ${filterInfo.exclusionSummary ?? ""})`,
                 );
             }
 
@@ -308,7 +308,7 @@ export class TaskIndexWarningService {
 
             if (warning.apiInfo.activeAPI) {
                 statusList.createEl("li", {
-                    text: "✓ Using: Datacore",
+                    text: "✓ using: datacore",
                 });
             } else {
                 statusList.createEl("li", {
@@ -329,14 +329,14 @@ export class TaskIndexWarningService {
 
                 if (warning.filterInfo.hasActiveFilters) {
                     filterStatusEl.createDiv({
-                        text: `Active filters: ${warning.filterInfo.filterSummary}`,
+                        text: `Active filters: ${warning.filterInfo.filterSummary ?? ""}`,
                         cls: "filter-info",
                     });
                 }
 
                 if (warning.filterInfo.hasActiveExclusions) {
                     filterStatusEl.createDiv({
-                        text: `Active exclusions: ${warning.filterInfo.exclusionSummary}`,
+                        text: `Active exclusions: ${warning.filterInfo.exclusionSummary ?? ""}`,
                         cls: "exclusion-info",
                     });
                 }

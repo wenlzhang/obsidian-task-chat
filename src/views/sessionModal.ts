@@ -34,7 +34,7 @@ export class SessionModal extends Modal {
 
         if (sessions.length === 0) {
             contentEl.createEl("p", {
-                text: 'No sessions yet. Click "New" to create one.',
+                text: 'No sessions yet. Click "new" to create one.',
                 cls: "task-chat-empty-sessions",
             });
             return;

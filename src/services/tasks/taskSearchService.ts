@@ -1687,10 +1687,11 @@ export class TaskSearchService {
             }
 
             // Get task text based on data source
+            const taskRecord = task as Record<string, unknown>;
             const taskText =
                 source === "datacore"
-                    ? ((task as any).$text || task.text || "").toLowerCase()
-                    : (task.text || (task as any).visual || "").toLowerCase();
+                    ? (String(taskRecord.$text ?? task.text ?? "")).toLowerCase()
+                    : (String(task.text ?? taskRecord.visual ?? "")).toLowerCase();
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
             // Pass pre-lowercased keywords from closure

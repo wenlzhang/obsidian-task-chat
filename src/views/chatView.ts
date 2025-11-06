@@ -210,8 +210,9 @@ export class ChatView extends ItemView {
         }, DATACORE_POLLING.INTERVAL_MS);
     }
 
-    async onClose(): Promise<void> {
+    onClose(): Promise<void> {
         this.contentEl.empty();
+        return Promise.resolve();
     }
 
     /**
@@ -1102,7 +1103,7 @@ export class ChatView extends ItemView {
                         `completion: ${message.tokenUsage.completionTokens}`,
                 );
                 Logger.debug(
-                    `[Metadata Display] Displayed text: "${metadataText}"`,
+                    `[Metadata Display] Displayed text: "${metadataText ?? ""}"`,
                 );
             }
 
@@ -1160,7 +1161,7 @@ export class ChatView extends ItemView {
                 const solutionEl = detailsEl.createEl("div", {
                     cls: "task-chat-parser-error-solution",
                 });
-                solutionEl.createEl("strong", { text: "💡 Solution: " });
+                solutionEl.createEl("strong", { text: "💡 solution: " });
                 solutionEl.createSpan({ text: solution });
             }
 
@@ -1173,7 +1174,7 @@ export class ChatView extends ItemView {
             if (hasSemanticExpansion) {
                 // AI parsing succeeded before the error - we have expanded keywords
                 const metadata = message.parsedQuery?.expansionMetadata;
-                fallbackText = `✓ Semantic expansion succeeded (${metadata?.totalKeywords} keywords from ${metadata?.coreKeywordsCount} core). Using AI-filtered results.`;
+                fallbackText = `✓ Semantic expansion succeeded (${metadata?.totalKeywords ?? 0} keywords from ${metadata?.coreKeywordsCount ?? 0} core). Using AI-filtered results.`;
             } else {
                 // AI parsing failed completely - using Simple Search fallback
                 fallbackText =
@@ -1484,8 +1485,8 @@ export class ChatView extends ItemView {
                     tu.analysisCost !== undefined
                 ) {
                     Logger.debug(
-                        `[Cost Breakdown] Parsing: ${tu.parsingModel} (${tu.parsingProvider}) = $${tu.parsingCost.toFixed(6)} | ` +
-                            `Analysis: ${tu.analysisModel} (${tu.analysisProvider}) = $${tu.analysisCost.toFixed(6)} | ` +
+                        `[Cost Breakdown] Parsing: ${tu.parsingModel ?? "unknown"} (${tu.parsingProvider ?? "unknown"}) = $${tu.parsingCost.toFixed(6)} | ` +
+                            `Analysis: ${tu.analysisModel ?? "unknown"} (${tu.analysisProvider ?? "unknown"}) = $${tu.analysisCost.toFixed(6)} | ` +
                             `Total: $${tu.estimatedCost.toFixed(6)}`,
                     );
                 } else {
@@ -1586,13 +1587,13 @@ export class ChatView extends ItemView {
                             );
                         }
                         if (query.priority) {
-                            searchDetails.push(`Priority: ${query.priority}`);
+                            searchDetails.push(`Priority: ${Array.isArray(query.priority) ? query.priority.join(", ") : String(query.priority)}`);
                         }
                         if (query.dueDate) {
-                            searchDetails.push(`Due: ${query.dueDate}`);
+                            searchDetails.push(`Due: ${Array.isArray(query.dueDate) ? query.dueDate.join(", ") : String(query.dueDate)}`);
                         }
                         if (query.status) {
-                            searchDetails.push(`Status: ${query.status}`);
+                            searchDetails.push(`Status: ${Array.isArray(query.status) ? query.status.join(", ") : String(query.status)}`);
                         }
                         if (query.tags && query.tags.length > 0) {
                             searchDetails.push(
