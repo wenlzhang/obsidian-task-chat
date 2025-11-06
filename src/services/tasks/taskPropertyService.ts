@@ -25,6 +25,8 @@ interface MomentInstance {
 
 /**
  * Moment.js function type (callable function that returns a Moment instance)
+ * Uses unknown because moment.js accepts various date-like objects beyond just string/Date/number
+ * (e.g., Datacore date objects, moment instances, objects with toString(), etc.)
  */
 type MomentFn = {
     (): MomentInstance;
@@ -1055,6 +1057,12 @@ export class TaskPropertyService {
             return undefined;
         }
 
+        // Only handle primitive values (string, number, boolean)
+        // Objects would produce "[object Object]" which is not useful
+        if (typeof value === "object") {
+            return undefined;
+        }
+
         const strValue = String(value).toLowerCase().trim();
 
         // Check user's configured priority mapping
@@ -1697,7 +1705,7 @@ export class TaskPropertyService {
     ): string[] {
         const resolved = values
             .map((v) => this.resolveStatusValue(v, settings))
-            .filter((v) => v !== null) as string[];
+            .filter((v): v is string => v !== null);
 
         // Remove duplicates
         return [...new Set(resolved)];

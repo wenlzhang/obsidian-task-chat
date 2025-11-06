@@ -222,10 +222,12 @@ export class TaskSearchService {
 
     /**
      * Extract priority level from query
-     * Delegates to PropertyDetectionService for consistent behavior
+     * Uses centralized patterns from TaskPropertyService and combined terms from PropertyDetectionService
+     * Supports: p:1,2,3, priority:1,2,3, p1 p2 p3, and natural language (high, medium, low)
      *
-     * @deprecated This method now delegates to PropertyDetectionService
-     * Uses combined terms (user + internal) instead of hardcoded patterns
+     * @param query - User's search query
+     * @param settings - Plugin settings with user-configured terms
+     * @returns Priority value(s), special keywords (all/any/none), or null
      */
     static extractPriorityFromQuery(
         query: string,
@@ -447,16 +449,6 @@ export class TaskSearchService {
         if (hasAnyTerm(combined.dueDate.general)) return "any";
 
         return null;
-    }
-
-    /**
-     * Filter tasks by due date
-     * Delegates to TaskPropertyService for consistent date handling
-     *
-     * @deprecated This method now delegates to TaskPropertyService
-     */
-    static filterByDueDate(tasks: Task[], filter: string): Task[] {
-        return TaskPropertyService.filterByDueDate(tasks, filter);
     }
 
     /**
