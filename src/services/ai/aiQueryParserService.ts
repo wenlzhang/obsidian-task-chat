@@ -20,7 +20,9 @@ import { TokenUsage } from "../../models/task";
  */
 export interface AIMessage {
     role: string;
-    content: string | Array<{ type: string; text?: string; [key: string]: unknown }>;
+    content:
+        | string
+        | Array<{ type: string; text?: string; [key: string]: unknown }>;
 }
 
 /**
@@ -1874,7 +1876,8 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Post-process keywords to remove stop words (safety net)
             // AI is instructed via prompt to NOT extract stop words (see STOP WORDS section in prompt)
             // This post-filter is a safety net in case AI ignores instructions
-            const filteredKeywords: string[] = StopWords.filterStopWords(keywords);
+            const filteredKeywords: string[] =
+                StopWords.filterStopWords(keywords);
 
             Logger.debug(
                 `Keywords after stop word filtering: ${keywords.length} → ${filteredKeywords.length}`,
@@ -1916,9 +1919,7 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Merge: core keywords first, then expanded keywords (deduplicated)
             const expandedKeywords = [
                 ...coreKeywords,
-                ...filteredKeywords.filter(
-                    (k) => !coreKeywords.includes(k),
-                ),
+                ...filteredKeywords.filter((k) => !coreKeywords.includes(k)),
             ];
 
             // Validate expansion worked correctly

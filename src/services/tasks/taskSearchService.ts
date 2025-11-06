@@ -667,9 +667,11 @@ export class TaskSearchService {
                 ? filters.priority
                 : [filters.priority];
 
-            filteredTasks = filteredTasks.filter((task) =>
-                // Only include tasks with defined priority that matches filter
-                task.priority !== undefined && priorities.includes(task.priority),
+            filteredTasks = filteredTasks.filter(
+                (task) =>
+                    // Only include tasks with defined priority that matches filter
+                    task.priority !== undefined &&
+                    priorities.includes(task.priority),
             );
             Logger.debug(
                 `Priority filter (${Array.isArray(filters.priority) ? filters.priority.join(", ") : filters.priority}): ${beforePriority} → ${filteredTasks.length} tasks`,
@@ -723,11 +725,13 @@ export class TaskSearchService {
             filteredTasks = filteredTasks.filter((task) => {
                 const taskTagsLower = task.tags.map((t) => t.toLowerCase());
                 // filters.tags is guaranteed to exist in this scope
-                return filters.tags?.some((filterTag) =>
-                    taskTagsLower.some((taskTag) =>
-                        taskTag.includes(filterTag.toLowerCase()),
-                    ),
-                ) ?? false;
+                return (
+                    filters.tags?.some((filterTag) =>
+                        taskTagsLower.some((taskTag) =>
+                            taskTag.includes(filterTag.toLowerCase()),
+                        ),
+                    ) ?? false
+                );
             });
             Logger.debug(
                 `Tag filter (${filters.tags.join(", ")}): ${beforeTags} → ${filteredTasks.length} tasks`,
@@ -745,10 +749,11 @@ export class TaskSearchService {
                 const taskText = task.text.toLowerCase();
                 // Match if ANY keyword appears in the task text (substring match)
                 // filters.keywords is guaranteed to exist in this scope
-                const matched = filters.keywords?.some((keyword) => {
-                    const keywordLower = keyword.toLowerCase();
-                    return taskText.includes(keywordLower);
-                }) ?? false;
+                const matched =
+                    filters.keywords?.some((keyword) => {
+                        const keywordLower = keyword.toLowerCase();
+                        return taskText.includes(keywordLower);
+                    }) ?? false;
                 if (matched) {
                     matchedTasks.push(task);
                 }
@@ -1693,8 +1698,10 @@ export class TaskSearchService {
             const taskRecord = task as Record<string, unknown>;
             const taskText =
                 source === "datacore"
-                    ? (String(taskRecord.$text ?? task.text ?? "")).toLowerCase()
-                    : (String(task.text ?? taskRecord.visual ?? "")).toLowerCase();
+                    ? String(taskRecord.$text ?? task.text ?? "").toLowerCase()
+                    : String(
+                          task.text ?? taskRecord.visual ?? "",
+                      ).toLowerCase();
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
             // Pass pre-lowercased keywords from closure

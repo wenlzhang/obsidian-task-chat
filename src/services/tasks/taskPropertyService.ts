@@ -1116,8 +1116,12 @@ export class TaskPropertyService {
                 "format" in date &&
                 typeof (date as { format: unknown }).format === "function"
             ) {
-                const dateWithFormat = date as { format: (_fmt: string) => string };
-                return format ? dateWithFormat.format(format) : dateWithFormat.format("YYYY-MM-DD");
+                const dateWithFormat = date as {
+                    format: (_fmt: string) => string;
+                };
+                return format
+                    ? dateWithFormat.format(format)
+                    : dateWithFormat.format("YYYY-MM-DD");
             }
 
             // Handle Datacore date objects (toString() but not .format())
@@ -1428,7 +1432,9 @@ export class TaskPropertyService {
     static filterByDueDate(tasks: Task[], filter: string): Task[] {
         const moment = window.moment;
         if (!moment) {
-            Logger.warn("[TaskPropertyService] window.moment is not available, cannot filter by due date");
+            Logger.warn(
+                "[TaskPropertyService] window.moment is not available, cannot filter by due date",
+            );
             return tasks; // Return all tasks if moment unavailable
         }
 
@@ -1909,7 +1915,9 @@ export class TaskPropertyService {
     static parseDateRangeKeyword(keyword: string): MomentInstance | null {
         const moment = window.moment;
         if (!moment) {
-            Logger.warn("[TaskPropertyService] window.moment is not available, cannot parse date range keyword");
+            Logger.warn(
+                "[TaskPropertyService] window.moment is not available, cannot parse date range keyword",
+            );
             return null;
         }
 
@@ -1966,7 +1974,9 @@ export class TaskPropertyService {
     static parseRelativeDate(relativeDate: string): string | null {
         const moment = window.moment;
         if (!moment) {
-            Logger.warn("[TaskPropertyService] window.moment is not available, cannot parse relative date");
+            Logger.warn(
+                "[TaskPropertyService] window.moment is not available, cannot parse relative date",
+            );
             return null;
         }
 
@@ -1993,9 +2003,15 @@ export class TaskPropertyService {
         // Calculate target date
         let targetDate: MomentInstance;
         if (sign === "-") {
-            targetDate = moment().subtract(amount, momentUnit as "days" | "weeks" | "months" | "years");
+            targetDate = moment().subtract(
+                amount,
+                momentUnit as "days" | "weeks" | "months" | "years",
+            );
         } else {
-            targetDate = moment().add(amount, momentUnit as "days" | "weeks" | "months" | "years");
+            targetDate = moment().add(
+                amount,
+                momentUnit as "days" | "weeks" | "months" | "years",
+            );
         }
 
         return targetDate.format("YYYY-MM-DD");

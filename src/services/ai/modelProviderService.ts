@@ -307,7 +307,8 @@ export class ModelProviderService {
             }
         } catch (error) {
             // Parse error message
-            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorMsg =
+                error instanceof Error ? error.message : String(error);
             if (errorMsg.includes("401")) {
                 return {
                     success: false,
@@ -443,7 +444,8 @@ export class ModelProviderService {
                 };
             }
         } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errorMsg =
+                error instanceof Error ? error.message : String(error);
             if (
                 errorMsg.includes("ECONNREFUSED") ||
                 errorMsg.includes("fetch")

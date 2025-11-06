@@ -152,8 +152,9 @@ export class TaskFilterService {
         // Filter by task statuses
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
             // filter.taskStatuses is guaranteed to exist in this scope
-            filtered = filtered.filter((task) =>
-                filter.taskStatuses?.includes(task.statusCategory) ?? false,
+            filtered = filtered.filter(
+                (task) =>
+                    filter.taskStatuses?.includes(task.statusCategory) ?? false,
             );
         }
 

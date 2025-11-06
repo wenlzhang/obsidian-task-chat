@@ -1,5 +1,11 @@
 import { App, requestUrl, moment } from "obsidian";
-import { Task, ChatMessage, TokenUsage, QueryIntent, DateRange } from "../../models/task";
+import {
+    Task,
+    ChatMessage,
+    TokenUsage,
+    QueryIntent,
+    DateRange,
+} from "../../models/task";
 import {
     ErrorHandler,
     AIError,
@@ -1479,7 +1485,7 @@ export class AIService {
 
                 // Create parsedQuery with core keywords from Simple Search fallback if parser failed
                 let finalParsedQuery = usingAIParsing
-                    ? parsedQuery ?? undefined
+                    ? (parsedQuery ?? undefined)
                     : undefined;
                 if (!usingAIParsing && intent.keywords.length > 0) {
                     finalParsedQuery = {
@@ -1630,7 +1636,7 @@ export class AIService {
 
                     // Create parsedQuery with core keywords from Simple Search fallback if parser failed
                     let finalParsedQueryForError = usingAIParsing
-                        ? parsedQuery ?? undefined
+                        ? (parsedQuery ?? undefined)
                         : undefined;
                     if (!usingAIParsing && intent.keywords.length > 0) {
                         finalParsedQueryForError = {
@@ -2486,9 +2492,10 @@ ${taskContext}`;
                           )
                         : null;
 
-                generationId = (response.headers.get("x-generation-id") ||
+                generationId =
+                    response.headers.get("x-generation-id") ||
                     response.headers.get("X-Generation-Id") ||
-                    headerFallback);
+                    headerFallback;
 
                 if (generationId) {
                     Logger.debug(
@@ -2668,10 +2675,7 @@ ${taskContext}`;
             };
         } catch (error: unknown) {
             // Handle abort errors gracefully
-            if (
-                error instanceof Error &&
-                error.name === "AbortError"
-            ) {
+            if (error instanceof Error && error.name === "AbortError") {
                 Logger.debug("Stream aborted by user");
                 throw new Error("Request aborted");
             }
@@ -2785,7 +2789,7 @@ ${taskContext}`;
                     // API didn't provide token counts - estimate them
                     // For Anthropic, estimate from system message + conversation messages
                     let inputText = "";
-                    
+
                     // Extract text from system message
                     if (systemMessage?.content) {
                         if (typeof systemMessage.content === "string") {
@@ -2798,7 +2802,7 @@ ${taskContext}`;
                             }
                         }
                     }
-                    
+
                     // Extract text from conversation messages
                     for (const msg of conversationMessages) {
                         if (typeof msg.content === "string") {
@@ -2855,10 +2859,7 @@ ${taskContext}`;
                     tokenUsage,
                 };
             } catch (error: unknown) {
-                if (
-                    error instanceof Error &&
-                    error.name === "AbortError"
-                ) {
+                if (error instanceof Error && error.name === "AbortError") {
                     Logger.debug("Anthropic stream aborted by user");
                     throw new Error("Request aborted");
                 }
@@ -2960,10 +2961,11 @@ ${taskContext}`;
         useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const { provider: _provider, model, temperature } = getProviderForPurpose(
-            settings,
-            "analysis",
-        );
+        const {
+            provider: _provider,
+            model,
+            temperature,
+        } = getProviderForPurpose(settings, "analysis");
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -3079,10 +3081,7 @@ ${taskContext}`;
                     tokenUsage,
                 };
             } catch (error: unknown) {
-                if (
-                    error instanceof Error &&
-                    error.name === "AbortError"
-                ) {
+                if (error instanceof Error && error.name === "AbortError") {
                     Logger.debug("Ollama stream aborted by user");
                     throw new Error("Request aborted");
                 }
@@ -3127,8 +3126,9 @@ ${taskContext}`;
             });
 
             if (response.status !== 200) {
-                const errorData: { error?: string } =
-                    response.json as { error?: string };
+                const errorData: { error?: string } = response.json as {
+                    error?: string;
+                };
                 const errorMsg: string =
                     errorData?.error || response.text || "Unknown error";
                 throw new Error(

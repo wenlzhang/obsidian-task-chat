@@ -1587,13 +1587,19 @@ export class ChatView extends ItemView {
                             );
                         }
                         if (query.priority) {
-                            searchDetails.push(`Priority: ${Array.isArray(query.priority) ? query.priority.join(", ") : String(query.priority)}`);
+                            searchDetails.push(
+                                `Priority: ${Array.isArray(query.priority) ? query.priority.join(", ") : String(query.priority)}`,
+                            );
                         }
                         if (query.dueDate) {
-                            searchDetails.push(`Due: ${Array.isArray(query.dueDate) ? query.dueDate.join(", ") : String(query.dueDate)}`);
+                            searchDetails.push(
+                                `Due: ${Array.isArray(query.dueDate) ? query.dueDate.join(", ") : String(query.dueDate)}`,
+                            );
                         }
                         if (query.status) {
-                            searchDetails.push(`Status: ${Array.isArray(query.status) ? query.status.join(", ") : String(query.status)}`);
+                            searchDetails.push(
+                                `Status: ${Array.isArray(query.status) ? query.status.join(", ") : String(query.status)}`,
+                            );
                         }
                         if (query.tags && query.tags.length > 0) {
                             searchDetails.push(

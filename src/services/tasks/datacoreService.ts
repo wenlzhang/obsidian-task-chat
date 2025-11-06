@@ -107,9 +107,9 @@ export class DatacoreService {
                 typeof startDate === "object" &&
                 "format" in startDate
             ) {
-                const startStr: string = (
-                    startDate as MomentInstance
-                ).format("YYYY-MM-DD");
+                const startStr: string = (startDate as MomentInstance).format(
+                    "YYYY-MM-DD",
+                );
                 queryParts.push(`${dueDateField} >= date("${startStr}")`);
                 Logger.debug(
                     `[Query Builder] Due date (${dueDateField}) >= ${startStr}`,
@@ -119,11 +119,7 @@ export class DatacoreService {
 
         if (end) {
             const endDate = TaskPropertyService.parseDateRangeKeyword(end);
-            if (
-                endDate &&
-                typeof endDate === "object" &&
-                "format" in endDate
-            ) {
+            if (endDate && typeof endDate === "object" && "format" in endDate) {
                 const endStr: string = (endDate as MomentInstance).format(
                     "YYYY-MM-DD",
                 );
@@ -1048,9 +1044,7 @@ export class DatacoreService {
             // No need for JavaScript post-filtering - Datacore does it all!
 
             // Execute query to get all tasks (already filtered by Datacore)
-            let results: DatacoreTask[] = (await datacoreApi.query(
-                query,
-            ));
+            let results: DatacoreTask[] = await datacoreApi.query(query);
 
             if (!results || results.length === 0) {
                 Logger.debug("[Datacore] Query returned no results");

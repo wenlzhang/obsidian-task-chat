@@ -179,14 +179,16 @@ export class VectorizedScoring {
                     : dueValue?.toString();
 
             // Extract priority (already mapped)
-            priorities[i] = typeof task._mappedPriority === "number" 
-                ? task._mappedPriority 
-                : undefined;
+            priorities[i] =
+                typeof task._mappedPriority === "number"
+                    ? task._mappedPriority
+                    : undefined;
 
             // Extract status (already mapped)
-            statuses[i] = typeof task._mappedStatus === "string"
-                ? task._mappedStatus
-                : "incomplete";
+            statuses[i] =
+                typeof task._mappedStatus === "string"
+                    ? task._mappedStatus
+                    : "incomplete";
 
             // Generate task ID for caching
             taskIds[i] = getTaskId(task);

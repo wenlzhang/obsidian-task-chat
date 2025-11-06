@@ -38,20 +38,14 @@ export const PROTECTED_STATUS_CATEGORIES = {
 // Helper to check if a category is protected from deletion
 export function isStatusCategoryProtected(categoryKey: string): boolean {
     return (
-        (
-            PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED
-        ).includes(categoryKey) ||
-        (
-            PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED
-        ).includes(categoryKey)
+        PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED.includes(categoryKey) ||
+        PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED.includes(categoryKey)
     );
 }
 
 // Helper to check if a category is fully locked (displayName and symbols cannot be modified)
 export function isStatusCategoryFullyLocked(categoryKey: string): boolean {
-    return (
-        PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED
-    ).includes(categoryKey);
+    return PROTECTED_STATUS_CATEGORIES.FULLY_LOCKED.includes(categoryKey);
 }
 
 // AI Provider configuration type - each provider has its own settings

@@ -2131,9 +2131,9 @@ export class SettingsTab extends PluginSettingTab {
                 disabledBtn.title =
                     "Cannot delete: default catch-all category (required)";
             } else if (
-                (
-                    PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED
-                ).includes(categoryKey)
+                PROTECTED_STATUS_CATEGORIES.DELETABLE_LOCKED.includes(
+                    categoryKey,
+                )
             ) {
                 disabledBtn.title = `Cannot delete: Core category "${displayName}" (required for consistent task management)`;
             } else {
@@ -2257,7 +2257,10 @@ export class SettingsTab extends PluginSettingTab {
                         ].description = value.trim() || undefined;
                         await this.plugin.saveSettings();
                     });
-                textarea.inputEl.setCssProps({ width: "100%", minHeight: "60px" });
+                textarea.inputEl.setCssProps({
+                    width: "100%",
+                    minHeight: "60px",
+                });
             });
 
         // Terms field
