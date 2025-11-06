@@ -9,15 +9,16 @@ import { ConfirmModal } from "../utils/confirmModal";
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
 
-    private onSessionSelect: (_sessionId: string) => void;
+    // eslint-disable-next-line no-unused-vars
+    private onSessionSelect: (sessionId: string) => void;
     private selectionMode = false;
     private selectedSessionIds: Set<string> = new Set();
 
     constructor(
         app: App,
         plugin: TaskChatPlugin,
-
-        onSessionSelect: (_sessionId: string) => void,
+        // eslint-disable-next-line no-unused-vars
+        onSessionSelect: (sessionId: string) => void,
     ) {
         super(app);
         this.plugin = plugin;

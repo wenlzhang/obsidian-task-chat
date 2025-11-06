@@ -2429,7 +2429,9 @@ ${taskContext}`;
         Logger.debug("Starting OpenAI streaming call...");
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+            // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
+            // doesn't support streaming responses, which are required for real-time AI responses.
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -2691,6 +2693,7 @@ ${taskContext}`;
     private static async callAnthropic(
         messages: AIMessage[],
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,
@@ -2723,7 +2726,9 @@ ${taskContext}`;
             Logger.debug("Starting Anthropic streaming call...");
 
             try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+                // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
+                // doesn't support streaming responses, which are required for real-time AI responses.
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
@@ -2957,6 +2962,7 @@ ${taskContext}`;
     private static async callOllama(
         messages: AIMessage[],
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,
@@ -2978,7 +2984,9 @@ ${taskContext}`;
             Logger.debug("Starting Ollama streaming call...");
 
             try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
+                // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
+                // doesn't support streaming responses, which are required for real-time AI responses.
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
