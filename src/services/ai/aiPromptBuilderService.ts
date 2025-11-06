@@ -445,9 +445,7 @@ REMEMBER: All these fields are extracted from inline field syntax and shown as c
      * @param settings - Plugin settings with all user configuration
      * @returns Formatted property term guidance for AI prompts
      */
-    static buildPropertyTermGuidance(
-        settings: PluginSettings,
-    ): string {
+    static buildPropertyTermGuidance(settings: PluginSettings): string {
         // Get combined terms from TaskPropertyService
         const combined = {
             priority: TaskPropertyService.getCombinedPriorityTerms(settings),

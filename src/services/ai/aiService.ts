@@ -78,6 +78,7 @@ export class AIService {
         chatHistory: ChatMessage[],
         settings: PluginSettings,
         currentFilter?: import("../../models/task").TaskFilter, // Used for property filter reloads
+        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
@@ -2287,6 +2288,7 @@ ${taskContext}`;
     private static async callAI(
         messages: AIMessage[],
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
@@ -2411,6 +2413,7 @@ ${taskContext}`;
     private static async callOpenAIWithStreaming(
         messages: AIMessage[],
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
         onStream: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
@@ -2431,7 +2434,6 @@ ${taskContext}`;
         try {
             // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
             // doesn't support streaming responses, which are required for real-time AI responses.
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -2728,7 +2730,6 @@ ${taskContext}`;
             try {
                 // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
                 // doesn't support streaming responses, which are required for real-time AI responses.
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
@@ -2968,10 +2969,10 @@ ${taskContext}`;
         useStreaming = false,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
-        const {
-            model,
-            temperature,
-        } = getProviderForPurpose(settings, "analysis");
+        const { model, temperature } = getProviderForPurpose(
+            settings,
+            "analysis",
+        );
         const providerConfig = getProviderConfigForPurpose(
             settings,
             "analysis",
@@ -2986,7 +2987,6 @@ ${taskContext}`;
             try {
                 // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
                 // doesn't support streaming responses, which are required for real-time AI responses.
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {

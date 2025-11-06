@@ -14,10 +14,14 @@ import { Logger } from "../../utils/logger";
  */
 interface MomentInstance {
     valueOf(): number;
+    // eslint-disable-next-line no-unused-vars
     format(_format: string): string;
+    // eslint-disable-next-line no-unused-vars
     startOf(_unit: string): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     endOf(_unit: string): MomentInstance;
     isValid(): boolean;
+    // eslint-disable-next-line no-unused-vars
     diff(_date: MomentInstance, _unit: string): number;
 }
 
@@ -26,6 +30,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     (_date?: string | Date | number): MomentInstance;
 };
 
@@ -1667,7 +1672,9 @@ export class TaskSearchService {
                 relevance?: number;
             }
         >,
+        // eslint-disable-next-line no-unused-vars
         getTaskId?: (_task: Task) => string,
+        // eslint-disable-next-line no-unused-vars
     ): (_task: Task) => boolean {
         // PERFORMANCE: Pre-compute lowercased keywords ONCE before creating predicate
         // These are captured in the closure and reused for all tasks (avoiding repeated toLowerCase calls)
@@ -1695,12 +1702,11 @@ export class TaskSearchService {
                     task.text;
                 if (typeof textValue === "string") {
                     taskText = textValue.toLowerCase();
-                } else if (
-                    textValue &&
-                    typeof textValue !== "object"
-                ) {
+                } else if (textValue && typeof textValue !== "object") {
                     // At this point, textValue is a primitive (number or boolean)
-                    taskText = String(textValue as number | boolean).toLowerCase();
+                    taskText = String(
+                        textValue as number | boolean,
+                    ).toLowerCase();
                 }
             } else {
                 const textValue =
@@ -1708,12 +1714,11 @@ export class TaskSearchService {
                     (task as unknown as Record<string, unknown>).visual;
                 if (typeof textValue === "string") {
                     taskText = textValue.toLowerCase();
-                } else if (
-                    textValue &&
-                    typeof textValue !== "object"
-                ) {
+                } else if (textValue && typeof textValue !== "object") {
                     // At this point, textValue is a primitive (number or boolean)
-                    taskText = String(textValue as number | boolean).toLowerCase();
+                    taskText = String(
+                        textValue as number | boolean,
+                    ).toLowerCase();
                 }
             }
 

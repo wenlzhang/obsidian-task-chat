@@ -584,6 +584,7 @@ export default class TaskChatPlugin extends Plugin {
     openFilterModal(
         allTasks: Task[],
         currentFilter: TaskFilter,
+        // eslint-disable-next-line no-unused-vars
         onSubmit: (_filter: TaskFilter) => void,
     ): void {
         new FilterModal(

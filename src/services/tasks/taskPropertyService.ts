@@ -1064,7 +1064,9 @@ export class TaskPropertyService {
         }
 
         // At this point, value is guaranteed to be a primitive type
-        const strValue = String(value as string | number | boolean).toLowerCase().trim();
+        const strValue = String(value as string | number | boolean)
+            .toLowerCase()
+            .trim();
 
         // Check user's configured priority mapping
         for (const [priority, values] of Object.entries(
@@ -1126,6 +1128,7 @@ export class TaskPropertyService {
                 typeof (date as { format: unknown }).format === "function"
             ) {
                 const dateWithFormat = date as {
+                    // eslint-disable-next-line no-unused-vars
                     format: (_fmt: string) => string;
                 };
                 return format
@@ -1902,6 +1905,7 @@ export class TaskPropertyService {
     static matchesDueDateKeyword(
         dateValue: unknown,
         keyword: string,
+        // eslint-disable-next-line no-unused-vars
         formatDate: (_date: unknown) => string | undefined,
     ): boolean {
         if (!dateValue) return false;
@@ -2387,11 +2391,7 @@ export class TaskPropertyService {
             dueDateValue === this.DUE_DATE_FILTER_KEYWORDS.any
         ) {
             return dueDateFields.some((field) => {
-                const value = this.getUnifiedFieldValue(
-                    task,
-                    field,
-                    taskText,
-                );
+                const value = this.getUnifiedFieldValue(task, field, taskText);
                 return value !== undefined && value !== null;
             });
         }
@@ -2399,11 +2399,7 @@ export class TaskPropertyService {
         // Check for "none" - no due date
         if (dueDateValue === this.DUE_DATE_FILTER_KEYWORDS.none) {
             return !dueDateFields.some((field) => {
-                const value = this.getUnifiedFieldValue(
-                    task,
-                    field,
-                    taskText,
-                );
+                const value = this.getUnifiedFieldValue(task, field, taskText);
                 return value !== undefined && value !== null;
             });
         }
@@ -2414,11 +2410,7 @@ export class TaskPropertyService {
         ) as string[];
         if (dueDateKeywords.includes(dueDateValue)) {
             return dueDateFields.some((field) => {
-                const value = this.getUnifiedFieldValue(
-                    task,
-                    field,
-                    taskText,
-                );
+                const value = this.getUnifiedFieldValue(task, field, taskText);
                 return this.matchesDueDateKeyword(
                     value,
                     dueDateValue as keyof typeof TaskPropertyService.DUE_DATE_KEYWORDS,
@@ -2431,11 +2423,7 @@ export class TaskPropertyService {
         const parsedRelativeDate = this.parseRelativeDate(dueDateValue);
         if (parsedRelativeDate) {
             return dueDateFields.some((field) => {
-                const value = this.getUnifiedFieldValue(
-                    task,
-                    field,
-                    taskText,
-                );
+                const value = this.getUnifiedFieldValue(task, field, taskText);
                 const formatted = this.formatDate(value);
                 return formatted === parsedRelativeDate;
             });
@@ -2443,11 +2431,7 @@ export class TaskPropertyService {
 
         // Check for specific dates (YYYY-MM-DD)
         return dueDateFields.some((field) => {
-            const value = this.getUnifiedFieldValue(
-                task,
-                field,
-                taskText,
-            );
+            const value = this.getUnifiedFieldValue(task, field, taskText);
             const formatted = this.formatDate(value);
             return formatted === dueDateValue;
         });
@@ -2470,7 +2454,9 @@ export class TaskPropertyService {
             statusValues?: string[] | null;
         },
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
     ): ((_task: GenericTask) => boolean) | null {
+        // eslint-disable-next-line no-unused-vars
         const filters: ((_task: GenericTask) => boolean)[] = [];
 
         // Build priority filter

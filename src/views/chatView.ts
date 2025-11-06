@@ -21,8 +21,10 @@ import { AIError } from "../services/warnings/errorHandler";
  */
 interface AppWithInternalPlugins extends App {
     internalPlugins?: {
+        // eslint-disable-next-line no-unused-vars
         getPluginById: (_id: string) => {
             instance?: {
+                // eslint-disable-next-line no-unused-vars
                 openGlobalSearch?: (_query: string) => void;
             };
         };

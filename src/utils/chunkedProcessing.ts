@@ -36,8 +36,10 @@ export async function yieldToUI(): Promise<void> {
  */
 export async function processInChunks<T>(
     items: T[],
+    // eslint-disable-next-line no-unused-vars
     processor: (_item: T, _index: number) => void,
     chunkSize: number = CHUNK_SIZES.DEFAULT,
+    // eslint-disable-next-line no-unused-vars
     onProgress?: (_processed: number, _total: number) => void,
 ): Promise<void> {
     const total = items.length;
@@ -72,6 +74,7 @@ export async function processInChunks<T>(
  */
 export async function filterInChunks<T>(
     items: T[],
+    // eslint-disable-next-line no-unused-vars
     predicate: (_item: T, _index: number) => boolean,
     chunkSize = 500,
 ): Promise<T[]> {
@@ -107,6 +110,7 @@ export async function filterInChunks<T>(
  */
 export async function mapInChunks<T, R>(
     items: T[],
+    // eslint-disable-next-line no-unused-vars
     mapper: (_item: T, _index: number) => R,
     chunkSize = 500,
 ): Promise<R[]> {
@@ -139,6 +143,7 @@ export async function mapInChunks<T, R>(
  * @param chunkSize - Batch size before yielding
  */
 export async function vectorizedInChunks<T>(
+    // eslint-disable-next-line no-unused-vars
     batchProcessor: (_startIndex: number, _endIndex: number) => T,
     totalItems: number,
     chunkSize = 1000,

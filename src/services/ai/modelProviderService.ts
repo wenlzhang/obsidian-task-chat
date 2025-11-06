@@ -10,7 +10,6 @@ interface ApiModel {
     [key: string]: unknown;
 }
 
-
 /**
  * Service for fetching available AI models from different providers
  */
@@ -104,6 +103,7 @@ export class ModelProviderService {
      * Fetch available models from Anthropic
      */
     static fetchAnthropicModels(
+        // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
         _apiKey: string,
     ): Promise<string[]> {
         // Anthropic doesn't have a public models API endpoint yet

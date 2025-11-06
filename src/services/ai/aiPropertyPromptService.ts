@@ -37,9 +37,7 @@ export class AIPropertyPromptService {
         settings: PluginSettings,
     ): string {
         // Use centralized prompt builder
-        return PromptBuilderService.buildPropertyTermGuidance(
-            settings,
-        );
+        return PromptBuilderService.buildPropertyTermGuidance(settings);
     }
 
     /**

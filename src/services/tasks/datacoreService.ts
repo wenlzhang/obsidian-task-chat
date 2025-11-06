@@ -17,10 +17,15 @@ import { CHUNK_SIZES, SMART_EARLY_LIMIT } from "../../utils/constants";
  * Moment.js instance type (from window.moment)
  */
 interface MomentInstance {
+    // eslint-disable-next-line no-unused-vars
     format(_format: string): string;
+    // eslint-disable-next-line no-unused-vars
     add(_amount: number, _unit: string): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     subtract(_amount: number, _unit: string): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     startOf(_unit: string): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     endOf(_unit: string): MomentInstance;
     isValid(): boolean;
 }
@@ -30,6 +35,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
+    // eslint-disable-next-line no-unused-vars
     (_date?: string | Date | number): MomentInstance;
 };
 
@@ -37,6 +43,7 @@ type MomentFn = {
  * Datacore API interface
  */
 interface DatacoreAPI {
+    // eslint-disable-next-line no-unused-vars
     query(_query: string): Promise<DatacoreTask[]>;
 }
 
@@ -494,14 +501,11 @@ export class DatacoreService {
         dcTask: DatacoreTask,
         fieldKey: string,
         text: string,
+        // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
         settings: PluginSettings,
     ): unknown {
         // Delegate to unified extraction method in TaskPropertyService
-        return TaskPropertyService.getUnifiedFieldValue(
-            dcTask,
-            fieldKey,
-            text,
-        );
+        return TaskPropertyService.getUnifiedFieldValue(dcTask, fieldKey, text);
     }
 
     /**
@@ -977,6 +981,7 @@ export class DatacoreService {
             statusExclusions?: string[] | null; // For "other" category - excludes defined symbols
         },
         settings: PluginSettings,
+        // eslint-disable-next-line no-unused-vars
     ): ((_dcTask: DatacoreTask) => boolean) | null {
         // Delegate to unified filter building method in TaskPropertyService
         return TaskPropertyService.buildUnifiedTaskFilter(
