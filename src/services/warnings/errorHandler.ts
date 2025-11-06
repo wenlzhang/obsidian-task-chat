@@ -35,6 +35,25 @@ export class AIError extends Error {
  */
 export class ErrorHandler {
     /**
+     * Helper to safely check error code in error body
+     */
+    private static hasErrorCode(errorBody: unknown, code: string): boolean {
+        if (!errorBody || typeof errorBody !== "object" || !("error" in errorBody)) {
+            return false;
+        }
+
+        const bodyRecord = errorBody as Record<string, unknown>;
+        const errorField = bodyRecord.error;
+
+        if (!errorField || typeof errorField !== "object" || !("code" in errorField)) {
+            return false;
+        }
+
+        const errorFieldRecord = errorField as Record<string, unknown>;
+        return errorFieldRecord.code === code;
+    }
+
+    /**
      * Parse API error response and create structured error
      */
     static parseAPIError(
@@ -82,7 +101,7 @@ export class ErrorHandler {
             errorMsg.includes("context length") ||
             errorMsg.includes("maximum") ||
             errorMsg.includes("token") ||
-            errorBody?.error?.code === "context_length_exceeded"
+            this.hasErrorCode(errorBody, "context_length_exceeded")
         ) {
             return this.createContextLengthError(
                 errorMsg,
@@ -107,7 +126,7 @@ export class ErrorHandler {
             errorMsg.includes("400") ||
             errorMsg.includes("bad request") ||
             errorMsg.includes("invalid request") ||
-            errorBody?.error?.code === "invalid_request_error"
+            this.hasErrorCode(errorBody, "invalid_request_error")
         ) {
             return this.createBadRequestError(
                 errorMsg,
@@ -122,7 +141,7 @@ export class ErrorHandler {
             errorMsg.includes("API key") ||
             errorMsg.includes("authentication") ||
             errorMsg.includes("unauthorized") ||
-            errorBody?.error?.code === "invalid_api_key"
+            this.hasErrorCode(errorBody, "invalid_api_key")
         ) {
             return this.createAPIKeyError(errorMsg, model, statusCode || 401);
         }
@@ -131,7 +150,7 @@ export class ErrorHandler {
         if (
             errorMsg.includes("rate limit") ||
             errorMsg.includes("too many requests") ||
-            errorBody?.error?.code === "rate_limit_exceeded"
+            this.hasErrorCode(errorBody, "rate_limit_exceeded")
         ) {
             return this.createRateLimitError(
                 errorMsg,

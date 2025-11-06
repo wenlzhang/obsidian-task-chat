@@ -17,6 +17,7 @@ import {
     generateModelListNotLoadedInfo,
 } from "../services/warnings/warningService";
 import { ExclusionsModal } from "./exclusionsModal";
+import { ConfirmModal } from "../utils/confirmModal";
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TaskChatPlugin;
@@ -2149,21 +2150,25 @@ export class SettingsTab extends PluginSettingTab {
             removeBtn.title = `Remove ${displayName}`;
             removeBtn.classList.add("task-chat-status-btn-remove");
             removeBtn.addEventListener("click", () => {
-                void (async () => {
-                    // TODO: Replace with Obsidian Modal for better UX
-                    if (
-                        confirm(
-                            `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,
-                        )
-                    ) {
-                        delete this.plugin.settings.taskStatusMapping[
-                            categoryKey
-                        ];
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh UI
-                        new Notice(`Removed category: ${displayName}`);
-                    }
-                })();
+                new ConfirmModal(
+                    this.app,
+                    "Remove status category",
+                    `Remove "${displayName}" category?\n\nThis will affect how tasks with these symbols are scored.`,
+                    "Remove",
+                    "Cancel",
+                    () => {
+                        void (async () => {
+                            delete this.plugin.settings.taskStatusMapping[
+                                categoryKey
+                            ];
+                            await this.plugin.saveSettings();
+                            this.display(); // Refresh UI
+                            new Notice(`Removed category: ${displayName}`);
+                        })();
+                    },
+                    undefined,
+                    true, // dangerous = true (delete action)
+                ).open();
             });
         }
 

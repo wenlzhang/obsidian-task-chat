@@ -1,6 +1,7 @@
 import { App, Modal } from "obsidian";
 import { ChatSession } from "../models/task";
 import TaskChatPlugin from "../main";
+import { ConfirmModal } from "../utils/confirmModal";
 
 /**
  * Modal for managing chat sessions
@@ -207,20 +208,29 @@ export class SessionModal extends Modal {
                 ? `Delete "${session.name}" with ${messageCount} message${messageCount !== 1 ? "s" : ""}?`
                 : `Delete empty session "${session.name}"?`;
 
-        // TODO: Replace with Obsidian Modal for better UX
-        if (confirm(confirmMessage)) {
-            this.plugin.sessionManager.deleteSession(session.id);
-            void this.plugin.saveSettings();
+        new ConfirmModal(
+            this.app,
+            "Delete session",
+            confirmMessage,
+            "Delete",
+            "Cancel",
+            () => {
+                this.plugin.sessionManager.deleteSession(session.id);
+                void this.plugin.saveSettings();
 
-            // Refresh modal content
-            this.onOpen();
+                // Refresh modal content
+                this.onOpen();
 
-            // Trigger callback if we deleted current session
-            const newCurrent = this.plugin.sessionManager.getCurrentSession();
-            if (newCurrent) {
-                this._onSessionSelect(newCurrent.id);
-            }
-        }
+                // Trigger callback if we deleted current session
+                const newCurrent =
+                    this.plugin.sessionManager.getCurrentSession();
+                if (newCurrent) {
+                    this._onSessionSelect(newCurrent.id);
+                }
+            },
+            undefined,
+            true, // dangerous = true (delete action)
+        ).open();
     }
 
     private deleteSelectedSessions(): void {
@@ -243,27 +253,36 @@ export class SessionModal extends Modal {
                 ? `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""} (${totalMessages} total messages)?\n\nThis action cannot be undone.`
                 : `Delete ${selectedSessions.length} selected session${selectedSessions.length !== 1 ? "s" : ""}?`;
 
-        // TODO: Replace with Obsidian Modal for better UX
-        if (confirm(confirmMessage)) {
-            // Delete selected sessions
-            selectedSessions.forEach((session) => {
-                this.plugin.sessionManager.deleteSession(session.id);
-            });
-            void this.plugin.saveSettings();
+        new ConfirmModal(
+            this.app,
+            "Delete selected sessions",
+            confirmMessage,
+            "Delete",
+            "Cancel",
+            () => {
+                // Delete selected sessions
+                selectedSessions.forEach((session) => {
+                    this.plugin.sessionManager.deleteSession(session.id);
+                });
+                void this.plugin.saveSettings();
 
-            // Exit selection mode
-            this.selectionMode = false;
-            this.selectedSessionIds.clear();
+                // Exit selection mode
+                this.selectionMode = false;
+                this.selectedSessionIds.clear();
 
-            // Refresh modal content
-            this.onOpen();
+                // Refresh modal content
+                this.onOpen();
 
-            // Trigger callback if we deleted current session
-            const newCurrent = this.plugin.sessionManager.getCurrentSession();
-            if (newCurrent) {
-                this._onSessionSelect(newCurrent.id);
-            }
-        }
+                // Trigger callback if we deleted current session
+                const newCurrent =
+                    this.plugin.sessionManager.getCurrentSession();
+                if (newCurrent) {
+                    this._onSessionSelect(newCurrent.id);
+                }
+            },
+            undefined,
+            true, // dangerous = true (delete action)
+        ).open();
     }
 
     private deleteAllSessions(): void {
@@ -282,24 +301,32 @@ export class SessionModal extends Modal {
                 ? `Delete all ${sessions.length} sessions (${totalMessages} total messages)?\n\nThis action cannot be undone.`
                 : `Delete all ${sessions.length} empty sessions?`;
 
-        // TODO: Replace with Obsidian Modal for better UX
-        if (confirm(confirmMessage)) {
-            // Delete all sessions
-            sessions.forEach((session) => {
-                this.plugin.sessionManager.deleteSession(session.id);
-            });
-            void this.plugin.saveSettings();
+        new ConfirmModal(
+            this.app,
+            "Delete all sessions",
+            confirmMessage,
+            "Delete all",
+            "Cancel",
+            () => {
+                // Delete all sessions
+                sessions.forEach((session) => {
+                    this.plugin.sessionManager.deleteSession(session.id);
+                });
+                void this.plugin.saveSettings();
 
-            // Create a new session automatically
-            const newSession =
-                this.plugin.sessionManager.getOrCreateCurrentSession(
-                    this.plugin.settings.maxSessions,
-                );
-            this._onSessionSelect(newSession.id);
+                // Create a new session automatically
+                const newSession =
+                    this.plugin.sessionManager.getOrCreateCurrentSession(
+                        this.plugin.settings.maxSessions,
+                    );
+                this._onSessionSelect(newSession.id);
 
-            // Close modal after deleting all
-            this.close();
-        }
+                // Close modal after deleting all
+                this.close();
+            },
+            undefined,
+            true, // dangerous = true (delete action)
+        ).open();
     }
 
     private formatDate(date: Date): string {

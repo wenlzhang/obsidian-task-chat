@@ -1695,12 +1695,18 @@ export class TaskSearchService {
             }
 
             // Get task text based on data source
-            const taskRecord = task as Record<string, unknown>;
             const taskText =
                 source === "datacore"
-                    ? String(taskRecord.$text ?? task.text ?? "").toLowerCase()
+                    ? String(
+                          (task as unknown as Record<string, unknown>).$text ??
+                              task.text ??
+                              "",
+                      ).toLowerCase()
                     : String(
-                          task.text ?? taskRecord.visual ?? "",
+                          task.text ??
+                              (task as unknown as Record<string, unknown>)
+                                  .visual ??
+                              "",
                       ).toLowerCase();
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
