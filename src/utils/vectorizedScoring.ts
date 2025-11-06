@@ -20,6 +20,7 @@
 import type { Task as _Task, TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "../services/tasks/taskSearchService";
+import { TaskPropertyService } from "../services/tasks/taskPropertyService";
 
 /**
  * Generic datacore task type (for vectorized scoring)
@@ -173,12 +174,10 @@ export class VectorizedScoring {
 
             // Extract due date (Datacore format)
             const dueValue = task.due || task.$due;
-            dueDates[i] =
-                dueValue && typeof dueValue === "string"
-                    ? dueValue
-                    : dueValue
-                      ? String(dueValue)
-                      : undefined;
+            // Use formatDate to handle all date types (string, Datacore date, moment, etc.)
+            dueDates[i] = dueValue
+                ? TaskPropertyService.formatDate(dueValue)
+                : undefined;
 
             // Extract priority (already mapped)
             priorities[i] =

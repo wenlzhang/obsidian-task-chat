@@ -1165,10 +1165,9 @@ export class DatacoreService {
                                 taskText,
                                 settings,
                             );
+                        // Use formatDate to handle all date types (string, Datacore date, moment, etc.)
                         task._dueDate = dueValue
-                            ? typeof dueValue === "string"
-                                ? dueValue
-                                : dueValue.toString()
+                            ? TaskPropertyService.formatDate(dueValue)
                             : undefined;
 
                         // Extract and map priority
@@ -1422,10 +1421,9 @@ export class DatacoreService {
                                     taskText,
                                     settings,
                                 );
+                            // Use formatDate to handle all date types (string, Datacore date, moment, etc.)
                             task._dueDate = dueValue
-                                ? typeof dueValue === "string"
-                                    ? dueValue
-                                    : String(dueValue)
+                                ? TaskPropertyService.formatDate(dueValue)
                                 : undefined;
 
                             // Extract and map priority
