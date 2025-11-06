@@ -966,7 +966,8 @@ export class ChatView extends ItemView {
             `Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
         );
 
-        await MarkdownRenderer.renderMarkdown(
+        await MarkdownRenderer.render(
+            this.plugin.app,
             message.content,
             contentEl,
             contextPath,
@@ -1026,7 +1027,8 @@ export class ChatView extends ItemView {
                     `- Task markdown: ${taskMarkdown.substring(0, 100)}...`,
                 );
 
-                await MarkdownRenderer.renderMarkdown(
+                await MarkdownRenderer.render(
+                    this.plugin.app,
                     taskMarkdown,
                     taskContentEl,
                     task.sourcePath,
@@ -1416,7 +1418,8 @@ export class ChatView extends ItemView {
                           this.streamingMessageEl.removeClass(
                               "task-chat-streaming",
                           );
-                          void MarkdownRenderer.renderMarkdown(
+                          void MarkdownRenderer.render(
+                              this.plugin.app,
                               streamedContent,
                               this.streamingMessageEl,
                               "",

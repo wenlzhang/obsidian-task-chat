@@ -485,10 +485,13 @@ export class TaskSearchService {
 
     /**
      * Extract status filter from query
-     * Delegates to PropertyDetectionService for consistent behavior
+     * Uses centralized patterns from TaskPropertyService and combined terms from PropertyDetectionService
+     * Supports: s:open,wip, status:open,wip, and natural language status terms
+     * Returns raw values (category names, aliases, OR symbols) for flexible resolution
      *
-     * @deprecated This method now delegates to PropertyDetectionService
-     * Uses combined terms (user + internal) to support custom status categories
+     * @param query - User's search query
+     * @param settings - Plugin settings with user-configured status categories
+     * @returns Status value(s) or null
      */
     static extractStatusFromQuery(
         query: string,
@@ -1687,19 +1690,33 @@ export class TaskSearchService {
             }
 
             // Get task text based on data source
-            const taskText =
-                source === "datacore"
-                    ? String(
-                          (task as unknown as Record<string, unknown>).$text ??
-                              task.text ??
-                              "",
-                      ).toLowerCase()
-                    : String(
-                          task.text ??
-                              (task as unknown as Record<string, unknown>)
-                                  .visual ??
-                              "",
-                      ).toLowerCase();
+            // Only convert to string if value is primitive (not an object)
+            let taskText = "";
+            if (source === "datacore") {
+                const textValue =
+                    (task as unknown as Record<string, unknown>).$text ??
+                    task.text;
+                if (typeof textValue === "string") {
+                    taskText = textValue.toLowerCase();
+                } else if (
+                    textValue &&
+                    typeof textValue !== "object"
+                ) {
+                    taskText = String(textValue).toLowerCase();
+                }
+            } else {
+                const textValue =
+                    task.text ??
+                    (task as unknown as Record<string, unknown>).visual;
+                if (typeof textValue === "string") {
+                    taskText = textValue.toLowerCase();
+                } else if (
+                    textValue &&
+                    typeof textValue !== "object"
+                ) {
+                    taskText = String(textValue).toLowerCase();
+                }
+            }
 
             // Use shared calculation method (SINGLE SOURCE OF TRUTH)
             // Pass pre-lowercased keywords from closure
