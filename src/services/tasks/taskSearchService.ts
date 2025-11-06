@@ -681,7 +681,7 @@ export class TaskSearchService {
         // Apply due date filter
         if (filters.dueDate) {
             const beforeDueDate = filteredTasks.length;
-            filteredTasks = this.filterByDueDate(
+            filteredTasks = TaskPropertyService.filterByDueDate(
                 filteredTasks,
                 filters.dueDate,
             );
