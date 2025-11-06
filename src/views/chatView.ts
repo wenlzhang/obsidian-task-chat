@@ -4,6 +4,7 @@ import {
     Notice,
     MarkdownRenderer,
     setIcon,
+    Component,
     type App,
 } from "obsidian";
 import { Task, ChatMessage, TaskFilter } from "../models/task";
@@ -965,12 +966,16 @@ export class ChatView extends ItemView {
             `Rendering message content (${message.content.length} chars) with context: ${contextPath}`,
         );
 
+        // Create a temporary component for rendering to avoid memory leaks
+        // from long-lived plugin instance
+        const renderComponent = new Component();
+        this.addChild(renderComponent);
         await MarkdownRenderer.render(
             this.plugin.app,
             message.content,
             contentEl,
             contextPath,
-            this,
+            renderComponent,
         );
 
         // Enable hover preview for internal links in message content
@@ -1026,12 +1031,15 @@ export class ChatView extends ItemView {
                     `- Task markdown: ${taskMarkdown.substring(0, 100)}...`,
                 );
 
+                // Create a temporary component for rendering to avoid memory leaks
+                const renderComponent = new Component();
+                this.addChild(renderComponent);
                 await MarkdownRenderer.render(
                     this.plugin.app,
                     taskMarkdown,
                     taskContentEl,
                     task.sourcePath,
-                    this,
+                    renderComponent,
                 );
 
                 // Enable hover preview for internal links in task content
@@ -1408,6 +1416,9 @@ export class ChatView extends ItemView {
 
             // Create streaming callback
             let streamedContent = "";
+            // Create a component for streaming renders to avoid memory leaks
+            const streamRenderComponent = new Component();
+            this.addChild(streamRenderComponent);
             const onStream = useStreaming
                 ? (chunk: string) => {
                       streamedContent += chunk;
@@ -1422,7 +1433,7 @@ export class ChatView extends ItemView {
                               streamedContent,
                               this.streamingMessageEl,
                               "",
-                              this,
+                              streamRenderComponent,
                           );
                           // Re-add streaming class for dots animation
                           this.streamingMessageEl.addClass(

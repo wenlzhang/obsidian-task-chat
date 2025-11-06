@@ -1063,7 +1063,8 @@ export class TaskPropertyService {
             return undefined;
         }
 
-        const strValue = String(value).toLowerCase().trim();
+        // At this point, value is guaranteed to be a primitive type
+        const strValue = String(value as string | number | boolean).toLowerCase().trim();
 
         // Check user's configured priority mapping
         for (const [priority, values] of Object.entries(

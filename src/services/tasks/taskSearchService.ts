@@ -1699,7 +1699,8 @@ export class TaskSearchService {
                     textValue &&
                     typeof textValue !== "object"
                 ) {
-                    taskText = String(textValue).toLowerCase();
+                    // At this point, textValue is a primitive (number or boolean)
+                    taskText = String(textValue as number | boolean).toLowerCase();
                 }
             } else {
                 const textValue =
@@ -1711,7 +1712,8 @@ export class TaskSearchService {
                     textValue &&
                     typeof textValue !== "object"
                 ) {
-                    taskText = String(textValue).toLowerCase();
+                    // At this point, textValue is a primitive (number or boolean)
+                    taskText = String(textValue as number | boolean).toLowerCase();
                 }
             }
 
