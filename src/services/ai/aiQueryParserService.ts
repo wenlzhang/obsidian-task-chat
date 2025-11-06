@@ -2644,7 +2644,18 @@ CRITICAL: Return ONLY valid JSON. No markdown, no explanations, no code blocks. 
             // Ollama doesn't provide token counts - estimate based on character count
             // Rough estimate: 1 token ≈ 4 characters
             const promptText = messages
-                .map((m: AIMessage) => m.content)
+                .map((m: AIMessage) => {
+                    // Handle both string and array content types
+                    if (typeof m.content === "string") {
+                        return m.content;
+                    } else if (Array.isArray(m.content)) {
+                        // Extract text from content parts
+                        return m.content
+                            .map((part) => part.text || "")
+                            .join(" ");
+                    }
+                    return "";
+                })
                 .join(" ");
             const promptTokens = Math.ceil(promptText.length / 4);
             const completionTokens = Math.ceil(responseContent.length / 4);
