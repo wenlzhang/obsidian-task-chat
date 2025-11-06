@@ -66,11 +66,13 @@ export default [
       "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/require-await": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/no-redundant-type-constituents": "error",
       "@typescript-eslint/restrict-template-expressions": ["error", {
         allowNumber: true,
         allowBoolean: true,
         allowAny: false,
         allowNullish: false,
+        allowNever: false,
       }],
 
       // === Required errors - JavaScript strict rules ===

@@ -28,7 +28,7 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    (_date?: string | Date | number | unknown): MomentInstance;
+    (_date?: unknown): MomentInstance;
 };
 
 /**
