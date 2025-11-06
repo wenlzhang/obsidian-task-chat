@@ -1079,16 +1079,14 @@ export class SettingsTab extends PluginSettingTab {
         // Show warning messages if duplicates exist
         if (!validation.valid) {
             const warningBox = containerEl.createDiv({
-                cls: "task-chat-warning-box",
+                cls: "task-chat-warning-box task-chat-warning-box-spaced",
             });
-            warningBox.setCssProps({ marginBottom: "16px" });
 
             for (const warning of validation.warnings) {
                 const warningText = warningBox.createEl("p", {
-                    cls: "task-chat-warning-message",
+                    cls: "task-chat-warning-message task-chat-warning-message-spaced",
                 });
                 warningText.textContent = "⚠️ " + warning;
-                warningText.setCssProps({ marginBottom: "4px" });
             }
         }
 
@@ -2187,15 +2185,12 @@ export class SettingsTab extends PluginSettingTab {
             cls: "setting-item-name",
         });
 
-        const advancedFields = advancedContainer.createDiv();
-        advancedFields.setCssProps({ display: "none" }); // Initially collapsed
+        const advancedFields = advancedContainer.createDiv({
+            cls: "task-chat-advanced-fields",
+        });
 
         advancedHeader.addEventListener("click", () => {
-            if (advancedFields.style.display === "none") {
-                advancedFields.setCssProps({ display: "block" });
-            } else {
-                advancedFields.setCssProps({ display: "none" });
-            }
+            advancedFields.classList.toggle("visible");
         });
 
         // Display order field (not the same as score!)
@@ -2226,7 +2221,7 @@ export class SettingsTab extends PluginSettingTab {
                         value;
                     await this.plugin.saveSettings();
                 });
-            slider.sliderEl.setCssProps({ width: "200px" });
+            slider.sliderEl.addClass("task-chat-slider-fixed");
         });
 
         // Add clear button to reset to default
@@ -2263,10 +2258,7 @@ export class SettingsTab extends PluginSettingTab {
                         ].description = value.trim() || undefined;
                         await this.plugin.saveSettings();
                     });
-                textarea.inputEl.setCssProps({
-                    width: "100%",
-                    minHeight: "60px",
-                });
+                textarea.inputEl.addClass("task-chat-textarea-full");
             });
 
         // Terms field
@@ -2285,7 +2277,7 @@ export class SettingsTab extends PluginSettingTab {
                         ].terms = value.trim() || undefined;
                         await this.plugin.saveSettings();
                     });
-                textarea.inputEl.setCssProps({ width: "100%" });
+                textarea.inputEl.addClass("task-chat-textarea-full");
             });
     }
 

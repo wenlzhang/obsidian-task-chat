@@ -56,12 +56,6 @@ export class ConfirmModal extends Modal {
         const buttonContainer = contentEl.createDiv(
             "task-chat-confirm-buttons",
         );
-        buttonContainer.setCssProps({
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "8px",
-            marginTop: "20px",
-        });
 
         // Cancel button
         const cancelBtn = buttonContainer.createEl("button", {

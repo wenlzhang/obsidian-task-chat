@@ -1996,3 +1996,64 @@
     width: 14px;
     height: 14px;
 }
+
+/* ============================================
+   Confirm Modal Styles
+   ============================================ */
+
+.task-chat-confirm-modal {
+    padding: 20px;
+}
+
+.task-chat-confirm-modal h2 {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.task-chat-confirm-message {
+    margin-bottom: 20px;
+    line-height: 1.5;
+    color: var(--text-normal);
+}
+
+.task-chat-confirm-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+/* ============================================
+   Settings Tab - Additional Styles
+   ============================================ */
+
+/* Warning box with bottom margin */
+.task-chat-warning-box-spaced {
+    margin-bottom: 16px;
+}
+
+/* Warning message with bottom margin */
+.task-chat-warning-message-spaced {
+    margin-bottom: 4px;
+}
+
+/* Advanced fields container - initially hidden */
+.task-chat-advanced-fields {
+    display: none;
+}
+
+/* Advanced fields container - visible state */
+.task-chat-advanced-fields.visible {
+    display: block;
+}
+
+/* Slider with fixed width */
+.task-chat-slider-fixed {
+    width: 200px;
+}
+
+/* Textarea with full width and min height */
+.task-chat-textarea-full {
+    width: 100%;
+    min-height: 60px;
+}
