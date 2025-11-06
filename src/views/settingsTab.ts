@@ -140,7 +140,7 @@ export class SettingsTab extends PluginSettingTab {
                 }),
         );
 
-        const _tokenSetting = new Setting(containerEl)
+        new Setting(containerEl)
             .setName("Max response tokens")
             .setDesc(
                 "Maximum tokens for AI response generation. Affects both smart search and task chat.",
@@ -156,7 +156,7 @@ export class SettingsTab extends PluginSettingTab {
                     }),
             );
 
-        const _contextSetting = new Setting(containerEl)
+        new Setting(containerEl)
             .setName("Context window")
             .setDesc("Increase if you get 'context length exceeded' errors.")
             .addSlider((slider) =>
@@ -1153,7 +1153,7 @@ export class SettingsTab extends PluginSettingTab {
             );
 
         // Auto-organize button (always visible, but styled differently based on validation)
-        const _organizeSetting = new Setting(containerEl)
+        new Setting(containerEl)
             .setName("Auto-organize display order")
             .setDesc(
                 `Automatically renumber all categories with consistent gaps. With ${categoryCount} categories, will use gaps of ${dynamicGap} (e.g., ${dynamicGap}, ${dynamicGap * 2}, ${dynamicGap * 3}...).`,
@@ -1836,7 +1836,7 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings.pricingCache.data,
         ).length;
 
-        const _pricingSetting = new Setting(containerEl)
+        new Setting(containerEl)
             .setName("Pricing data")
             .setDesc(`${modelCount} models cached, updated ${lastUpdate}`)
             .addButton((button) =>
@@ -2186,7 +2186,7 @@ export class SettingsTab extends PluginSettingTab {
             cls: "task-chat-status-advanced-header",
         });
 
-        const _expandIcon = advancedHeader.createSpan({ text: "⚙️" });
+        advancedHeader.createSpan({ text: "⚙️" });
         advancedHeader.createSpan({
             text: "Advanced (optional - order, description, terms)",
             cls: "setting-item-name",
@@ -2740,7 +2740,7 @@ export class SettingsTab extends PluginSettingTab {
             const sortOrder = this.plugin.settings.taskSortOrder;
 
             // Render each criterion as a badge/tag
-            sortOrder.forEach((criterion, _index) => {
+            sortOrder.forEach((criterion) => {
                 const isRelevance = criterion === "relevance";
                 const tag = tagsContainer.createEl("span", {
                     cls: isRelevance

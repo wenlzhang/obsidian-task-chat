@@ -2430,7 +2430,6 @@ ${taskContext}`;
 
         try {
             // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -2725,7 +2724,6 @@ ${taskContext}`;
 
             try {
                 // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {
@@ -2965,7 +2963,6 @@ ${taskContext}`;
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
         // Use analysis model configuration
         const {
-            provider: _provider,
             model,
             temperature,
         } = getProviderForPurpose(settings, "analysis");
@@ -2982,7 +2979,6 @@ ${taskContext}`;
 
             try {
                 // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl doesn't support streaming responses, which are required for real-time AI responses.
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: {

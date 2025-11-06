@@ -8,18 +8,20 @@ import { ConfirmModal } from "../utils/confirmModal";
  */
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
-    private _onSessionSelect: (_sessionId: string) => void;
+
+    private onSessionSelect: (_sessionId: string) => void;
     private selectionMode = false;
     private selectedSessionIds: Set<string> = new Set();
 
     constructor(
         app: App,
         plugin: TaskChatPlugin,
-        _onSessionSelect: (_sessionId: string) => void,
+
+        onSessionSelect: (_sessionId: string) => void,
     ) {
         super(app);
         this.plugin = plugin;
-        this._onSessionSelect = _onSessionSelect;
+        this.onSessionSelect = onSessionSelect;
     }
 
     onOpen(): void {
@@ -148,13 +150,12 @@ export class SessionModal extends Modal {
             "task-chat-session-info-wrapper",
         );
 
-        const _nameEl = infoWrapper.createEl("div", {
+        infoWrapper.createEl("div", {
             text: session.name,
             cls: "task-chat-session-name",
         });
 
         const date = new Date(session.updatedAt);
-        const _messageCount = session.messages.length;
 
         // Only show user messages count (exclude system messages)
         const userMessageCount = session.messages.filter(
@@ -179,7 +180,7 @@ export class SessionModal extends Modal {
             });
         } else {
             contentWrapper.addEventListener("click", () => {
-                this._onSessionSelect(session.id);
+                this.onSessionSelect(session.id);
                 this.close();
             });
         }
@@ -225,7 +226,7 @@ export class SessionModal extends Modal {
                 const newCurrent =
                     this.plugin.sessionManager.getCurrentSession();
                 if (newCurrent) {
-                    this._onSessionSelect(newCurrent.id);
+                    this.onSessionSelect(newCurrent.id);
                 }
             },
             undefined,
@@ -277,7 +278,7 @@ export class SessionModal extends Modal {
                 const newCurrent =
                     this.plugin.sessionManager.getCurrentSession();
                 if (newCurrent) {
-                    this._onSessionSelect(newCurrent.id);
+                    this.onSessionSelect(newCurrent.id);
                 }
             },
             undefined,
@@ -319,7 +320,7 @@ export class SessionModal extends Modal {
                     this.plugin.sessionManager.getOrCreateCurrentSession(
                         this.plugin.settings.maxSessions,
                     );
-                this._onSessionSelect(newSession.id);
+                this.onSessionSelect(newSession.id);
 
                 // Close modal after deleting all
                 this.close();

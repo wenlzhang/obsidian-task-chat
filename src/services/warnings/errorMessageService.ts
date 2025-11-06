@@ -172,11 +172,6 @@ export class ErrorMessageService {
         });
         docsEl.createEl("strong", { text: "📖 help: " });
 
-        // Link to troubleshooting guide (with anchor to status code section if available)
-        const baseUrl =
-            "https://github.com/wenlzhang/obsidian-task-chat/blob/main/docs/TROUBLESHOOTING.md";
-        const linkUrl = error.docsLink || baseUrl;
-
         // Add provider-specific link if relevant
         if (error.model) {
             const providerLink = this.getProviderDocsLink(error.model);

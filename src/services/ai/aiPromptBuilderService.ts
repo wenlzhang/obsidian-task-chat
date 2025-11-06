@@ -443,12 +443,10 @@ REMEMBER: All these fields are extracted from inline field syntax and shown as c
      * Used in query parsing to help AI recognize property terms across all layers
      *
      * @param settings - Plugin settings with all user configuration
-     * @param queryLanguages - List of languages configured by user
      * @returns Formatted property term guidance for AI prompts
      */
     static buildPropertyTermGuidance(
         settings: PluginSettings,
-        queryLanguages: string[],
     ): string {
         // Get combined terms from TaskPropertyService
         const combined = {

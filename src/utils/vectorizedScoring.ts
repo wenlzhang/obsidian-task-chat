@@ -17,7 +17,7 @@
  * - Typed arrays for native performance
  */
 
-import type { Task as _Task, TaskStatusCategory } from "../models/task";
+import type { TaskStatusCategory } from "../models/task";
 import { PluginSettings } from "../settings";
 import { TaskSearchService } from "../services/tasks/taskSearchService";
 import { TaskPropertyService } from "../services/tasks/taskPropertyService";

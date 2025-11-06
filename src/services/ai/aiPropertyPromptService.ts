@@ -31,17 +31,14 @@ export class AIPropertyPromptService {
      * Delegates to PromptBuilderService for centralized prompt generation
      *
      * @param settings Plugin settings
-     * @param queryLanguages User-configured languages for semantic expansion
      * @returns Formatted string for AI prompt
      */
     static buildPropertyTermMappingsForParser(
         settings: PluginSettings,
-        queryLanguages: string[],
     ): string {
         // Use centralized prompt builder
         return PromptBuilderService.buildPropertyTermGuidance(
             settings,
-            queryLanguages,
         );
     }
 

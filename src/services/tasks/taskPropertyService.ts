@@ -2239,11 +2239,8 @@ export class TaskPropertyService {
      * @param task - Task object from Datacore
      * @returns Task text
      */
-    private static getTaskText(
-        task: GenericTask,
-        _source: TaskSource = "datacore",
-    ): string {
-        // Always use Datacore format (source parameter kept for compatibility)
+    private static getTaskText(task: GenericTask): string {
+        // Always use Datacore format
         return task.$text || task.text || "";
     }
 
@@ -2283,10 +2280,7 @@ export class TaskPropertyService {
      * Get standard field mapping for a given field key
      * Returns array of Datacore standard field names to check
      */
-    private static getStandardFieldMapping(
-        fieldKey: string,
-        _settings: PluginSettings,
-    ): string[] {
+    private static getStandardFieldMapping(fieldKey: string): string[] {
         const fieldMap: { [key: string]: string[] } = {};
 
         // Datacore: $ prefix for built-ins
@@ -2320,14 +2314,12 @@ export class TaskPropertyService {
      * @param task - Task object from Datacore
      * @param fieldKey - Field name to extract
      * @param text - Task text for fallback extraction
-     * @param settings - Plugin settings
      * @returns Field value, or undefined if not found
      */
     static getUnifiedFieldValue(
         task: GenericTask,
         fieldKey: string,
         text: string,
-        settings: PluginSettings,
     ): unknown {
         // Strategy 1: Check Datacore built-in fields
         // Try $ prefix first for Datacore built-ins
@@ -2347,7 +2339,7 @@ export class TaskPropertyService {
         }
 
         // Strategy 3: Check standard fields
-        const standardFields = this.getStandardFieldMapping(fieldKey, settings);
+        const standardFields = this.getStandardFieldMapping(fieldKey);
         for (const standardField of standardFields) {
             if (task[standardField] !== undefined) {
                 return task[standardField];
@@ -2379,14 +2371,12 @@ export class TaskPropertyService {
      * @param task - Task object from Datacore
      * @param dueDateValue - Due date value to match against
      * @param dueDateFields - Array of due date field names to check
-     * @param settings - Plugin settings
      * @returns True if task matches the due date value
      */
     static matchesUnifiedDueDateValue(
         task: GenericTask,
         dueDateValue: string,
         dueDateFields: string[],
-        settings: PluginSettings,
     ): boolean {
         const taskText = this.getTaskText(task);
 
@@ -2400,7 +2390,6 @@ export class TaskPropertyService {
                     task,
                     field,
                     taskText,
-                    settings,
                 );
                 return value !== undefined && value !== null;
             });
@@ -2413,7 +2402,6 @@ export class TaskPropertyService {
                     task,
                     field,
                     taskText,
-                    settings,
                 );
                 return value !== undefined && value !== null;
             });
@@ -2429,7 +2417,6 @@ export class TaskPropertyService {
                     task,
                     field,
                     taskText,
-                    settings,
                 );
                 return this.matchesDueDateKeyword(
                     value,
@@ -2447,7 +2434,6 @@ export class TaskPropertyService {
                     task,
                     field,
                     taskText,
-                    settings,
                 );
                 const formatted = this.formatDate(value);
                 return formatted === parsedRelativeDate;
@@ -2460,7 +2446,6 @@ export class TaskPropertyService {
                 task,
                 field,
                 taskText,
-                settings,
             );
             const formatted = this.formatDate(value);
             return formatted === dueDateValue;
@@ -2504,7 +2489,6 @@ export class TaskPropertyService {
                             task,
                             field,
                             taskText,
-                            settings,
                         );
                         if (value === undefined || value === null) return false;
                         const mapped = this.mapPriority(value, settings);
@@ -2524,7 +2508,6 @@ export class TaskPropertyService {
                             task,
                             field,
                             taskText,
-                            settings,
                         );
                         if (value === undefined || value === null) return false;
                         const mapped = this.mapPriority(value, settings);
@@ -2544,7 +2527,6 @@ export class TaskPropertyService {
                             task,
                             field,
                             taskText,
-                            settings,
                         );
                         if (value !== undefined && value !== null) {
                             const mapped = this.mapPriority(value, settings);
@@ -2573,7 +2555,6 @@ export class TaskPropertyService {
                             task,
                             dueDateValue,
                             dueDateFields,
-                            settings,
                         )
                     ) {
                         return true;
@@ -2625,7 +2606,6 @@ export class TaskPropertyService {
                                 task,
                                 field,
                                 taskText,
-                                settings,
                             );
                             if (value) {
                                 const taskDate = moment(this.formatDate(value));

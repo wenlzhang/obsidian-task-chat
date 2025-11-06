@@ -150,7 +150,7 @@ export class FilterModal extends Modal {
         const row = container.createDiv("task-chat-filter-inclusion-row");
 
         // Label (left side)
-        const _labelEl = row.createDiv({
+        row.createDiv({
             cls: "task-chat-filter-inclusion-label",
             text: label,
         });

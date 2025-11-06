@@ -8,7 +8,6 @@ import { PluginSettings, SortCriterion } from "../../settings";
 import { moment } from "obsidian";
 import { TypoCorrection } from "../../utils/typoCorrection";
 import { Logger } from "../../utils/logger";
-import type { VectorizedScoring as _VectorizedScoring } from "../../utils/vectorizedScoring";
 
 /**
  * Moment.js instance type (from window.moment)

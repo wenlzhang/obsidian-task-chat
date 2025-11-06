@@ -338,7 +338,6 @@ export class PricingService {
             if (useFetch) {
                 // NOTE: Using native fetch() for non-Obsidian contexts (e.g., testing).
                 // For Obsidian plugins, requestUrl is preferred (see else branch below).
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const response = await fetch(
                     `https://openrouter.ai/api/v1/generation?id=${generationId}`,
                     {

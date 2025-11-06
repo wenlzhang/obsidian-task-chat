@@ -446,7 +446,6 @@ export class QueryParserService {
         const propertyTermMappings =
             AIPropertyPromptService.buildPropertyTermMappingsForParser(
                 settings,
-                queryLanguages,
             );
         const dueDateValueMapping =
             AIPropertyPromptService.buildDueDateValueMapping();
@@ -1034,7 +1033,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
     "coreKeywords": ["开发", "Task", "Chat"],
     "keywords": [
         ${queryLanguages
-            .map((lang, _idx) =>
+            .map((lang) =>
                 lang === "English"
                     ? '"develop", "build", "create", "implement", "code"'
                     : lang === "中文"
@@ -1045,7 +1044,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
             )
             .join(",\n        ")},
         ${queryLanguages
-            .map((lang, _idx) =>
+            .map((lang) =>
                 lang === "English"
                     ? '"task", "work", "job", "assignment", "item"'
                     : lang === "中文"
@@ -1056,7 +1055,7 @@ Example 1: Query with ${queryLanguages.length} configured languages: ${languageL
             )
             .join(",\n        ")},
         ${queryLanguages
-            .map((lang, _idx) =>
+            .map((lang) =>
                 lang === "English"
                     ? '"chat", "conversation", "talk", "discussion", "dialogue"'
                     : lang === "中文"

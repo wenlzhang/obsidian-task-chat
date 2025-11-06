@@ -10,14 +10,6 @@ interface ApiModel {
     [key: string]: unknown;
 }
 
-/**
- * Generic API response structure
- */
-interface _ApiResponse {
-    data?: ApiModel[];
-    models?: ApiModel[];
-    [key: string]: unknown;
-}
 
 /**
  * Service for fetching available AI models from different providers
@@ -111,7 +103,9 @@ export class ModelProviderService {
     /**
      * Fetch available models from Anthropic
      */
-    static fetchAnthropicModels(_apiKey: string): Promise<string[]> {
+    static fetchAnthropicModels(
+        _apiKey: string,
+    ): Promise<string[]> {
         // Anthropic doesn't have a public models API endpoint yet
         // Return hardcoded list of current models
         return Promise.resolve(this.getDefaultAnthropicModels());
