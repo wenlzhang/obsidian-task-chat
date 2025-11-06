@@ -66,21 +66,23 @@ export class TaskFilterService {
         ) {
             filtered = filtered.filter((task) => {
                 // Check folder match
+                // filter.folders is guaranteed to exist when hasFolderFilter is true
                 const matchesFolder =
                     hasFolderFilter &&
                     task.folder &&
-                    filter.folders!.some((folder) =>
-                        task.folder!.startsWith(folder),
+                    filter.folders?.some((folder) =>
+                        task.folder?.startsWith(folder),
                     );
 
                 // Check note-level tag match (uses note tags from page frontmatter/inline)
+                // filter.noteTags and task.noteTags are guaranteed to exist in this context
                 const matchesNoteTag =
                     hasNoteTagFilter &&
                     task.noteTags &&
                     task.noteTags.length > 0 &&
-                    filter.noteTags!.some((filterTag) => {
+                    filter.noteTags?.some((filterTag) => {
                         const normalizedFilter = filterTag.replace(/^#+/, "");
-                        return task.noteTags!.some((noteTag) => {
+                        return task.noteTags?.some((noteTag) => {
                             const normalizedNoteTag = noteTag.replace(
                                 /^#+/,
                                 "",
@@ -93,11 +95,12 @@ export class TaskFilterService {
                     });
 
                 // Check task-level tag match (uses tags from task line itself)
+                // filter.taskTags is guaranteed to exist when hasTaskTagFilter is true
                 const matchesTaskTag =
                     hasTaskTagFilter &&
                     task.tags &&
                     task.tags.length > 0 &&
-                    filter.taskTags!.some((filterTag) => {
+                    filter.taskTags?.some((filterTag) => {
                         const normalizedFilter = filterTag.replace(/^#+/, "");
                         return task.tags.some((taskTag) => {
                             const normalizedTask = taskTag.replace(/^#+/, "");
@@ -109,8 +112,9 @@ export class TaskFilterService {
                     });
 
                 // Check note match
+                // filter.notes is guaranteed to exist when hasNoteFilter is true
                 const matchesNote =
-                    hasNoteFilter && filter.notes!.includes(task.sourcePath);
+                    hasNoteFilter && filter.notes?.includes(task.sourcePath);
 
                 // Return true if task matches ANY of the inclusion criteria (OR logic)
                 return (
@@ -130,25 +134,26 @@ export class TaskFilterService {
                     task.priority !== undefined
                         ? String(task.priority)
                         : TaskPropertyService.PRIORITY_VALUES.none;
-                return filter.priorities!.includes(priority);
+                // filter.priorities is guaranteed to exist in this scope
+                return filter.priorities?.includes(priority) ?? false;
             });
         }
 
         // Filter by due date range
         // Delegates to TaskPropertyService for consistent date handling
         if (filter.dueDateRange) {
+            // filter.dueDateRange is guaranteed to exist in this scope
+            const dueDateRange = filter.dueDateRange;
             filtered = filtered.filter((task) =>
-                TaskPropertyService.matchesDateRange(
-                    task,
-                    filter.dueDateRange!,
-                ),
+                TaskPropertyService.matchesDateRange(task, dueDateRange),
             );
         }
 
         // Filter by task statuses
         if (filter.taskStatuses && filter.taskStatuses.length > 0) {
+            // filter.taskStatuses is guaranteed to exist in this scope
             filtered = filtered.filter((task) =>
-                filter.taskStatuses!.includes(task.statusCategory),
+                filter.taskStatuses?.includes(task.statusCategory) ?? false,
             );
         }
 

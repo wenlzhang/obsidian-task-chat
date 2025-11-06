@@ -246,41 +246,53 @@ export class FilterModal extends Modal {
                 this.filter.folders = (this.filter.folders || []).filter(
                     (f) => f !== value,
                 );
-                this.renderInclusionItems(
-                    this.listContainers.folders!,
-                    type,
-                    this.filter.folders,
-                );
+                // listContainers.folders is guaranteed to exist after renderInclusionRow
+                if (this.listContainers.folders) {
+                    this.renderInclusionItems(
+                        this.listContainers.folders,
+                        type,
+                        this.filter.folders,
+                    );
+                }
                 break;
             case "noteTag":
                 this.filter.noteTags = (this.filter.noteTags || []).filter(
                     (t) => t !== value,
                 );
-                this.renderInclusionItems(
-                    this.listContainers.noteTags!,
-                    type,
-                    this.filter.noteTags,
-                );
+                // listContainers.noteTags is guaranteed to exist after renderInclusionRow
+                if (this.listContainers.noteTags) {
+                    this.renderInclusionItems(
+                        this.listContainers.noteTags,
+                        type,
+                        this.filter.noteTags,
+                    );
+                }
                 break;
             case "taskTag":
                 this.filter.taskTags = (this.filter.taskTags || []).filter(
                     (t) => t !== value,
                 );
-                this.renderInclusionItems(
-                    this.listContainers.taskTags!,
-                    type,
-                    this.filter.taskTags,
-                );
+                // listContainers.taskTags is guaranteed to exist after renderInclusionRow
+                if (this.listContainers.taskTags) {
+                    this.renderInclusionItems(
+                        this.listContainers.taskTags,
+                        type,
+                        this.filter.taskTags,
+                    );
+                }
                 break;
             case "note":
                 this.filter.notes = (this.filter.notes || []).filter(
                     (n) => n !== value,
                 );
-                this.renderInclusionItems(
-                    this.listContainers.notes!,
-                    type,
-                    this.filter.notes,
-                );
+                // listContainers.notes is guaranteed to exist after renderInclusionRow
+                if (this.listContainers.notes) {
+                    this.renderInclusionItems(
+                        this.listContainers.notes,
+                        type,
+                        this.filter.notes,
+                    );
+                }
                 break;
         }
     }

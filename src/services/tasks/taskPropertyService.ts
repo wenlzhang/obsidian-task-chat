@@ -2589,11 +2589,12 @@ export class TaskPropertyService {
                     // Check cache first
                     let taskTimestamp: number | null;
                     if (dateCache.has(taskId)) {
-                        taskTimestamp = dateCache.get(taskId)!;
+                        // taskTimestamp is guaranteed to exist in cache when has() returns true
+                        taskTimestamp = dateCache.get(taskId) ?? null;
                     } else {
                         // Extract and parse date (only once per task)
                         const taskText = this.getTaskText(task);
-                        let foundDate = false;
+                        taskTimestamp = null; // Initialize to null
 
                         for (const field of dueDateFields) {
                             const value = this.getUnifiedFieldValue(
@@ -2608,13 +2609,12 @@ export class TaskPropertyService {
                                     taskTimestamp = taskDate
                                         .startOf("day")
                                         .valueOf();
-                                    foundDate = true;
                                     break;
                                 }
                             }
                         }
 
-                        taskTimestamp = foundDate ? taskTimestamp! : null;
+                        // Cache the result (either found timestamp or null)
                         dateCache.set(taskId, taskTimestamp);
                     }
 

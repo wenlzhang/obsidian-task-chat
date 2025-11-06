@@ -218,13 +218,15 @@ export class MetadataService {
 
         // Simple/Smart Search - show single model
         if (message.role !== "chat") {
+            // message.tokenUsage is checked at caller level, guaranteed to exist
             const model = hasParsingModel
-                ? message.tokenUsage!.parsingModel!
-                : message.tokenUsage!.model;
+                ? message.tokenUsage?.parsingModel
+                : message.tokenUsage?.model;
             const provider = hasParsingModel
-                ? message.tokenUsage!.parsingProvider!
-                : message.tokenUsage!.provider;
+                ? message.tokenUsage?.parsingProvider
+                : message.tokenUsage?.provider;
 
+            if (!model || !provider) return null;
             return `${this.formatProvider(provider)}: ${model} (parser)`;
         }
 
@@ -232,16 +234,17 @@ export class MetadataService {
         const modelsSame =
             hasParsingModel &&
             hasAnalysisModel &&
-            message.tokenUsage!.parsingModel ===
-                message.tokenUsage!.analysisModel &&
-            message.tokenUsage!.parsingProvider ===
-                message.tokenUsage!.analysisProvider;
+            message.tokenUsage?.parsingModel ===
+                message.tokenUsage?.analysisModel &&
+            message.tokenUsage?.parsingProvider ===
+                message.tokenUsage?.analysisProvider;
 
         if (modelsSame) {
-            // Same model for both
-            const provider = message.tokenUsage!.parsingProvider!;
-            const model = message.tokenUsage!.parsingModel!;
+            // Same model for both - tokenUsage exists due to caller check
+            const provider = message.tokenUsage?.parsingProvider;
+            const model = message.tokenUsage?.parsingModel;
 
+            if (!provider || !model) return null;
             return `${this.formatProvider(provider)}: ${model} (parser + analysis)`;
         }
 
@@ -250,40 +253,44 @@ export class MetadataService {
             // Get analysis model from settings since it was never run
             const { provider: analysisProvider, model: analysisModel } =
                 getProviderForPurpose(settings, "analysis");
-            const parsingProviderName = this.formatProvider(
-                message.tokenUsage!.parsingProvider!,
-            );
+            const parsingProvider = message.tokenUsage?.parsingProvider;
+
+            if (!parsingProvider) return null;
+            const parsingProviderName = this.formatProvider(parsingProvider);
             const analysisProviderName = this.formatProvider(analysisProvider);
 
             if (parsingProviderName === analysisProviderName) {
                 // Same provider, show combined
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${analysisModel} (analysis)`;
+                return `${parsingProviderName}: ${message.tokenUsage?.parsingModel ?? "unknown"} (parser), ${analysisModel} (analysis)`;
             } else {
                 // Different providers
-                return `${parsingProviderName}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`;
+                return `${parsingProviderName}: ${message.tokenUsage?.parsingModel ?? "unknown"} (parser), ${analysisProviderName}: ${analysisModel} (analysis)`;
             }
         }
 
         if (hasParsingModel && hasAnalysisModel) {
             // Different models
             const sameProvider =
-                message.tokenUsage!.parsingProvider ===
-                message.tokenUsage!.analysisProvider;
+                message.tokenUsage?.parsingProvider ===
+                message.tokenUsage?.analysisProvider;
 
             if (sameProvider) {
-                const provider = message.tokenUsage!.parsingProvider!;
-                return `${this.formatProvider(provider)}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${message.tokenUsage!.analysisModel ?? "unknown"} (analysis)`;
+                const provider = message.tokenUsage?.parsingProvider;
+                if (!provider) return null;
+                return `${this.formatProvider(provider)}: ${message.tokenUsage?.parsingModel ?? "unknown"} (parser), ${message.tokenUsage?.analysisModel ?? "unknown"} (analysis)`;
             } else {
-                const parsingProvider = message.tokenUsage!.parsingProvider!;
-                const analysisProvider = message.tokenUsage!.analysisProvider!;
-                return `${this.formatProvider(parsingProvider)}: ${message.tokenUsage!.parsingModel ?? "unknown"} (parser), ${this.formatProvider(analysisProvider)}: ${message.tokenUsage!.analysisModel ?? "unknown"} (analysis)`;
+                const parsingProvider = message.tokenUsage?.parsingProvider;
+                const analysisProvider = message.tokenUsage?.analysisProvider;
+                if (!parsingProvider || !analysisProvider) return null;
+                return `${this.formatProvider(parsingProvider)}: ${message.tokenUsage?.parsingModel ?? "unknown"} (parser), ${this.formatProvider(analysisProvider)}: ${message.tokenUsage?.analysisModel ?? "unknown"} (analysis)`;
             }
         }
 
         // Fallback: show whatever model info we have
         if (hasParsingModel) {
-            const provider = message.tokenUsage!.parsingProvider!;
-            const model = message.tokenUsage!.parsingModel!;
+            const provider = message.tokenUsage?.parsingProvider;
+            const model = message.tokenUsage?.parsingModel;
+            if (!provider || !model) return null;
             return `${this.formatProvider(provider)}: ${model}`;
         }
 
