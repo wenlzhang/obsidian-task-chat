@@ -499,7 +499,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // AI active in Smart Search and Task Chat for keyword expansion + property recognition
     aiEnhancement: {
         showAIUnderstanding: true, // Show AI understanding box in Task Chat (how properties were recognized/converted)
-        enableStreaming: true, // Enable streaming responses by default (better UX, feels more responsive)
+        enableStreaming: false, // Enable streaming responses by default (better UX, feels more responsive)
     },
 
     // Task Display Settings

@@ -336,8 +336,7 @@ export class PricingService {
 
         try {
             if (useFetch) {
-                // NOTE: Using native fetch() instead of requestUrl because Obsidian's requestUrl
-                // doesn't support streaming responses, which are required for real-time AI responses.
+                // Streaming requires native fetch() - see docs/STREAMING.md
                 const response = await fetch(
                     `https://openrouter.ai/api/v1/generation?id=${generationId}`,
                     {

@@ -674,7 +674,9 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Enable streaming responses")
             // eslint-disable-next-line obsidianmd/ui/sentence-case -- Brand name (ChatGPT)
-            .setDesc("Show AI responses as they're generated (like ChatGPT).")
+            .setDesc(
+                "Show AI responses as they're generated (like ChatGPT). When enabled, uses native fetch() for streaming support. When disabled, uses Obsidian's requestUrl() for enhanced security and CORS handling.",
+            )
             .addToggle((toggle) =>
                 toggle
                     .setValue(

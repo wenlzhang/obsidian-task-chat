@@ -158,6 +158,7 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 - **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual keyword matching
 - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
 - **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
+- **[Streaming Responses](docs/STREAMING.md)** - Streaming vs non-streaming modes
 - **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior
 - **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model
 - **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide
