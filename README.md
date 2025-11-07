@@ -57,38 +57,23 @@ fix bug p:1 p:2 due s:open,?
 
 ## 📊 Query Syntax
 
-### Status Filters
+Task Chat supports flexible queries from simple filters to natural language:
 
-```
-s:open          → Open tasks
-s:completed     → Completed tasks
-s:inprogress    → In-progress tasks
-s:open,wip      → Open OR in-progress
-s:x             → Completed (by symbol)
-s:/             → In-progress (by symbol)
-```
+### Quick Reference
 
-### Priority Filters
+- **Status:** `s:open`, `s:completed`, `s:inprogress`, `s:x` (by symbol)
+- **Priority:** `p1`, `p2`, `p3`, `p4`, `p:1,2,3`, `priority:1`
+- **Due Date:** `due`, `due:today`, `due:tomorrow`, `overdue`, `this week`
+- **Combined:** `s:open,inprogress p1 overdue`, `fix bug s:inprogress due:today`
 
-```
-p1, p2, p3, p4            → Priority levels
-priority:1                → High priority
-```
+### Query Types
 
-### Due Date Filters
+- **Pure Property Queries** - Fast, free filtering: `p1 overdue s:open`
+- **Mixed Queries** - Keywords + properties: `fix bug p1 overdue`
 
-```
-due:today, due:tomorrow   → Specific days
-overdue                   → Past due
-```
-
-### Combined Filters
-
-```
-s:open p1 overdue
-fix bug s:inprogress due:today
-s:blocked priority:1
-```
+→ **[Complete Query Syntax Guide](docs/QUERY_SYNTAX.md)** - Detailed documentation covering:
+- Standard and non-standard task properties
+- Semantic expansion and keywords
 
 ## Quick Start
 
@@ -147,21 +132,22 @@ This plugin connects to external AI services for Smart Search and Task Chat mode
 ### Core Concepts
 
 - **[Chat Modes](docs/CHAT_MODES.md)** - Choose the right mode for your needs
-- **[Settings Guide](docs/SETTINGS_GUIDE.md)** - Complete configuration reference
+- **[Query Syntax](docs/QUERY_SYNTAX.md)** - Complete query syntax reference
+- **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual keyword matching
 - **[Status Categories](docs/STATUS_CATEGORIES.md)** - Customize task states
+- **[Settings Guide](docs/SETTINGS_GUIDE.md)** - Complete configuration reference
 
 ### Advanced Features
 
 - **[Task Filtering](docs/FILTERING.md)** - Control which tasks appear
-- **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
+    - **[Task Exclusions](docs/EXCLUSIONS.md)** - Exclude tasks from searches
 - **[Scoring System](docs/SCORING_SYSTEM.md)** - How tasks are ranked
-- **[Semantic Expansion](docs/SEMANTIC_EXPANSION.md)** - Multilingual keyword matching
-- **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
+    - **[Sorting System](docs/SORTING_SYSTEM.md)** - Multi-criteria task ordering
 - **[Chat History Context](docs/CHAT_HISTORY_CONTEXT.md)** - Control conversation context
-- **[Streaming Responses](docs/STREAMING.md)** - Streaming vs non-streaming modes
 - **[AI Provider Configuration](docs/AI_PROVIDER_CONFIGURATION.md)** - Configure AI behavior
-- **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model
-- **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide
+    - **[Model Selection Guide](docs/MODEL_SELECTION_GUIDE.md)** - Choose the right model
+    - **[Ollama Setup](docs/OLLAMA_SETUP.md)** - Complete Ollama guide
+    - **[Streaming Responses](docs/STREAMING.md)** - Streaming vs non-streaming modes
 - **[Troubleshooting](docs/SETTINGS_GUIDE.md#troubleshooting)**
 
 ## 📜 License
