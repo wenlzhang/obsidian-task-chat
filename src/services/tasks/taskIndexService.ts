@@ -10,11 +10,8 @@ import { Logger } from "../../utils/logger";
  */
 interface MomentInstance {
     valueOf(): number;
-    // eslint-disable-next-line no-unused-vars
     format(_format: string): string;
-    // eslint-disable-next-line no-unused-vars
     startOf(_unit: string): MomentInstance;
-    // eslint-disable-next-line no-unused-vars
     endOf(_unit: string): MomentInstance;
 }
 
@@ -23,7 +20,6 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    // eslint-disable-next-line no-unused-vars
     (_date?: string | Date | number): MomentInstance;
 };
 

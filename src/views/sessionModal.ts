@@ -9,7 +9,6 @@ import { ConfirmModal } from "../utils/confirmModal";
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
 
-    // eslint-disable-next-line no-unused-vars
     private onSessionSelect: (sessionId: string) => void;
     private selectionMode = false;
     private selectedSessionIds: Set<string> = new Set();
@@ -17,7 +16,6 @@ export class SessionModal extends Modal {
     constructor(
         app: App,
         plugin: TaskChatPlugin,
-        // eslint-disable-next-line no-unused-vars
         onSessionSelect: (sessionId: string) => void,
     ) {
         super(app);

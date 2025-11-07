@@ -57,8 +57,9 @@ export default [
   {
     rules: {
       // === Optional warnings - unused variables ===
-      "no-unused-vars": "warn",
-      "@typescript-eslint/no-unused-vars": "warn",
+      // Ignore variables/parameters starting with underscore (conventional unused marker)
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 
       // === Required errors - TypeScript strict rules ===
       "@typescript-eslint/no-explicit-any": "error",

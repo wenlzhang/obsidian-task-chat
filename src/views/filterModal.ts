@@ -18,7 +18,6 @@ import { Logger } from "../utils/logger";
  */
 export class FilterModal extends Modal {
     private filter: TaskFilter;
-    // eslint-disable-next-line no-unused-vars
     private onSubmit: (_filter: TaskFilter) => void;
     private allTasks: Task[];
     private plugin: TaskChatPlugin;
@@ -34,7 +33,6 @@ export class FilterModal extends Modal {
         plugin: TaskChatPlugin,
         allTasks: Task[],
         currentFilter: TaskFilter,
-        // eslint-disable-next-line no-unused-vars
         onSubmit: (_filter: TaskFilter) => void,
     ) {
         super(app);

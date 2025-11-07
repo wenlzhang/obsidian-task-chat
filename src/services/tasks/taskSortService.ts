@@ -86,7 +86,6 @@ export class TaskSortService {
         scoredTasks: Array<{ dcTask: DatacoreTask; finalScore: number }>,
         sortOrder: SortCriterion[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         getTaskId: (_dcTask: DatacoreTask) => string,
         scoreCache: Map<string, ScoreCacheEntry>,
     ): Array<{ dcTask: DatacoreTask; finalScore: number }> {
@@ -113,7 +112,6 @@ export class TaskSortService {
                 (item) => item.dcTask._dueDate,
                 (item) => item.dcTask._mappedPriority,
                 (item) => item.dcTask._mappedStatus || "incomplete",
-                // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
                 (_item) => undefined, // createdDate not available at API level
                 (item) => item.dcTask.$text || item.dcTask.text || "",
             );
@@ -144,17 +142,11 @@ export class TaskSortService {
         itemB: T,
         sortOrder: SortCriterion[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         getRelevance: (_item: T) => number,
-        // eslint-disable-next-line no-unused-vars
         getDueDate: (_item: T) => string | undefined,
-        // eslint-disable-next-line no-unused-vars
         getPriority: (_item: T) => number | undefined,
-        // eslint-disable-next-line no-unused-vars
         getStatusCategory: (_item: T) => string | undefined,
-        // eslint-disable-next-line no-unused-vars
         getCreatedDate: (_item: T) => string | undefined,
-        // eslint-disable-next-line no-unused-vars
         getText: (_item: T) => string,
     ): number {
         // Try each criterion in order until we find a difference

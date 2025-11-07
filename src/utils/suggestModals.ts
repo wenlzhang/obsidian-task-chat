@@ -7,7 +7,6 @@ import { App, FuzzySuggestModal, TFile } from "obsidian";
 export class FolderSuggestModal extends FuzzySuggestModal<string> {
     constructor(
         app: App,
-        // eslint-disable-next-line no-unused-vars
         private _onChooseFolder: (_folder: string) => void,
     ) {
         super(app);
@@ -43,7 +42,6 @@ export class FolderSuggestModal extends FuzzySuggestModal<string> {
         return folder === "/" ? "/ (root)" : folder;
     }
 
-    // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
     onChooseItem(folder: string, _evt: MouseEvent | KeyboardEvent): void {
         this._onChooseFolder(folder);
     }
@@ -56,7 +54,6 @@ export class FolderSuggestModal extends FuzzySuggestModal<string> {
 export class TagSuggestModal extends FuzzySuggestModal<string> {
     constructor(
         app: App,
-        // eslint-disable-next-line no-unused-vars
         private _onChooseTag: (_tag: string) => void,
     ) {
         super(app);
@@ -107,7 +104,6 @@ export class TagSuggestModal extends FuzzySuggestModal<string> {
         return tag;
     }
 
-    // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
     onChooseItem(tag: string, _evt: MouseEvent | KeyboardEvent): void {
         this._onChooseTag(tag);
     }
@@ -120,7 +116,6 @@ export class TagSuggestModal extends FuzzySuggestModal<string> {
 export class NoteSuggestModal extends FuzzySuggestModal<TFile> {
     constructor(
         app: App,
-        // eslint-disable-next-line no-unused-vars
         private _onChooseNote: (_note: TFile) => void,
     ) {
         super(app);
@@ -151,7 +146,6 @@ export class NoteSuggestModal extends FuzzySuggestModal<TFile> {
         return file.path;
     }
 
-    // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
     onChooseItem(file: TFile, _evt: MouseEvent | KeyboardEvent): void {
         this._onChooseNote(file);
     }

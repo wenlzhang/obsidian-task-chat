@@ -9,26 +9,16 @@ import { Logger } from "../../utils/logger";
  */
 interface MomentInstance {
     valueOf(): number;
-    // eslint-disable-next-line no-unused-vars
     format(_format: string): string;
-    // eslint-disable-next-line no-unused-vars
     startOf(_unit: string): MomentInstance;
-    // eslint-disable-next-line no-unused-vars
     endOf(_unit: string): MomentInstance;
     isValid(): boolean;
-    // eslint-disable-next-line no-unused-vars
     isBefore(_date: MomentInstance): boolean;
-    // eslint-disable-next-line no-unused-vars
     isAfter(_date: MomentInstance): boolean;
-    // eslint-disable-next-line no-unused-vars
     isSame(_date: MomentInstance, _unit: string): boolean;
-    // eslint-disable-next-line no-unused-vars
     isSameOrAfter(_date: MomentInstance, _unit: string): boolean;
-    // eslint-disable-next-line no-unused-vars
     isSameOrBefore(_date: MomentInstance, _unit: string): boolean;
-    // eslint-disable-next-line no-unused-vars
     add(_amount: number, _unit: string): MomentInstance;
-    // eslint-disable-next-line no-unused-vars
     subtract(_amount: number, _unit: string): MomentInstance;
     clone(): MomentInstance;
 }
@@ -40,7 +30,6 @@ interface MomentInstance {
  */
 type MomentFn = {
     (): MomentInstance;
-    // eslint-disable-next-line no-unused-vars
     (_date?: unknown): MomentInstance;
 };
 
@@ -1139,7 +1128,6 @@ export class TaskPropertyService {
                 typeof (date as { format: unknown }).format === "function"
             ) {
                 const dateWithFormat = date as {
-                    // eslint-disable-next-line no-unused-vars
                     format: (_fmt: string) => string;
                 };
                 return format
@@ -1916,7 +1904,6 @@ export class TaskPropertyService {
     static matchesDueDateKeyword(
         dateValue: unknown,
         keyword: string,
-        // eslint-disable-next-line no-unused-vars
         formatDate: (_date: unknown) => string | undefined,
     ): boolean {
         if (!dateValue) return false;
@@ -2465,9 +2452,7 @@ export class TaskPropertyService {
             statusValues?: string[] | null;
         },
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
     ): ((_task: GenericTask) => boolean) | null {
-        // eslint-disable-next-line no-unused-vars
         const filters: ((_task: GenericTask) => boolean)[] = [];
 
         // Build priority filter

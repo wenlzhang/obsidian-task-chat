@@ -78,7 +78,6 @@ export class AIService {
         chatHistory: ChatMessage[],
         settings: PluginSettings,
         currentFilter?: import("../../models/task").TaskFilter, // Used for property filter reloads
-        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void, // Optional streaming callback
         abortSignal?: AbortSignal, // Optional abort signal for cancellation
     ): Promise<{
@@ -2288,7 +2287,6 @@ ${taskContext}`;
     private static async callAI(
         messages: AIMessage[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
@@ -2413,7 +2411,6 @@ ${taskContext}`;
     private static async callOpenAIWithStreaming(
         messages: AIMessage[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         onStream: (_chunk: string) => void,
         abortSignal?: AbortSignal,
     ): Promise<{ response: string; tokenUsage: TokenUsage }> {
@@ -2695,7 +2692,6 @@ ${taskContext}`;
     private static async callAnthropic(
         messages: AIMessage[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,
@@ -2963,7 +2959,6 @@ ${taskContext}`;
     private static async callOllama(
         messages: AIMessage[],
         settings: PluginSettings,
-        // eslint-disable-next-line no-unused-vars
         onStream?: (_chunk: string) => void,
         abortSignal?: AbortSignal,
         useStreaming = false,

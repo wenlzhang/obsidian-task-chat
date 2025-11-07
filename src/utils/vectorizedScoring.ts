@@ -158,7 +158,6 @@ export class VectorizedScoring {
         qualityThreshold: number,
         settings: PluginSettings,
         scoreCache: Map<string, ScoreCacheEntry>,
-        // eslint-disable-next-line no-unused-vars
         getTaskId: (_task: DatacoreTask) => string,
     ): DatacoreTask[] {
         const n = results.length;
@@ -245,7 +244,6 @@ export class VectorizedScoring {
         minimumRelevanceScore: number,
         settings: PluginSettings,
         scoreCache: Map<string, ScoreCacheEntry>,
-        // eslint-disable-next-line no-unused-vars
         getTaskId: (_task: DatacoreTask) => string,
     ): DatacoreTask[] {
         const n = results.length;
