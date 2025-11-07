@@ -9,14 +9,14 @@ import { ConfirmModal } from "../utils/confirmModal";
 export class SessionModal extends Modal {
     private plugin: TaskChatPlugin;
 
-    private onSessionSelect: (sessionId: string) => void;
+    private onSessionSelect: (_sessionId: string) => void;
     private selectionMode = false;
     private selectedSessionIds: Set<string> = new Set();
 
     constructor(
         app: App,
         plugin: TaskChatPlugin,
-        onSessionSelect: (sessionId: string) => void,
+        onSessionSelect: (_sessionId: string) => void,
     ) {
         super(app);
         this.plugin = plugin;

@@ -494,7 +494,7 @@ export class DatacoreService {
         dcTask: DatacoreTask,
         fieldKey: string,
         text: string,
-        settings: PluginSettings,
+        _settings: PluginSettings,
     ): unknown {
         // Delegate to unified extraction method in TaskPropertyService
         return TaskPropertyService.getUnifiedFieldValue(dcTask, fieldKey, text);
