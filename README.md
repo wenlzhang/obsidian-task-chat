@@ -12,6 +12,10 @@ An AI-powered task management assistant for [Obsidian](https://obsidian.md/) tha
 - **📊 Intelligent Scoring** - Customizable relevance, due date, priority, and status weights
 - **🔄 Task Indexing** - Uses Datacore for fast performance
 
+## 🌐 Web Version Available
+
+Chat with your Todoist tasks directly in your browser at **[task-chat-web.vercel.app](https://task-chat-web.vercel.app/)**. Configure your Todoist API token and AI provider keys to get started. All data is stored locally in your browser for privacy.
+
 ## 🎯 Three Chat Modes
 
 | Mode | AI Usage | Cost | Best For |
