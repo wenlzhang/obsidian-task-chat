@@ -14,7 +14,7 @@ An AI-powered task management assistant for [Obsidian](https://obsidian.md/) tha
 
 ## 🌐 Web Version Available
 
-Chat with your Todoist tasks and Google Calendar events directly in your browser at **[task-chat-web.vercel.app](https://task-chat-web.vercel.app/)**. All data is stored locally in your browser for privacy.
+Chat with your Todoist tasks, Google Calendar, and Apple Calendar events directly in your browser at **[task-chat-web.vercel.app](https://task-chat-web.vercel.app/)**. Configure your API tokens and keys to get started. All data is stored locally in your browser with encryption for privacy and security.
 
 ## 🎯 Three Chat Modes
 
