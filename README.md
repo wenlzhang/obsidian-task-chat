@@ -14,7 +14,7 @@ An AI-powered task management assistant for [Obsidian](https://obsidian.md/) tha
 
 ## 🌐 Web Version Available
 
-Chat with your Todoist tasks, Google Calendar, and Apple Calendar events directly in your browser at **[taskchat.ptkm.net](https://taskchat.ptkm.net/)**. Configure your API tokens and keys to get started. All data is stored locally in your browser with encryption for privacy and security.
+Chat with your Todoist tasks, Google Calendar, and Apple Calendar events directly in your browser at **[taskchat.ptkm.net](https://taskchat.ptkm.net/)**. Configure your API tokens and keys to get started.
 
 ## 🎯 Three Chat Modes
 
